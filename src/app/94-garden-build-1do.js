@@ -153,6 +153,16 @@ function gardenCarrySet(key, x, y) {
   gardenDropChanged();
   return r.ok ? '' : r.msg;
 }
+/** Where a carried thing can lie near x, y (cells): its whole drawn foot on open ground (the walker's own test, across the kind's width),
+ *  this spot or the nearest within a cell, never further from you than that. Null: no room near here. By kind: the width is the kind's. */
+function gardenCarryRoom(key, x, y) {
+  if (typeof _gwFree !== 'function') return { x, y };
+  const t = gardenCarryThing(key), K = t && GARDEN_KINDS[t.kind], half = Math.max(0.15, ((K && K.w) || 0.5) / 2);
+  const ok = (px, py) => _gwFree(px, py, 0.12) && _gwFree(px - half, py, 0.08) && _gwFree(px + half, py, 0.08) && _gwFree(px, py - 0.25, 0.08);
+  if (ok(x, y)) return { x, y };
+  for (let r = 0.2; r <= 1.01; r += 0.2) for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r * 0.75; if (ok(px, py)) return { x: Math.round(px * 10) / 10, y: Math.round(py * 10) / 10 }; }
+  return null;
+}
 /** The host said no (someone else picked it up just before you): it leaves your arms, and says so in plain words. */
 function gardenCarryRefused(P, why) {
   const key = P && P.f && P.f.p; if (!key) return;

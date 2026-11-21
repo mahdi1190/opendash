@@ -699,8 +699,12 @@ function _gaSetDownDraw(id, x, y) {
 /** E while carrying: set it down at your feet, just in front. It stays there, for everyone, until someone picks it up again. */
 function gartActSetDown() {
   const c = _ga.carry; if (!c) return false;
+  const W = GARDEN_WORLD, deg = (typeof gartMoveFacingDeg === 'function' ? gartMoveFacingDeg() : 90) * Math.PI / 180, x0 = _gw.px + Math.cos(deg) * 0.5, y0 = _gw.py + Math.sin(deg) * 0.35 + 0.05, clear = typeof _gwFree !== 'function' || _gwFree(x0, y0, 0.15);
+  let x = clear ? x0 : _gw.px, y = clear ? y0 : _gw.py + 0.08;   // (never into a post or a wall: at your feet then)
+  // (build phase 1) its whole foot on open ground, nudged up to a cell to the nearest spot that is (rule 12: never half into a wall or a hedge);
+  // nowhere near: you keep it, and are told so
+  if (typeof gardenCarryRoom === 'function') { const r = gardenCarryRoom(c.id, x, y); if (!r) { try { gardenToast('There is no room to put it down here. Try a more open spot.', { icon: 'hand' }); } catch (e) { /* fine */ } return true; } x = r.x; y = r.y; }
   _ga.carry = null;
-  const W = GARDEN_WORLD, deg = (typeof gartMoveFacingDeg === 'function' ? gartMoveFacingDeg() : 90) * Math.PI / 180, x0 = _gw.px + Math.cos(deg) * 0.5, y0 = _gw.py + Math.sin(deg) * 0.35 + 0.05, clear = typeof _gwFree !== 'function' || _gwFree(x0, y0, 0.15), x = clear ? x0 : _gw.px, y = clear ? y0 : _gw.py + 0.08;   // (never into a post or a wall: at your feet then)
   _gaHide.delete(c.id);
   // (round 6) where you set it down it is a thing of the world of its own, at its new place with its contact shadow (the still picture stays
   // hidden: moving the world's own record left it drawn nowhere), until you pick it up again
