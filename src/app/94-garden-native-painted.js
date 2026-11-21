@@ -662,7 +662,7 @@ window.GardenNativePainted = (function () {
     }
     lastPlanting = made;
     // the village trees' trunks stand in the way like a planted tree's (94-garden-world-0walk.js _gwBuildSolids): you walked through them
-    const key = trunks.map(t => t.x.toFixed(2) + ',' + t.y.toFixed(2)).join('|'); if (key !== plantingTrunks.key) { plantingTrunks = { list: Object.freeze(trunks), key, rev: plantingTrunks.rev + 1 }; if (typeof _gw !== 'undefined' && _gw) _gw.grid = null; }
+    const key = trunks.map(t => t.x.toFixed(2) + ',' + t.y.toFixed(2)).join('|'); if (key !== plantingTrunks.key) { plantingTrunks = { list: Object.freeze(trunks), key, rev: plantingTrunks.rev + 1 }; if (typeof _gw !== 'undefined' && _gw) { _gw.gq = null; _gw.gridKey = ''; _gw.frameGrid = null; } }   /* (vf-perf: looked at again, built in slices when only the land or the trees changed: _gwGridSliceable) */
     return { destroy() { for (const im of made) im.destroy(); made.length = 0; if (plantingTall === tall) { plantingTall = []; plantingCoverage.length = 0; } }, count: made.length };
   }
   /* ---------- composition: the props painted into the one ground picture ----------

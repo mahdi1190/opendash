@@ -543,7 +543,7 @@ function _gwGrid(m, groundOnly) {
     const saved = _gw.routeSnapshot, inputs = _gwRouteSourceInputs(mm);
     const stats = _gw.routeGridStats || (_gw.routeGridStats = { coarseBuilds: 0, preparations: 0, reused: 0, boatPreparations: 0, preflightChecks: 0, preflightReused: 0 }); stats.preflightChecks++;
     if (saved && saved.state === state && saved.grid.shore === shore && saved.grid.otherShapes === otherShapes && _gwRouteArraySame(saved.inputs, inputs)) {
-      _gw.grid = saved.grid; _gw.solids = saved.solids; _gw.grid.model = mm; _gw.grid.landSig = gardenLevelLandSig(mm.level.level); _gw.gridKey = key; stats.preflightReused++; stats.reused++;
+      _gw.grid = saved.grid; _gw.solids = saved.solids; _gw.grid.model = mm; _gw.grid.landSig = gardenLevelLandSig(mm.level.level); _gw.grid.trunkSig = _gwTrunkSig() || ''; _gw.gridKey = key; stats.preflightReused++; stats.reused++;
       return _gw.grid;
     }
     // (vf-perf) while you walk, the land changing under you (a level-up) is built in slices between frames and swapped in when
@@ -566,7 +566,7 @@ function _gwGrid(m, groundOnly) {
       _gw.grid = grid; _gw.solids = solids; grid.routeRevision = ++stats.preparations;
       _gwPrepareRouteGrid(grid); _gw.routeSnapshot = { grid, solids, state, inputs };
     }
-    _gw.grid.routeState = state; _gw.grid.landSig = gardenLevelLandSig(mm.level.level); _gw.gridKey = key;
+    _gw.grid.routeState = state; _gw.grid.landSig = gardenLevelLandSig(mm.level.level); _gw.grid.trunkSig = _gwTrunkSig() || ''; _gw.gridKey = key;
   }
   _gw.grid.model = mm;
   return _gw.grid;
@@ -578,6 +578,8 @@ function _gwGridSliceable(mm) {
   // while you walk, or when a level opens land (the land drawn after it waits for you to stand a moment, and the grid you stand
   // on is what you see until then): standing at a level-up, the whole build in one task was 95 ms of a 413 ms task
   if (g.landSig != null && g.landSig !== gardenLevelLandSig(mm.level.level)) return true;
+  // (or the painted trees' trunks changed: the planting drawn again after a level-up, 104 ms of a 322 ms task)
+  if (g.trunkSig != null && g.trunkSig !== (_gwTrunkSig() || '')) return true;
   return typeof gardenBakeWalking === 'function' && gardenBakeWalking();
 }
 function* _gwGridJobRows(mm) {
@@ -609,7 +611,7 @@ function _gwGridJobStep() {
   const { grid, solids } = J.built, saved = J.saved;
   if (J.reuse) { _gw.grid = saved.grid; _gw.solids = saved.solids; Object.assign(_gw.grid, { model: J.mm, shore: grid.shore, otherShapes: grid.otherShapes, otherBuckets: grid.otherBuckets }); saved.state = J.state; saved.inputs = J.inputs; stats.reused++; }
   else { _gw.grid = grid; _gw.solids = solids; _gw.routeSnapshot = { grid, solids, state: J.state, inputs: J.inputs }; }
-  _gw.grid.routeState = J.state; _gw.grid.landSig = gardenLevelLandSig(J.mm.level.level); _gw.gridKey = J.key; _gw.gridJob = null; _gw.gq = null; _gw.frameGrid = null;
+  _gw.grid.routeState = J.state; _gw.grid.landSig = gardenLevelLandSig(J.mm.level.level); _gw.grid.trunkSig = _gwTrunkSig() || ''; _gw.gridKey = J.key; _gw.gridJob = null; _gw.gq = null; _gw.frameGrid = null;
   _gw.gridJobs = (_gw.gridJobs || 0) + 1; _gw.gridJobMs = Math.round(performance.now() - J.at);
 }
 function gardenWorldRouteGridStatus() {
