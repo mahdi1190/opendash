@@ -161,6 +161,7 @@ function _gmBands() {
   for (const [w, r] of _gmu.them) {
     if (now - r.at > GMU.staleMs) { _gmu.them.delete(w); continue; }
     const A = typeof _gll !== 'undefined' && _gll.actors ? _gll.actors.get(w) : null;
+    if (!A && now - r.at > 2500) { _gmu.them.delete(w); continue; }   // (they left the garden, or you did: their figure is gone from here)
     if (A && r.stand && Number.isFinite(A.x) && Math.hypot(A.x - r.stand.x, A.y - r.stand.y) > GMU.walkOff && now - r.at > 2500) { _gmu.them.delete(w); continue; }   // (their figure walked off: they stopped)
     add(r.id, { who: w, i: r.i, voice: r.voice });
   }
@@ -291,6 +292,10 @@ function gardenMusicTaken(id, act) {
 function _gmWake() { if (!_gmu.iv) _gmu.iv = setInterval(_gmTick, GMU.tickMs); _gmTick(); }
 function _gmTick() {
   try {
+    // a new garden or a new visit: friends heard in the last one are not here, and a visitor's clock is the new host's to learn
+    const sess = typeof _gll === 'undefined' ? '' : _gll.role + ':' + (_gll.role === 'visit' && typeof _glv !== 'undefined' ? _glv.fid : '');
+    if (_gmu.sess != null && sess !== _gmu.sess) { _gmu.them.clear(); _gmu.synced = false; _gmu.samples = []; _gmu.off = 0; _gmu.next = -1; _gmHeldSync(); }
+    _gmu.sess = sess;
     const band = _gmHeard();
     if (!_gmu.me && !_gmu.them.size) { clearInterval(_gmu.iv); _gmu.iv = 0; _gmu.next = -1; _gmQuiet(); _gmHeldSync(); return; }
     if (_gmVisitor() && _gmLive() && (_gmu.me || _gmu.them.size) && performance.now() - _gmu.pingAt > (_gmu.synced ? GMU.pingMs : 1500)) _gmPing();
