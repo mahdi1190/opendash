@@ -2162,6 +2162,7 @@ function gardenWorldKey(ev, down, arrowsOnly) {
   if (k === 'Tab' && !ev.ctrlKey && !ev.altKey && !ev.metaKey && typeof gartActCycle === 'function' && gartActCycle(ev.shiftKey)) { ev.preventDefault(); return true; }   // several things close by: the next one is the prompt's (94-garden-zz-7act-1core.js)
   if ((k === 'j' || k === 'J') && !ev.ctrlKey && !ev.metaKey && !ev.altKey) { if (typeof gardenJournalOpen === 'function') gardenJournalOpen(); ev.preventDefault(); return true; }   // the Field Journal
   if (arrowsOnly) return false;
+  if ((k === 'e' || k === 'E') && typeof _wd !== 'undefined' && _wd.talk && _wd.talk.next) { if (!ev.repeat && performance.now() - (_wd.talk.at || 0) > 250) _wd.talk.next(); ev.preventDefault(); return true; }   // (round 2, folk) E moves a talk on
   if (k === ' ' || k === 'e' || k === 'E') { if (ev.repeat) { ev.preventDefault(); return true; } gardenWorldInteract(); ev.preventDefault(); return true; }
   return false;
 }

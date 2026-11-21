@@ -211,7 +211,7 @@ function wdTalk(o) {
   T.next = () => { if (_wd.talk !== T) return false; if (T.i < lines.length - 1) { T.i++; show(); return true; } if (!(o.actions || []).length) { wdTalkClose(); return true; } return false; };
   if (!_wd.talkKeys) { _wd.talkKeys = true; document.addEventListener('keydown', (ev) => { const t = _wd.talk; if (!t || ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey || (ev.key !== 'e' && ev.key !== 'E')) return; const tg = ev.target; if (tg && (tg.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName))) return; if (performance.now() - t.at < 250) return; ev.preventDefault(); ev.stopPropagation(); t.next(); }, true); }
   T.at = performance.now();
-  el.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); wdTalkClose(); } ev.stopPropagation(); });
+  el.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); wdTalkClose(); } else if ((ev.key === 'e' || ev.key === 'E') && !ev.repeat && T.next) { ev.preventDefault(); T.next(); } ev.stopPropagation(); });
   box.appendChild(el); show();
   // the portrait frames the whole figure: tall folk (Hollin's antlers, Quince's ears, the angler's hat) were cut off by the fixed frame (17 Nov 2026)
   const pv = el.querySelector('.wd-talk-art svg');

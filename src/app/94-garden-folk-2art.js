@@ -76,40 +76,51 @@ const VALE_FOLK_ART = Object.freeze({
         }
       }
     } catch (e) { /* no tree */ }
-    // contact shadow under the bank, soft and wide, darker at the dug mouth's foot
-    let s = '<ellipse cx="0" cy="1" rx="58" ry="8" fill="#26301a" opacity=".22"/><ellipse cx="-2" cy="2" rx="22" ry="4" fill="#1a1208" opacity=".3"/>';
-    // the bank: no single hard outline. A shade body, then turf laid in overlapping tussocks toward the light (upper left), in the
-    // lawn's own olive and straw, so it is the same ground heaped up and not a brighter thing set on it
-    s += '<path d="M-54 3C-50 -6 -42 -18 -30 -26C-18 -33 -2 -36 12 -34C28 -31 42 -20 52 3Z" fill="#5f6a2e"/>';
-    let tus = '';
-    for (let i = 0; i < 16; i++) {
- const a = Math.PI * (0.1 + 0.8 * i / 15), cx = -Math.cos(a) * 42, ry = 6 + r() * 4, cy = Math.min(-ry + 2, -Math.sin(a) * 28 + 6), rx = 9 + r() * 6, lit = cx < 8;
-      tus += `<ellipse cx="${_vfaN(cx)}" cy="${_vfaN(cy)}" rx="${_vfaN(rx)}" ry="${_vfaN(ry)}" fill="${lit ? (i % 2 ? '#8e983e' : '#9aa246') : (i % 2 ? '#727c34' : '#7a8438')}"/>`;
+    // (round 2) the bank rises from the lawn to the tree's own foot, so the trunk stands on top of it and grows out of it (no strip of lawn
+    // between them, no collar), and the roots come out of the bank under the trunk and run down its face either side of the way in,
+    // half buried in the turf: one picture with the tree. The crown of the bank is the trunk foot (tx, ty).
+    const L = -56, R = 54, py = ty - 7;   // (the painted trunk stands on its thing a little above its foot row: the bank rises to meet it)
+    const top = (t) => {   // a point on the bank's skyline, t 0 (left foot) .. 1 (right foot), through the trunk's foot
+      const seg = t < 0.5 ? [[L, 3], [L + 10, -10], [tx - 22, py + 2], [tx, py]] : [[tx, py], [tx + 26, py - 1], [R - 14, -16], [R, 3]], u = t < 0.5 ? t * 2 : t * 2 - 1, v = 1 - u;
+      return [0, 1].map(k => v * v * v * seg[0][k] + 3 * v * v * u * seg[1][k] + 3 * v * u * u * seg[2][k] + u * u * u * seg[3][k]);
+    };
+    const bankD = `M${L} 3C${L + 10} -10 ${_vfaN(tx - 22)} ${_vfaN(py + 2)} ${_vfaN(tx)} ${_vfaN(py)}C${_vfaN(tx + 26)} ${_vfaN(py - 1)} ${R - 14} -16 ${R} 3Z`;
+    let s = '<ellipse cx="0" cy="1.5" rx="60" ry="8.5" fill="#26301a" opacity=".22"/><ellipse cx="-2" cy="2.4" rx="22" ry="4" fill="#1a1208" opacity=".3"/>';
+    s += `<path d="${bankD}" fill="#56602a"/>`;
+    // the lit body of the turf, toward the sun at the upper left, and the shaded right flank: the same lawn heaped up
+    s += `<path d="M${L + 4} 2C${L + 13} -8 ${_vfaN(tx - 20)} ${_vfaN(py + 4)} ${_vfaN(tx - 1)} ${_vfaN(py + 2.4)}C${_vfaN(tx + 22)} ${_vfaN(py + 2)} ${R - 18} -12 ${R - 6} 2Z" fill="#7c8638"/>`;
+    s += `<path d="M${L + 6} 0C${L + 12} -8 ${_vfaN(tx - 18)} ${_vfaN(py + 5)} ${_vfaN(tx - 2)} ${_vfaN(py + 4)}C${_vfaN(tx - 14)} ${_vfaN(py + 9)} ${L + 20} -4 ${L + 16} 1Z" fill="#a4aa52" opacity=".55"/>`;
+    s += `<path d="M${_vfaN(tx + 18)} ${_vfaN(py + 3)}C${R - 16} -12 ${R - 8} -6 ${R - 4} 2L${R - 18} 2C${R - 20} -6 ${_vfaN(tx + 24)} ${_vfaN(py + 9)} ${_vfaN(tx + 18)} ${_vfaN(py + 3)}Z" fill="#4a5424" opacity=".5"/>`;
+    // tussocks laid along the turf, lighter on the lit side
+    for (let i = 0; i < 18; i++) { const t = 0.06 + 0.88 * (i / 17), [x, y] = top(t), dy = 5 + r() * 12, lit = x < tx + 6; s += `<ellipse cx="${_vfaN(x + (r() - 0.5) * 6)}" cy="${_vfaN(Math.min(-3, y + dy))}" rx="${_vfaN(6 + r() * 6)}" ry="${_vfaN(3 + r() * 2.4)}" fill="${lit ? (i % 2 ? '#8e983e' : '#98a044') : (i % 2 ? '#6c7632' : '#747e36')}" opacity=".85"/>`; }
+    s += _vfaStrokes(r, -4, -14, 46, 12, 110, 3.2, -0.25, '#b4b860', 0.9, 0.5) + _vfaStrokes(r, 12, -10, 40, 10, 70, 2.8, 0.35, '#48521f', 0.8, 0.45);
+    // the old roots: out of the bank under the trunk, thick there, down the bank's face either side of the way in, sinking into the turf
+    const taper = (P, w0, w1) => {   // a tapered root along a cubic P (4 points): the two edges, then closed
+      const pt = (u) => { const v = 1 - u; return [0, 1].map(k => v * v * v * P[0][k] + 3 * v * v * u * P[1][k] + 3 * v * u * u * P[2][k] + u * u * u * P[3][k]); };
+      const A = [], B = [];
+      for (let i = 0; i <= 12; i++) { const u = i / 12, p = pt(u), q = pt(Math.min(1, u + 0.02)), o = pt(Math.max(0, u - 0.02)), dx = q[0] - o[0], dy = q[1] - o[1], n = Math.hypot(dx, dy) || 1, w = (w0 + (w1 - w0) * u) / 2; A.push([p[0] - dy / n * w, p[1] + dx / n * w]); B.push([p[0] + dy / n * w, p[1] - dx / n * w]); }
+      return 'M' + A.concat(B.reverse()).map(p => _vfaN(p[0]) + ' ' + _vfaN(p[1])).join('L') + 'Z';
+    };
+    const roots = [
+      [[[tx - 3, py + 1], [tx - 8, py + 12], [-27, -18], [-21, 3]], 13, 3.4],    // down the left of the door
+      [[[tx + 5, py + 2], [tx + 20, py + 9], [13, -25], [17, 2]], 12, 3],        // over the door and down its right
+      [[[tx - 7, py + 1], [tx - 18, py + 3], [-38, -10], [-44, -1]], 8, 1.6],    // out to the left, sinking in
+    ];
+    for (const [P, w0, w1] of roots) {
+      const d = taper(P, w0, w1), m = P.map(p => [p[0] - 0.9, p[1] - 1.2]);
+      s += `<path d="${d}" fill="#4a3624"/><path d="${taper(m, w0 * 0.66, w1 * 0.6)}" fill="#785c40"/><path d="${taper(m.map(p => [p[0] - 1, p[1] - 0.8]), w0 * 0.26, w1 * 0.3)}" fill="#957652" opacity=".7"/><path d="M${_vfaN(m[0][0])} ${_vfaN(m[0][1])}C${_vfaN(m[1][0])} ${_vfaN(m[1][1])} ${_vfaN(m[2][0])} ${_vfaN(m[2][1])} ${_vfaN(m[3][0])} ${_vfaN(m[3][1])}" stroke="#a08058" stroke-width=".8" fill="none" opacity=".7" transform="translate(-1 -1)"/>`;
+      s += `<path d="M${_vfaN(P[0][0])} ${_vfaN(P[0][1] - 1)}C${_vfaN(P[1][0])} ${_vfaN(P[1][1] - 1.6)} ${_vfaN(P[2][0])} ${_vfaN(P[2][1] - 1.6)} ${_vfaN(P[3][0])} ${_vfaN(P[3][1] - 1)}" pathLength="100" stroke="#7e8e3c" stroke-width="2" stroke-dasharray="5 13" stroke-dashoffset="-${Math.round(r() * 12)}" fill="none" opacity=".7"/>`;   // moss on their backs
+      // turf grown back over them in places (half buried)
+      for (const u of [0.86]) { const v = 1 - u, x = v * v * v * P[0][0] + 3 * v * v * u * P[1][0] + 3 * v * u * u * P[2][0] + u * u * u * P[3][0], y = v * v * v * P[0][1] + 3 * v * v * u * P[1][1] + 3 * v * u * u * P[2][1] + u * u * u * P[3][1]; s += `<ellipse cx="${_vfaN(x)}" cy="${_vfaN(y + 1)}" rx="${_vfaN(w0 * 0.55)}" ry="2.2" fill="#7c8638"/>` + _vfaTufts(r, x - 4, x + 4, y + 1.6, 2, ['#7e8a36', '#9aa246']); }
     }
-    s += tus + '<path d="M-26 -4C-24 -14 -12 -22 4 -22C18 -22 28 -14 30 -2C20 -8 -10 -10 -26 -4Z" fill="#848e3a"/>';
-    s += '<path d="M-42 -4C-36 -16 -24 -26 -8 -30C-20 -22 -30 -13 -34 -2Z" fill="#b0b45a" opacity=".45"/><path d="M14 -28C28 -24 40 -14 46 0C38 -10 28 -20 14 -24Z" fill="#4e5826" opacity=".45"/>';
-    s += _vfaStrokes(r, -4, -18, 44, 15, 90, 3.4, -0.25, '#b4b860', 0.9, 0.5) + _vfaStrokes(r, 10, -12, 40, 12, 60, 2.8, 0.35, '#4a5424', 0.8, 0.45) + _vfaStrokes(r, -10, -24, 30, 8, 40, 2.4, -0.5, '#c8c474', 0.7, 0.4);
-    // grass blades standing proud along the whole crown (the skyline is grass, not a drawn line)
+    // the trunk's foot flares into the roots at the top of the bank: bark the colour of the tree's, its base lost in the grass
+    s += `<path d="M${_vfaN(tx - 13)} ${_vfaN(py + 3)}C${_vfaN(tx - 7)} ${_vfaN(py)} ${_vfaN(tx - 6)} ${_vfaN(py - 4)} ${_vfaN(tx - 5.5)} ${_vfaN(py - 7)}L${_vfaN(tx + 5.5)} ${_vfaN(py - 7)}C${_vfaN(tx + 6)} ${_vfaN(py - 4)} ${_vfaN(tx + 8)} ${_vfaN(py)} ${_vfaN(tx + 14)} ${_vfaN(py + 3)}Z" fill="#664d36" opacity="${tree ? 0.95 : 1}"/><path d="M${_vfaN(tx - 9)} ${_vfaN(py + 2)}C${_vfaN(tx - 5)} ${_vfaN(py - 1)} ${_vfaN(tx - 4)} ${_vfaN(py - 4)} ${_vfaN(tx - 4)} ${_vfaN(py - 6.6)}" stroke="#8a6a48" stroke-width="1" fill="none" opacity=".8"/>`;
+    if (!tree) s += `<ellipse cx="${_vfaN(tx)}" cy="${_vfaN(py - 7)}" rx="5.6" ry="2" fill="#a88a62"/><ellipse cx="${_vfaN(tx)}" cy="${_vfaN(py - 7)}" rx="3.4" ry="1.1" fill="#c8ac80"/>`;
+    // grass blades standing proud along the whole skyline (the bank's edge is grass, not a drawn line), thick round the trunk's foot
     let bl = '';
-    for (let i = 0; i < 46; i++) { const a = Math.PI * (0.03 + 0.94 * r()), x = -Math.cos(a) * 50, y = -Math.sin(a) * 33 + 2, h = 4 + r() * 6, l = (r() - 0.5) * 3; bl += `M${_vfaN(x)} ${_vfaN(y)}q${_vfaN(l * 0.4)} ${_vfaN(-h * 0.6)} ${_vfaN(l)} ${_vfaN(-h)}`; }
-    s += `<path d="${bl}" stroke="#7e8a36" stroke-width="1.1" fill="none" stroke-linecap="round"/><path d="${bl}" stroke="#b8bc62" stroke-width=".5" fill="none" opacity=".7" transform="translate(-.5 -.4)"/>`;
-    // the old roots: from the tree's foot down over the bank and into the ground on both sides, bark-coloured with a lit edge and moss
-    // on their backs; the root collar at the top is the trunk's own foot flaring into them
-    let roots = '';
-    for (const [ex, ey, k] of [[-46, 3, 1], [-24, -20, 0], [26, -18, 0], [50, 3, 1]]) {
-      // (each root hugs the bank: out along its crown first, then down its side into the ground; thick at the trunk, thinning, the short
-      // ones sinking into the turf; moss along their backs)
-      const sx = tx + (ex > tx ? 4 : -4), c1x = sx + (ex - sx) * 0.5, c1y = ty + 2 + (r() - 0.5) * 3, c2x = ex - (ex - sx) * 0.1, c2y = k ? ey - 14 - r() * 5 : ey - 4;
-      const d = `M${_vfaN(sx)} ${_vfaN(ty + 3)}C${_vfaN(c1x)} ${_vfaN(c1y)} ${_vfaN(c2x)} ${_vfaN(c2y)} ${_vfaN(ex)} ${_vfaN(ey)}`;
-      roots += `<path d="${d}" pathLength="100" stroke="#3e2c1a" stroke-width="7.4" stroke-dasharray="${k ? 40 : 30} 200" fill="none" stroke-linecap="round"/><path d="${d}" stroke="#3e2c1a" stroke-width="${k ? 4.4 : 3.6}" fill="none" stroke-linecap="round"/>`;
-      roots += `<path d="${d}" pathLength="100" stroke="#6a4c30" stroke-width="5.6" stroke-dasharray="${k ? 38 : 28} 200" fill="none" stroke-linecap="round"/><path d="${d}" stroke="#6a4c30" stroke-width="${k ? 2.8 : 2.2}" fill="none" stroke-linecap="round"/>`;
-      roots += `<path d="${d}" stroke="#9a7a56" stroke-width=".9" fill="none" transform="translate(-.6 -1.2)" opacity=".8"/><path d="${d}" pathLength="100" stroke="#7e8e3c" stroke-width="2" stroke-dasharray="4 11" stroke-dashoffset="-${Math.round(r() * 10)}" fill="none" opacity=".75" transform="translate(0 -1.4)"/>`;
-      if (!k) roots += _vfaTufts(r, ex - 6, ex + 6, ey + 2, 3, ['#7e8a36', '#9aa246', '#6e7a30']);
-    }
-    s += roots;
-    const top = tree ? 8 : 9;
-    s += `<path d="M${_vfaN(tx - 16)} ${_vfaN(ty + 6)}C${_vfaN(tx - 9)} ${_vfaN(ty + 2)} ${_vfaN(tx - 7)} ${_vfaN(ty - 3)} ${_vfaN(tx - 6)} ${_vfaN(ty - top)}L${_vfaN(tx + 6)} ${_vfaN(ty - top)}C${_vfaN(tx + 7)} ${_vfaN(ty - 3)} ${_vfaN(tx + 9)} ${_vfaN(ty + 2)} ${_vfaN(tx + 16)} ${_vfaN(ty + 6)}Z" fill="#5c4228"/><path d="M${_vfaN(tx - 9)} ${_vfaN(ty + 4)}Q${_vfaN(tx - 6)} ${_vfaN(ty - 4)} ${_vfaN(tx - 4.5)} ${_vfaN(ty - top)}" stroke="#8e6c4a" stroke-width="1.4" fill="none"/>`;
-    if (!tree) s += `<ellipse cx="${_vfaN(tx)}" cy="${_vfaN(ty - 9)}" rx="6" ry="2.2" fill="#a88a62"/><ellipse cx="${_vfaN(tx)}" cy="${_vfaN(ty - 9)}" rx="3.6" ry="1.2" fill="#c8ac80"/>`;
+    for (let i = 0; i < 54; i++) { const t = 0.03 + 0.94 * r(), [x, y] = top(t), h = 4 + r() * 6, l = (r() - 0.5) * 3; bl += `M${_vfaN(x)} ${_vfaN(y + 2)}q${_vfaN(l * 0.4)} ${_vfaN(-h * 0.6)} ${_vfaN(l)} ${_vfaN(-h)}`; }
+    for (let i = 0; i < 12; i++) { const x = tx - 12 + 24 * r(), h = 3 + r() * 5; bl += `M${_vfaN(x)} ${_vfaN(py + 3)}q0.4 ${_vfaN(-h * 0.6)} ${_vfaN((r() - 0.5) * 2)} ${_vfaN(-h)}`; }
+    s += `<path d="${bl}" stroke="#7a8634" stroke-width="1.1" fill="none" stroke-linecap="round"/><path d="${bl}" stroke="#b8bc62" stroke-width=".5" fill="none" opacity=".7" transform="translate(-.5 -.4)"/>`;
     // the way in, dug at the foot between two roots: warm dark earth going back into shadow, not a black hole; a lip of bare soil
     s += '<path d="M-19 3C-20 -6 -15 -15 -3 -17C9 -18 16 -9 16 3Z" fill="#7a5a3a"/><path d="M-15 3C-16 -4 -12 -12 -3 -13.4C6 -14 12 -7 12 3Z" fill="#3a2816"/>';
     s += '<path d="M-11 3C-11.6 -3 -8.6 -9 -3 -10C3 -10.4 7.6 -5 8 3Z" fill="#24180c"/><path d="M-13 -2C-12 -8 -8 -11.6 -3 -12.2" stroke="#9a7a54" stroke-width="1" fill="none" opacity=".8"/>';
@@ -124,7 +135,6 @@ const VALE_FOLK_ART = Object.freeze({
     s += '<path d="M42 4Q40 -4 34 -7M42 4Q44 -5 50 -8M42 4Q46 0 52 -1" stroke="#5a7030" stroke-width="1.4" fill="none" stroke-linecap="round"/>';
     s += _vfaTufts(r, -58, -18, 4, 10, ['#6e7a30', '#8a9440', '#5a6628']) + _vfaTufts(r, 18, 58, 4, 10, ['#6e7a30', '#8a9440', '#5a6628']);
     s += '<path d="M-28 2V-5M-24 3V-3" stroke="#4e6a2c" stroke-width=".8"/><circle cx="-28" cy="-5.6" r="1.5" fill="#f4f0e0"/><circle cx="-28" cy="-5.6" r=".6" fill="#e8b830"/><circle cx="-24" cy="-3.6" r="1.3" fill="#d8a0c8"/>';
-    s += _vfaSmoke(tx + 16, ty - 2);
     return s;
   },
 });

@@ -134,6 +134,7 @@ function _vfrBegin(m) {
   }
   _vfr.ctx = ctx; _vfr.rows = rows; _vfr.day = today; _vfr.book = new Map(); _vfr.plans = new Map(); _vfr.queue = rows.slice();
   _vfr.key = _vfrKey(m);
+  try { _vfrMarksDraw(); } catch (e) { console.error('[folk marks]', e); }
 }
 /** (round 2) Where someone whose home is in closed land comes out by day and goes back at dusk: the open ground nearest their home, on
  *  the way to it (each their own, so nobody crowds the arrival road or the pier). Searched outwards in rings; null if nothing is open. */
@@ -149,6 +150,42 @@ function _vfrGateFor(t, id, ctx) {
     if (best) return { id: 'gate:' + id, kind: 'road', x: best.x, y: best.y };
   }
   return null;
+}
+/* ---------- door marks (npcs-PLAN 3.3): the resident's sign by their door, so you know whose home it is ----------
+   A short post beside the door with a little hanging board painted with their mark (a spade, a map, a fish...), its foot in a tuft of grass
+   with a contact shadow (rule 13). Only on a home in open land whose resident lives there; small homes painted with their own door (a
+   burrow, a holt) carry it on the board too. Stands where walking is free beside the door, never on the path to it. */
+const VFR_MARKS = Object.freeze({
+  angler: '<path d="M-2.4 -3.6q0 4 2.4 4.4q2.6 0 2.6 -2.6M2.6 -1.8l1.2 -1.2" stroke="#3a3a30" stroke-width=".9" fill="none" stroke-linecap="round"/><path d="M0 -6v2.6" stroke="#3a3a30" stroke-width=".8"/>',
+  pip: '<path d="M-4 0q4 -3.4 7 0q-3 3.4 -7 0zM3 0l2.4 -2v4z" fill="#5a7a8a"/><circle cx="-2" cy="-.4" r=".5" fill="#1a1a1a"/>',
+  tam: '<path d="M0 -6v6" stroke="#5a3a22" stroke-width="1.2"/><path d="M-2 0h4v2.4q-2 2 -4 0z" fill="#7f8a90"/>',
+  bramble: '<path d="M-4.4 -3.4l3 -1l3 1l3 -1v6.8l-3 1l-3 -1l-3 1z" fill="#e8d8b0" stroke="#8a6a44" stroke-width=".4"/><path d="M-1.4 -4.4v6.8M1.6 -3.4v6.8" stroke="#8a6a44" stroke-width=".4"/>',
+  thistle: '<ellipse cx="0" cy="-3" rx="1.8" ry="2.6" fill="#b08a58"/><path d="M0 -.6v4.6" stroke="#a07a4a" stroke-width="1.1" stroke-linecap="round"/>',
+  quince: '<rect x="-2.6" y="-3" width="5.2" height="5.6" rx="1.4" fill="#c88a30"/><rect x="-3" y="-4.2" width="6" height="1.6" rx=".6" fill="#e8dcc0"/>',
+  wick: '<path d="M1.8 -4.6a4 4 0 1 0 0 8a3.2 3.2 0 1 1 0 -8z" fill="#e8d890"/>',
+  hollin: '<path d="M-3.6 3.6l5 -7" stroke="#6a4a2e" stroke-width="1.1"/><path d="M.4 -4.6l3 .8l-.4 3l-2.6 -.8z" fill="#8a96a0"/>',
+  perpetua: '<rect x="-4" y="-2.8" width="8" height="5.6" rx=".6" fill="#f4ecdc" stroke="#8a6a44" stroke-width=".4"/><path d="M-4 -2.6l4 3l4 -3" stroke="#8a6a44" stroke-width=".4" fill="none"/>',
+});
+function _vfrMarkSvg(id) {
+  const icon = VFR_MARKS[id]; if (!icon) return '';
+  // a small painted board nailed to the upper door: its shadow on the door, the board's lit top edge, two nails, the mark
+  return '<rect x="-5.2" y="-4.2" width="11.6" height="10" rx="1.8" fill="#1a1208" opacity=".28"/>'
+    + '<rect x="-5.8" y="-5.4" width="11.6" height="10" rx="1.8" fill="#5a4028"/><rect x="-5.1" y="-4.8" width="10.2" height="8.8" rx="1.3" fill="#e8dcc0"/><rect x="-5.1" y="-4.8" width="10.2" height="2.2" rx="1" fill="#fff6e4" opacity=".6"/>'
+    + '<circle cx="-4" cy="-3.6" r=".5" fill="#8a8478"/><circle cx="4" cy="-3.6" r=".5" fill="#8a8478"/>'
+    + `<g transform="translate(0 -.2) scale(.92)">${icon}</g>`;
+}
+function _vfrMarksDraw() {
+  for (const S of _vfr.marks || []) { try { S.remove(); } catch (e) { /* gone */ } }
+  _vfr.marks = [];
+  if (typeof wdSprite !== 'function' || typeof GARDEN_PROPS === 'undefined') return;
+  for (const [id, H] of _vfr.homes) {
+    // a building with a door of its own (a cottage, the boathouse): the mark on the door. A small home painted with its own (the holt's
+    // fish on its nail, the burrow's round door) needs none.
+    if (!H || H.kind === 'road' || H.src === 'thing' || !VFR_MARKS[id] || _vfr.away.has(id)) continue;
+    const p = GARDEN_PROPS.find(q => q.id === H.id); if (!p || !p.door || !Number.isFinite(p.door.x)) continue;
+    const foot = p.y + p.h, row = VALE_FOLK_ROW.get(id);
+    try { _vfr.marks.push(wdSprite({ id: 'vfm-' + id, x: p.door.x + 0.5, y: foot + 0.02, hit: 0.2, hitUp: 8, label: (row ? row.name : id) + '’s home', ground: true, svg: _vfrMarkSvg(id), lift: 30 + Math.max(0, (foot - p.door.y - 1)) * 30, update() { } })); } catch (e) { /* no stage */ }
+  }
 }
 function _vfrKey(m) { return [m.today, (m.areas || []).length, m.season, m.rain && m.rain.now ? 1 : 0, typeof _vfpGridKey === 'function' ? _vfpGridKey() : ''].join('|'); }
 /** One villager's plan (a frame's work; at most a few ms). */
@@ -622,7 +659,7 @@ wdMod({
     _vfrTellerTick(m);
     const ms = performance.now() - t0; _vfr.stats.tick += ms; if (ms > _vfr.stats.tickMax) _vfr.stats.tickMax = ms;
   },
-  end() { _vfr.on = false; for (const V of _vfr.V.values()) _vfrHide(V); _vfr.V.clear(); _vfr.plans.clear(); _vfr.list = []; },
+  end() { _vfr.on = false; for (const S of _vfr.marks || []) { try { S.remove(); } catch (e) { /* gone */ } } _vfr.marks = []; for (const V of _vfr.V.values()) _vfrHide(V); _vfr.V.clear(); _vfr.plans.clear(); _vfr.list = []; },
 });
 /* ---------- with friends (npcs-PLAN 5): the host sends the folk's whole state; a guest draws them there ---------- */
 /** For the saved copy (fk): [villager id, home thing id, the day they moved in (days since 1970)]: ids and numbers only. */
