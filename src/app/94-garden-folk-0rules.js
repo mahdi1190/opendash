@@ -206,7 +206,7 @@ function valeFolkWalkSecs(a, b, speed) { return !a || !b ? 0 : _vfD(a, b) * 1.35
 function valeFolkPlanAll(rows, ctx) {
   const plans = new Map(), book = ctx.book || new Map();   // key -> [[t0, t1]] (ctx.book: shared, so one villager at a time can be planned over several frames)
   const H = VALE_BLOCK_HOURS[ctx.season] || VALE_BLOCK_HOURS.spring;
-  const isBooked = (key, t0, t1) => (book.get(key) || []).some(([a, b]) => a < t1 + 2 && b > t0 - 2);
+  const isBooked = (key, t0, t1) => (book.get(key) || []).some(([a, b]) => a < t1 + 6 && b > t0 - 6);   // (6 min each side: the starts are jittered by up to 4 after booking)
   const doBook = (key, t0, t1) => { if (!key || key.startsWith('door:') || key.startsWith('porch:')) return; const L = book.get(key) || []; L.push([t0, t1]); book.set(key, L); };
   for (const row of rows) {
     const home = ctx.homes && ctx.homes.get(row.id) || null, R = VALE_ROUTINES[row.routine] || {}, rng = valeRng((ctx.seed || '') + '|' + ctx.day + '|' + row.id);
@@ -233,13 +233,13 @@ function valeFolkPlanAll(rows, ctx) {
         if (!spot) { t = t1; continue; }   // nowhere at all (a layout with no home and no seat): the time passes off the map
         const walk = valeFolkWalkSecs(at, spot, speed);
         const prev = out[out.length - 1];
-        if (prev && prev.act === act && prev.spot && prev.spot.key === spot.key) prev.t1 = t1;   // the same again: they stay
+        if (prev && prev.act === act && prev.spot && prev.spot.key === spot.key) { prev.t1 = t1; doBook(spot.key, t, t1); }   // the same again: they stay
         else { out.push({ t0: t, t1, act, spot, inside, walk: Math.round(walk), clip: A.clip, prop: A.prop || '' }); doBook(spot.key, t, t1); }
         at = spot; t = t1;
       }
     }
     // jitter: each start moves by a seeded few minutes, so the top of the hour doesn't hitch (never before the last one's start)
-    for (let i = 1; i < out.length; i++) { const j = Math.round((rng() - 0.5) * 8); const t0 = Math.max(out[i - 1].t0 + 3, Math.min(out[i].t1 - 3, out[i].t0 + j)); out[i - 1].t1 = t0; out[i].t0 = t0; }
+    for (let i = 1; i < out.length; i++) { if (out[i - 1].t1 !== out[i].t0) continue; const j = Math.round((rng() - 0.5) * 8); const t0 = Math.max(out[i - 1].t0 + 3, Math.min(out[i].t1 - 3, out[i].t0 + j)); out[i - 1].t1 = t0; out[i].t0 = t0; }
     plans.set(row.id, out);
   }
   return plans;
@@ -247,7 +247,8 @@ function valeFolkPlanAll(rows, ctx) {
 /** Where someone is in their plan at a minute of the day: the entry, and whether they are still walking to it (with how far along). */
 function valeFolkAt(plan, minute, speedMul) {
   if (!plan || !plan.length) return null;
-  let i = plan.findIndex(e => minute >= e.t0 && minute < e.t1); if (i < 0) i = minute < plan[0].t0 ? 0 : plan.length - 1;
+  let i = plan.findIndex(e => minute >= e.t0 && minute < e.t1);
+  if (i < 0) { i = 0; for (let k = 0; k < plan.length; k++) if (plan[k].t0 <= minute) i = k; }   // (a gap, where nothing on the layout answered: they stay where they last were)
   const e = plan[i], prev = plan[i - 1] || null, secs = (minute - e.t0) * 60, walk = e.walk || 0;
   return { e, i, prev, walking: !!prev && walk > 0 && secs < walk, along: walk > 0 ? Math.max(0, Math.min(1, secs / walk)) : 1, secs };
 }
