@@ -44,7 +44,7 @@
 .gpl-walk .gpl-cloth { animation: gpl-hairw .2s ease-in-out -.05s infinite alternate; }
 @keyframes gpl-hairw { from { transform: rotate(-2.4deg) translateY(0); } to { transform: rotate(2.2deg) translateY(.6px); } }
 @media (prefers-reduced-motion: reduce) { .gca *, .gpl .gpl-hair, .gpl .gpl-cloth { animation: none !important; } }
-/* the vale's folk (94-garden-folk-4run.js): sat on a seat (legs out over its front, the hips on it), reading, Bramble's rub-out; their homes' smoke and reeds (94-garden-folk-2art.js) */
+/* the vale's folk (94-garden-wonder-0vale-folk.js): sat on a seat (legs out over its front, the hips on it), reading, Bramble's rub-out; their homes' smoke and reeds (94-garden-folk-2art.js) */
 .gca-sit .gca-lg.gca-a { animation: none; transform: rotate(-78deg); }
 .gca-sit .gca-lg.gca-b { animation: none; transform: rotate(-70deg); }
 .gca-fish .gca-lg.gca-a { animation: none; transform: rotate(-52deg); }

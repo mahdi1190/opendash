@@ -284,7 +284,7 @@ function _wtTravellers(m) {
 /* ---------- residents: found at home, never calling ---------- */
 function _wtResPlace(r, m) {
   if (_wt.res.has(r.id)) return;
-  if (typeof gardenFolkLive === 'function' && gardenFolkLive() && typeof VALE_FOLK_ROW !== 'undefined' && VALE_FOLK_ROW.has(r.id)) return;   // one of the vale's folk: they live their day (94-garden-folk-4run.js)
+  if (typeof gardenFolkLive === 'function' && gardenFolkLive() && typeof VALE_FOLK_ROW !== 'undefined' && VALE_FOLK_ROW.has(r.id)) return;   // one of the vale's folk: they live their day (94-garden-wonder-0vale-folk.js)
   if (r.deep && !_wtDeep()) return;
   if (typeof r.here === 'function' && !r.here(m)) return;
   const z = typeof _wkRegionZone === 'function' ? _wkRegionZone(r.home.region) : 0; if (z == null || !_wtOpen(m, z)) return;

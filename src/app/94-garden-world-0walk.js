@@ -1927,7 +1927,7 @@ function _gwOpenProp(p) {
     photo: () => { if (typeof gardenPhotoOpen === 'function') gardenPhotoOpen(); }, timelapse: () => { if (typeof gardenTimelapseOpen === 'function') gardenTimelapseOpen(); },
     sail: () => { if (typeof gardenBoatAsk === 'function' && gardenBoatAsk()) return; gardenPopupOpen('sail'); },
     hall: () => gardenPopupOpen('catch', { sub: 'hall', title: 'The lake hall' }), lake: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The lake' }),
-    angler: () => { if (typeof gardenFolkLive === 'function' && gardenFolkLive()) return;   // (he walks his own day now: talk to him where he is, 94-garden-folk-4run.js)
+    angler: () => { if (typeof gardenFolkLive === 'function' && gardenFolkLive()) return;   // (he walks his own day now: talk to him where he is, 94-garden-wonder-0vale-folk.js)
       if (typeof wdAnglerTalk === 'function' && wdAnglerTalk(p)) return; gardenPopupOpen('catch', { sub: 'lake', title: 'The old angler' }); },   // he talks first, once a day (94-garden-wonder-1kin.js) smoker: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The smoker' }),
     craft: () => gardenPopupOpen('craft'),
     lands: () => gardenPopupOpen('lands'),

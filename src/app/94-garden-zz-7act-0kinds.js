@@ -150,7 +150,7 @@ const GARDEN_KINDS = Object.freeze({
   person: { name: 'someone', arts: ['angler'], words: ['angler'], noPerch: true },
   // homes of the vale's folk (94-garden-folk-0rules.js): small homes are placed through layout data (assets/garden/vale-folk.json) and
   // painted into their ground (94-garden-folk-2art.js): a door in a bank with a worn step, a mat and a pipe chimney; a holt in the roots
-  // at a water edge. Nobody's home offers you a move of its own: knocking is the folk's (94-garden-folk-4run.js)
+  // at a water edge. Nobody's home offers you a move of its own: knocking is the folk's (94-garden-wonder-0vale-folk.js)
   burrow: { name: 'the burrow', art: 'burrow', place: true, w: 2.2, h: 0.5, solid: 'block', noPerch: true, home: true },
   holt: { name: 'the holt', art: 'holt', place: true, w: 2.1, h: 0.45, solid: 'block', noPerch: true, home: true },
   nest: { name: 'the nest', place: true, w: 1, h: 0.4, noPerch: true, home: true },

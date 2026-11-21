@@ -178,7 +178,8 @@ function valeFolkFind(q, ctx, o) {
   const n = Math.min(cands.length, q.any ? 10 : 5), pool = cands.slice(0, n);
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); const x = pool[i]; pool[i] = pool[j]; pool[j] = x; }
   for (const c of pool.concat(cands.slice(n))) {
-    const key = 's:' + c.t.id + ':' + (c.s.i == null ? c.s.act : c.s.i);
+    // one villager to a thing at a time (two on a bench sat in each other's laps: the side-on figures are wider than its seats are apart)
+    const key = 's:' + c.t.id;
     if (o.booked && o.booked(key)) continue;
     return { x: c.s.stand.x, y: c.s.stand.y, deg: c.s.deg == null ? 90 : c.s.deg, src: c.t.id, kind: c.t.kind, act: c.s.act, seat: c.s.seat, key, at: { x: c.t.x, y: c.t.y } };
   }
@@ -219,7 +220,11 @@ function valeFolkPlanAll(rows, ctx) {
       const [h0, h1] = H[blk], b0 = Math.round(h0 * 60), b1 = Math.min(1440, Math.round(h1 * 60));
       let t = b0, guard = 0;
       while (t < b1 - 4 && guard++ < 12) {
-        const id = _vfPick(R[blk] || [['home', 1]], ctx, rng) || 'home', A = VALE_ACTIVITIES[id] || VALE_ACTIVITIES.home;
+        let id = _vfPick(R[blk] || [['home', 1]], ctx, rng) || 'home';
+        // visiting by day (their own home is in land not open yet): what they would do at home they do out in the open vale; they go
+        // back by the road for the evening and the night
+        if (ctx.away && ctx.away.has(row.id) && VALE_ACTIVITIES[id] && VALE_ACTIVITIES[id].q.home && id !== 'sleep') id = blk === 'evening' || blk === 'night' || blk === 'dawn' ? 'sleep' : rng() < 0.5 ? 'wander' : ctx.rain ? 'wander' : 'sitout';
+        const A = VALE_ACTIVITIES[id] || VALE_ACTIVITIES.home;
         const len = Math.round(A.d[0] + rng() * (A.d[1] - A.d[0])), t1 = Math.min(b1, t + len);
         let spot = null;
         for (let k = 0; k < 3 && !spot; k++) spot = valeFolkFind(A.q, fctx, { rng, from: at, booked: (key) => isBooked(key, t, t1) });

@@ -1,5 +1,5 @@
 /* ============================================================
-   THE FOLK'S RUNNER (npcs-PLAN 3.3 to 3.7, Phase 1): everyone in VALE_FOLK lives their day where the planner says, on real stand points.
+   THE FOLK'S RUNNER (it sorts after 94-garden-wonder-0kit.js, whose wdMod it calls at load; npcs-PLAN 3.3 to 3.7, Phase 1): everyone in VALE_FOLK lives their day where the planner says, on real stand points.
    - Homes: solved once by kind (valeFolkSolveHomes) and saved (vh.<id>, vm.<id>), so they never shuffle. Someone whose home is in land
      you have not opened yet comes in by day from the road and goes back at dusk (travelling), as the plan says.
    - The day: planned once a day for everyone together (seeded, booked), one villager a frame, while you stand (never inside a walk).
@@ -82,7 +82,8 @@ function _vfrBegin(m) {
   for (const [id, hid] of homes) if (W['vh.' + id] !== hid) { W['vh.' + id] = hid; W['vm.' + id] = today; dirty = true; }
   if (dirty) _wdSave();
   _vfr.homes = new Map(); _vfr.away = new Set();
-  const road = (() => { const st = GARDEN_WORLD.start; return { id: 'road', kind: 'road', x: st.x + 0.5, y: st.y + 0.5 }; })();
+  // the way in to the vale: the arrival road's first point (where visitors come ashore), else the arrival point itself
+  const road = (() => { let p = null; try { const r = typeof gardenIslandArrivalRoad === 'function' ? gardenIslandArrivalRoad() : null; p = r && r.points && r.points[0]; } catch (e) { p = null; } const st = GARDEN_WORLD.start; return { id: 'road', kind: 'road', x: p ? p.x : st.x + 0.5, y: p ? p.y : st.y + 0.5 }; })();
   for (const r of rows) {
     const t = ctx.things.find(q => q.id === homes.get(r.id));
     if (t && ctx.open(t)) _vfr.homes.set(r.id, t);
@@ -96,7 +97,7 @@ function _vfrKey(m) { return [m.today, (m.areas || []).length, m.season, m.rain 
 function _vfrPlanOne(m) {
   const row = _vfr.queue.shift(); if (!row) return;
   const t0 = performance.now(), ctx = _vfr.ctx;
-  const plan = valeFolkPlanAll([row], Object.assign({}, ctx, { day: m.today, weekday: _vfrWeekday(m.today), homes: _vfr.homes, book: _vfr.book }));
+  const plan = valeFolkPlanAll([row], Object.assign({}, ctx, { day: m.today, weekday: _vfrWeekday(m.today), homes: _vfr.homes, book: _vfr.book, away: _vfr.away }));
   let p = plan.get(row.id) || [];
   // travelling (home not open yet): the night's and the inside hours are off the map, by the road
   if (_vfr.away.has(row.id)) p = p.map(e => e.inside ? Object.assign({}, e, { offmap: true }) : e);
@@ -246,7 +247,7 @@ function _vfrFrame(dt) {
     // a teller on their way to you: their visit stands in for the plan until you talk, or it runs out
     const goal = V.visit && now < V.visit.until ? V.visit : null; if (V.visit && !goal) { V.visit = null; V.mark = false; }
     const dest = goal ? goal.at : to;
-    if (V.hold) { if (now > V.hold.until || (typeof _wd !== 'undefined' && !_wd.talk && now - V.hold.t0 > 1500)) { V.hold = null; } else { V.face = _gw.px > V.x ? 1 : -1; if (V.S) _vfrDraw(V, false); continue; } }
+    if (V.hold) { if (now > V.hold.until || (V.hold.by == null && typeof _wd !== 'undefined' && !_wd.talk && now - V.hold.t0 > 1500) || (V.hold.A && !_gll.actors.has(V.hold.by))) { V.hold = null; V.drawn = ''; } else { const tx = V.hold.A ? V.hold.A.x : _gw.px; V.face = tx > V.x ? 1 : -1; if (V.S) _vfrDraw(V, false); continue; } }
     if (!near && !V.S) {
       // off screen: where the plan says, in a straight line along the leg (nothing walked frame by frame)
       if (!goal) { V.x = w.x; V.y = w.y; V.inside = w.inside || !!e.offmap; V.arrived = !w.walking; }
@@ -276,6 +277,7 @@ function _vfrFrame(dt) {
   }
   _vfrCrossings(list);
   _vfr.list = list;
+  _vfrHostSend(now);
   const ms = performance.now() - f0; _vfr.stats.frames++; if (ms > _vfr.stats.frameMax) _vfr.stats.frameMax = ms;
 }
 /* ---------- tellers: someone with a story comes to you ---------- */
@@ -300,6 +302,7 @@ function _vfrTellerTick(m) {
 }
 /* ---------- the prompt and talking ---------- */
 function gardenFolkActRows(px, py) {
+  if (!_vfr.on && typeof _gll !== 'undefined' && _gll.role === 'visit') { const out = []; for (const V of _vfg.V.values()) if (V.S && Math.hypot(V.x - px, (V.y - py) * 1.3) <= 2) out.push({ key: 'folk:' + V.id, act: 'talk', folk: V.id, words: 'Talk to ' + V.row.name.replace(/^The /, 'the '), name: V.row.name, x: V.x, y: V.y, promptY: V.y - 2.2, pri: 0.9 }); return out; }
   if (!_vfr.on || !_vfr.list) return [];
   const out = [];
   for (const V of _vfr.list) {
@@ -312,13 +315,14 @@ function gardenFolkActRows(px, py) {
     }
     if (!V.S) continue;
     if (Math.hypot(V.x - px, (V.y - py) * 1.3) > 2) continue;
-    out.push({ key: 'folk:' + V.id, act: 'talk', folk: V.id, words: 'Talk to ' + V.row.name.replace(/^The /, 'the '), name: V.row.name, x: V.x, y: V.y, top: V.y - 1.6, pri: 0.9 });
+    out.push({ key: 'folk:' + V.id, act: 'talk', folk: V.id, words: 'Talk to ' + V.row.name.replace(/^The /, 'the '), name: V.row.name, x: V.x, y: V.y, promptY: V.y - ((typeof gardenCastTop === 'function' ? gardenCastTop(V.row.cast) : 50) * (typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 0.6) + (V.S ? V.S.lift || 0 : 0) + 10) / GARDEN_WORLD.cellH, pri: 0.9 });   // (the prompt over their head, not on it)
   }
   return out.filter(r => r.words);
 }
 /** A stand-in for the old caller sprite, so their talk code (94-garden-wonder-1folk.js) runs as it always did. */
 function _vfrProxy(V) { return { row: WD_FOLK_ROW.get(V.id), x: V.x, y: V.y, svg: '', node: null, gave: V.gave, path: [], home: { x: V.x, y: V.y }, remove() { }, set hold(v) { } }; }
 function gardenFolkTalkTo(id) {
+  if (typeof _gll !== 'undefined' && _gll.role === 'visit' && _vfg.V.has(id)) return gardenFolkGuestTalk(id);
   const V = _vfr.V.get(id); if (!V) return false;
   const m = gardenHere(); if (m.visit) { if (typeof gardenFolkGuestTalk === 'function') return gardenFolkGuestTalk(id); return false; }
   if (V.inside) {
@@ -389,4 +393,89 @@ wdMod({
     const ms = performance.now() - t0; _vfr.stats.tick += ms; if (ms > _vfr.stats.tickMax) _vfr.stats.tickMax = ms;
   },
   end() { _vfr.on = false; for (const V of _vfr.V.values()) _vfrHide(V); _vfr.V.clear(); _vfr.plans.clear(); _vfr.list = []; },
+});
+/* ---------- with friends (npcs-PLAN 5): the host sends the folk's whole state; a guest draws them there ---------- */
+/** For the saved copy (fk): [villager id, home thing id, the day they moved in (days since 1970)]: ids and numbers only. */
+function gardenFolkSnap() {
+  let W = null; try { W = _wdG(); } catch (e) { return null; }
+  const out = [];
+  for (const r of VALE_FOLK) { const h = W['vh.' + r.id]; if (typeof h !== 'string' || !/^[a-z][a-z0-9:,-]{0,40}$/.test(h)) continue; const d = Date.parse(String(W['vm.' + r.id] || '') + 'T12:00:00Z'); out.push([r.id, h, Number.isFinite(d) ? Math.floor(d / 86400000) : 0]); }   // clock-ok: a day number from a saved day
+  return out.slice(0, 32);
+}
+const _vfl = { at: 0, sig: '', sentAt: 0 };
+function _vfrPoseWord(V) {
+  const e = V.entry; if (V.hold) return 'talk';
+  if (!V.arrived || !e) return 'walk';
+  return e.clip === 'sit' ? (V.rubbing ? 'rub' : 'sit') : e.clip === 'fish' ? 'fish' : e.clip === 'read' ? 'read' : 'idle';
+}
+function _vfrHostSend(now) {
+  if (typeof _gll === 'undefined' || _gll.role !== 'host' || typeof _glh === 'undefined' || !_glh.on || !_glhAnyone() || !_glhLooking()) return;
+  if (now - _vfl.at < 800) return; _vfl.at = now;
+  const n10 = (v, hi) => Math.max(0, Math.min(hi * 10, Math.round(v * 10))), W = GARDEN_WORLD, l = [];
+  for (const V of _vfr.list || []) {
+    if (V.inside || V.x == null) continue;
+    const p = V.path && V.path.length ? V.path[V.path.length - 1] : { x: V.x, y: V.y };
+    const r = { i: V.id, x: n10(V.x, W.cols), y: n10(V.y, W.rows), tx: n10(p.x, W.cols), ty: n10(p.y, W.rows), a: _vfrPoseWord(V), f: V.face < 0 ? 1 : 0 };
+    if (V.hold && V.hold.by != null) r.h = Math.max(0, Math.min(9, Number(V.hold.by) || 0));
+    l.push(r); if (l.length >= 16) break;
+  }
+  const sig = JSON.stringify(l.map(r => [r.i, r.tx, r.ty, r.a, r.f, r.h]));
+  if (sig === _vfl.sig && now - _vfl.sentAt < 8000) return;
+  _vfl.sig = sig; _vfl.sentAt = now;
+  try { _glhSend('all', 'fk', { l }); } catch (e) { /* only a message */ }
+}
+/** A guest talks to one of the host's folk: they stop and face that guest on every screen. */
+function gardenFolkHeldBy(A, ev) {
+  if (!_vfr.on || !ev || typeof ev.i !== 'string') return;
+  const V = _vfr.V.get(ev.i); if (!V || V.inside) return;
+  if (ev.e === 'talk' && A) { V.hold = { t0: performance.now(), until: performance.now() + 90000, by: A.w, A }; V.path = null; V.pathFor = ''; V.drawn = ''; }
+  else if (ev.e === 'bye' && V.hold && V.hold.A === A) { V.hold = null; V.drawn = ''; }
+}
+/* the guest's side: the host's folk, eased to where the host says (snapped only past 3 cells) */
+const _vfg = { V: new Map(), at: 0 };
+function gardenFolkGuestIn(l) {
+  if (!Array.isArray(l)) return;
+  const seen = new Set();
+  for (const r of l) {
+    if (!r || typeof r.i !== 'string' || !VALE_FOLK_ROW.has(r.i)) continue;
+    seen.add(r.i);
+    let V = _vfg.V.get(r.i);
+    if (!V) { V = { id: r.i, row: VALE_FOLK_ROW.get(r.i), x: r.x / 10, y: r.y / 10, face: 1, S: null, drawn: '', path: null }; _vfg.V.set(r.i, V); }
+    V.to = { x: r.x / 10, y: r.y / 10 }; V.goal = { x: r.tx / 10, y: r.ty / 10 }; V.a = String(r.a || 'idle'); V.f = r.f ? -1 : 1; V.h = r.h; V.at = performance.now();
+    if (Math.hypot(V.x - V.to.x, V.y - V.to.y) > 3) { V.x = V.to.x; V.y = V.to.y; }
+  }
+  for (const [id, V] of _vfg.V) if (!seen.has(id)) { if (V.S) { try { V.S.remove(); } catch (e) { /* gone */ } } _vfg.V.delete(id); }   // gone in at a door, or off by the road
+}
+function _vfgFrame(dt) {
+  const G = GARDEN_WORLD;
+  for (const V of _vfg.V.values()) {
+    if (!V.S) { V.S = wdSprite({ id: 'vfg-' + V.id, x: V.x, y: V.y, hit: 0.75, hitUp: 16, label: V.row.name, cursor: 'hand', ground: true, svg: '', lift: 0, update() { }, onClick: () => gardenFolkGuestTalk(V.id) }); V.drawn = ''; }
+    // first to where the host last saw them, then on along to where they are going, at their own pace
+    const aim = Math.hypot(V.x - V.to.x, V.y - V.to.y) > 0.15 ? V.to : V.goal, dx = (aim.x - V.x) * G.cellW, dy = (aim.y - V.y) * G.cellH, d = Math.hypot(dx, dy), st = VALE_FOLK_SPEED * (V.row.speed || 1) * dt * (aim === V.to ? 1.25 : 1);
+    const walking = d > 1.5 && V.a === 'walk';
+    if (d > 0.5) { const k = Math.min(1, st / d); V.x += dx / G.cellW * k; V.y += dy / G.cellH * k; if (Math.abs(dx) > 0.5) V.face = dx > 0 ? 1 : -1; }
+    if (!walking) V.face = V.a === 'talk' && V.mine && typeof _gw !== 'undefined' ? (_gw.px > V.x ? 1 : -1) : V.f;
+    const pose = V.a === 'walk' ? 'idle' : V.a, face = V.face < 0 ? -1 : 1, k = pose + (walking ? 'w' : '') + face;
+    if (V.drawn !== k) { V.drawn = k; wdArt(V.S, _vfrMarkup(V, pose, walking, face, false)); }
+    V.S.x = V.x; V.S.y = V.y;
+    const sat = pose === 'sit' || pose === 'rub' || pose === 'fish'; V.S.lift = sat ? _vfrSeatLift(V, null) : 0;
+  }
+}
+function gardenFolkGuestTalk(id) {
+  const V = _vfg.V.get(id); if (!V) return false;
+  try { gardenLiveFx('folk', 'talk', { i: id }); } catch (e) { /* alone */ }
+  V.mine = true;
+  // the words are worked out here, from your own vale: their day line, as they would say it to a visitor
+  let m = null; try { m = gardenModel(); } catch (e) { m = null; }
+  const rows = (typeof WK_DAY !== 'undefined' && WK_DAY[id]) || (id === 'perpetua' ? VFR_PERPETUA_DAY : null);
+  let line = ''; try { const F = typeof wdFacts === 'function' && m ? (typeof _wkFacts === 'function' ? _wkFacts(wdFacts(m, id), m) : wdFacts(m, id)) : {}; line = rows && typeof _wkDayPick === 'function' ? _wkDayPick(id, rows, F, m ? m.today : '') : ''; } catch (e) { line = ''; }
+  wdTalk({ name: V.row.name, art: typeof gardenCastSvg === 'function' ? gardenCastSvg(V.row.cast) : '', lines: ['Oh, a visitor! Any friend of theirs is a friend of the vale.', line].filter(Boolean), actions: [], at: { x: V.x, y: V.y }, bye: 'Goodbye', onClose: () => { V.mine = false; try { gardenLiveFx('folk', 'bye', { i: id }); } catch (e) { /* alone */ } } });
+  return true;
+}
+wdMod({
+  id: 'vale-folk-guest', pref: 'folk', visit: true,
+  begin() { },
+  frame(dt) { if (typeof _gll !== 'undefined' && _gll.role === 'visit' && _vfg.V.size) { try { _vfgFrame(dt); } catch (e) { console.error('[folk guest]', e); } } },
+  tick(m) { if (!m.visit && _vfg.V.size) this.end(); },
+  end() { for (const V of _vfg.V.values()) if (V.S) { try { V.S.remove(); } catch (e) { /* gone */ } } _vfg.V.clear(); },
 });

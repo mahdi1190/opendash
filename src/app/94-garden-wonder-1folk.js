@@ -300,7 +300,7 @@ wdMod({
   id: 'folk', pref: 'folk',
   begin() { _wdf.S = null; },
   tick(m) {
-    if (typeof gardenFolkLive === 'function' && gardenFolkLive()) return;   // the folk live their days now: nobody is summoned (94-garden-folk-4run.js)
+    if (typeof gardenFolkLive === 'function' && gardenFolkLive()) return;   // the folk live their days now: nobody is summoned (94-garden-wonder-0vale-folk.js)
     if (_wdf.S || _wd.t < 22 || (_gw.fishing && _gw.fishing.state !== 'idle')) return;
     if (_wd.still || wdWalkingLately()) return;
     const r = _wdFolkPick(m); if (r) _wdFolkSpawn(r);

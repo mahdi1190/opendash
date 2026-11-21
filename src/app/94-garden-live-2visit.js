@@ -455,6 +455,7 @@ function _glvEvent(ev) {
       return;
     }
     case 'cr': _glcGuestCr(ev.l); return;
+    case 'fk': if (typeof gardenFolkGuestIn === 'function') gardenFolkGuestIn(ev.l); return;   // the host's folk, where they really are (94-garden-wonder-0vale-folk.js)
     case 'fs': if (typeof _gfsIn === 'function') _gfsIn(ev.l); return;
     case 'sum': if (typeof _glySumIn === 'function') _glySumIn(ev); return;
     case 'snap-missed': if (typeof _glyAsk === 'function') _glyAsk(false); return;

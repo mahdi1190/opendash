@@ -144,7 +144,7 @@ function _gcvFrame() {
     _gcv.feet.lineStyle(lw * 2.2, 0x2b2118, .9); _gcv.feet.strokeEllipse(fx, fy, GW_FOOT.x * 2 * W.cellW, GW_FOOT.y * 2 * W.cellH);
     _gcv.feet.lineStyle(lw, 0xffffff, 1); _gcv.feet.strokeEllipse(fx, fy, GW_FOOT.x * 2 * W.cellW, GW_FOOT.y * 2 * W.cellH);
   }
-  // the vale's folk, in yellow: they step aside, so they are never a wall (94-garden-folk-4run.js)
+  // the vale's folk, in yellow: they step aside, so they are never a wall (94-garden-wonder-0vale-folk.js)
   if (!inRoom && typeof gardenFolkFeet === 'function' && typeof GW_FOOT !== 'undefined') {
     const W = GARDEN_WORLD, lw = Math.max(1, 1.5 / (cam.scale || 1));
     _gcv.feet.lineStyle(lw * 1.6, 0xd8a800, 1);
