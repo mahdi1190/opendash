@@ -244,15 +244,20 @@ function gardenMusicStart(cur) {
     // the app's Sounds switch is off by default: say once how to hear the band (plain words, what to press). The first time you play, the
     // journal's line (_gaFirst, just after this) would take the garden's one message place and hide it: the two are said as one
     let first = '';
-    try { const g = _gdG(); if (row.first && !g.disc['act.' + cur.id] && !_gmu.told && typeof _gsPrefs === 'function' && !_gsPrefs().on) { g.disc['act.' + cur.id] = _gdToday(); _gdSave(); first = 'New in your journal: ' + row.first + ' '; } } catch (e) { first = ''; }
-    _gmSoundNote(first + (first ? 'You can’t hear it yet: the garden’s sound is off.' : 'You are playing, but the garden’s sound is off.'));
+    try { const g = _gdG(); if (row.first && !g.disc['act.' + cur.id] && typeof _gsPrefs === 'function' && !_gsPrefs().on) { g.disc['act.' + cur.id] = _gdToday(); _gdSave(); first = 'New in your journal: ' + row.first + ' '; } } catch (e) { first = ''; }
+    _gmSoundNote(first + (first ? 'You can’t hear it yet: the garden’s sound is off.' : 'You are playing, but the garden’s sound is off.'), 'mine');
   } catch (e) { console.error('[garden music]', e); }
 }
-/** The app's Sound switch is off by default: say so once, with the switch on the note (plain words, one click). */
-function _gmSoundNote(words) {
+/** The app's Sound switch is off by default: say so, with the switch on the note (plain words, one click). Your own playing is told every
+ *  time you start while the sound is off (15 s the first time, shorter after), whatever you were told about a friend before: playing and
+ *  hearing nothing must always say why. A friend playing nearby is told once a visit, and not while you are playing (you were told). */
+function _gmSoundNote(words, kind) {
   try {
-    if (_gmu.told || typeof _gsPrefs !== 'function' || _gsPrefs().on) return; _gmu.told = true;
-    gardenToast(words, { icon: 'music', timeout: 15000, action: { label: 'Turn sound on', run: () => { try { _gsSet({ sounds: true }); if (typeof _gsArm === 'function') _gsArm(); _gmu.next = -1; _gmWake(); } catch (e) { /* Menu, View & help, Sound */ } } } });
+    if (typeof _gsPrefs !== 'function' || _gsPrefs().on) return;
+    const mine = kind === 'mine';
+    if (!mine && (_gmu.toldThem || _gmu.me)) return;
+    const again = mine && _gmu.toldMine; if (mine) _gmu.toldMine = true; else _gmu.toldThem = true;
+    gardenToast(words, { icon: 'music', timeout: again ? 8000 : 15000, action: { label: 'Turn sound on', run: () => { try { _gsSet({ sounds: true }); if (typeof _gsArm === 'function') _gsArm(); _gmu.next = -1; _gmWake(); } catch (e) { /* Menu, View & help, Sound */ } } } });
   } catch (e) { /* fine */ }
 }
 function gardenMusicStop(cur) {
