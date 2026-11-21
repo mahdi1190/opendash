@@ -109,7 +109,12 @@ function gardenActThingProp(id) {
 /** The small boxes at the foot of placed things a painter draws (they stop the feet like a small prop): [{ x0, y0, x1, y1, src }] cells. */
 function gardenActThingSolids() {
   const out = []; if (typeof gardenAffordThings !== 'function') return out;
-  for (const t of gardenAffordThings()) { const K = t.src === 'thing' && GARDEN_KINDS[t.kind]; if (!K || !K.paint) continue; const bw = Math.min(t.w || 1, 2) * 0.5, foot = t.y - 0.08; out.push({ x0: t.x - bw / 2, y0: foot - 0.28, x1: t.x + bw / 2, y1: foot, src: 'placed ' + t.kind + ' [thing:' + t.id + ']' }); }
+  for (const t of gardenAffordThings()) {
+    const K = t.src === 'thing' && GARDEN_KINDS[t.kind]; if (!K) continue;
+    // a kind drawn here (_GAW_ART) that says it stops the feet (solid 'block': a band's pitch, a log seat, a campfire) stops them along its
+    // whole drawn foot, a little in from each end; its places to stand are in front, clear of it (each kind's acts' stand points)
+    if (!K.paint && K.solid === 'block' && K.art && !(typeof gartActCarried === 'function' && gartActCarried(t.id))) { const mv = typeof gartActMovedTo === 'function' ? gartActMovedTo(t.id) : null, x = mv ? mv.x : t.x, y = mv ? mv.y : t.y, bw = (t.w || K.w || 1) * 0.9; out.push({ x0: x - bw / 2, y0: y - 0.3, x1: x + bw / 2, y1: y - 0.02, src: 'placed ' + t.kind + ' [thing:' + t.id + ']' }); continue; }
+    if (!K.paint) continue; const bw = Math.min(t.w || 1, 2) * 0.5, foot = t.y - 0.08; out.push({ x0: t.x - bw / 2, y0: foot - 0.28, x1: t.x + bw / 2, y1: foot, src: 'placed ' + t.kind + ' [thing:' + t.id + ']' }); }
   return out;
 }
 /** For gardenWorldProps: each drawn in world px at its foot, sorted in by its row. */
