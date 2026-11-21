@@ -394,6 +394,7 @@ window.GardenNative = (function () {
     if (key != null && s.presentationKey === key) { s.syncReused = (s.syncReused || 0) + 1; _gdp.svg = s.world.rootNode; _gw.svg = s.world.rootNode; refreshLiveHud(s, model); return; }
     s.syncFull = (s.syncFull || 0) + 1;
     s.world.sync(model); s.lighting.sync(model); if (s.water) s.water.sync(model); if (s.surface) s.surface.sync(model); _gdp.svg = s.world.rootNode; _gw.svg = s.world.rootNode;
+    if (!model) return;   // (the scene is made before a friend's garden has arrived: nothing of the garden's own to paint yet; reading it crashed the visit's opening, 'tod' and then 'visit')
     _gwBugsSync(model); gardenLifeSync(model); gardenWonderSync(model); gardenLiveHostPainted(model); gardenGamePainted(model); if (typeof gardenDesignPainted === 'function') gardenDesignPainted(_gdp.svg, model.dz);
     gardenHudPaint(model); if (typeof _ptwCheck === 'function') _ptwCheck();
     s.presentationKey = key;

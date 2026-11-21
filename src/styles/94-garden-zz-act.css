@@ -6,8 +6,9 @@
 /* (the world's own bubbles are cream by day and night, in either theme: the prompt is one of them) */
 .ga-zzz { animation: ga-zzz 2.4s ease-in-out infinite; }
 @keyframes ga-zzz { from { transform: translate(0, 0); opacity: 0.2; } 50% { opacity: 1; } to { transform: translate(-6px, -12px); opacity: 0; } }
-/* Lying down (94-garden-zz-7act-1core.js _gaSky): clouds go over high in the sky; at night a shooting star now and then; a nap runs the light on a little. */
-.ga-sky { position: absolute; inset: 0; z-index: 12; pointer-events: none; overflow: hidden; }
+/* Lying down (94-garden-zz-7act-1core.js _gaSky): clouds go over high in the sky; at night a shooting star now and then; a nap runs the light on a little.
+   Under the garden's own buttons (z 6: the coins, the badges, the tool bar), over the world: a cloud never hides what you press. */
+.ga-sky { position: absolute; inset: 0; z-index: 5; pointer-events: none; overflow: hidden; }
 .ga-cloud { position: absolute; display: block; width: 30%; aspect-ratio: 200 / 96; height: auto; background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 96'><g fill='%23dfe8f2'><circle cx='52' cy='62' r='26'/><circle cx='88' cy='46' r='34'/><circle cx='128' cy='50' r='30'/><circle cx='158' cy='64' r='22'/><rect x='30' y='60' width='150' height='26' rx='13'/></g><g fill='%23ffffff'><circle cx='52' cy='58' r='24'/><circle cx='88' cy='42' r='32'/><circle cx='128' cy='46' r='28'/><circle cx='158' cy='60' r='20'/><rect x='32' y='56' width='146' height='22' rx='11'/></g><g fill='%23ffffff' opacity='.9'><circle cx='80' cy='30' r='12'/><circle cx='120' cy='34' r='10'/></g></svg>") center / contain no-repeat; filter: drop-shadow(0 3px 0 rgba(120, 150, 180, 0.35)); animation: ga-cloud 34s linear infinite; }
 /* (round 4) crisp cartoon clouds high across the top of the view, drawn over everything as sky (no mist on the grass, no shadow blobs) */
 .ga-cloud.c1 { top: 3%; left: -32%; animation-delay: -9s; }
@@ -24,3 +25,10 @@
 .ga-star::after { content: ''; position: absolute; right: -4px; top: -3px; width: 9px; height: 9px; border-radius: 50%; background: #fffef0; box-shadow: 0 0 10px 4px rgba(255, 244, 190, 0.8); }
 @keyframes ga-star { 0% { opacity: 0; translate: 0 0; } 12% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; translate: 220px 98px; } }
 @media (prefers-reduced-motion: reduce) { .ga-cloud, .ga-lapse, .ga-star { animation: none; } .ga-star { display: none; } }
+/* (seats and poses, 20 Nov) several things close by: one clear prompt for the best, and this small chooser under it for the others */
+.ga-choose { position: absolute; left: 0; top: 0; z-index: 30; display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px; max-width: 360px; padding: 3px 6px; border-radius: 12px; background: rgba(253, 244, 227, 0.92); color: #5a4630; font: 600 11.5px/1.2 system-ui, sans-serif; box-shadow: 0 2px 6px rgba(40, 28, 12, 0.18); }
+.ga-choose[hidden] { display: none; }
+.ga-choose .ga-ch-tip { display: inline-flex; align-items: center; gap: 4px; opacity: 0.8; }
+.ga-choose kbd { display: inline-grid; place-items: center; min-width: 26px; height: 17px; padding: 0 3px; border-radius: 5px; background: #5a4630; color: #fff7e6; font: 700 10px/1 system-ui, sans-serif; }
+.ga-choose button { padding: 3px 8px; border: 1.5px solid #d9c49a; border-radius: 999px; background: #fdf4e3; color: #3a2c1c; font: inherit; cursor: pointer; }
+.ga-choose button:hover, .ga-choose button:focus-visible { background: #fff; outline: 2px solid #c89a4a; }

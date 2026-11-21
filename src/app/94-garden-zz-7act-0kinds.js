@@ -43,18 +43,18 @@
    ============================================================ */
 const GARDEN_KINDS = Object.freeze({
   /* seats */
-  bench: { name: 'the bench', arts: ['seat'], paint: 'seat', w: 1.75, h: 0.4, decor: [], words: ['bench', 'seat', 'settle', 'pew'], acts: [{ act: 'sit', stand: [0, -0.16], deg: 90, seat: 0.36 }], pet: 'bench', top: 28, petSeat: 15 },   // seat: the seat's height as drawn, a share of the figure's height
+  bench: { name: 'the bench', arts: ['seat'], paint: 'seat', w: 1.75, h: 0.4, decor: [], words: ['bench', 'seat', 'settle', 'pew'], acts: [{ act: 'sit', stand: [-0.25, -0.16], deg: 90, seat: 0.36 }, { act: 'sit', stand: [0.25, -0.16], deg: 90, seat: 0.36 }], pet: 'bench', top: 28, petSeat: 15 },   // two places along it (a friend sits beside you, never on you)   // seat: the seat's height as drawn, a share of the figure's height
   seat: { name: 'the seat', effects: ['sit'], decor: ['bench', 'stone-bench', 'driftwood-seat', 'deckchair', 'bistro-set', 'picnic-blanket', 'gazebo', 'dc-tea-table'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'bench' },
   chair: { name: 'the chair', decor: ['play-chair'], words: ['chair'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'chair' },
   swing: { name: 'the swing', decor: ['swing-seat'], words: ['swing'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'swing' },
   hammock: { name: 'the hammock', decor: ['hammock'], words: ['hammock'], acts: [{ act: 'sit', stand: [0, 0.06], deg: 90, seat: 0.45 }], pet: 'swing' },
   picnic: { name: 'the picnic rug', arts: ['picnic'], words: ['picnic'], pet: 'bench', top: 22, petSeat: 22 },
-  stump: { name: 'the stump', arts: ['stump'], words: ['stump'], acts: [{ act: 'sit', stand: [-0.1, 0.45], deg: 90, seat: 0.9 }], pet: 'stump', top: 24, petSeat: 24 },   // up on the top, legs down the front
-  'log-seat': { name: 'the log', art: 'logseat', place: true, w: 1.8, h: 0.4, acts: [{ act: 'sit', stand: [0, 0.12], deg: 90, seat: 0.42 }], pet: 'stump', solid: 'block' },   // a log laid by a fire to sit on
+  stump: { name: 'the stump', arts: ['stump'], words: ['stump'], acts: [{ act: 'sit', at: [-0.35, 0], drawn: false, stand: [-0.35, -0.02], deg: 90, seat: 0.5 }], pet: 'stump', top: 24, petSeat: 24 },   // on the fallen log its painter lays against the stump's left side (u: a share of the stump as drawn), legs down its front
+  'log-seat': { name: 'the log', art: 'logseat', place: true, w: 1.8, h: 0.4, acts: [{ act: 'sit', stand: [-0.25, 0.12], deg: 90, seat: 0.42 }, { act: 'sit', stand: [0.25, 0.12], deg: 90, seat: 0.42 }], pet: 'stump', solid: 'block' },   // a log laid by a fire to sit on
   'log-pile': { name: 'the log pile', decor: ['log-pile', 'rw-orn-logs'], words: ['logpile', 'logstack', 'woodpile', 'logs'], pet: 'stump' },
   /* water you work, wish in or drink from */
   pump: { name: 'the pump', arts: ['pump'], decor: ['water-pump'], words: ['pump'], acts: [{ act: 'pump', stand: [-0.74, 0.12], deg: 0, edge: true }], pet: 'pump', drink: true },   // side on at the lever's end
-  well: { name: 'the wishing well', arts: ['wish'], paint: 'wish', w: 1.4, h: 0.8, words: ['well', 'wish'], acts: [{ act: 'wish', stand: [0.45, 0.95], deg: -90, reach: 3.2 }], pet: 'well', drink: true },
+  well: { name: 'the wishing well', arts: ['wish'], paint: 'wish', w: 1.4, h: 0.8, words: ['well', 'wish'], acts: [{ act: 'wish', stand: [0, 0.95], deg: -90, reach: 3.2 }], pet: 'well', drink: true },
   'garden-well': { name: 'the well', decor: ['wishing-well'], effects: ['wish'], acts: [{ act: 'wish', stand: [0, 0.5], deg: -90 }], pet: 'well', drink: true },
   'village-well': { name: 'the well', arts: ['well'], pet: 'well', drink: true },   // a well with its own use (draw a bucket): the pets drink there
   trough: { name: 'the trough', arts: ['churn'], decor: ['water-butt', 'dc-milk-churns'], words: ['trough', 'churn'], pet: 'trough', drink: true },
@@ -103,8 +103,8 @@ const GARDEN_KINDS = Object.freeze({
   /* trees, by what the tree IS (its species, from whichever painter drew it: the walker's trunk list carries it) and its own size:
      a fruit tree is shaken wherever it grows; any tree with a trunk stout enough (big: the trunk's width in cells) is climbed and hidden
      behind, in a wood, a village or on a fell alike; every tree is napped under. A layout or painter that plants a new species needs no code. */
-  'fruit-tree': { name: 'the fruit tree', species: ['apple', 'pear', 'perry', 'plum', 'damson', 'gage', 'cherry', 'quince', 'medlar', 'crab', 'fig', 'mulberry', 'cider', 'pippin', 'fruit'], acts: [{ act: 'shake', stand: [0, 0.32], deg: -90 }, { act: 'hide', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90, cells: true, big: 0.3 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90, cells: true }], pet: 'tree' },
-  tree: { name: 'the tree', species: ['*'], acts: [{ act: 'climbtree', stand: [0, 0.3], deg: -90, big: 0.3 }, { act: 'hide', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90, cells: true, big: 0.28 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], deg: 90, cells: true }], pet: 'tree' },
+  'fruit-tree': { name: 'the fruit tree', species: ['apple', 'pear', 'perry', 'plum', 'damson', 'gage', 'cherry', 'quince', 'medlar', 'crab', 'fig', 'mulberry', 'cider', 'pippin', 'fruit'], acts: [{ act: 'shake', stand: [0, 0.32], deg: -90 }, { act: 'hide', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90, cells: true, big: 0.3 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], alt: [[-0.9, 0.45], [0.95, 0.9], [-0.95, 0.9]], deg: 90, cells: true }], pet: 'tree' },
+  tree: { name: 'the tree', species: ['*'], acts: [{ act: 'climbtree', stand: [0, 0.3], deg: -90, big: 0.3, edge: true }, { act: 'hide', stand: [-0.02, -0.1], side: 1, edge: true, deg: 90, cells: true, big: 0.28 }, { act: 'nap', name: 'under the tree', stand: [0.9, 0.45], alt: [[-0.9, 0.45], [0.95, 0.9], [-0.95, 0.9]], deg: 90, cells: true }], pet: 'tree' },
   /* things pets go to (no move of yours yet) */
   ladder: { name: 'the ladder', words: ['ladder'], noPerch: true },   // a ladder standing on its own (a ladder up a building is that building's part)
   'standing-tree': { name: 'the tree', words: ['tree', 'birch', 'oak', 'ash', 'beech', 'rowan', 'alder', 'willow', 'pine', 'yew', 'holly', 'hawthorn', 'chestnut', 'sapling', 'elder', 'lime'], noPerch: true },   // a tree a painter drew as a thing: its moves come from its trunk (the walker's trunk list)
@@ -172,7 +172,7 @@ function gardenKindOf(t) {   // t.head: only the last word counts (a painter's '
  *  a kind whose `species` names a word of it, else the kind with '*' (any tree). A trunk list's rock (a pass's boulder) is no tree: ''. */
 function gardenTreeKind(sp) {
   const toks = String(sp || '').toLowerCase().replace(/^tree\./, '').split(/[^a-z]+/).filter(Boolean);
-  if (toks.some(w => /^(rock|boulder|stone|stones)$/.test(w))) return '';
+  if (toks.some(w => /^(rock|boulder|stone|stones|wall|hedge|falls|water|post)$/.test(w))) return '';   // (nor a hedge bank, a wall's course or a falling sheet of water: blocks in the same list, no tree)
   for (const w of toks) for (const [s, k] of _GK_SPECIES) if (w === s) return k;
   for (const [k, v] of Object.entries(GARDEN_KINDS)) if ((v.species || []).includes('*')) return k;
   return '';
@@ -228,7 +228,7 @@ function gardenKindSnap(kind, x, y, w, wet, front) {
  *  a kind whose `species` names a word of it, else the kind with '*' (any tree). A trunk list's rock (a pass's boulder) is no tree: ''. */
 function gardenTreeKind(sp) {
   const toks = String(sp || '').toLowerCase().replace(/^tree\./, '').split(/[^a-z]+/).filter(Boolean);
-  if (toks.some(w => /^(rock|boulder|stone|stones)$/.test(w))) return '';
+  if (toks.some(w => /^(rock|boulder|stone|stones|wall|hedge|falls|water|post)$/.test(w))) return '';   // (nor a hedge bank, a wall's course or a falling sheet of water: blocks in the same list, no tree)
   for (const w of toks) for (const [s, k] of _GK_SPECIES) if (w === s) return k;
   for (const [k, v] of Object.entries(GARDEN_KINDS)) if ((v.species || []).includes('*')) return k;
   return '';

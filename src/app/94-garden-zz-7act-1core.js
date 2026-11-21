@@ -20,12 +20,31 @@ function gartActSeatHeld() { const c = _ga.cur; return !!(c && c.doing && c.spot
 /** Something of the world's you are using right now (the busker's fiddle is in your hands, not on its stool). */
 function gartActInUse(id) { const c = _ga.cur; return !!(c && c.doing && c.spot && c.spot.src === id); }
 function gartActLift() { return _ga.cur && _ga.cur.doing ? _ga.cur.lift || 0 : 0; }
+/** Sat on a thing that the world draws as a picture of its own (a bench, a log, a stump): the depth (world px) the figure must be drawn
+ *  above so it sits ON the seat, not behind its back rail. Any kind with a seat or an edge you sit on; null when nothing needs it. */
+function gartActSeatDepth() {
+  const c = _ga.cur; if (!c || !c.doing || !c.row.hold || !c.spot || !c.spot.seated || c.row.hideBehind || !c.spot.src) return null;
+  return _gaSeatDepthOf(c.spot.src);
+}
+function _gaSeatDepthOf(src) {
+  const rec = _gaRec(src); const d = rec && rec.root && rec.root.depth;
+  if (Number.isFinite(d)) return d;
+  // a seat a painter stands from its own foot (the old woodland's benches by the well, the fells' seats: no prop record): drawn in
+  // the row of that foot, so a sitter is put just in front of it, on the seat, not behind its back rail (the owner: "sit behind the benches")
+  try { const t = typeof gardenAffordThings === 'function' ? gardenAffordThings().find(q => q.id === src) : null; if (t && Number.isFinite(t.y) && /^painted:/.test(src)) { const W = GARDEN_WORLD; return W.sky + (t.y + 0.04) * W.cellH; } } catch (e) { /* none */ }
+  return null;
+}
 function gartActRow(id) { return GARDEN_ACTS[id] || null; }
 /* ---------- what is in reach: every thing found where it stands, by its KIND (94-garden-zz-7act-0kinds.js, 0scan.js) ---------- */
 function _gaCtx() {
   let m = null; try { m = gardenModel(); } catch (e) { m = null; }
   let night = null; try { night = typeof gardenIsNight === 'function' ? !!gardenIsNight() : null; } catch (e) { night = null; }
   return { season: (m && m.season) || '', level: m && m.level, night };
+}
+/** What a fixed thing's painter says about a move on its picture: GardenPaintedMarks.ART[id].use[act] = { stand: [x, y], spout: [x, y, landY] }
+ *  in px from the picture's foot middle (the layout's x, y). Any painter, any kind; null when it says nothing. */
+function _gaPainterUse(t, act) {
+  try { const A = t && t.static && typeof GardenPaintedMarks !== 'undefined' && GardenPaintedMarks && GardenPaintedMarks.ART ? GardenPaintedMarks.ART[t.id] : null, u = A && A.use && A.use[act]; return u && (Array.isArray(u.stand) || Array.isArray(u.spout)) ? u : null; } catch (e) { return null; }
 }
 function _gaStaticRows() {
   const out = [];
@@ -50,9 +69,14 @@ function _gaStaticRows() {
     }
     // a part (a ladder up a lighthouse) and its stand point are on the thing as its painter drew it (gardenAffordDrawnBase), the same place
     // the part is drawn; the rest on the drawn foot
-    const onFoot = gardenKindSpots({ kind: t.kind, x: foot.x, y: foot.y, w: t.w, front: t.front }), DB = t.static && K.acts.some(a => a.at) ? gardenAffordDrawnBase(t) : null, onDrawn = DB ? gardenKindSpots({ kind: t.kind, x: DB.x, y: DB.y, w: DB.w, front: t.front }) : onFoot;
+    // (places to sit are spread over the seat as drawn: a log seat drawn a cell wide on a plan of nearly two put its two sitters out past
+    // both its ends, sat on the grass beside it; any kind of seat whose picture is narrower than its plan)
+    let sw = t.w; if (K.acts.some(a => a.seat != null && !a.at) && typeof gardenAffordDrawnBase === 'function') { try { const B = gardenAffordDrawnBase(t); if (B && B.from === 'drawn' && B.w > 0.3 && B.w < (t.w || K.w || 1) * 0.8) sw = B.w; } catch (e) { /* as planned */ } }
+    const onFoot = gardenKindSpots({ kind: t.kind, x: foot.x, y: foot.y, w: sw, front: t.front }), DB = t.static && K.acts.some(a => a.at) ? gardenAffordDrawnBase(t) : null, onDrawn = DB ? gardenKindSpots({ kind: t.kind, x: DB.x, y: DB.y, w: DB.w, front: t.front }) : onFoot;
+    // (a seat on a part of the drawing, the log against a stump: across as drawn, and down at the drawn foot, where the picture meets the ground)
+    const onSeat = DB && K.acts.some(a => a.at && a.seat != null) ? gardenKindSpots({ kind: t.kind, x: DB.x, y: foot.y, w: DB.w, front: t.front }) : null;
     onFoot.forEach((s0, i) => {
-      const s = s0.at ? onDrawn[i] : s0;
+      const s = s0.at ? (s0.seat != null && onSeat ? onSeat[i] : onDrawn[i]) : s0;
       if (!gardenKindNeedsOk(s.needs, ctx)) return;
       if (s.pierEnd) {   // the end of the pier as far as it is built today (one for the whole pier, whichever of its boards is found)
         if (once.has('pier-end:' + s.act) || typeof _gardenPierDecksNow !== 'function') return; once.add('pier-end:' + s.act);
@@ -62,9 +86,15 @@ function _gaStaticRows() {
       }
       // where you stand is open ground (a camera's posing spot that a re-laid quay put inside a bench is moved to the nearest clear ground
       // beside it, facing the same way; none within reach: that move is not offered there). Seats, edges and wading are on the thing on purpose.
-      let stand = s.stand;
-      if (stand && s.seat == null && !s.edge && !s.wade && !s.boat && typeof _gksSolidAt === 'function' && _gksSolidAt(stand.x, stand.y, t.id)) { stand = _gaClearStand(stand, t.id, foot); if (!stand) return; }
-      out.push({ key: t.id + ':' + s.act + (s.i ? ':' + s.i : ''), act: s.act, name: (t.src === 'decor' && t.name) || s.name, x: s.x, y: s.y, top: s.at ? null : top, stand, deg: s.deg, lift: _gaSeatLift(s), seated: s.seat != null || !!s.edge, src: t.id, kind: t.kind, boat: !!s.boat, reach: s.reach || 0, noProp: !!s.noProp, pri: s.pri || 0, kick: s.kick || '', carry: s.carry || '', art: K.art || '' });
+      let stand = s.stand, spout = null;
+      // a painter that says where a move is done on its own picture (ART[id].use[act]: px from its foot's middle) is believed over the
+      // kind's rule of thumb: the pump square's iron pump stands at the right of its trough, so "a step left of the pump" put you at the
+      // trough's far end, working nothing, with the water running from beside the column (the owner: "it looks weird")
+      const U = _gaPainterUse(t, s.act);
+      if (U && U.stand) stand = { x: t.x + U.stand[0] / W.cellW, y: t.y + U.stand[1] / W.cellH };
+      if (U && U.spout) spout = { x: t.x + U.spout[0] / W.cellW, y: t.y + U.spout[1] / W.cellH, to: t.y + (U.spout[2] != null ? U.spout[2] : U.spout[1] + 16) / W.cellH };
+      if (stand && !U && s.seat == null && !s.edge && !s.wade && !s.boat && typeof _gksSolidAt === 'function' && _gksSolidAt(stand.x, stand.y, t.id)) { stand = _gaClearStand(stand, t.id, foot); if (!stand) return; }
+      out.push({ key: t.id + ':' + s.act + (s.i ? ':' + s.i : ''), act: s.act, name: (t.src === 'decor' && t.name) || s.name, x: s.x, y: s.y, top: s.at ? null : top, stand, deg: s.deg, lift: _gaSeatLift(s), seated: s.seat != null || !!s.edge, src: t.id, kind: t.kind, boat: !!s.boat, reach: s.reach || 0, noProp: !!s.noProp, pri: s.pri || 0, kick: s.kick || '', carry: s.carry || '', art: K.art || '', spout });
     });
   }
   return out;
@@ -96,10 +126,51 @@ function _gaTreeRows(px, py) {
   for (const b of _ga.trunks) {
     const fx = (b.x0 + b.x1) / 2, fy = b.y1; if (b.sp === 'water' || Math.abs(fx - px) > GA_REACH + 1 || Math.abs(fy - py) > GA_REACH + 1) continue;   // (a block of falling water shares the trunk list: not a tree)
     const kind = gardenKindOf({ tree: b.sp || '' }), K = GARDEN_KINDS[kind]; if (!K || !K.acts) continue;   // a tree's kind is what it is (its species), and each move asks its own trunk's size: never who drew it or where
-    for (const o of K.acts) { if (o.big && b.x1 - b.x0 < o.big) continue; if (o.act === 'hide' && _ga.trunks.some(t => t !== b && t.y1 > fy + 0.3 && t.y1 < fy + 2.6 && Math.abs((t.x0 + t.x1) / 2 - fx - 0.15) < 1.4)) continue;   /* (round 4: not where another tree just in front would bury you in its leaves: you must be seen peeking) */ out.push({ key: 'tree:' + fx.toFixed(1) + ',' + fy.toFixed(1) + ':' + o.act, act: o.act, name: o.name || K.name, x: fx, y: fy, stand: { x: fx + (o.side ? o.side * (b.x1 - b.x0) / 2 : 0) + o.stand[0], y: fy + o.stand[1] }, deg: o.deg, lift: 0, src: 'tree', seated: !!o.edge, tree: b, kind }); }
+    for (const o of K.acts) {
+      if (o.big && b.x1 - b.x0 < o.big) continue; if (o.act === 'hide' && _ga.trunks.some(t => t !== b && t.y1 > fy + 0.3 && t.y1 < fy + 2.6 && Math.abs((t.x0 + t.x1) / 2 - fx - 0.15) < 1.4)) continue;   /* (round 4: not where another tree just in front would bury you in its leaves: you must be seen peeking) */
+      const key = 'tree:' + fx.toFixed(1) + ',' + fy.toFixed(1) + ':' + o.act, stand = _gaTreeStand(key, b, o, fx, fy); if (!stand) continue;
+      out.push({ key, act: o.act, name: o.name || K.name, x: fx, y: fy, stand, deg: o.deg, lift: 0, src: 'tree', seated: !!o.edge, tree: b, kind });
+    }
   }
   return out;
 }
+/** Where a tree's move is done, from its own trunk's foot (any tree, any painter), or null where it cannot be done:
+ *  a move at the trunk (climb, hide) is done right at the trunk, as drawn: you walk up to it and step on to it, so it is offered only
+ *  where open ground comes within a step of that place (never a trunk inside a field you have not opened, nor one you reach only
+ *  from a cell away: you climbed empty air beside the tree, sat on a "branch" at its foot). A nap is done on open grass beside it
+ *  (its own side first, then the other, then further out), never over water, a jetty, a path or what blocks the feet: a sleeper
+ *  lay with head and arm over the river and the body across a jetty. Kept per tree until what blocks the feet changes. */
+function _gaTreeStand(key, b, o, fx, fy) {
+  const g = typeof _gwGridNow === 'function' ? _gwGridNow() : null, S = typeof _gw !== 'undefined' ? _gw.solids : null;
+  if (_ga.standG !== g || _ga.standS !== S) { _ga.standG = g; _ga.standS = S; _ga.stands = new Map(); }
+  const M = _ga.stands || (_ga.stands = new Map()); if (M.has(key)) return M.get(key);
+  let out = null;
+  try {
+    const side = o.side ? o.side * (b.x1 - b.x0) / 2 : 0, at = (d) => ({ x: fx + side + d[0], y: fy + d[1] });
+    if (o.act === 'nap') { for (const d of [o.stand].concat(o.alt || [])) { const p = at(d); if (_gaNapGround(p.x, p.y, b)) { out = p; break; } } }
+    else {
+      const p = at(o.stand);
+      if (typeof _gwFree !== 'function' || _gwFree(p.x, p.y)) out = p;
+      else if (typeof _gwNearestFreePt === 'function') { const f = _gwNearestFreePt(p.x, p.y, 0.5); if (f && Math.hypot(f.x - p.x, f.y - p.y) <= 0.5) out = o.edge ? p : f; }   // (at the trunk: you step from there on to it)
+    }
+  } catch (e) { out = null; }
+  M.set(key, out); return out;
+}
+/** Somewhere a figure can lie with its feet at (x, y): the whole body (head to the west, a figure's height long) on open, dry, level
+ *  ground: land, no water nor shore within half a cell, no path, jetty, bridge or what blocks the feet under it. Any kind, any place. */
+function _gaNapGround(x, y, own) {
+  if (typeof gardenIslandBaseCell !== 'function') return true;
+  const L = _gaLieLen();
+  for (let dx = 0.3; dx >= -L - 0.5; dx -= 0.3) for (const dy of [-0.35, 0, 0.35]) {
+    const c = gardenIslandBaseCell(x + dx, y + dy); if (!c || !c.land || c.ocean || c.freshwater || c.beach || c.solid || c.route || c.gateId || c.staticId) return false;
+  }
+  if (typeof _gwFree === 'function') for (let dx = 0; dx >= -L; dx -= 0.4) if (!_gwFree(x + dx, y)) return false;
+  // nor just behind another tree: its crown is drawn over the sleeper on a friend's screen (only your own screen fades it)
+  for (const t of _ga.trunks || []) { if (t === own) continue; const tx = (t.x0 + t.x1) / 2, dy = t.y1 - y; if (dy > 0.15 && dy < 3.2 && tx > x - L - 1.3 && tx < x + 1.3) return false; }
+  return true;
+}
+/** How long a lying figure is on the ground, in cells (its height as drawn). */
+function _gaLieLen() { const W = GARDEN_WORLD, S = typeof GW_SCALE === 'number' ? GW_SCALE : 0.592; return Math.max(0.8, 74 * S / ((W && W.cellW) || 48)); }
 /** The water's edge, read from the ground (GARDEN_TERRAIN): water within reach in front of you, out over the bank (you face it). */
 function _gaWaterRows(px, py) {
   if (typeof gardenTerrainWaterAhead !== 'function') return [];
@@ -109,21 +180,70 @@ function _gaWaterRows(px, py) {
   const W3 = GARDEN_TERRAIN['water-edge'].acts.concat(w.deep ? GARDEN_TERRAIN.deep.acts : []), k = _ga.wt % W3.length;
   return W3.slice(k).concat(W3.slice(0, k)).map(o => ({ key: 'water:' + o.act, act: o.act, name: o.name, x: w.x, y: w.y, stand: null, deg: w.deg, lift: 0, src: 'water' }));
 }
+/** Is this place to sit (or to stand and do something held, like fishing from a bank) already someone else's? A friend in the garden
+ *  standing or sitting on its stand point has it: one person to a place, whatever the thing or its kind. */
+const GA_TAKEN_R = 0.34;   // cells: a friend's feet this near a place's stand point are on it
+function gartActTaken(r) {
+  const row = r && GARDEN_ACTS[r.act];
+  if (!r || !r.stand || !(r.seated || r.noProp || (row && (row.hold || (row.then && GARDEN_ACTS[row.then] && GARDEN_ACTS[row.then].hold))))) return false;   // (a seat, a bank, a wall to lean on, a telescope's eyepiece; any place a move is held: a branch, behind a trunk)
+  try {
+    if (typeof _gll === 'undefined' || !_gll.actors || !_gll.actors.size) return false;
+    for (const A of _gll.actors.values()) {
+      if (!A || A.me || A.rm || A.away) continue;
+      const at = A.actAt || (A.moving || A.tx != null ? null : A);   // (the place they said they took, even while their figure walks there)
+      if (at && Math.hypot(at.x - r.stand.x, (at.y - r.stand.y) * 1.3) < GA_TAKEN_R) return true;
+    }
+  } catch (e) { /* alone */ }
+  return false;
+}
+/** A place to stand for a move that is not a seat, when a friend's figure is on it: the nearest spot beside it (a body's width off, on open
+ *  ground, the same distance from the thing) that nobody is on. Any kind, any move; a seat's own places are kept by gartActTaken. */
+function _gaStandClear(spot) {
+  if (!spot || !spot.stand || spot.seated || typeof _gll === 'undefined' || !_gll.actors || !_gll.actors.size) return spot;
+  const who = []; for (const A of _gll.actors.values()) { if (!A || A.me || A.rm || A.away) continue; const at = A.actAt || A; if (Number.isFinite(at.x) && Number.isFinite(at.y)) who.push(at); }
+  const busy = (x, y) => who.some(a => Math.hypot(a.x - x, (a.y - y) * 1.3) < 0.62);
+  if (!busy(spot.stand.x, spot.stand.y)) return spot;
+  for (const [dx, dy] of [[0.7, 0], [-0.7, 0], [0.6, 0.35], [-0.6, 0.35], [1.05, 0.1], [-1.05, 0.1], [0, 0.6]]) {
+    const x = spot.stand.x + dx, y = spot.stand.y + dy;
+    if (!busy(x, y) && (typeof _gwFree !== 'function' || _gwFree(x, y, 0.2))) return Object.assign({}, spot, { stand: { x, y } });
+  }
+  return spot;
+}
+/** Nothing free in reach, but a place right here that a friend is on (the stump's one seat): the words for that, else ''. */
+function gartActTakenWords() {
+  if (typeof _gw === 'undefined' || !_gw.on) return '';
+  try {
+    if (!_ga.list) { _ga.list = _gaStaticRows(); _ga.listT = performance.now(); }
+    const px = _gw.px, py = _gw.py, d = (r) => Math.hypot(r.x - px, (r.y - py) * 1.3);
+    const r = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src) && gartActTaken(r)).sort((a, b) => d(a) - d(b))[0];
+    if (!r) return '';
+    const row = GARDEN_ACTS[r.act];
+    return row && row.seat == null && !r.seated ? 'Someone is already there.' : 'Someone is already sitting there.';
+  } catch (e) { return ''; }
+}
 /** Everything in reach, the nearest first (things with a place before the water's edge). */
 function gartActNearby() {
   if (typeof _gw === 'undefined' || !_gw.on) return [];
   const now = performance.now();
   if (!_ga.list || now - _ga.listT > 2500) { _ga.list = _gaStaticRows(); _ga.listT = now; }
   const px = _gw.px, py = _gw.py, d = (r) => Math.hypot(r.x - px, (r.y - py) * 1.3);
-  const rows = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src));   // (a ball off rolling, a pile kicked apart: nothing to do there just now)
+  const rows = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src) && !gartActTaken(r));   // (a ball off rolling, a pile kicked apart: nothing to do there just now)
   // where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near; and a tree offers each
   // of its moves where you would do it (in front of the trunk: climb; at its side: hide behind it; out under the crown: a nap)
   const ds = (r) => !r.stand ? d(r) : r.src === 'tree' ? Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3) : Math.min(d(r), Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3));   // (where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near)
   // (vale final fix 1, by kind) a big thing that answers from further off (its reach: the falls) is measured against that reach, and a
   // tree's moves give way to a made thing at about the same distance: trees stand everywhere, and their climb or nap took the prompt
   // from the falls' shower, the notices on a board and the camera's photo
-  const score = (r) => (r.reach > GA_REACH ? ds(r) * GA_REACH / r.reach : ds(r)) + (r.src === 'tree' ? 0.7 : 0) - (r.pri || 0);
-  rows.sort((a, b) => score(a) - score(b));   // (pri: a wall before the tree that grows against it)
+  const dsr = (r) => r.reach > GA_REACH ? ds(r) * GA_REACH / r.reach : ds(r);
+  // the way you face counts too: what you walked up to comes before what is at your back (walking up to a log seat by a fire offered
+  // "Warm your hands" for the fire behind you; in front of a bench, a nap under the tree beside it). Up to a cell for a thing right behind.
+  const h = typeof _gmv !== 'undefined' && Number.isFinite(_gmv.h) ? _gmv.h * Math.PI / 180 : null;
+  const back = (r) => { if (h == null) return 0; const p = r.stand && r.src === 'tree' ? r.stand : r, vx = p.x - px, vy = p.y - py, n = Math.hypot(vx, vy); if (n < 0.35) return 0; return (1 - (Math.cos(h) * vx + Math.sin(h) * vy) / n) * 0.5; };
+  // and what is plainly behind you is not offered at all once you have turned your back on it (north of a log, facing north, it said
+  // 'Sit on the log' for the log behind you): turn round and it is offered again. Right on top of it, or carrying, it still counts.
+  for (let i = rows.length - 1; i >= 0; i--) { const r = rows[i]; if (!r.down && back(r) > 0.82 && ds(r) > 0.55) rows.splice(i, 1); }
+  const score = new Map(); for (const r of rows) score.set(r, dsr(r) + (r.src === 'tree' ? 0.7 : 0) - (r.pri || 0) + back(r));
+  rows.sort((a, b) => score.get(a) - score.get(b));   // (pri: a wall before the tree that grows against it)
   if (!rows.length) return _gaWaterRows(px, py);
   return rows;
 }
@@ -154,10 +274,44 @@ function gartActFrame() {
   _ga.t = now;
   const el = _gaPromptEl(); if (!el) return;
   const busy = (_ga.cur && _ga.cur.doing) || !!_gw.boat || (typeof _gwFishBusy === 'function' && _gwFishBusy()) || (typeof gardenDesignOn === 'function' && gardenDesignOn()) || (typeof GardenNative !== 'undefined' && GardenNative.inRoom && GardenNative.inRoom());
-  const near = busy ? null : _ga.carry ? { key: 'carry-down', act: 'carry', name: '', x: _gw.px, y: _gw.py, down: true } : gartActNearby()[0] || null;
-  if (!near) { _ga.near = null; el.hidden = true; return; }
+  const opts = busy ? [] : _ga.carry ? [{ key: 'carry-down', act: 'carry', name: '', x: _gw.px, y: _gw.py, down: true }] : _gaOptions(gartActNearby());
+  // one clear prompt: the best thing here (or the one you picked with Tab, while it is still in reach); the others in a small chooser below it
+  const near = opts.find(o => o.key === _ga.pickKey) || opts[0] || null;
+  _ga.opts = opts;
+  if (!near) { _ga.near = null; _ga.pickKey = null; el.hidden = true; _gaChooser(null); return; }
   if (!_ga.near || _ga.near.key !== near.key) { _ga.near = near; el.innerHTML = `<kbd>E</kbd><span>${esc(_gaWords(near))}</span>`; el.setAttribute('aria-label', _gaWords(near) + ' (E)'); }
-  el.hidden = false; _gaPlace();
+  el.hidden = false; _gaChooser(opts.length > 1 ? opts : null); _gaPlace();
+}
+/** What is in reach, as choices: one per thing and move (the nearest of a bench's two places), the best first, at most four. */
+const GA_CHOICES = 4;
+function _gaOptions(rows) {
+  const out = [], seen = new Set();
+  // (one choice per thing you would read: two stretches of the same wall both said "Lean on the wall and look out", in the prompt and
+  // again under it; the nearest of the same words is the one)
+  for (const r of rows) { const k = (r.src || '') + '|' + r.act, w = _gaWords(r); if (seen.has(k) || seen.has('w:' + w)) continue; seen.add(k); seen.add('w:' + w); out.push(r); if (out.length >= GA_CHOICES) break; }
+  return out;
+}
+/** The small chooser under the prompt when several things are close: the others, each a button (a click does it); Tab makes the next one
+ *  the prompt's. Nothing when there is only one. */
+function _gaChooser(opts) {
+  const box = _gw && _gw.box; if (!box) return;
+  let el = _ga.ch;
+  if (!opts) { if (el) el.hidden = true; _ga.chSig = ''; return; }
+  if (!el || !el.isConnected || el.parentNode !== box) {
+    el = document.createElement('div'); el.className = 'ga-choose'; el.hidden = true; el.setAttribute('role', 'group'); el.setAttribute('aria-label', 'Other things to do here');
+    el.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+    el.addEventListener('click', (ev) => { ev.stopPropagation(); const b = ev.target.closest('button[data-k]'); const o = b && (_ga.opts || []).find(q => q.key === b.dataset.k); if (o) { _ga.pickKey = null; gartActRun(o.act, o); } });
+    box.appendChild(el); _ga.ch = el;
+  }
+  const others = opts.filter(o => !_ga.near || o.key !== _ga.near.key), sig = (_ga.near ? _ga.near.key : '') + '|' + others.map(o => o.key).join(',');
+  if (sig !== _ga.chSig) { _ga.chSig = sig; el.innerHTML = `<span class="ga-ch-tip"><kbd>Tab</kbd> or pick:</span>` + others.map(o => `<button type="button" data-k="${esc(o.key)}">${esc(_gaWords(o))}</button>`).join(''); }
+  el.hidden = false;
+}
+/** Tab: the next thing in reach becomes the prompt's. Returns true when there was a choice to make. */
+function gartActCycle(back) {
+  const opts = _ga.opts || []; if (opts.length < 2 || !_ga.near || (_ga.cur && _ga.cur.doing)) return false;
+  const i = Math.max(0, opts.findIndex(o => o.key === _ga.near.key)), n = opts[(i + (back ? opts.length - 1 : 1)) % opts.length];
+  _ga.pickKey = n.key; _ga.t = 0; gartActFrame(); return true;
 }
 function _gaPlace() {
   const r = _ga.near, el = _ga.el; if (!r || !el) return;
@@ -165,6 +319,13 @@ function _gaPlace() {
   // never under the garden's own messages strip at the top (a welcome, a find): below it, and above the thing's foot at most
   let y = s.y; try { const m = _gw.box.querySelector('.gd-msgs'), mb = m && m.childElementCount ? m.getBoundingClientRect() : null, bb = _gw.box.getBoundingClientRect(); const floor = mb && mb.height ? mb.bottom - bb.top + 34 : 40; if (y < floor) { const foot = _ghProject(r.x, r.y); y = Math.min(Math.max(y, floor), foot ? foot.y - 6 : y); } } catch (e) { /* as it was */ }
   el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(y)}px) translate(-50%, -100%)`;
+  // the chooser stacked on top of the prompt, up in the air with it: under the prompt it lay over the thing and a friend sat on it, under
+  // your feet over your own legs and the seat (round 2 of the seats). Kept inside the garden's box; if there is no room above, under it.
+  if (_ga.ch && !_ga.ch.hidden) {
+    const ph = el.offsetHeight || 30, ch = _ga.ch.offsetHeight || 26, top = Math.round(y) - ph - 5 - ch;
+    const yy = top >= 4 ? top : Math.round(y) + 6;
+    _ga.ch.style.transform = `translate(${Math.round(s.x)}px, ${yy}px) translate(-50%, 0)`;
+  }
 }
 /** E or Space: the prompt's action, if one is showing. Returns true when it did something. */
 function gartActInteract() {
@@ -217,6 +378,7 @@ function gartActPlay(gpl, id, o) {
     if (row.prop === 'swimwater' && motion) { const wd = g.querySelector('.ga-wade'); if (wd) try { H.panims.push(gardenVisualAnimate(wd, [{ offset: 0, opacity: 0 }, { offset: 0.06, opacity: 1 }, { offset: 0.3, opacity: 1 }, { offset: 0.4, opacity: 0 }, { offset: 1, opacity: 0 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* no wading ring */ } }
     if (row.prop === 'swimwater') { if (motion) { try { H.panims.push(gardenVisualAnimate(g.querySelector('.ga-swim') || g, [{ offset: 0, opacity: 0 }, { offset: 0.2, opacity: 0 }, { offset: 0.42, opacity: 1 }, { offset: 1, opacity: 1 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* shows at once */ } } }
   }
+  if (row.under && GA_PROPS[row.under]) { try { const root = gpl.querySelector('.gpl-root') || gpl, g = typeof gardenSceneElement === 'function' && gardenVisualIsNative(gpl) ? gardenSceneElement('g') : document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'ga-prop ga-p-' + row.under); g.innerHTML = GA_PROPS[row.under]; root.insertBefore(g, root.firstChild); H.props.push(g); if (motion) H.panims.push(gardenVisualAnimate(g, [{ offset: 0, opacity: 0 }, { offset: 0.7, opacity: 0 }, { offset: 1, opacity: 1 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* no shadow */ } }   // (something drawn under the body, in its own frame: a lying figure's shadow on the grass)
   if (row.kick && o.leaves) _gaLeafBurst(gpl, H, motion, row.ms);
   if (row.hideBehind && o.tree && o.at) _gaBarkFront(gpl, H, o.tree, o.at);
   H.stop = () => { for (const t of H.timers) clearTimeout(t); for (const a of H.anims.concat(H.panims)) { try { a.cancel(); } catch (e) { /* gone */ } } for (const g of H.props) { try { if (g.parentNode) g.parentNode.removeChild(g); if (g.destroy) g.destroy(); } catch (e) { /* gone */ } } H.anims.length = 0; H.props.length = 0; };
@@ -237,6 +399,8 @@ function gartActRun(id, spot) {
     if (!gardenWalkToPoint(spot.stand, go, { radius: 1.6 })) go();
     return true;
   }
+  if (spot && gartActTaken(spot)) { try { gardenToast(GARDEN_ACTS[spot.act] && GARDEN_ACTS[spot.act].seat == null && !spot.seated ? 'Someone is already there.' : 'Someone is already sitting there.'); } catch (e) { /* fine */ } return false; }   // (one person to a seat)
+  spot = _gaStandClear(spot);   // (a move done standing, never on top of a friend: warming your hands at a fire stood you on a friend sat on the log)
   if (_ga.carry && !row.carry) gartActSetDown();   // (you put down what you carry to do something else)
   if (row.rubPet && typeof _ptwFree === 'function' && !_ptwFree(_gw.px + GA_RUB_AT[0], _gw.py + GA_RUB_AT[1])) { try { if (!_ga.quiet) gardenToast('Not here: your pet needs open ground beside you to roll over.'); } catch (e) { /* fine */ } return false; }   // (never on a wall, a step or a thing: pets do not stand on props)
   if (row.lying && !(spot && spot.stand) && !gartActGroundClear(_gw.px, _gw.py)) { try { gardenToast('Not here. Find some grass, or the beach, to lie down on.'); } catch (e) { /* fine */ } return false; }
@@ -270,20 +434,20 @@ function _gaStart(cur) {
   if (row.skim) _gaSkim(cur);
   if (spot && spot.src === 'water') _ga.wt++;
   if (row.shake) _gaShake(cur);
-  if (row.pumpWorks && spot && spot.src) _gaPumpWorks(cur);
   if (row.kick && spot) _gaKick(cur);
   if (row.carry && spot && spot.carry) _gaPick(cur);
   if (row.fetch) _gaFetch(cur);
   if (row.rubPet) { try { const P = typeof gpPetMe === 'function' ? gpPetMe() : null; if (P) { if (P.clipH) { try { P.clipH.stop(true); } catch (e) { /* gone */ } P.clipH = null; } if (typeof _plPropsDrop === 'function') _plPropsDrop(P); P.lifeCur = null; P.lifeHold = 0; P.busy = 0; P.cb = null; P.tx = null; P.perch = null; } } catch (e) { /* no pet */ } }   // (whatever row it was playing, it drops it and comes to your hand)
   // (2.74.2) told after the extras above, so the first whole state already has the stick's throw, the thing in your arms, the ball
   _gaTell(cur.id, spot && spot.stand ? _gw.px : null, spot && spot.stand ? _gw.py : null);
-  if (row.use && typeof gardenLiveFx === 'function' && (row.use === 'bell' || row.use === 'wish')) { try { gardenLiveFx('use', row.use, { x: Math.floor(_gw.px), y: Math.floor(_gw.py) }); } catch (e) { /* alone */ } }
+  if (row.use && typeof gardenLiveFx === 'function' && (row.use === 'bell' || row.use === 'wish')) { try { const on = spot && Number.isFinite(spot.x) && Number.isFinite(spot.y) ? spot : { x: _gw.px, y: _gw.py }; gardenLiveFx('use', row.use, { x: Math.floor(on.x), y: Math.floor(on.y) });   /* (at the thing itself: the wish shows over the well's mouth on their screen, not beside it) */ } catch (e) { /* alone */ } }
   if (row.prop === 'fiddle' || row.fiddle) _gaResync();
   if (row.clouds) _gaSky(cur, true);
   _gaFirst(cur);
   if (!row.hold) cur.endT = setTimeout(() => { if (_ga.cur !== cur) return; gartActStop(true); if (row.then && GARDEN_ACTS[row.then]) _gaThen(row.then, cur); }, (_gaMotion() ? row.ms : 1200) + 60);
   if (row.nap) cur.endT = setTimeout(() => { if (_ga.cur === cur) { gartActStop(true); try { gardenToast('You wake up with a stretch.'); } catch (e) { /* fine */ } } }, row.nap);
   if (_ga.el) _ga.el.hidden = true;
+  _ga.pickKey = null; _gaChooser(null);
 }
 /** One action straight into the next, in the same place (up the trunk, then turn and sit on the branch). */
 function _gaThen(id, prev) {
@@ -300,7 +464,14 @@ function _gaTick(now) {
   const cur = _ga.cur, fx = cur.row.fx; if (!fx || !window.GardenNativeActions || !_gaMotion()) return;
   const t = now - cur.t0, W = GARDEN_WORLD, deg = _gaDirDeg(cur.row, cur.spot) * Math.PI / 180;
   const sp = fx.spot && cur.spot && Number.isFinite(cur.spot.x) ? cur.spot : null;   // (fixed to the thing used: the pump's spout)
-  const at = (k) => sp ? GardenNativeActions.effect(fx.kind, (sp.x + fx.spot[0]) * W.cellW, W.sky + (sp.y + fx.spot[1]) * W.cellH + k, { width: fx.width || 24 }) : GardenNativeActions.effect(fx.kind, (_gw.px + Math.cos(deg) * 0.7) * W.cellW, W.sky + (_gw.py + Math.sin(deg) * 0.5 + (fx.dy || 0)) * W.cellH + k, { width: fx.width || 24 });
+  if (sp && sp.spout) {   // (the spout its painter drew: the water falls from it into what is under it)
+    const o = sp.spout, at2 = (k) => GardenNativeActions.effect(fx.kind, o.x * W.cellW, W.sky + o.to * W.cellH + k, { width: fx.width || 24, from: W.sky + o.y * W.cellH });
+    if (fx.every) { if (t - cur.fxT > fx.every) { cur.fxT = t; at2(cur.fxI++ % 3); } }
+    else if (fx.at && cur.fxI < fx.at.length && t > fx.at[cur.fxI] * cur.row.ms) { at2(cur.fxI); cur.fxI++; }
+    return;
+  }
+  const sy = sp && fx.mouth != null && Number.isFinite(sp.top) && sp.top < sp.y ? sp.top + (sp.y - sp.top) * fx.mouth : sp ? sp.y + fx.spot[1] : 0;   // (into the thing as drawn: a well's mouth)
+  const at = (k) => sp ? GardenNativeActions.effect(fx.kind, (sp.x + fx.spot[0]) * W.cellW, W.sky + sy * W.cellH + k, { width: fx.width || 24 }) : GardenNativeActions.effect(fx.kind, (_gw.px + Math.cos(deg) * 0.7) * W.cellW, W.sky + (_gw.py + Math.sin(deg) * 0.5 + (fx.dy || 0)) * W.cellH + k, { width: fx.width || 24 });
   if (fx.every) { if (t - cur.fxT > fx.every) { cur.fxT = t; at(cur.fxI++ % 3); } }
   else if (fx.at && cur.fxI < fx.at.length && t > fx.at[cur.fxI] * cur.row.ms) { at(cur.fxI); cur.fxI++; }
 }
@@ -308,11 +479,13 @@ function gartActStop(done) {
   const cur = _ga.cur; if (!cur) return;
   _ga.cur = null; clearTimeout(cur.endT);
   if (cur.row.clouds) _gaSky(cur, false);
-  if (cur.pump) { try { cur.pump.remove(); } catch (e) { /* gone */ } cur.pump = null; _gaShow(cur.spot.src, true); }
   if (cur.row.fetch) _ga.fetch = null;
   if (cur.row.prop === 'fiddle') setTimeout(_gaResync, 0);
   if (cur.row.rubPet) { try { const P = gpPetMe(); if (P && P.root && P.root._pcH && cur.rubH === P.root._pcH) petClipStop(P.root); } catch (e) { /* no pet */ } }
   if (cur.H && cur.H.stop) cur.H.stop();
+  // a held move that ends where you stand (a nap's time is up, you stand up from a seat): friends hear at once, at the next quarter second,
+  // not when the next "where I am" falls due (their copy of you lay asleep five seconds after you had stood up)
+  if (cur.doing && cur.row.hold && typeof _gly !== 'undefined') _gly.atAt = 0;
   if (cur.row.after && done && window.GardenNativeActions && _gaMotion()) { const W = GARDEN_WORLD; for (let i = 0; i < 6; i++) setTimeout(() => { try { GardenNativeActions.effect('water', _gw.px * W.cellW, W.sky + _gw.py * W.cellH, { width: 16 }); } catch (e) { /* fine */ } }, i * 450); }
   if (cur.doing) { try { if (typeof _gwBody === 'function') _gwBody(); } catch (e) { /* fine */ } }
 }
@@ -429,27 +602,8 @@ function _gaSkimFly(g, H, motion, ms, n) {
   try { H.panims.push(gardenVisualAnimate(st, kf, { duration: ms, fill: 'forwards', easing: 'linear' })); } catch (e) { /* no flight */ }
   P.forEach((_, i) => { const r = g.querySelector('.ga-skr-' + i); if (!r) return; try { H.panims.push(gardenVisualAnimate(r, [{ offset: 0, opacity: 0, transform: 'scale(0.3)' }, { offset: ts[i], opacity: 0, transform: 'scale(0.3)' }, { offset: Math.min(0.995, ts[i] + 0.01), opacity: 0.9, transform: 'scale(0.4)' }, { offset: Math.min(1, ts[i] + 0.22), opacity: 0, transform: 'scale(1.5)' }, { offset: 1, opacity: 0, transform: 'scale(1.5)' }], { duration: ms, fill: 'forwards' })); } catch (e) { /* no ring */ } });
 }
-/** The pump at work (round 6): while you use it, the pump is drawn as a thing of its own with the lever moving with your hand (the same
- * picture as the still one, gardenPumpArt) and the water running from the spout into the bucket; the still one is hidden meanwhile. */
-const GA_PUMP_LEVER = Object.freeze([[0, 0], [0.08, 20], [0.2, -20], [0.32, 20], [0.44, -20], [0.56, 20], [0.66, -12], [0.72, 0], [1, 0]]);
-function _gaPumpWorks(cur) {
-  if (typeof gardenPumpArt !== 'function' || typeof gardenWorldAdd !== 'function' || typeof _gwInked !== 'function') return;
-  const rec = _gaRec(cur.spot.src), W = GARDEN_WORLD; if (!rec || !rec.root) return;
-  let foot = null; try { const r = (gardenIslandData().static || []).find(q => q.id === cur.spot.src); if (r) foot = { x: r.x + r.w / 2, y: r.y + r.h - 3 / W.cellH }; } catch (e) { foot = null; }
-  if (!foot) return;
-  const ms = cur.row.ms, lerp = (K, t) => { for (let i = 1; i < K.length; i++) if (t <= K[i][0]) { const a = K[i - 1], b = K[i], k = (t - a[0]) / Math.max(1e-6, b[0] - a[0]), e = k * k * (3 - 2 * k); return a[1] + (b[1] - a[1]) * e; } return K[K.length - 1][1]; };
-  let last = '';
-  const art = (lv, fl) => `<ellipse cx="2" cy="1" rx="${W.cellW / 2 + 2}" ry="4" fill="#1a2a14" fill-opacity="0.2"/>` + _gwInked(0, 0, gardenPumpArt(lv, fl));
-  rec.root.setAlpha(0);
-  cur.pump = gardenWorldAdd({ id: 'ga-pump', x: foot.x, y: foot.y, z: foot.y, lift: 0, ground: false, svg: art(0, 0),
-    update(dt, Sp) {
-      if (_ga.cur !== cur) { Sp.remove(); return; }
-      const t = !_gaMotion() ? 0.5 : cur.H && cur.H.t0 ? (performance.now() - cur.H.t0) / ms : 0;
-      const lv = _gaMotion() ? lerp(GA_PUMP_LEVER, Math.max(0, Math.min(1, t))) : 0, fl = !_gaMotion() ? 1 : t < 0.2 ? 0 : t < 0.26 ? (t - 0.2) / 0.06 : t < 0.72 ? 1 : t < 0.82 ? (0.82 - t) / 0.1 : 0;
-      const key = Math.round(lv) + '|' + Math.round(fl * 5);   // (only the lever's turn and the water's strength change: two attributes, never a redraw)
-      if (key !== last && Sp.node) { last = key; try { const L = Sp.node.querySelector('.ga-lever'), F = Sp.node.querySelector('.ga-flow'); if (L) L.setAttribute('transform', `rotate(${Math.round(lv)} -8 -22)`); if (F) F.setAttribute('opacity', String(Math.round(fl * 5) / 5)); } catch (e) { /* as drawn */ } }
-    } });
-}
+/* (the pump at work: its own painted picture stays as it is while you work it, 20 Nov: the owner, "it changes the pump". The water runs from
+   its spout (the row's fx) and the figure works the handle; no second drawing of a pump is put in its place.) */
 /* ---------- round 2: the things the world now has ---------- */
 const _gaMoved = new Map(), _gaHide = new Map();
 /** A thing of 94-garden-zz-7act-2world.js that is out of sight now (carried, or kicked away for a moment). */
@@ -653,6 +807,9 @@ function gartActGroundClear(x, y) {
     }
     for (const p of (gardenIslandData().presentation || {}).plazas || []) if (p.rx && ((x - p.x) / (p.rx + 0.6)) ** 2 + ((y - p.y) / ((p.ry || p.rx) + 0.6)) ** 2 < 1) return false;
     const near = (_ga.list || []).some(r => Math.hypot(r.x - x, (r.y - y) * 1.3) < 1.4); if (near) return false;
+    // nor just behind anything that stands (a big oak drawn as a sight, a house, a wall, a fence): whatever's foot is a little south of you
+    // is drawn over you lying there, so a friend saw only an arm and a head poking out past its side. Read from what blocks the feet, any kind.
+    { const S = _gw.solids; if (S && S.at) for (let cy = Math.floor(y); cy <= Math.floor(y + 3); cy++) for (let cx = Math.floor(x - 2); cx <= Math.floor(x + 1); cx++) for (const r of S.at.get(cx + ',' + cy) || []) { if (r.form) continue; const dy = r.y1 - y; if (dy > -0.1 && dy < 3 && x > r.x0 - 1.5 && x < r.x1 + 0.6) return false; } }
     // never under a tree's crown (a tree just south of you is drawn over you): open sky, so you are seen and can see the clouds
     let T = _ga.trunks; if (!T || !T.length) { try { T = _ga.trunks = typeof _gwPaintedTrunks === 'function' ? _gwPaintedTrunks(gardenIslandData()) : []; } catch (e) { T = []; } }
     for (const b of T || []) { const fx = (b.x0 + b.x1) / 2, dy = b.y1 - y; if (dy > -0.3 && dy < 5.5 && Math.abs(fx - x) < 2.8) return false; }
@@ -680,8 +837,12 @@ function _gaTell(id, x, y) {
   if (x != null && Number.isFinite(x) && Number.isFinite(y)) { body.x = Math.round(x * 100) / 100; body.y = Math.round(y * 100) / 100; }
   try {
     if (typeof _gll === 'undefined') return;
-    if (_gll.role === 'visit') { if (typeof _glvLive === 'function' && _glvLive()) _glvSend('em', body); }
-    else if (typeof _glh !== 'undefined' && _glh.on && typeof _glhAnyone === 'function' && _glhAnyone()) _glhSend('all', 'em', body);
+    // (where you are now is said by the move itself: the walk's own "I am here" must not follow it a moment later, or their copy of you
+    // takes one step off the seat and the move is wiped. A visitor sat on a bench was seen by the host standing in front of it: the em
+    // said 42.97, the next "go" said 43.0 (a tenth of a cell, rounded) and the step stopped the sit. Any move, either way round.)
+    const t = Date.now();   // clock-ok: spacing messages
+    if (_gll.role === 'visit') { if (typeof _glvLive === 'function' && _glvLive()) { clearTimeout(_glv.goT); _glv.goX = _gw.px; _glv.goY = _gw.py; _glv.lastGo = _glv.goAt = t; _glvSend('em', body); } }
+    else if (typeof _glh !== 'undefined' && _glh.on && typeof _glhAnyone === 'function' && _glhAnyone()) { _glh.goX = _gw.px; _glh.goY = _gw.py; _glh.lastGo = t; _glhSend('all', 'em', body); }
   } catch (e) { /* alone */ }
 }
 function gartActRemote(A, id, off) {
@@ -689,16 +850,28 @@ function gartActRemote(A, id, off) {
   off = Math.max(0, Number(off) || 0);   // (2.74.1) how far into it they are: a late arrival, a redrawn figure, joins it there (a held pose at its end)
   A.actId = id; A.actT0 = performance.now() - off;
   if (typeof _gllEmoteStop === 'function') _gllEmoteStop(A);
+  // just arrived from walking there: they stand still now, or the walk's last moment repaints the figure and wipes the move off it (a
+  // climb up a tree was never seen, only the sit on the branch that is held and so put back)
+  if (A.tx == null) { A.stopAt = 0; A.moving = false; }
   A.dir = row.dir === 'n' ? 'n' : row.dir === 'e' || row.dir === 'w' ? 'e' : 's'; A.pose = ''; A.key = '';
   if (A.actDeg != null && typeof _gmvDrawing === 'function') { const D = _gmvDrawing(A.actDeg); A.dir = D.dir; if (D.dir === 'e') A.face = D.mirror; if (A.gm) A.gm.h = A.actDeg; }   // (2.74.1) facing as they face (gl:dg d)
   if (typeof _gllPaint === 'function') { A.actPainting = true; try { _gllPaint(A); } finally { A.actPainting = false; } }   // (2.74.1: this new drawing is the one the move goes on, so the redraw hook must not start it again: it restarted every frame)
   const gpl = A.root.querySelector('.gpl'); if (!gpl) return false;
-  const H = gartActPlay(gpl, id, { motion: typeof _gllReduced === 'function' ? !_gllReduced() : true });
+  // the place they do it, found from where they are, by its kind: a seat (lifted to its height and drawn on it), a tree (its bark in front
+  // of them when they hide), the same spot as on their own screen
+  let near = null; try { const at = (r) => r.act === id && r.stand && Math.hypot(r.stand.x - A.x, r.stand.y - A.y) < 0.6; near = (_ga.list || _gaStaticRows()).concat(_gaDecorRows()).filter(at)[0] || _gaTreeRows(A.x, A.y).filter(at).sort((a, b) => Math.hypot(a.stand.x - A.x, a.stand.y - A.y) - Math.hypot(b.stand.x - A.x, b.stand.y - A.y))[0] || null; } catch (e) { near = null; }
+  const H = gartActPlay(gpl, id, { motion: typeof _gllReduced === 'function' ? !_gllReduced() : true, tree: near && near.tree, at: null });   // (a friend behind a trunk is drawn in the tree's own row, so its real trunk is in front of them: no second, painted-on trunk)
   if (row.kick && off < 400 && A.kickT0 !== Math.round(A.actT0)) { A.kickT0 = Math.round(A.actT0); try { const sp = _gaStaticRows().concat(_gaDecorRows()).filter(q => q.act === id && q.stand && Math.hypot(q.stand.x - A.x, q.stand.y - A.y) < 1.2).sort((p, q) => Math.hypot(p.stand.x - A.x, p.stand.y - A.y) - Math.hypot(q.stand.x - A.x, q.stand.y - A.y))[0]; if (sp) _gaKickAt(sp, A.actDeg != null ? A.actDeg : 90); } catch (e) { /* the ball stays */ } }   // (2.74.1) the ball flies on their screen too
   if (row.rubPet && typeof gartActRubCopy === 'function') gartActRubCopy(A, id);   // (2.74.1) their pet on its back at their hand, on my screen too
   if (off > 0) for (const an of H.anims.concat(H.panims)) { try { an.currentTime = Math.min(off, Math.max(0, row.ms - 1)); } catch (e) { /* from the start */ } }
   // on a seat (or over the pier's edge) their figure is lifted as yours is: the same spot, found from where they are
-  let lift = row.seat != null ? _gaSeatLift(row) : 0; if (!lift) try { const near = _gaStaticRows().concat(_gaDecorRows()).filter(r => r.act === id && r.stand && Math.hypot(r.stand.x - A.x, r.stand.y - A.y) < 0.6)[0]; lift = near ? near.lift || 0 : 0; } catch (e) { lift = 0; }
+  let lift = row.seat != null ? _gaSeatLift(row) : near ? near.lift || 0 : 0;
+  // sat on a thing the world draws as its own picture: their figure is drawn on it, not behind its back rail (the sprite's z, in cells)
+  const sd = row.hold && near && near.seated && near.src && !row.hideBehind ? _gaSeatDepthOf(near.src) : null;
+  if (sd != null) { const W = GARDEN_WORLD, z = (sd - W.sky) / W.cellH + 0.01; A.seatZ = z; const undo = H.stop; H.stop = () => { undo(); if (A.seatZ === z) A.seatZ = null; }; }
+  // up in a tree (any move that is aloft: the climb, the branch): drawn in front of the crowns round them, as you see yourself (your own
+  // screen fades a crown you are behind); a friend sat on a branch was lost behind the crown of the next tree a cell in front
+  if (row.aloft && sd == null) { const z = A.y + 1.6; A.seatZ = z; const undo = H.stop; H.stop = () => { undo(); if (A.seatZ === z) A.seatZ = null; }; }
   if (lift && A.bob) { const bt = `translate(0 ${-lift})`; A.actLift = lift; A.bob.setAttribute('transform', bt); A.bobT = bt; const undo = H.stop; H.stop = () => { undo(); A.actLift = 0; if (A.bob && A.bobT === bt) { A.bob.setAttribute('transform', ''); A.bobT = ''; } }; }
   const tag = A.root.querySelector('.gll-name');
   if (tag && (row.lying || lift)) { const y0 = tag.getAttribute('y'), y1 = row.lying ? String(Math.round(-26 * GARDEN_ACTOR_SCALE)) : String(Number(y0) - lift); tag.setAttribute('y', y1); const undo = H.stop; H.stop = () => { undo(); if (tag.getAttribute('y') === y1) tag.setAttribute('y', y0); }; }
@@ -717,7 +890,7 @@ if (typeof gardenLifePetGoal === 'function') {
     if (cur && cur.doing && P && P.me && !cur.row.fetch) {   // (every action: the pet waits beside you on open ground)
       // beside you on open ground, never up on a thing (a pump, a bench, a wall): the walker's own map says what is solid
       const ok = (x, y) => (typeof _ptwFree !== 'function' || _ptwFree(x, y)) && (typeof _gwFree !== 'function' || _gwFree(x, y, 0.2)) && !(_ga.list || []).some(r => r.act !== 'sit' && Math.hypot(r.x - x, (r.y - y) * 1.3) < 0.7);
-      for (const [dx, dy] of [[1, 0.2], [-1, 0.2], [0.9, 0.7], [-0.9, 0.7], [0, 1], [1.4, 0.3], [-1.4, 0.3]]) if (ok(_gw.px + dx, _gw.py + dy)) return { x: _gw.px + dx, y: _gw.py + dy, near: 10 };
+      for (const [dx, dy] of [[1.25, -0.05], [-1.25, -0.05], [1.35, 0.45], [-1.35, 0.45], [1.7, 0.1], [-1.7, 0.1], [0, 1.2]])   /* (a pet's width clear of you, a hair behind your row: it sat right in front of you on a bench, at the pump, and hid you) */ if (ok(_gw.px + dx, _gw.py + dy)) return { x: _gw.px + dx, y: _gw.py + dy, near: 10 };
     }
     return _gaPetGoal0(P, dt);
   };

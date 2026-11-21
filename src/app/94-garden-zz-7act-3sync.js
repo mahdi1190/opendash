@@ -143,7 +143,7 @@ function gartActDoingIn(A, ev) {
   // the move
   const a = ev.a ? String(ev.a) : '';
   if (!a) {
-    A.dgNext = null; A.dgT0 = null;
+    A.dgNext = null; A.dgT0 = null; A.actAt = null;
     if (A.actId || A.actWant) {
       A.actWant = ''; A.actId = ''; A.then = null; if (typeof _gllEmoteStop === 'function') _gllEmoteStop(A); A.sit = false; A.key = '';
       const g = A.goLater; A.goLater = null; if (g && Math.hypot(g.x - A.x, g.y - A.y) > 0.05 && typeof _gllWalkTo === 'function') _gllWalkTo(A, g.x, g.y);   // (a step they took as they got up, held while they were still sitting here: now)
@@ -170,11 +170,11 @@ function gartActDoingStart(A, a, t0, at) {
   A.actX = at.x; A.actY = at.y; A.actDeg = at.d;
   const go = () => { if (A.actWant === a) gartActRemote(A, a, performance.now() - A.actT0); };
   if (Math.hypot(at.x - A.x, at.y - A.y) > 0.05) {
-    if (Math.hypot(at.x - A.x, at.y - A.y) > 6 || typeof _gllWalkVia !== 'function') { A.x = at.x; A.y = at.y; A.tx = null; A.ty = null; A.way = null; A.moving = false; A.key = ''; A.actWant = a; A.actT0 = t0; go(); }
-    else { _gllWalkVia(A, null, at.x, at.y); A.actWant = a; A.actT0 = t0; A.then = () => { const row = GARDEN_ACTS[a]; if (row && !row.hold && performance.now() - t0 < row.ms + 4000) A.actT0 = performance.now(); go(); }; }   // (walking there ends what they did before: then this, from its start)
+    if (Math.hypot(at.x - A.x, at.y - A.y) > 6 || typeof _gllWalkVia !== 'function') { A.x = at.x; A.y = at.y; A.tx = null; A.ty = null; A.way = null; A.moving = false; A.key = ''; A.actAt = { x: at.x, y: at.y }; A.actWant = a; A.actT0 = t0; go(); }
+    else { _gllWalkVia(A, null, at.x, at.y); A.actAt = { x: at.x, y: at.y }; A.actWant = a; A.actT0 = t0; A.then = () => { const row = GARDEN_ACTS[a]; if (row && !row.hold && performance.now() - t0 < row.ms + 4000) A.actT0 = performance.now(); go(); }; }   // (walking there ends what they did before: then this, from its start)
     return;
   }
-  A.actWant = a; A.actT0 = t0;
+  A.actWant = a; A.actT0 = t0; A.actAt = { x: at.x, y: at.y };   // (the place they said they took is theirs on this screen too: gartActTaken)
   go();
 }
 /** Their move has ended here: the one they went on to (dgNext) now. */

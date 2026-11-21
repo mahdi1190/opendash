@@ -191,7 +191,7 @@
     B.f(B.rect(x, y, w * .12, h), pal[2], .22).f(B.rect(x + w * .86, y, w * .14, h), pal[3], .26);
   };
   const MILL_WHEEL = { x: -90, y: -40, R: 40 };
-  A['ld-mill'] = { box: [-134, -224, 92, 18], door: { dx: 0, dy: 0 }, seat: { kind: 'earth', w: 132, front: 20, stones: 0 }, lit: true, lights: [[-38, -40, 80], [32, -80, 80], [-38, -122, 70]],
+  A['ld-mill'] = { box: [-134, -224, 92, 18], door: { dx: 24, dy: 0 }, seat: { kind: 'earth', w: 132, front: 20, stones: 0 }, lit: true, lights: [[-38, -40, 80], [32, -80, 80], [-38, -122, 70]],
     state: () => turning() ? 'turn' : 'still',
     parts: [
       { id: 'wheel', box: [-MILL_WHEEL.R - 10, -MILL_WHEEL.R - 10, MILL_WHEEL.R + 10, MILL_WHEEL.R + 10], at: [MILL_WHEEL.x, MILL_WHEEL.y], spin: o => o.state === 'turn' ? -.55 : 0, draw(B, o) {
@@ -230,7 +230,9 @@
       for (let i = 0; i < 7; i++) B.f(B.blob(r, x0 + 10 + r() * (x1 - x0 - 20), eaves - 6 - r() * (eaves - ridge - 14), 5 + r() * 5, 1.8, 7, .5), s === 'winter' ? '#eef2ee' : '#7d8f4e', .6);
       B.f(B.rect(x1 - 26, ridge - 18, 12, 22), BR[1]).f(B.rect(x1 - 26, ridge - 18, 3.6, 22), BR[2], .6).f(B.rect(x1 - 28, ridge - 21, 16, 4), STONE.rockLo);
       // the lucam: a weatherboarded hoist housing out over the sack doors, its own small gable, the chain and hook
-      const lx = -15, lw = 30;
+      // (seats round 2) the doors' column over the layout's door cell (its middle is half a cell east of the picture's anchor): the doors
+      // were drawn half a cell west of where you arrive, and the yard's sacks stood across them
+      const lx = 9, lw = 30;
       B.f(B.rect(lx, eaves - 40, lw, 46), WOOD[1]); for (let y = eaves - 36; y < eaves + 6; y += 4) B.s(`M${lx} ${y}h${lw}`, OAK[1], .6, .75);
       B.f(B.rect(lx, eaves - 40, 6, 46), WOOD[2], .4).f(B.poly([[lx - 4, eaves - 38], [lx + lw / 2, eaves - 56], [lx + lw + 4, eaves - 38]]), SLATE[1]).f(B.poly([[lx - 4, eaves - 38], [lx + lw / 2, eaves - 56], [lx + lw / 2, eaves - 50], [lx + 2, eaves - 38]]), SLATE[2], .5);
       B.f(B.rect(lx + 8, eaves - 30, 14, 20), '#24180f').s(`M${lx + 15} ${eaves - 10}V${f2 + 6}`, IRON[0], 1).s(`M${lx + 13} ${f2 + 6}q2 4 4 0`, IRON[0], 1.2);
@@ -240,9 +242,9 @@
       B.f(B.rect(lx, -10 - dh, lw, dh), OAK[1]).f(B.rect(lx + 2, -10 - dh + 2, 12, dh - 2), OAK[0]).f(B.rect(lx + 16, -10 - dh + 2, 12, dh - 2), '#2a1c12').s(`M${lx + 2} ${-10 - dh + 2}L${lx + 14} -12`, OAK[2], 1, .6).f(B.rect(lx - 2, -13 - dh, lw + 4, 3), STONE.rockHi);
       if (lit) B.f(B.rect(lx + 16, -10 - dh + 2, 12, dh - 2), 'rgba(255,200,110,.4)');
       const win = (x, y, w, h) => { B.f(B.rect(x - 1.6, y - 3, w + 3.2, 3), STONE.rockHi).f(B.rect(x - 1, y + h, w + 2, 2.2), STONE.rock); windowLit(B, x, y, w, h, lit, '#e8dcc0'); };
-      for (const x of [-50, -32, 26, 50]) { win(x, f1 + 12, 12, 18); win(x, f2 + 12, 12, 16); win(x, eaves + 12, 12, 14); }
+      for (const x of [-48, -31, -14, 50]) { win(x, f1 + 12, 12, 18); win(x, f2 + 12, 12, 16); win(x, eaves + 12, 12, 14); }
       // sacks of meal and a barrow by the doors, a wheelbarrow of sacks, nettles along the foot
-      for (const [x, y] of [[44, -1], [52, -2], [48, -10], [60, -1]]) B.f(B.rr(x - 5, y - 10, 10, 11, 4), '#d9caa0').f(B.rr(x - 5, y - 10, 4, 11, 3), '#efe4c6', .7).s(`M${x - 2} ${y - 9}q2 -2 4 0`, '#a8986e', .8);
+      for (const [x, y] of [[46, -1], [54, -2], [50, -10], [62, -1]]) B.f(B.rr(x - 5, y - 10, 10, 11, 4), '#d9caa0').f(B.rr(x - 5, y - 10, 4, 11, 3), '#efe4c6', .7).s(`M${x - 2} ${y - 9}q2 -2 4 0`, '#a8986e', .8);
       for (let i = 0; i < 9; i++) { const x = x0 + 4 + r() * 30; B.s(`M${x} 0q${(r() - .5) * 3} -7 ${(r() - .5) * 4} -${9 + r() * 6}`, leaf(s)[1], 1.2, .85); }
       B.tufts(r, x1 + 6, 4, 14, 7, grass(s), 7);
     } };

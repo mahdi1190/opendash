@@ -197,7 +197,7 @@ function _gwBuildSolids(m) {
   }
   // Every painted tree on the map (village planting, the three painted woods, the orchard rows) has one trunk box at
   // its foot, from one list (_gwPaintedTrunks): the crowns are for walking behind.
-  for (const b of _gwPaintedTrunks(island)) add(b.x0, b.y0, b.x1, b.y1, 'tree trunk (' + ({ wood: 'painted wood', orchard: 'orchard', village: 'village', fells: 'fells', gate: 'crossing', forest: 'a big tree' }[b.src] || b.src) + ')');
+  for (const b of _gwPaintedTrunks(island)) add(b.x0, b.y0, b.x1, b.y1, b.sp && typeof gardenTreeKind === 'function' && !gardenTreeKind(b.sp) ? ({ falls: 'the falling water', hedge: 'a hedge bank', wall: 'a dry-stone wall' }[b.sp] || 'a rock') + ' (' + ({ gate: 'crossing', fells: 'fells' }[b.src] || b.src) + ')' : 'tree trunk (' + ({ wood: 'painted wood', orchard: 'orchard', village: 'village', fells: 'fells', gate: 'crossing', forest: 'a big tree' }[b.src] || b.src) + ')');
   // the old woodland's lamp plinths (94-garden-0island.js): a small block at the foot, the lantern above is walked behind
   if (typeof gardenIslandOldWoodLamps === 'function') { const lamps = gardenIslandOldWoodLamps(island); for (const q of lamps.concat(gardenIslandPosternPiers(island))) add(q.foot.x0, q.foot.y0, q.foot.x1, q.foot.y1, lamps.includes(q) ? 'lamp plinth' : 'postern pier'); }
   // the village's street lamps (ld-lamp-a by the Land Office, ld-lamp-b by the quay): an iron post on a small plinth, a block at its foot
@@ -226,6 +226,16 @@ function _gwBuildSolids(m) {
   // drawn there (the north edge is the sky over the fells; the east and south are sea).
   if (island && island.version >= 5) add(-1, -1, .34, GARDEN_WORLD.rows + 1, 'the edge of the map');
   for (const { form: f } of _gwFieldForms()) { const r = add(f.x0, f.y0, f.x1, f.y1, f.src); r.form = f; }
+  // A small thing set against a wall (sacks at a mill's door, a barrel by a house, a crate by a shed): the strip between its block
+  // and the wall behind it, narrower than a person, is shut, so the feet go round in front of it and never squeeze along the wall
+  // behind it with their legs hidden (the owner, 20 Nov: "animation buggy leading to the mill"). By geometry: any thing, any wall.
+  { const walls = list.filter(r => !r.form && r.x1 - r.x0 >= 1.2);
+    for (const p of gardenPropsNow()) if (gardenPropCol(p) === 'full' && !gardenPropPaintedFeet(p)) walls.push({ x0: p.x, y0: p.y, x1: p.x + (p.w || 1), y1: p.y + (p.h || 1) });
+    for (const r of list.slice()) {
+      if (r.form || r.x1 - r.x0 > 1.6 || r.y1 - r.y0 > 0.9) continue;
+      let top = null; for (const b of walls) if (b !== r && r.x0 < b.x1 - .05 && r.x1 > b.x0 + .05) { const gap = r.y0 - b.y1; if (gap > .01 && gap < .6 && (top == null || b.y1 > top)) top = b.y1; }
+      if (top != null) add(r.x0, top - .02, r.x1, r.y0 + .01, r.src);
+    } }
   return { list, at };
 }
 /** The one trunk-collision list for painted trees, in cells ({x0, y0, x1, y1, src}). Five painters plant trees, each
@@ -374,9 +384,19 @@ function gardenWalkFolds(island) {
 const GW_PROP_FEET = Object.freeze({ 'ld-mile': [[-12, 42, 10]], 'ld-tower': [[-70, 72, 0]], 'ld-hollow': [[-44, 50, 0]], 'ld-clamp': [[-38, 52, 20]], 'ld-cairn': [[-31, 31, 0]], 'ld-woodhut': [[-58, 58, 0]], 'ld-stump': [[-60, 56, 14]], 'ld-statue': [[-26, 42, 10]], 'ld-moor-gate': [[-24, 52, 12]], 'ld-beacon': [[-24, 8, 12]] });
 // soft things (a bench's seat) whose drawing is wider than the usual half their width: [w, d] in cells
 const GW_SOFT_BLOCK = Object.freeze({ 'ld-bench-a': [1.2, .3], 'ld-bench-b': [1.5, .62], 'ld-cross': [.9, .32] });   // (vale final fix 1: the shore bench's drawn ends and the market cross's bottom step, measured by the collision audit)
+/** A building (any of its kind: a summer house, a cottage, a barn) painted narrower than the cells it stands on: its walls stop the feet
+ *  where they are drawn, not a cell or more out to either side of them (the owner: "collision of the summer house is weird"). From its
+ *  painting's own box (px from its middle), the whole depth of its cells; null when the picture fills its cells or says nothing. */
+function _gwBuildingFeet(p) {
+  const a = GardenPaintedMarks.ART[p.id], box = a && a.box; if (!Array.isArray(box) || box.length < 4) return null;
+  const kind = typeof gardenKindOf === 'function' ? gardenKindOf({ art: p.art, id: p.id }) : ''; if (kind !== 'building' && kind !== 'barn') return null;
+  const W = GARDEN_WORLD, l = box[0] + 4, r = box[2] - 4;
+  if (!(r > l) || (p.w || 1) * W.cellW - (r - l) < W.cellW * 0.5) return null;   // (it fills its cells: as it was)
+  return { foot: [[l, r, 0]] };
+}
 function gardenPropPaintedFeet(p) {
   if (!p || typeof GardenPaintedMarks === 'undefined' || !GardenPaintedMarks || !GardenPaintedMarks.ART || GARDEN_WORLD.v < 5) return null;
-  const art = GardenPaintedMarks.ART[p.id] && GardenPaintedMarks.ART[p.id].foot ? GardenPaintedMarks.ART[p.id] : GW_PROP_FEET[p.id] ? { foot: GW_PROP_FEET[p.id] } : null; if (!art || !art.foot || gardenPropCol(p) !== 'full') return null;
+  const art = GardenPaintedMarks.ART[p.id] && GardenPaintedMarks.ART[p.id].foot ? GardenPaintedMarks.ART[p.id] : GW_PROP_FEET[p.id] ? { foot: GW_PROP_FEET[p.id] } : _gwBuildingFeet(p); if (!art || !art.foot || gardenPropCol(p) !== 'full') return null;
   if (!(typeof GardenNativePainted !== 'undefined' && GardenNativePainted && GardenNativePainted.wanted && GardenNativePainted.wanted())) return null;
   if (p.needs && !gardenWorkOwned(p.needs)) return null;
   if (typeof gardenBuildLookOf === 'function' && Object.values(gardenBuildLookOf(p.id) || {}).some(Boolean)) return null;   // (a look of your own choosing is drawn by another painter)
@@ -769,7 +789,10 @@ function _gwMoveBy(dx, dy) {
   const len2 = (dx * W.cellW) ** 2 + (dy * W.cellH) ** 2, gain = (px, py) => len2 ? ((px - x0) * W.cellW * dx * W.cellW + (py - y0) * W.cellH * dy * W.cellH) / len2 : 0;
   // the bank's own slide, unless it all but stops a diagonal press dead (a corner of the gorge bank or the Mere shore): then the
   // wall slide below gets its turn, and whichever goes further the way you are pressing wins (17 Nov 2026)
-  if (shore.shore && (gain(shore.x, shore.y) >= .3 || !(dx && dy))) { _gw.px = shore.x; _gw.py = shore.y; _gw.slideHold = null; return shore.moved; }
+  // (a straight press square into a bank that runs across it, as at the brook under the Millwater bridge on the way to the mill, is a
+  // press into a wall: it stops you facing the way you pressed. It crept you along the bank sideways at a snail's pace, turned to face
+  // the camera with your feet sliding: the owner's "animation buggy leading to the mill". A slanting bank still slides you along it.)
+  if (shore.shore && gain(shore.x, shore.y) >= (dx && dy ? .3 : .25)) { _gw.px = shore.x; _gw.py = shore.y; _gw.slideHold = null; return shore.moved; }
   let x = x0, y = y0, held = '';
   const hold = _gw.slideHold;   // the give of the frame before, if any (_gwGiveSlide)
   if (_gwFree(x0 + dx, y0 + dy)) { x += dx; y += dy; }
@@ -837,6 +860,22 @@ function _gwMoveBy(dx, dy) {
  * press, in screen px, unit length; step: its length this frame, in px. Returns the direction to walk, or null to walk
  * as pressed.
  */
+/** Walking up to a building's door with the keys (any building with a door on its front: the mill, a cottage, the barn): pressing
+ *  up towards it from just in front, you are drawn to the middle of its doorway, not stopped on its jamb and slid sideways along the wall
+ *  until you fit (walking up to the mill door you were caught short of it, slid east and stood at the left jamb; seats round 2). Read
+ *  from the layout's doors, any layout. Returns the direction to walk, or null to walk as pressed. */
+function _gwDoorSteer(ux, uy) {
+  if (!(uy < -.6) || typeof gardenIslandData !== 'function') return null;
+  const I = gardenIslandData(); if (!I || !Array.isArray(I.static)) return null;
+  if (_gw.doorsOf !== I) { _gw.doorsOf = I; _gw.doors = I.static.filter(o => o && o.door && o.walk === false && o.w > 1 && Number.isFinite(o.door.x) && o.door.y >= o.y + o.h - 1 && o.door.y <= o.y + o.h && o.door.x >= o.x && o.door.x < o.x + o.w).map(o => ({ x: o.door.x + .5, y: o.door.y })); }
+  const W = GARDEN_WORLD;
+  for (const d of _gw.doors) {
+    const ex = d.x - _gw.px, below = _gw.py - d.y;
+    if (below < .2 || below > 2.4 || Math.abs(ex) > 1 || Math.abs(ex) < .04) continue;
+    const vx = ex * W.cellW, vy = -Math.max(.35, below) * W.cellH, n = Math.hypot(vx, vy); return [vx / n, vy / n];
+  }
+  return null;
+}
 function _gwCrossingSteer(ux, uy, step) {
   if (GARDEN_WORLD.v < 5 || typeof gardenIslandCrossingGeometry !== 'function' || !(ux || uy)) return null;
   const W = GARDEN_WORLD, X = _gw.px * W.cellW, Y = W.sky + _gw.py * W.cellH;
@@ -2037,6 +2076,7 @@ function gardenWorldKey(ev, down, arrowsOnly) {
   if ((k === 'c' || k === 'C') && ev.shiftKey) { if (typeof gardenCollideToggle === 'function') gardenCollideToggle(); ev.preventDefault(); return true; }   // what blocks walking (94-garden-world-7collide.js)
   if (k === 'c' || k === 'C') { gardenCamSet('follow'); ev.preventDefault(); return true; }
   if (k === 'q' || k === 'Q') { if (typeof gartEmoteWheel === 'function') gartEmoteWheel(); ev.preventDefault(); return true; }
+  if (k === 'Tab' && !ev.ctrlKey && !ev.altKey && !ev.metaKey && typeof gartActCycle === 'function' && gartActCycle(ev.shiftKey)) { ev.preventDefault(); return true; }   // several things close by: the next one is the prompt's (94-garden-zz-7act-1core.js)
   if ((k === 'j' || k === 'J') && !ev.ctrlKey && !ev.metaKey && !ev.altKey) { if (typeof gardenJournalOpen === 'function') gardenJournalOpen(); ev.preventDefault(); return true; }   // the Field Journal
   if (arrowsOnly) return false;
   if (k === ' ' || k === 'e' || k === 'E') { if (ev.repeat) { ev.preventDefault(); return true; } gardenWorldInteract(); ev.preventDefault(); return true; }
@@ -2071,7 +2111,7 @@ function gardenWorldInteract() {
     for (let r = 1; r <= gardenRod().st.range; r++) for (const dy of [1, 0, -1]) { const x = px + _gw.face * r, y = py + dy; if (x >= 0 && x < W.cols && y >= 0 && y < W.rows && wet(x, y)) { gardenFishFront(); return; } }
     for (let r = 1; r <= gardenRod().st.range; r++) if (py + r < W.rows && wet(px, py + r)) { gardenFishFront(); return; }
   }
-  { const s = _ghProject(_gw.px, _gw.py - 1.4), r = _gw.box && _gw.box.getBoundingClientRect(); gameDeny(null, { at: s && r ? { x: r.left + s.x, y: r.top + s.y } : null, silent: true, say: 'Nothing in reach.' }); }
+  { const s = _ghProject(_gw.px, _gw.py - 1.4), r = _gw.box && _gw.box.getBoundingClientRect(), taken = typeof gartActTakenWords === 'function' ? gartActTakenWords() : ''; gameDeny(null, { at: s && r ? { x: r.left + s.x, y: r.top + s.y } : null, silent: true, say: taken || 'Nothing in reach.' }); }   // (a seat a friend is on: say so, not "nothing")
 }
 
 /* ---------- the world's API for anything that lives in it (docs/dev/GARDEN.md, "The world API") ---------- */
@@ -2155,7 +2195,7 @@ function _gwSpritesFrame(dt) {
     if (culled && S.node.parentNode) continue;   // out of the view: it goes on living (update above), and nothing is drawn or moved on the page
     const tf = `translate(${(S.x * W.cellW).toFixed(1)} ${(W.sky + S.y * W.cellH - S.lift).toFixed(1)})`;
     if (S.tf !== tf) { S.tf = tf; S.quiet = 0; S.node.setAttribute('transform', tf); } else S.quiet = (S.quiet || 0) + dt;
-    const z = S.z != null ? S.z : S.y, zk = Math.floor(z * 3);
+    const z = S.z != null ? S.z : S.y, zk = S.z != null ? 'z' + z.toFixed(2) : Math.floor(z * 3);   // (a set z, a perch or a seat, takes effect at once)
     if (S.zk !== zk || !S.node.parentNode) { S.zk = zk; S.node.setAttribute('data-z', z.toFixed(2)); _gwPlace(S.node, z); }
   }
 }

@@ -169,6 +169,7 @@ function _gdgOnEvent(ev) {
 }
 /** After every paint of the stage: new waterings, stages that grew, new visitors. */
 function gardenGamePainted(m) {
+  if (!m || !Array.isArray(m.plants)) return;   // (no garden yet: a visit's scene made before the friend's garden arrived)
   const waterChanges = _gdgWaterChanges(m), personalWaterings = _gdgWatered(m);
   gardenHoverCardHide();   // a saved action can change the plant without a pointer move
   if (!gardenMotionOn() && gardenFun() === 'off') { _gdg.stages = null; return; }

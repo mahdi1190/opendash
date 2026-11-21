@@ -146,17 +146,23 @@ function _gllStationaryAt(A, x, y, source) {
   const W = GARDEN_WORLD; if (!A || !Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x >= W.cols || y >= W.rows) return;
   const previous = A.stationaryPosition;
   if (source === 'cell' && previous && Math.floor(previous.x) === Math.floor(x) && Math.floor(previous.y) === Math.floor(y)) return;
+  // a cell report only says which cell: a figure already inside it (sat on a seat at 42.97, behind a trunk) is where it is, never put back
+  // to the middle of the cell (a sitter seen later by a friend who was elsewhere when they sat was drawn on the bench's back rail)
+  if (source === 'cell' && Number.isFinite(A.x) && Number.isFinite(A.y) && Math.floor(A.x) === Math.floor(x) && Math.floor(A.y) === Math.floor(y) && A.tx == null) { A.stationaryPosition = { x: A.x, y: A.y, source }; return; }
   A.stationaryPosition = { x, y, source };
   // There is no visible walk to preserve when both ends of an already-complete pose are culled.
   if (typeof _gwInView === 'function' && !_gwInView(A.x, A.y, 1.5) && !_gwInView(x, y, 1.5)) { A.x = x; A.y = y; A.tx = null; A.ty = null; A.way = null; A.pace = 0; A.moving = false; A.key = ''; }
 }
 /** Walk there. Destinations only: the walking is worked out on each side, or the host says which way round the beds (_gllWalkVia). */
+/** A place said on the wire a hair from where someone already is, while they hold a move (sat on a bench, on a branch): the rounding
+ *  of the walk's tenth-of-a-cell, not a step. It is not walked, so the move is not wiped (they were seen standing in front of the seat). */
+function _gllHeldNudge(A, ev) { return !!(A && A.actHold && ev && !(ev.r && ev.r.length) && Number.isFinite(ev.x) && Number.isFinite(ev.y) && Math.hypot(ev.x - A.x, ev.y - A.y) < 0.12); }
 function _gllWalkTo(A, x, y, then) {
   // (2.74.1) the last steps of their walk to the spot they are using (a seat's stand point is a stride from its seat): they are there,
   // doing it. Their whole state (gl:dg) says when they stop; a walk away ends it there. Within 0.35 a sit came ~15 s late on the
   // friend's screen: the stand point's walk message cancelled the move the figure was walking over to do.
   if ((A.actId || A.actWant) && Number.isFinite(A.actX) && Math.hypot(x - A.actX, y - A.actY) < 1.6 && (!then || then === A.then)) { A.goLater = { x, y }; return; }   // (a walk message carries on the walk they had: _gllWalkVia passes their own then on)
-  A.stationaryPosition = null; A.goLater = null; if (A.actId || A.actWant) { A.actId = ''; A.actWant = ''; _gllEmoteStop(A); } if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A); A.tx = x; A.ty = y; A.gx = x; A.gy = y; A.way = null; A.then = then || null; if (A.sit) { A.sit = false; _gllEmoteStop(A); } }
+  A.actAt = null; A.stationaryPosition = null; A.goLater = null; if (A.actId || A.actWant) { A.actId = ''; A.actWant = ''; _gllEmoteStop(A); } if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A); A.tx = x; A.ty = y; A.gx = x; A.gy = y; A.way = null; A.then = then || null; if (A.sit) { A.sit = false; _gllEmoteStop(A); } }
 /** The same with the turns on the way: [[x, y], ...], then there. What they were going to do on arrival still happens. */
 function _gllWalkVia(A, turns, x, y) { const then = A.then; _gllWalkTo(A, x, y, then); const way = (turns || []).map(p => [p[0], p[1]]).concat([[x, y]]); const n = way.shift(); A.tx = n[0]; A.ty = n[1]; A.way = way; }
 /** Keys and holding send a walk as it goes, a place at a time: the figure takes each at the pace they come in, so it neither arrives early and stands nor falls behind. A destination (a click) walks at the walker's own speed. */
@@ -242,8 +248,11 @@ function _gllEmoteStop(A) { if (A.emLift) { A.emLift = false; A.actLift = 0; } i
 /** A move with a place (a seat): walk there first if they are not there yet, rather than jump. */
 function _gllEmoteAt(A, ev) {
   if (String(ev.e).startsWith('act-') && A.dg) return;   // (2.74.1) drawn from what they are doing, whole (gl:dg)
-  if (Number.isFinite(ev.x) && Math.hypot(ev.x - A.x, ev.y - A.y) > 0.05) { _gllWalkVia(A, null, ev.x, ev.y); A.then = () => _gllEmote(A, ev.e); return; }
-  _gllEmote(A, ev.e);
+  // (where they said they did it, kept as theirs while they do it: a seat they are walking to, or sat on, is not free on this screen even
+  // when their figure here is still on its way or stopped a little off it; any step of theirs gives it up, _gllWalkTo)
+  const at = Number.isFinite(ev.x) && Number.isFinite(ev.y) ? { x: ev.x, y: ev.y } : null;
+  if (at && Math.hypot(ev.x - A.x, ev.y - A.y) > 0.05) { _gllWalkVia(A, null, ev.x, ev.y); A.actAt = at; A.then = () => _gllEmote(A, ev.e); return; }
+  _gllEmote(A, ev.e); A.actAt = at;
 }
 /**
  * A speech bubble over someone. Phrases come from the table on this side. The bubble is kept on the person (A.say) and drawn into whatever node
@@ -293,7 +302,7 @@ function _gllSprite(A, onClick) {
     update(dt, sp) {
       if (sp.dressed !== sp.node) { sp.dressed = sp.node; _gllDress(A, sp.node); }
       _gllStep(A, dt);
-      sp.x = A.x; sp.y = A.y;
+      sp.x = A.x; sp.y = A.y; sp.z = A.seatZ != null && !A.moving ? Math.max(A.y, A.seatZ) : A.actHold && !A.moving ? A.y : null;   // (sat on a bench: drawn on it, 94-garden-zz-7act-1core.js; any held move at its exact row, not the row of a third of a cell it was last sorted in: a friend hiding behind a trunk was sorted in front of it, as the last step of their walk had left it)
       _gllPetStep(A, dt, _gw.svg);
       if (typeof _gllFxStep === 'function') _gllFxStep(A, dt);
       if (typeof gartActFriendTick === 'function') gartActFriendTick(A);   // (2.74.2) the coin's glow, the splash: where theirs is

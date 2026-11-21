@@ -162,16 +162,24 @@
   /* ---------- the great stump: the bole of a felled oak, its buttress roots running out into the moss, the felling cut with
      its splintered hinge, the very small door of the parlour with its step, a tin chimney with a thread of smoke; the
      trunk that was felled lies beside it and its own logs are split and stacked on the east ---------- */
-  A['ld-stump'] = { box: [-72, -92, 74, 10], door: { dx: 10, dy: 0 }, lit: true, lights: [[12, -14, 50]],
+  A['ld-stump'] = { box: [-84, -92, 74, 10], door: { dx: 10, dy: 0 }, lit: true, lights: [[12, -14, 50]],
     seat: { kind: 'moss', w: 74, front: 20, back: 22, stones: 0, box: [-96, -30, 96, 34], extra(B, r, P, G) { roots(B, r, 7, -30, 30, 52, 'summer'); litter(B, r, 70, 20, 46, 'autumn'); for (let i = 0; i < 14; i++) B.f(B.ell(36 + r() * 26, 2 + r() * 6, 1.6, .8), '#d4b07a', .9); } },
     parts: smokeParts([18, -78], 3, 34, 8, .22),
     draw(B, o) {
     const r = KIT().rng(721), s = o.season, top = -H * 1.3, bark = BARK;
     // the felled trunk lying away to the west, its sawn end toward the stump, moss along its back, a fern in front
-    B.f(`M-72 -4Q-74 -22 -64 -26L-34 -24Q-28 -14 -32 -2Z`, bark[1]).f(`M-72 -10Q-72 -22 -64 -25L-36 -23Q-34 -20 -36 -18Z`, bark[2], .6);
-    for (let i = 0; i < 5; i++) B.s(`M${-70 + i * 2} ${-6 - i * 3.6}L-36 ${-6 - i * 3.4}`, bark[3], .7, .45);
-    B.f(B.ell(-33, -13, 6, 11.6), '#b49a70').f(B.ell(-33, -13, 4.6, 9.6), '#cdb488'); for (let k = 1; k < 4; k++) B.s(B.ell(-33, -13, 4.6 - k, 9.6 - k * 2.2), '#a08460', .5, .7);
-    if (s !== 'winter') { mossOn(B, r, -70, -24, 30, 6, s); ferns(B, r, -54, 0, 20, 4, s); }
+    // (seats round 2) a log you sit on, seat high (it stood as tall as a sitter's chest, a brown block with a ruled end): low and round,
+    // resting in its own shadow, bark ridged along it, the far end broken off in splinters, a branch stub, the sawn end pale toward the stump
+    B.f(B.ell(-54, -.5, 23, 2.6), '#2a2014', .32);
+    B.f('M-73 -2Q-76.5 -6 -73.6 -10.6Q-71 -14.2 -65 -13.6L-37 -12.8Q-31.6 -7 -34.6 -1Q-54 1.2 -73 -2Z', bark[1]);
+    B.f('M-73.4 -9.6Q-71 -13.6 -65 -13L-37.4 -12.2Q-36 -10.6 -36.8 -9.6Q-55 -11 -73.4 -9.6Z', bark[2], .7);
+    B.f('M-73 -2Q-54 1.2 -34.6 -1Q-34 -3 -34.8 -4Q-54 -2 -73.6 -5Z', bark[3], .35);
+    for (let i = 0; i < 4; i++) B.s(`M${-71 + i * 1.5} ${-4.2 - i * 2.2}Q-54 ${-4.6 - i * 2.3} -37 ${-4 - i * 2.1}`, bark[3], .7, .5);
+    for (const [x, y, dx, dy] of [[-73.6, -10, -3.4, -2.2], [-74.6, -7, -3.8, .2], [-73.8, -4, -3, 1.8], [-72.6, -12.4, -1.6, -2.6]]) B.s(`M${x} ${y}l${dx} ${dy}`, '#c8ae80', 1.1, .9);
+    B.f('M-75.2 -9.6L-77.6 -8.4L-75.6 -6.6L-78 -5.2L-75 -3.4L-74.6 -9Z', '#d8c094', .85);
+    B.f('M-49 -12.8Q-50 -17 -46.6 -18.6L-45.4 -17.4Q-47 -15.6 -46 -12.8Z', bark[1]).f(B.ell(-46, -18, 1.4, .9), '#cdb488');
+    B.f(B.ell(-34.6, -6.9, 3.4, 6.2), '#b49a70').f(B.ell(-34.6, -6.9, 2.5, 5), '#cdb488'); for (let k = 1; k < 3; k++) B.s(B.ell(-34.6, -6.9, 2.5 - k * .7, 5 - k * 1.5), '#a08460', .45, .7);
+    if (s !== 'winter') { mossOn(B, r, -71, -13.4, 22, 3, s); ferns(B, r, -66, 1, 8, 2, s); } else B.f('M-72 -11Q-70 -14.4 -65 -14L-38 -13.2Q-40 -11.6 -44 -12Q-60 -12.4 -72 -11Z', '#f2f4f2', .9);
     // the buttress roots where they leave the bole, then the bole itself, fluted, lit on the west
     for (const [x, d] of [[-34, -1], [-24, -1], [28, 1], [36, 1], [-4, 0]]) B.f(`M${x - 7} 1Q${x + d * 7} -20 ${x + d * 2} -30L${x + 9} -25Q${x + 11 + d * 5} -11 ${x + 12 + d * 12} 2Z`, bark[d < 0 ? 0 : 1]);
     B.f(`M-29 0Q-34 ${top * .5} -30 ${top}H30Q34 ${top * .5} 29 0Z`, bark[0]);
@@ -208,6 +216,9 @@
   /* ---------- pump square: a small yard of flags against a dry-stone wall, the cast-iron pump at the wall with its trough,
      a bucket and the dipper on its nail, the flags dark and shining where the water runs off; the spout drips ---------- */
   A['ld-pump'] = { box: [-66, -94, 68, 8],
+    // working it (any pump kind's move, 94-garden-zz-7act-1core.js _gaPainterUse): you stand at the trough's end by the column, side on to
+    // it, under the spout; the water runs from the spout's mouth into the trough
+    use: { pump: { stand: [1, 12], spout: [-3, -36, -19] } },
     seat: { kind: 'flags', w: 116, front: 26, back: 16, stones: 0, box: [-82, -26, 84, 40], extra(B, r) {
       // the wet: dark round the trough's foot and the bucket, a runnel off to the yard's edge, shine on it
       B.f(B.blob(r, -16, 6, 30, 7, 10, .35), '#3e3a2c', .32).f(B.blob(r, 42, 6, 10, 4, 8, .4), '#3e3a2c', .28);

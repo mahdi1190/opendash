@@ -1398,7 +1398,7 @@ window.GardenNativeWorld = (function () {
         if (target && distance <= step) {
           _gw.px = target.x; _gw.py = target.y; _gw.path.shift(); _gw.moving = !!_gw.path.length;
           if (!_gw.path.length) { _gw.spd = 0; const fn = _gw.then; _gw.then = null; if (typeof fn === 'function') fn(true); }
-        } else { if (direct && typeof _gwCrossingSteer === 'function') { const steer = _gwCrossingSteer(ux, uy, step); if (steer) { ux = steer[0]; uy = steer[1]; } }   // (onto and along a crossing: 94-garden-world-0walk.js)
+        } else { if (direct && typeof _gwCrossingSteer === 'function') { const steer = _gwCrossingSteer(ux, uy, step) || (typeof _gwDoorSteer === 'function' ? _gwDoorSteer(ux, uy) : null); if (steer) { ux = steer[0]; uy = steer[1]; } }   // (onto and along a crossing: 94-garden-world-0walk.js)
           _gw.moving = _gwMoveBy(ux * step / W.cellW, uy * step / W.cellH); if (!_gw.moving) { _gw.blockT = (_gw.blockT || 0) + dt; if (!direct && _gw.blockT > .25) { _gw.blockT = 0; if (!_gwRepath()) { _gw.path = []; _gw.then = null; } } } else _gw.blockT = 0; }
         if (Math.abs(ux) > .3) _gw.face = ux > 0 ? 1 : -1;
       }
@@ -1530,6 +1530,9 @@ window.GardenNativeWorld = (function () {
         for (const im of externalCanopies) if (Number.isFinite(im.depth)) top = Math.max(top, im.depth + .002);
         if (top !== y + .001) playerNode.target.setDepth(top);
       }
+      // sat on a seat the world draws as its own picture (a bench, a log, a stump): drawn on it, never behind its back rail
+      const seatDepth = typeof gartActSeatDepth === 'function' ? gartActSeatDepth() : null;
+      if (seatDepth != null && seatDepth + .002 > playerNode.target.depth) playerNode.target.setDepth(seatDepth + .002);
       placeFriends(peers);
     }
     function restoreCanopyAlpha() { for (const crown of canopyOccluders) { if (crown.node.target.active) crown.node.target.setAlpha(crown.normalAlpha); crown.faded = false; } coveringCanopies.length = 0; externalCanopies.length = 0; silhouetteVisible = false; xray.target.setVisible(false); }
