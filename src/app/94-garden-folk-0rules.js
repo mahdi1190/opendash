@@ -218,21 +218,29 @@ function valeFolkPlanAll(rows, ctx) {
     if (home) out.push({ t0: 0, t1: early, act: 'sleep', spot: valeFolkFind({ home: true }, fctx), inside: true, walk: 0 });
     for (const blk of VALE_BLOCKS) {
       const [h0, h1] = H[blk], b0 = Math.round(h0 * 60), b1 = Math.min(1440, Math.round(h1 * 60));
-      let t = b0, guard = 0;
-      while (t < b1 - 4 && guard++ < 40) {
+      // (round 2) a routine, not pacing: one thing a block, two in a long one (over three and a half hours), each held for its share of
+      // the block; "the same again" stays on the same spot. The owner found 30 to 45 short trips a day aimless.
+      let t = b0, guard = 0; const nIn = b1 - b0 > 210 ? 2 : 1; let used = 0, lastId = '';
+      while (t < b1 - 4 && guard++ < 8) {
         let id = _vfPick(R[blk] || [['home', 1]], ctx, rng) || 'home';
+        if (used && id === lastId) { const alt = (R[blk] || []).filter(c => c[0] !== lastId); if (alt.length) id = _vfPick(alt, ctx, rng) || id; }
         // visiting by day (their own home is in land not open yet): what they would do at home they do out in the open vale; they go
         // back by the road for the evening and the night
         // (their daytime sleep too: a night owl visiting sleeps at home, so by day they are out like the rest; the vale never feels empty
         // in a new garden, where most homes are still in closed land)
-        if (ctx.away && ctx.away.has(row.id) && VALE_ACTIVITIES[id] && VALE_ACTIVITIES[id].q.home) id = blk === 'evening' || blk === 'night' || blk === 'dawn' ? 'sleep' : rng() < 0.5 ? 'wander' : ctx.rain ? 'wander' : 'sitout';
+        if (ctx.away && ctx.away.has(row.id) && VALE_ACTIVITIES[id] && VALE_ACTIVITIES[id].q.home) id = blk === 'evening' || blk === 'night' || blk === 'dawn' || id === 'sleep' ? 'sleep' : (_vfPick([['sitout', 3, 'dry'], ['look', 3], ['wander', 1], ['shelter', 3, 'rain']], ctx, rng) || 'look');   // (round 2: a seat, a view near the way home, now and then a stroll; not pacing)
         const A = VALE_ACTIVITIES[id] || VALE_ACTIVITIES.home;
-        const len = Math.round(A.d[0] + rng() * (A.d[1] - A.d[0])); let t1 = Math.min(b1, t + len);
+        const share = used + 1 >= nIn ? b1 - t : Math.round((b1 - b0) / nIn * (0.8 + rng() * 0.4)); let t1 = Math.min(b1, t + Math.max(share, A.d[0]));
+        if (A.d[1] <= 30) t1 = Math.min(t1, t + A.d[1] * 2);   // (a short errand, a stroll, a read of the board: then the block's other thing for the rest)
+        used++; lastId = id;
         let spot = null;
+        const prevE = out[out.length - 1];
+        if (prevE && prevE.act === id && prevE.spot && !prevE.inside && !isBooked(prevE.spot.key, t, t1)) spot = prevE.spot;   // (fishing on into the next block: the same pier end, no walk to the bank and back)
         for (let k = 0; k < 3 && !spot; k++) spot = valeFolkFind(A.q, fctx, { rng, from: at, booked: (key) => isBooked(key, t, t1) });
         let act = id, inside = !!A.inside;
         // nothing free for that: a visitor (home in closed land) wanders the open vale rather than leaving by the road and coming back
-        if (!spot && ctx.away && ctx.away.has(row.id) && id !== 'sleep') { const W = VALE_ACTIVITIES.wander; t1 = Math.min(b1, t + W.d[1]); for (let k = 0; k < 6 && !spot; k++) spot = valeFolkFind(W.q, fctx, { rng, from: at, booked: (key) => isBooked(key, t, t1) }); if (spot) { act = 'wander'; inside = false; } }
+        if (!spot && ctx.away && ctx.away.has(row.id) && id !== 'sleep') { const strolled = out.length && out[out.length - 1].act === 'wander' && out[out.length - 1].t0 >= b0; for (const alt of ['sitout', 'look', 'wander']) { if (spot) break; if (alt === 'wander' && strolled) continue; const W = VALE_ACTIVITIES[alt]; if (alt === 'wander') t1 = Math.min(t1, t + W.d[1] * 2); for (let k = 0; k < 6 && !spot; k++) spot = valeFolkFind(W.q, fctx, { rng, from: at, booked: (key) => isBooked(key, t, t1) }); if (spot) { act = alt; inside = false; } } }
+        { const pe = out[out.length - 1]; if (!spot && pe && pe.t0 >= b0 && pe.spot && !pe.inside && !isBooked(pe.spot.key, t, t1)) { pe.t1 = t1; doBook(pe.spot.key, t, t1); t = t1; continue; } }   // (round 2) nothing new free: they stay on where they are
         if (!spot) { spot = home ? valeFolkFind({ home: true }, fctx) : null; act = 'home'; inside = !!spot; }
         if (!spot) { t = t1; continue; }   // nowhere at all (a layout with no home and no seat): the time passes off the map
         const walk = valeFolkWalkSecs(at, spot, speed);
@@ -242,7 +250,18 @@ function valeFolkPlanAll(rows, ctx) {
         at = spot; t = t1;
       }
       // (the block's last minutes: they stay where they are, booked, so nobody else is sent to the same spot while they are on it)
-      const last = out[out.length - 1]; if (last && last.t1 < b1) { if (last.spot) doBook(last.spot.key, last.t1, b1); last.t1 = b1; }
+      const last = out[out.length - 1];
+      if (last && last.t1 < b1) {
+        // (round 2) only if nobody else has that spot booked then: otherwise somewhere free for the rest (two on one board was a fault)
+        if (!last.spot || last.inside || !isBooked(last.spot.key, last.t1, b1)) { if (last.spot) doBook(last.spot.key, last.t1, b1); last.t1 = b1; }
+        else {
+          let sp = null, act = '';
+          for (const id of ['sitout', 'look', 'wander']) { for (let k = 0; k < 4 && !sp; k++) sp = valeFolkFind(VALE_ACTIVITIES[id].q, fctx, { rng, from: at, booked: (key) => isBooked(key, last.t1, b1) }); if (sp) { act = id; break; } }
+          if (sp) { const A2 = VALE_ACTIVITIES[act]; out.push({ t0: last.t1, t1: b1, act, spot: sp, inside: false, walk: Math.round(valeFolkWalkSecs(at, sp, speed)), clip: A2.clip, prop: A2.prop || '' }); doBook(sp.key, last.t1, b1); at = sp; }
+          else if (home) { out.push({ t0: last.t1, t1: b1, act: 'home', spot: valeFolkFind({ home: true }, fctx), inside: true, walk: Math.round(valeFolkWalkSecs(at, home, speed)) }); }
+          else last.t1 = b1;
+        }
+      }
     }
     // jitter: each start moves by a seeded few minutes, so the top of the hour doesn't hitch (never before the last one's start)
     for (let i = 1; i < out.length; i++) { if (out[i - 1].t1 !== out[i].t0) continue; const j = Math.round((rng() - 0.5) * 8); const t0 = Math.max(out[i - 1].t0 + 3, Math.min(out[i].t1 - 3, out[i].t0 + j)); out[i - 1].t1 = t0; out[i].t0 = t0; }

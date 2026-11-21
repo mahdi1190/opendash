@@ -130,10 +130,25 @@ function _vfrBegin(m) {
   for (const r of rows) {
     const t = ctx.things.find(q => q.id === homes.get(r.id));
     if (t && ctx.open(t)) _vfr.homes.set(r.id, t);
-    else { _vfr.homes.set(r.id, road); _vfr.away.add(r.id); }   // their own home is in land not open yet: by day from the road
+    else { _vfr.homes.set(r.id, (t && _vfrGateFor(t, r.id, ctx)) || road); _vfr.away.add(r.id); }   // their own home is in land not open yet: by day they come out of that land's edge (the way home), else from the road
   }
   _vfr.ctx = ctx; _vfr.rows = rows; _vfr.day = today; _vfr.book = new Map(); _vfr.plans = new Map(); _vfr.queue = rows.slice();
   _vfr.key = _vfrKey(m);
+}
+/** (round 2) Where someone whose home is in closed land comes out by day and goes back at dusk: the open ground nearest their home, on
+ *  the way to it (each their own, so nobody crowds the arrival road or the pier). Searched outwards in rings; null if nothing is open. */
+function _vfrGateFor(t, id, ctx) {
+  const free = (x, y) => (typeof _gwFree !== 'function' || _gwFree(x, y)) && ctx.open({ x, y });
+  for (let r = 1; r <= 48; r++) {
+    let best = null, bd = Infinity;
+    for (let k = 0; k < r * 8; k++) {
+      const a = k / (r * 8) * Math.PI * 2, x = Math.round(t.x + Math.cos(a) * r) + 0.5, y = Math.round(t.y + Math.sin(a) * r) + 0.5;
+      if (!free(x, y)) continue;
+      const d = Math.hypot(x - t.x, y - t.y) + (valeHash(id + k) % 100) / 400; if (d < bd) { bd = d; best = { x, y }; }
+    }
+    if (best) return { id: 'gate:' + id, kind: 'road', x: best.x, y: best.y };
+  }
+  return null;
 }
 function _vfrKey(m) { return [m.today, (m.areas || []).length, m.season, m.rain && m.rain.now ? 1 : 0, typeof _vfpGridKey === 'function' ? _vfpGridKey() : ''].join('|'); }
 /** One villager's plan (a frame's work; at most a few ms). */
@@ -167,23 +182,57 @@ function _vfrView() { try { const v = _glCamView(); return v; } catch (e) { retu
 function _vfrNearView(x, y, v, pad) { return x > v.x0 - pad && x < v.x1 + pad && y > v.y0 - pad && y < v.y1 + pad; }
 /* ---------- drawing ---------- */
 const _vfrArt = new Map();
-function _vfrMarkup(V, pose, walk, face, mark) {
-  const cast = V.row.cast, k = cast + '|' + pose + '|' + (walk ? 1 : 0) + '|' + face + '|' + (mark ? 1 : 0);
+function _vfrMarkup(V, pose, walk, face, mark, view) {
+  view = view === 's' || view === 'n' ? view : 'e';
+  const cast = V.row.cast, k = cast + '|' + pose + '|' + (walk ? 1 : 0) + '|' + face + '|' + (mark ? 1 : 0) + view;
   let s = _vfrArt.get(k); if (s != null) return s;
-  let fig = typeof gardenCastSvg === 'function' ? gardenCastSvg(cast, { walk }) : '';
+  // walking: the stride rig drives the legs (planted feet, every way round); standing: front on, or side on for what they do there
+  let fig = typeof gardenCastSvg === 'function' ? gardenCastSvg(cast, { stride: !!walk, view: view === 'e' ? '' : view, fish: pose === 'fish' }) : '';
   if (!fig) fig = typeof _wdFolkArt === 'function' && typeof WD_FOLK_ROW !== 'undefined' && WD_FOLK_ROW.get(V.id) ? _wdFolkArt(WD_FOLK_ROW.get(V.id)) : '';
   // (fishing is done standing at the edge with the rod out: a side-on figure sat with its legs out over a deck reads as floating over the boards)
   const cls = { sit: 'gca-sit', read: 'gca-read', rub: 'gca-sit gca-rub', talk: 'gca-talk', sittalk: 'gca-sit gca-talk' }[pose] || '';
   if (cls) fig = fig.replace(/class="gca gca-(walk|idle)/, 'class="gca gca-$1 ' + cls);
-  if (face < 0) fig = fig.replace('<g class="wd-flip">', '<g class="wd-flip" transform="scale(-1 1)">');
+  if (face < 0 && view === 'e') fig = fig.replace('<g class="wd-flip">', '<g class="wd-flip" transform="scale(-1 1)">');
   // a rod and line for those who fish without one of their own (the angler's own picture has his rod and line: nothing is added to it)
   let extra = '';
-  if (pose === 'fish' && cast !== 'angler') extra = `<path d="M${face * 6} -22L${face * 34} -52" stroke="#6e4c2a" stroke-width="1.6" stroke-linecap="round"/><path d="M${face * 34} -52Q${face * 64} -24 ${face * 88} 16" stroke="#f4f4ea" stroke-width=".5" fill="none" opacity=".8"/>`;
+  if (pose === 'fish') extra = `<path d="M${face * 6} -22L${face * 34} -52" stroke="#6e4c2a" stroke-width="1.6" stroke-linecap="round"/><path d="M${face * 34} -52Q${face * 64} -24 ${face * 88} 16" stroke="#f4f4ea" stroke-width=".5" fill="none" opacity=".8"/>`;
   const top = typeof gardenCastTop === 'function' ? gardenCastTop(cast) : 50;
   const m = mark ? `<g class="wd-mark" transform="translate(0 ${-top - 8})"><rect x="-9" y="-6" width="18" height="11" rx="5.5" fill="#fffdf4" stroke="#6a5a44" stroke-width="0.6"/><circle cx="-4" cy="-0.5" r="1.1" fill="#6a5a44"/><circle cy="-0.5" r="1.1" fill="#6a5a44"/><circle cx="4" cy="-0.5" r="1.1" fill="#6a5a44"/></g>` : '';
   s = gardenActorSized(fig + extra + m);
   if (_vfrArt.size > 160) _vfrArt.clear();
   _vfrArt.set(k, s); return s;
+}
+/**
+ * Which of the three drawings (front s, side e, back n) a villager is drawn with, from the way they are heading (V.h, screen degrees:
+ * 0 east, 90 towards you), turned smoothly (no flicker on a slanting path: a family changes only well past the half-way mark).
+ * Standing: talking to you they face you; what they do at a place (sit, fish, read, a look at a board) is side on, facing it.
+ */
+function _vfrView3(V, walking, pose) {
+  if (!walking) { V.view = pose === 'talk' && (V.hold || V.mine) ? 's' : 'e'; return V.view; }
+  const h = Number.isFinite(V.h) ? V.h : 90, yaw = Math.abs(((h - 90 + 540) % 360) - 180), prev = V.view || 'e';
+  let v = yaw < 38 ? 's' : yaw > 142 ? 'n' : 'e';
+  if (prev === 's' && yaw < 48) v = 's'; else if (prev === 'n' && yaw > 132) v = 'n'; else if (prev === 'e' && yaw > 30 && yaw < 150) v = 'e';
+  if (v === 'e') { const c = Math.cos(h * Math.PI / 180); if (Math.abs(c) > 0.05) V.face = c > 0 ? 1 : -1; }
+  V.view = v; V.yaw = v === 's' ? 0 : v === 'n' ? 180 : 90;
+  return v;
+}
+/** Each frame while walking: the shared stride rig (94-garden-zz-6move.js) on their own drawn limbs: feet planted, moved by the ground covered. */
+function _vfrStride(V, walking, view) {
+  if (!walking || !V.S || typeof _gmvStride !== 'function') { if (V.st) { V.st.lpx = V.st.lpy = null; } return; }
+  try {
+    if (typeof _gmvMotion === 'function' && !_gmvMotion()) return;
+    const body = V.S.node && V.S.node.firstChild; if (!body || !body.querySelector) return;
+    V.st = V.st || { h: 0 };
+    _gmvStride(V.st, body, typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 0.6, { px: V.x, py: V.y, moving: true, v: VALE_FOLK_SPEED * (V.row.speed || 1), gait: 'w', dir: view, yaw: view === 's' ? 0 : view === 'n' ? 180 : 90, mirror: view === 'e' ? (V.face < 0 ? -1 : 1) : 1 });
+  } catch (e) { /* drawn standing */ }
+}
+/** The way a step goes, turned towards smoothly (turn rate as the gardener's). */
+function _vfrHeadTo(V, dxPx, dyPx, dt) {
+  if (Math.abs(dxPx) + Math.abs(dyPx) < 0.01) return;
+  const want = Math.atan2(dyPx * 1.6, dxPx) * 180 / Math.PI;
+  if (!Number.isFinite(V.h)) { V.h = want; return; }
+  let d = ((want - V.h + 540) % 360) - 180; const st = 640 * Math.max(0.016, dt || 0.016);
+  V.h = ((V.h + (Math.abs(d) <= st ? d : Math.sign(d) * st) + 540) % 360) - 180;
 }
 /** How far up a seated villager is lifted (world px): the seat's height less their hip's. */
 function _vfrSeatLift(V, spot) {
@@ -206,9 +255,10 @@ function _vfrDraw(V, walking) {
   else if (at && e.clip === 'sit') pose = V.id === 'bramble' && V.rubbing ? 'rub' : 'sit';
   else if (at && e.clip === 'fish') pose = 'fish';
   else if (at && e.clip === 'read') pose = 'read';
-  const mark = !!V.mark && !V.hold, face = V.face < 0 ? -1 : 1, k = pose + (walking ? 'w' : '') + face + (mark ? 'm' : '');
-  if (V.drawn !== k) { V.drawn = k; wdArt(S, _vfrMarkup(V, pose, walking && !V.hold, face, mark)); }
+  const mark = !!V.mark && !V.hold, face = V.face < 0 ? -1 : 1, view = _vfrView3(V, walking && !V.hold, pose), k = pose + (walking ? 'w' : '') + face + (mark ? 'm' : '') + view;
+  if (V.drawn !== k) { V.drawn = k; wdArt(S, _vfrMarkup(V, pose, walking && !V.hold, face, mark, view)); }
   S.x = V.x; S.y = V.y;
+  _vfrStride(V, walking && !V.hold, view);
   const sat = pose === 'sit' || pose === 'rub' || pose === 'sittalk';
   S.lift = sat ? _vfrSeatLift(V, e && e.spot) : 0;
   S.z = sat && e && e.spot && e.spot.at ? e.spot.at.y + 0.02 : null;   // (sat on a seat: drawn on it, in front of its back rail)
@@ -216,7 +266,9 @@ function _vfrDraw(V, walking) {
 /* ---------- walking ---------- */
 function _vfrAsk(V, to, pri) {
   const key = to.x.toFixed(2) + ',' + to.y.toFixed(2);
-  if (V.pathFor === key && (V.path || V.asking === key)) return;
+  // (round 2) an empty path left from the last leg is no path: ask again (Bramble stood where she told you something for the rest of her block)
+  if (V.pathFor === key && ((V.path && V.path.length) || (V.asking === key && performance.now() - (V.askT || 0) < 4000))) return;
+  V.askT = performance.now();
   V.asking = key; V.pathFor = key; V.path = null;
   const from = { x: V.x, y: V.y };
   gardenFolkPathAsk(from, to, (pts) => { if (V.asking !== key) return; V.asking = ''; V.path = pts ? pts.slice() : [{ x: to.x, y: to.y }]; V.noWay = !pts; });
@@ -233,7 +285,7 @@ function _vfrStep(V, dt, speedMul) {
     const nx = V.x + dx / d * left / G.cellW, ny = V.y + dy / d * left / G.cellH;
     if (_vfrIntoYou(V, nx, ny)) { const now = performance.now(); if (!V.bumpT) V.bumpT = now; else if (now - V.bumpT > 900) { V.bumpT = 0; _vfrRoundYou(V); } V.waiting = true; return false; }
     V.bumpT = 0; V.waiting = false;
-    V.x = nx; V.y = ny; if (Math.abs(dx) > 0.5) V.face = dx > 0 ? 1 : -1; left = 0;
+    V.x = nx; V.y = ny; _vfrHeadTo(V, dx, dy, dt); left = 0;
   }
   return !V.path.length;
 }
@@ -303,8 +355,15 @@ const VALE_TELLS = Object.freeze({
 function _vfrTellSeen(id, V) {
   const W = _wdG(), k = 'vt.' + id; if (W[k]) return;
   if (!V || !V.S || typeof _gw === 'undefined' || Math.hypot(V.x - _gw.px, (V.y - _gw.py) * 1.3) > 9) return;
+  // (round 2) noted only when you have seen it: they stood well inside the picture (clear of the edges and the cards along the bottom),
+  // with no talk card open, for two seconds of it
+  if (!_vfrOnScreen(V)) { V.seen = V.seen || {}; V.seen[id] = 0; return; }
+  V.seen = V.seen || {}; const now = performance.now(); if (!V.seen[id]) { V.seen[id] = now; return; } if (now - V.seen[id] < 2000) return;
   W[k] = _wdToday(); _wdSave();
   try { gardenToast('In your journal: ' + VALE_TELLS[id]); } catch (e) { /* quiet */ }
+}
+function _vfrOnScreen(V) {
+  try { if (typeof _wd !== 'undefined' && _wd.talk) return false; const v = _vfrView(), w = v.x1 - v.x0, h = v.y1 - v.y0; return V.x > v.x0 + w * 0.12 && V.x < v.x1 - w * 0.12 && V.y > v.y0 + h * 0.18 && V.y < v.y1 - h * 0.3; } catch (e) { return false; }
 }
 /** The way the angler faces on his spot: away from the nearest moving water (the layout's rivers), until the story turns him round. */
 function _vfrAwayFromRiver(x, y) {
@@ -389,7 +448,9 @@ function _vfrFrame(dt) {
     if (V.entry !== w.e) { V.entry = w.e; V.arrived = false; V.rubbing = false; V.path = null; V.pathFor = ''; }
     const e = V.entry, to = e.spot, near = _vfrNearView(V.x, V.y, v, VFR_NEAR) || _vfrNearView(to.x, to.y, v, VFR_NEAR) && !e.inside;
     // a teller on their way to you: their visit stands in for the plan until you talk, or it runs out
-    const goal = V.visit && now < V.visit.until ? V.visit : null; if (V.visit && !goal) { V.visit = null; V.mark = false; }
+    // (round 2) once there, they wait a little while you are about (75 s), not the rest of their block: then back to what their day says
+    const vgone = V.visit && V.visit.arr && (now - V.visit.arr > 75000 || Math.hypot(_gw.px - V.x, _gw.py - V.y) > 14);
+    const goal = V.visit && now < V.visit.until && !vgone ? V.visit : null; if (V.visit && !goal) { V.visit = null; V.mark = false; V.drawn = ''; V.arrived = false; V.path = null; V.pathFor = ''; }
     let dest = goal ? goal.at : to;
     if (!goal && to && !e.inside && !e.offmap && !(to.seat || to.edge || to.edgeSide)) dest = _vfrClearDest(V, e, to, now);   // (someone else already stood there: the gnome by the bed, a traveller)
     if (V.hold && !V.S && !V.inside && near) _vfrShow(V);   // (held while off the page: drawn as soon as you look)
@@ -409,7 +470,7 @@ function _vfrFrame(dt) {
     if (!near && V.S && !V.path) { _vfrHide(V); continue; }
     _vfrShow(V);
     if (V.greet) { if (now > V.greet.until || V.hold) V.greet = null; else { const O = _vfr.V.get(V.greet.other); if (O) V.face = O.x > V.x ? 1 : -1; _vfrDraw(V, false); continue; } }   // (two who are close stop to pass the time of day)
-    if (V.aside) { if (now > V.aside.until) { V.path = null; V.pathFor = ''; V.aside = null; } else { if (V.path && V.path.length) _vfrStep(V, dt, 0.8); _vfrDraw(V, !!(V.path && V.path.length)); continue; } }
+    if (V.aside) { _vfrTellSeen('steps-aside', V); if (now > V.aside.until) { V.path = null; V.pathFor = ''; V.aside = null; } else { if (V.path && V.path.length) _vfrStep(V, dt, 0.8); _vfrDraw(V, !!(V.path && V.path.length)); continue; } }
     const there = Math.hypot((dest.x - V.x) * 48, (dest.y - V.y) * 30) < 3;
     if (!there) {
       _vfrAsk(V, dest, _vfrNearView(V.x, V.y, v, 0) ? 2 : 1);
@@ -421,8 +482,9 @@ function _vfrFrame(dt) {
       _vfrDraw(V, !wait && !V.waiting && !!(V.path && V.path.length));   // (waiting for you to pass: stood still, never walking on the spot)
     } else {
       V.x = dest.x; V.y = dest.y; V.path = null;
+      if (goal && !goal.arr) goal.arr = now;
       if (!V.arrived) { V.arrived = true; V.face = goal ? (_gw.px > V.x ? 1 : -1) : _vfrFaceAt(V, e); if (V.id === 'bramble' && e.clip === 'sit') { V.rubbing = true; V.rubT = now; } }
-      if (V.rubbing && now - V.rubT > 3800) { V.rubbing = false; V.drawn = ''; _vfrTellSeen('rub-out', V); }
+      if (V.rubbing) { _vfrTellSeen('rub-out', V); if (now - V.rubT > 3800) { V.rubbing = false; V.drawn = ''; } }   // (noted while you watch her at it)
       if (!goal && e.inside) { V.inside = true; _vfrHide(V); continue; }   // in at the door
       if (!goal && e.offmap) { V.inside = true; _vfrHide(V); continue; }
       _vfrDraw(V, false);
@@ -610,7 +672,7 @@ function gardenFolkGuestIn(l) {
     seen.add(r.i);
     let V = _vfg.V.get(r.i);
     if (!V) { V = { id: r.i, row: VALE_FOLK_ROW.get(r.i), x: r.x / 10, y: r.y / 10, face: 1, S: null, drawn: '', path: null }; _vfg.V.set(r.i, V); }
-    V.to = { x: r.x / 10, y: r.y / 10 }; V.goal = { x: r.tx / 10, y: r.ty / 10 }; V.a = String(r.a || 'idle'); V.f = r.f ? -1 : 1; V.h = r.h; V.at = performance.now();
+    V.to = { x: r.x / 10, y: r.y / 10 }; V.goal = { x: r.tx / 10, y: r.ty / 10 }; V.a = String(r.a || 'idle'); V.f = r.f ? -1 : 1; V.heldBy = r.h; V.at = performance.now();
     if (Math.hypot(V.x - V.to.x, V.y - V.to.y) > 3) { V.x = V.to.x; V.y = V.to.y; }
   }
   for (const [id, V] of _vfg.V) if (!seen.has(id)) { if (V.S) { try { V.S.remove(); } catch (e) { /* gone */ } } _vfg.V.delete(id); }   // gone in at a door, or off by the road
@@ -623,11 +685,12 @@ function _vfgFrame(dt) {
     if (V.to && Math.hypot(V.x - V.to.x, V.y - V.to.y) <= 0.15) V.to = null;   // (caught up with where the host saw them: from now on, along to where they are going)
     const aim = V.to || V.goal, dx = (aim.x - V.x) * G.cellW, dy = (aim.y - V.y) * G.cellH, d = Math.hypot(dx, dy), st = VALE_FOLK_SPEED * (V.row.speed || 1) * dt * (aim === V.to ? 1.25 : 1);
     const walking = d > 1.5 && V.a === 'walk';
-    if (d > 0.5) { const k = Math.min(1, st / d); V.x += dx / G.cellW * k; V.y += dy / G.cellH * k; if (Math.abs(dx) > 0.5) V.face = dx > 0 ? 1 : -1; }
+    if (d > 0.5) { const k = Math.min(1, st / d); V.x += dx / G.cellW * k; V.y += dy / G.cellH * k; _vfrHeadTo(V, dx, dy, dt); }
     if (!walking) V.face = (V.a === 'talk' || V.a === 'sittalk') && V.mine && typeof _gw !== 'undefined' ? (_gw.px > V.x ? 1 : -1) : V.f;
-    const pose = V.a === 'walk' ? 'idle' : V.a, face = V.face < 0 ? -1 : 1, k = pose + (walking ? 'w' : '') + face;
-    if (V.drawn !== k) { V.drawn = k; wdArt(V.S, _vfrMarkup(V, pose, walking, face, false)); }
+    const pose = V.a === 'walk' ? 'idle' : V.a, view = _vfrView3(V, walking, pose), face = V.face < 0 ? -1 : 1, k = pose + (walking ? 'w' : '') + face + view;
+    if (V.drawn !== k) { V.drawn = k; wdArt(V.S, _vfrMarkup(V, pose, walking, face, false, view)); }
     V.S.x = V.x; V.S.y = V.y;
+    _vfrStride(V, walking, view);
     const sat = pose === 'sit' || pose === 'rub' || pose === 'sittalk'; V.S.lift = sat ? _vfrSeatLift(V, null) : 0;
   }
 }

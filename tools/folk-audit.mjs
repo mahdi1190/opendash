@@ -73,7 +73,9 @@ const homeThings = new Map(), away = new Set(), road = { id: 'road', kind: 'road
 for (const r of rows) {
   const t = things.find(q => q.id === homes.get(r.id));
   report.homes[r.id] = t ? { home: t.id, kind: ctxVm.homeOf(t), at: [t.x, t.y], preferred: (r.prefer || []).includes(t.id), open: ctx.open(t) } : { home: null, travelling: true };
-  if (t && ctx.open(t)) homeThings.set(r.id, t); else { homeThings.set(r.id, road); away.add(r.id); }
+  // (as the game: someone whose home is in closed land comes out by day at the open ground nearest it; here the nearest open thing stands in for the walking grid)
+  let gate = null; if (t && !ctx.open(t)) { let bd = Infinity; for (const q of things) if (ctx.open(q) && q !== t) { const d = Math.hypot(q.x - t.x, q.y - t.y); if (d < bd) { bd = d; gate = { id: 'gate:' + r.id, kind: 'road', x: q.x + 1, y: q.y + 1.2 }; } } }
+  if (t && ctx.open(t)) homeThings.set(r.id, t); else { homeThings.set(r.id, gate || road); away.add(r.id); }
 }
 /* ---------- what each routine block can find ---------- */
 for (const r of rows) {
