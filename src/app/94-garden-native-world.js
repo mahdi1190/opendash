@@ -1720,6 +1720,9 @@ window.GardenNativeWorld = (function () {
       for (const record of dynamic.values()) { const b = bounds(record.id); if (b) record.root.setVisible(inCamera({ x: b.left, y: b.top, width: b.width, height: b.height }, 150, view)); }
       cullSpecialMainActors(view);
       if (renderOnly) return;
+      // (vf-perf) no new picture captured while the drawn frames are late (a level-up's new ground on a slow graphics card: each
+      // capture is drawn by the card, and they queued up behind each other while no frame reached the screen for most of a second)
+      if (!preparing && typeof _gbb !== 'undefined' && _gbb && _gbb.frame > 0) { const late = performance.now() - _gbb.at; if (late > 80 && late < 2000) return; }
       const started = performance.now(); let count = 0;
       const capture = (node, opts) => { cacheQueue.delete(node); const { viewBounds, visibleRoot, ...captureOptions } = opts || {}; GardenNativeArt.cache(node, { quality: 2, adaptive: true, ...captureOptions, preparing: !!preparing }); count++; return count >= 1 || performance.now() - started >= 3; };
       // Nearby ground gets its sharp native cache before decorative upgrades.
