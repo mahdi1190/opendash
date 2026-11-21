@@ -282,7 +282,7 @@ function _gjPlants(left, right, m) {
 /* ---------- People ---------- */
 function _gjPeople(left, right, m) {
   const h = left.appendChild(_gjEl('div', 'gj-ptitle')); h.innerHTML = `<h3>People</h3><i class="gj-hand">in the order you met them</i>`;
-  const folk = typeof WD_FOLK !== 'undefined' ? WD_FOLK : [];
+  const folk = typeof VALE_FOLK !== 'undefined' ? VALE_FOLK.map(r => Object.assign({ art: () => (typeof gardenCastSvg === 'function' ? `<svg viewBox="-30 -70 60 74" width="40" height="48">${gardenCastSvg(r.cast)}</svg>` : '') }, r)) : typeof WD_FOLK !== 'undefined' ? WD_FOLK : [];   // everyone in the vale's registry (94-garden-folk-0rules.js), the angler, Hollin and Perpetua too
   const list = left.appendChild(_gjEl('div', 'gj-people'));
   let any = false;
   for (const f of folk) {

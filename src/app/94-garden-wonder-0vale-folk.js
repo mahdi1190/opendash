@@ -127,7 +127,8 @@ function _vfrMarkup(V, pose, walk, face, mark) {
   let s = _vfrArt.get(k); if (s != null) return s;
   let fig = typeof gardenCastSvg === 'function' ? gardenCastSvg(cast, { walk }) : '';
   if (!fig) fig = typeof _wdFolkArt === 'function' && typeof WD_FOLK_ROW !== 'undefined' && WD_FOLK_ROW.get(V.id) ? _wdFolkArt(WD_FOLK_ROW.get(V.id)) : '';
-  const cls = { sit: 'gca-sit', fish: 'gca-fish', read: 'gca-read', rub: 'gca-sit gca-rub', talk: 'gca-talk' }[pose] || '';
+  // (fishing is done standing at the edge with the rod out: a side-on figure sat with its legs out over a deck reads as floating over the boards)
+  const cls = { sit: 'gca-sit', read: 'gca-read', rub: 'gca-sit gca-rub', talk: 'gca-talk' }[pose] || '';
   if (cls) fig = fig.replace(/class="gca gca-(walk|idle)/, 'class="gca gca-$1 ' + cls);
   if (face < 0) fig = fig.replace('<g class="wd-flip">', '<g class="wd-flip" transform="scale(-1 1)">');
   // a fishing line from the rod's tip into the water in front of them (the angler carries his rod; others are given one)
@@ -163,7 +164,7 @@ function _vfrDraw(V, walking) {
   const mark = !!V.mark && !V.hold, face = V.face < 0 ? -1 : 1, k = pose + (walking ? 'w' : '') + face + (mark ? 'm' : '');
   if (V.drawn !== k) { V.drawn = k; wdArt(S, _vfrMarkup(V, pose, walking && !V.hold, face, mark)); }
   S.x = V.x; S.y = V.y;
-  const sat = pose === 'sit' || pose === 'rub' || pose === 'fish';
+  const sat = pose === 'sit' || pose === 'rub';
   S.lift = sat ? _vfrSeatLift(V, e && e.spot) : 0;
   S.z = sat && e && e.spot && e.spot.at ? e.spot.at.y + 0.02 : null;   // (sat on a seat: drawn on it, in front of its back rail)
 }
@@ -417,6 +418,7 @@ function _vfrPoseWord(V) {
 function _vfrHostSend(now) {
   if (typeof _gll === 'undefined' || _gll.role !== 'host' || typeof _glh === 'undefined' || !_glh.on || !_glhAnyone() || !_glhLooking()) return;
   if (now - _vfl.at < 800) return; _vfl.at = now;
+  if (_gll.actors.size !== _vfl.n) { _vfl.n = _gll.actors.size; _vfl.sig = ''; _vfl.sentAt = 0; }   // (someone has just come in: the whole list at once)
   const n10 = (v, hi) => Math.max(0, Math.min(hi * 10, Math.round(v * 10))), W = GARDEN_WORLD, l = [];
   for (const V of _vfr.list || []) {
     if (V.inside || V.x == null) continue;
@@ -465,7 +467,7 @@ function _vfgFrame(dt) {
     const pose = V.a === 'walk' ? 'idle' : V.a, face = V.face < 0 ? -1 : 1, k = pose + (walking ? 'w' : '') + face;
     if (V.drawn !== k) { V.drawn = k; wdArt(V.S, _vfrMarkup(V, pose, walking, face, false)); }
     V.S.x = V.x; V.S.y = V.y;
-    const sat = pose === 'sit' || pose === 'rub' || pose === 'fish'; V.S.lift = sat ? _vfrSeatLift(V, null) : 0;
+    const sat = pose === 'sit' || pose === 'rub'; V.S.lift = sat ? _vfrSeatLift(V, null) : 0;
   }
 }
 function gardenFolkGuestTalk(id) {
