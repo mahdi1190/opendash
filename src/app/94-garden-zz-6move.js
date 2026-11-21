@@ -192,7 +192,7 @@ function _gmvStride(st, body, S, o) {
     if (p < G.stance) { const x = stride / 2 - stride * (p / G.stance); return { x, planted: true, knee: 0, lift: 0 }; }
     const q = (p - G.stance) / (1 - G.stance), e = q * q * (3 - 2 * q), x = -stride / 2 + stride * e;
     const k = L.kneeA ? 0.35 : 1;   // with a knee the shin folds back instead (the leg is not squashed as much)
-    return { x, planted: false, knee: G.knee * Math.sin(Math.PI * Math.pow(q, 0.8)), lift: G.lift * k * Math.sin(Math.PI * q) };
+    return { x, planted: false, knee: G.knee * Math.sin(Math.PI * Math.pow(q, 0.8)), lift: G.lift * k * (1 + runK * Math.abs(cy) * 1.3) * Math.sin(Math.PI * q) };   // (round 2: a run end on lifts its knees so you see it)
   };
   const pa = st.phase, pb = (pa + 0.5) % 1, A = leg(pa), B = leg(pb);
   // the hip rides the planted leg (lower as the legs open); a run has a little flight between steps
@@ -220,8 +220,10 @@ function _gmvStride(st, body, S, o) {
   const ac = Math.abs(cy), armSpan = (1 + 0.8 * ac) * (runK ? 1.1 : 1), armLen = runK ? 1 - 0.16 * ac : 1;
   const arm = (Lg, inSign) => {
     const f = Math.max(-70, Math.min(70, -Math.asin(lim(Lg.x / legLen / (0.6 + 0.4 * Math.abs(sy)))) * 180 / Math.PI / 40 * G.arm * armSpan)), r = f * Math.PI / 180;
-    const rot = Math.atan2(-Math.sin(r) * sy, Math.cos(r)) * 180 / Math.PI - inSign * 9 * Math.sin(r) * ac;   // side on it turns; end on it tips in across the body
-    const lenEnd = (1 + 0.34 * Math.sin(r) * cy) * armLen;   // end on: forward (towards you) is lower on the screen, back is higher
+    const sr = Math.sin(r), fwd = Math.max(0, sr), bk = Math.max(0, -sr);
+    // side on it turns; end on it tips in across the body. A run pumps: the forward hand comes up to the chest and in, the back one out
+    const rot = Math.atan2(-sr * sy, Math.cos(r)) * 180 / Math.PI - inSign * ac * (runK ? 26 * fwd - 8 * bk : 14 * sr);
+    const lenEnd = runK ? armLen * (1 - 0.42 * fwd + 0.06 * bk) : (1 + 0.5 * sr * cy) * armLen;   // a walk end on: forward (towards you) is lower on the screen, back is higher
     return [rot, ac > 0.2 || runK ? sy * sy + lenEnd * cy * cy : null];
   };
   // where the planted foot is on the ground (world px), for checks: it should not move while planted
@@ -356,5 +358,5 @@ function gartMoveTell() {
 function gartMoveTold(A, ev) {
   if (!A || !ev) return;
   if (Number.isInteger(ev.h) && ev.h >= 0 && ev.h < 16) A.hd = _gmvWrap(ev.h * 22.5);
-  if (ev.g === 'w' || ev.g === 'r' || ev.g === 'c') { A.gait = ev.g; if (ev.g === 'c') A.sneakUntil = Date.now() + 1500; }   // clock-ok: a creep lasts while they keep saying so
+  if (ev.g === 'w' || ev.g === 'r' || ev.g === 'c') { A.gait = ev.g; A.sneakUntil = ev.g === 'c' ? Date.now() + 1500 : 0; }   // clock-ok: a creep lasts while they keep saying so
 }
