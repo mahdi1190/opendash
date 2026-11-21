@@ -80,12 +80,14 @@ function _gllMyName() { try { if (typeof profileGet === 'function') { const n = 
 function _gllActor(o) {
   const A = { w: o.w, n: String(o.n || 'A friend').slice(0, 40), a: o.a || null, g: o.g || null, pet: o.pet || null, lv: o.lv || 'look', x: Number.isFinite(o.x) ? o.x : 9.5 + (Number(o.w) || 0) * 0.9, y: Number.isFinite(o.y) ? o.y : 9.5, tx: null, ty: null, then: null, face: 1, dir: 's', moving: false, pose: '', poseUntil: 0, me: !!o.me, key: '', root: null, inner: null, petNode: null, petX: 0, petY: 0, sit: false };
   A.petX = A.x - 1.1; A.petY = A.y + 0.2;
+  if (typeof gartMoveTold === 'function') gartMoveTold(A, o, true);   // (move360) facing the way they face, from the first sight of them
   return A;
 }
 /** Roster looks are complete state: an omitted pet means it stayed home. */
 function _gllActorLook(A, ev) {
   const next = [ev.a || null, ev.g || null, ev.pet || null], changed = A.n !== ev.n || JSON.stringify([A.a, A.g, A.pet]) !== JSON.stringify(next);
   A.n = ev.n; [A.a, A.g, A.pet] = next; A.lv = ev.lv;
+  if (typeof gartMoveTold === 'function' && Number.isInteger(ev.h)) gartMoveTold(A, ev, true);   // (move360) a whole-state message says which way they face and how they walk
   if (changed) { A.key = ''; if (A.root) _gllDress(A, A.root); }
 }
 /** Fill a node with this person: the shadow, the figure, their name. The name goes in with textContent. */
@@ -175,7 +177,7 @@ function _gllStep(A, dt, quiet) {
     // their own feet run while the whole way is long, turns or no turns, and so does this: a figure that fell behind would not be there when they cast or sat down
     let rem = d;
     if (A.way && A.way.length) { let ax = A.tx, ay = A.ty; for (const p of A.way) { rem += Math.hypot((p[0] - ax) * W.cellW, (p[1] - ay) * W.cellH); ax = p[0]; ay = p[1]; } }
-    let step = (A.pace || (rem > 170 ? GL_ACT_RUN : GL_ACT_SPEED)) * dt * (A.sneakUntil > Date.now() ? 0.45 : 1);   // clock-ok: a creep
+    let step = (A.pace || ((A.gait === 'r' || A.gait === 'w' ? A.gait === 'r' && rem > 90 : rem > 170) ? GL_ACT_RUN : GL_ACT_SPEED)) * dt * (A.sneakUntil > Date.now() ? 0.45 : 1);   // clock-ok: a creep   (move360: the gait they said, as their own feet chose it)
     // A route turn uses only its distance, leaving the rest of this frame
     // for the next segment. Keep the existing small arrival tolerance.
     while (A.tx != null) {
@@ -186,13 +188,16 @@ function _gllStep(A, dt, quiet) {
           const n = A.way.shift(); A.tx = n[0]; A.ty = n[1]; moving = true;
           if (step > 0) continue;
         } else {
+          // (move360 round 3) a walk by the keys goes on (they said k: still going): the figure keeps on the way it was going at that pace until the
+          // next place comes, so the first step of every walk is not half a step, a stand of 0.7 s, then the walk
+          if (A.keyWalk && A.lux != null && typeof gartMoveDrift === 'function') A.drift = { ux: A.lux, uy: A.luy, v: A.pace || (A.gait === 'r' ? GL_ACT_RUN : GL_ACT_SPEED), until: Date.now() + 950 };   // clock-ok: how long to carry on
           A.tx = null; A.ty = null; A.way = null; A.pace = 0; moving = false;
           A.stopAt = Date.now() + 170;   // clock-ok: the next step of a walk sent as it goes is on its way: no standing pose for a moment
           const th = A.then; A.then = null;
           if (th) { try { th(); } catch (e) { console.error('[garden-live]', e); } }
         }
       } else {
-        A.x += dx / d * step / W.cellW; A.y += dy / d * step / W.cellH; moving = true;
+        A.x += dx / d * step / W.cellW; A.y += dy / d * step / W.cellH; moving = true; A.lux = dx / d; A.luy = dy / d;
         if (typeof gartMoveActor !== 'function') {   // (2.74.1: else the turn goes round through the in-between drawings, as your own does: gartMoveActor below)
           const dir = Math.abs(dx) >= Math.abs(dy) * 0.8 ? 'e' : dy > 0 ? 's' : 'n';
           if (Math.abs(dx) > 1) A.face = dx > 0 ? 1 : -1;
@@ -202,6 +207,7 @@ function _gllStep(A, dt, quiet) {
       break;   // arrival callbacks can start another action; it gets its own frame
     }
   }
+  if (!moving && A.tx == null && A.drift && typeof gartMoveDrift === 'function') moving = gartMoveDrift(A, dt);
   if (!moving && A.moving && A.tx == null && Date.now() < (A.stopAt || 0)) moving = true;   // clock-ok: as above
   if (moving !== A.moving) { A.moving = moving; A.key = ''; }
   if (!quiet && A.bob) { const bt = moving && !_gllReduced() && typeof gartMoveActor !== 'function' ? `translate(0 ${(-Math.abs(Math.sin(Date.now() / 90)) * 1.6).toFixed(2)})` : A.actLift ? `translate(0 ${-A.actLift})` : '';   /* (on a seat or a branch: lifted to its height, 94-garden-zz-7act-1core.js) */ if (A.bobT !== bt) { A.bobT = bt; A.bob.setAttribute('transform', bt); } }  // clock-ok: a little bob

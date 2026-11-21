@@ -1365,6 +1365,8 @@ window.GardenNativeWorld = (function () {
       const path = _gwRoute({ x: _gw.px, y: _gw.py }, target);
       if (path == null) { _gw.path = []; _gw.then = null; _gw.goal = null; return false; }
       _gw.path = path; _gw.goal = target; _gw.then = then || null; _gw.sneak = !!opts.sneak; _gw.replan = false; _gw.repaths = 0; _gw.blockT = 0;
+      // (move360 round 3) a click walks or runs, chosen once for the whole way (more than seven cells or so: a run), never a beat of run that turns into a walk
+      { let L = 0, a = { x: _gw.px, y: _gw.py }; for (const q of path) { L += Math.hypot((q.x - a.x) * W.cellW, (q.y - a.y) * W.cellH); a = q; } _gw.clickRun = L > 330; }
       if (!opts.net) _gw.netting = null;
       if (typeof gardenLiveWalked === 'function') gardenLiveWalked(target);
       if (!path.length && typeof then === 'function') { _gw.then = null; then(true); }
@@ -1397,9 +1399,9 @@ window.GardenNativeWorld = (function () {
           if (_gwFree(_gw.px + bx / bl * 6 / W.cellW, _gw.py + by / bl * 6 / W.cellH)) { ux = bx / bl; uy = by / bl; }
         }
         let remaining = distance; for (let i = 1; i < _gw.path.length; i++) remaining += Math.hypot((_gw.path[i].x - _gw.path[i - 1].x) * W.cellW, (_gw.path[i].y - _gw.path[i - 1].y) * W.cellH);
-        want = Math.min(_gw.sneak ? GW_SPEED.sneak : (remaining > 170 ? GW_SPEED.run : GW_SPEED.walk) * _gwWalkBonus(), Math.sqrt(2 * GW_ACC * remaining) + 34);
+        want = Math.min(_gw.sneak ? GW_SPEED.sneak : (_gw.clickRun && remaining > 90 ? GW_SPEED.run : GW_SPEED.walk) * _gwWalkBonus(), Math.sqrt(2 * GW_ACC * remaining) + 34);
       }
-      if (want) _gw.gait = _gw.sneak ? 'c' : want >= GW_SPEED.run * _gwWalkBonus() * 0.97 && (keys.has('shift') || !direct || (_gw.spd || 0) > GW_SPEED.walk * 1.2) ? 'r' : 'w';   // (round 2) the gait chosen, for the legs and for friends: slow ground no longer turns a run into a walk
+      if (want) _gw.gait = _gw.sneak ? 'c' : want >= GW_SPEED.run * _gwWalkBonus() * 0.97 && (_gw.spd || 0) > GW_SPEED.walk * _gwWalkBonus() * 0.9 ? 'r' : 'w';   // (round 3: the legs break into a run once the pace is past a walk, not from the first step)   // (round 2) the gait chosen, for the legs and for friends: slow ground no longer turns a run into a walk
       if (want && typeof gardenPlayWalk === 'function') want *= gardenPlayWalk();
       // (move360) keys let go: a short glide to a stop (a walk stops in about 0.08 s and 6 px, a run in 0.13 s), never a dead halt mid-stride
       const gliding = !want && !pushed && !casting && !_gw.path.length && !!_gw.glide && (_gw.spd || 0) > 3 && gardenMotionOn();

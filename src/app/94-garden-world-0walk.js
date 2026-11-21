@@ -814,10 +814,13 @@ function _gwMoveBy(dx, dy) {
   // the way they are getting on: it and the give took turns for four frames, a 2 px shake at one kink of the Millwater's
   // bank by the estuary, the last jitter the collision audit found, 18 Nov 2026)
   const backOnGive = held && (held === 'x' ? (shore.y - y0) * dy : (shore.x - x0) * dx) < 0;
-  if (shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y) && gain(shore.x, shore.y) >= -.05) { _gw.px = shore.x; _gw.py = shore.y; return true; }
+  // (move360 round 3) a slide that backs away on one key of a diagonal press more than it gets on the way you press is no slide: you stop
+  // against the bank (holding up-right into the Millwater bank by the bridge crept you south-east, away from the press, legs on the spot)
+  const backs = (px, py) => dx && dy && gain(px, py) < .25 && ((px - x0) * W.cellW * Math.sign(dx) < -.5 || (py - y0) * W.cellH * Math.sign(dy) < -.5);
+  if (shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y) && gain(shore.x, shore.y) >= -.05 && !backs(shore.x, shore.y)) { _gw.px = shore.x; _gw.py = shore.y; return true; }
   if (x === x0 && y === y0) return false;
   // (round 2, movement) never back against the way you press: at the shut plank gate a south-east press gave way north, step by step
-  if (gain(x, y) < -.05) { _gw.slideHold = null; return false; }
+  if (gain(x, y) < -.05 || backs(x, y)) { _gw.slideHold = null; return false; }
   _gw.px = x; _gw.py = y; return true;
 }
 /**

@@ -15,11 +15,11 @@
    Reduced motion: no gait, no hop, no turning sweep (the drawing turns at once), as before.
    ============================================================ */
 const GPL_MOVE = Object.freeze({
-  turnRate: 560,          // degrees a second the heading swings
+  turnRate: 640,          // degrees a second the heading swings (a reversal's turn in about 0.28 s)
   // per gait: stride as a share of the leg's length, the planted share of a leg's cycle, arm swing (deg), lean (deg), bob (px)
-  walk: Object.freeze({ stride: 1.38, stance: 0.58, arm: 24, lean: 3, lift: 0.16, knee: 42 }),
+  walk: Object.freeze({ stride: 1.38, stance: 0.58, arm: 30, lean: 3, lift: 0.16, knee: 42 }),
   run: Object.freeze({ stride: 1.5, stance: 0.36, arm: 52, lean: 9, lift: 0.3, flight: 2.6, knee: 88 }),
-  creep: Object.freeze({ stride: 0.8, stance: 0.66, arm: 8, lean: 10, lift: 0.1, crouch: 0.9, knee: 30 }),
+  creep: Object.freeze({ stride: 0.8, stance: 0.66, arm: 6, lean: 10, lift: 0.1, crouch: 0.97, knee: 30 }),   // (round 3: the crouch is in the bent knees and the hands held up, not the figure squashed)
   stairs: Object.freeze({ stride: 1.0, stance: 0.6, arm: 18, lean: 5, lift: 0.34, knee: 60 }),
   hop: Object.freeze({ ms: 380, high: 15 }),
 });
@@ -62,6 +62,10 @@ function gartMoveSteer(ux, uy, dt) {
   if (!_gmv.steer || _gmv.steerT < performance.now() - 250) { _gmv.steer = want; _gmv.steerT = performance.now(); _gmv.keyH = _gmvKeyHeading(ux, uy); return [ux, uy]; }
   _gmv.steerT = performance.now();
   let d = want - _gmv.steer; d = Math.atan2(Math.sin(d), Math.cos(d));
+  // (round 3) a reversal (or near one) is a pivot, as in Animal Crossing or Stardew: the feet go back the way you came at once, from a
+  // planted step (the speed drops, then builds again), and only the drawing turns through the in-between ways. An arc there walked you
+  // three quarters of a cell off the line, off a plank or a bridge's edge
+  if (Math.abs(d) > 2.1) { _gmv.steer = want; _gmv.keyH = _gmvKeyHeading(ux, uy); if (typeof _gw !== 'undefined') _gw.spd = Math.min(_gw.spd || 0, 40); return [ux, uy]; }
   const step = 13 * dt;   // radians a second: a quarter turn in about 0.12 s, a reversal in 0.24 s
   _gmv.steer += Math.abs(d) <= step ? d : Math.sign(d) * step;
   _gmv.keyH = _gmvKeyHeading(Math.cos(_gmv.steer), Math.sin(_gmv.steer));
@@ -222,8 +226,12 @@ function _gmvStride(st, body, S, o) {
     const f = Math.max(-70, Math.min(70, -Math.asin(lim(Lg.x / legLen / (0.6 + 0.4 * Math.abs(sy)))) * 180 / Math.PI / 40 * G.arm * armSpan)), r = f * Math.PI / 180;
     const sr = Math.sin(r), fwd = Math.max(0, sr), bk = Math.max(0, -sr);
     // side on it turns; end on it tips in across the body. A run pumps: the forward hand comes up to the chest and in, the back one out
-    const rot = Math.atan2(-sr * sy, Math.cos(r)) * 180 / Math.PI - inSign * ac * (runK ? 26 * fwd - 8 * bk : 14 * sr);
-    const lenEnd = runK ? armLen * (1 - 0.42 * fwd + 0.06 * bk) : (1 + 0.5 * sr * cy) * armLen;   // a walk end on: forward (towards you) is lower on the screen, back is higher
+    if (creepK) {   // (round 3) a creep: the hands held up in front, elbows bent (shorter arms), barely swinging: from the front they come in over the belly
+      const rotC = Math.atan2(-Math.sin(0.85 + r) * sy, Math.cos(0.85 + r)) * 180 / Math.PI - inSign * ac * 16;
+      return [rotC, 0.74 + 0.1 * sy];
+    }
+    const rot = Math.atan2(-sr * sy, Math.cos(r)) * 180 / Math.PI - inSign * ac * (runK ? 26 * fwd - 8 * bk : 22 * sr);
+    const lenEnd = runK ? armLen * (1 - 0.42 * fwd + 0.06 * bk) : (1 + 0.6 * sr * cy) * armLen;   // a walk end on: forward (towards you) is lower on the screen, back is higher
     return [rot, ac > 0.2 || runK ? sy * sy + lenEnd * cy * cy : null];
   };
   // where the planted foot is on the ground (world px), for checks: it should not move while planted
@@ -303,7 +311,7 @@ function gartMoveState() { return { heading: Math.round(_gmv.h), want: Math.roun
 function gartMoveActor(A) {
   if (!A || !A.inner || A.inner._dead) return;
   const W = GARDEN_WORLD, now = performance.now(), motion = _gmvMotion();
-  const st = A.gm || (A.gm = { h: A.dir === 'n' ? -90 : A.dir === 'e' ? (A.face < 0 ? 180 : 0) : 90, phase: 0, lpx: null, lpy: null, ox: A.x, oy: A.y, t: 0, v: 0 });
+  const st = A.gm || (A.gm = { h: A.hd != null ? A.hd : A.dir === 'n' ? -90 : A.dir === 'e' ? (A.face < 0 ? 180 : 0) : 90, phase: 0, lpx: null, lpy: null, ox: A.x, oy: A.y, t: 0, v: 0 });
   const dt = Math.min(0.1, st.t ? (now - st.t) / 1000 : 0); st.t = now;
   const cx = A.x - st.ox, cy = A.y - st.oy, mx = cx * W.cellW, my = cy * W.cellH; st.ox = A.x; st.oy = A.y;
   if (dt > 0) st.v = st.v * 0.75 + Math.min(600, Math.hypot(mx, my) / dt) * 0.25;
@@ -351,12 +359,43 @@ function gartMoveTell() {
   // which used to say walk and drew the rest of a friend's run as a walk on their screen
   const h = Math.round(((_gmvWrap(_gmv.want != null ? _gmv.want : _gmv.h || 0) % 360) + 360) % 360 / 22.5) % 16;
   if (typeof _gw !== 'undefined' && _gw.moving) _gmv.tellGait = _gw.sneak ? 'c' : _gw.gait || 'w';
+  // (round 3) a click's walk, told as it starts: the gait it will have (chosen once for the way: _gw.clickRun) and the way to its first turn,
+  // not the gait and facing of whatever you did before (a click walk told friends 'run', then 'walk')
+  const way = typeof _gw !== 'undefined' && _gw.path && _gw.path.length ? _gw.path[0] : null;
+  if (way) {
+    const ddx = way.x - _gw.px, ddy = (way.y - _gw.py) * 1.6;
+    const hw = Math.abs(ddx) + Math.abs(ddy) > 0.05 ? Math.round(((Math.atan2(ddy, ddx) * 180 / Math.PI % 360) + 360) % 360 / 22.5) % 16 : h;
+    return { h: hw, g: _gw.sneak ? 'c' : _gw.clickRun ? 'r' : 'w' };
+  }
   const g = _gmv.tellGait || 'w';
-  return { h, g };
+  return { h, g, ...(typeof _gw !== 'undefined' && _gw.moving ? { k: 1 } : {}) };
 }
-/** (move360) A friend's walk message heard: keep the way they face and their gait on their figure (gartMoveActor uses both). */
-function gartMoveTold(A, ev) {
+/** (move360) A friend's walk message heard: keep the way they face and their gait on their figure (gartMoveActor uses both).
+ *  whole: a whole-state message (gl:who, a join, the host's list, the garden snapshot): someone you have only just seen, or seen again after a
+ *  dropped line, stands facing the way they really face at once, not the default way until they next move. Gait there is gt (g is their gear). */
+function gartMoveTold(A, ev, whole) {
   if (!A || !ev) return;
-  if (Number.isInteger(ev.h) && ev.h >= 0 && ev.h < 16) A.hd = _gmvWrap(ev.h * 22.5);
-  if (ev.g === 'w' || ev.g === 'r' || ev.g === 'c') { A.gait = ev.g; A.sneakUntil = ev.g === 'c' ? Date.now() + 1500 : 0; }   // clock-ok: a creep lasts while they keep saying so
+  const g = typeof ev.g === 'string' ? ev.g : ev.gt;
+  if (Number.isInteger(ev.h) && ev.h >= 0 && ev.h < 16) {
+    A.hd = _gmvWrap(ev.h * 22.5);
+    if (whole && !A.moving && !(A.actId || A.sit || A.fish)) {
+      const D = _gmvDrawing(A.hd, null, 45);
+      A.dir = D.dir; A.yaw = D.yaw; if (D.yaw % 180) A.face = D.mirror;
+      if (A.gm) A.gm.h = A.hd;
+      A.key = '';
+    }
+  }
+  if (g === 'w' || g === 'r' || g === 'c') { A.gait = g; if (!whole) A.sneakUntil = g === 'c' ? Date.now() + 1500 : 0; }   // clock-ok: a creep lasts while they keep saying so
+  if (!whole) { A.keyWalk = ev.k === 1; A.drift = null; }   // (k: walking by the keys and still going; a message without it is where they stopped)
 }
+/** (move360 round 3) A friend walking by the keys, between two of their messages: on the way they were going, at their pace, never into
+ *  anything that blocks walking, for at most the time the next message takes. Returns whether the figure moved. */
+function gartMoveDrift(A, dt) {
+  const D = A.drift, W = GARDEN_WORLD; if (!D) return false;
+  if (Date.now() > D.until || A.sit || A.actId) { A.drift = null; return false; }   // clock-ok: how long to carry on
+  const step = D.v * dt * (A.sneakUntil > Date.now() ? 0.45 : 1), nx = A.x + D.ux * step / W.cellW, ny = A.y + D.uy * step / W.cellH;   // clock-ok: a creep
+  if (typeof _gwFree === 'function' && !_gwFree(nx, ny)) { A.drift = null; return false; }
+  A.x = nx; A.y = ny; return true;
+}
+/** (move360) The same for the whole-state messages you send (your look: gl:me, the host's "here"): h and gt. */
+function gartMoveWhole() { const t = gartMoveTell(); return { h: t.h, gt: t.g }; }

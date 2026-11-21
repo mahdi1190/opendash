@@ -19,7 +19,7 @@ const _GLH_SEEN_KEY = 'opendash.gardenLive.seen.v1';
 function _glhSend(to, k, body) { return _gllPipe('/api/garden-live/host', { to, k, body, tab: _GLL_TAB }); }
 function _glhIsLegacyWorld() { return typeof gardenWorldIsLegacy === 'function' && gardenWorldIsLegacy(); }
 function _glhAmbientClock() { const native = window.GardenNative, light = native && native.active() && native.lighting(), clock = light && light.ambientClock ? light.ambientClock() : null; return clock || (typeof gardenTravellerAmbientClock === 'function' ? gardenTravellerAmbientClock() : null); }
-function _glhHereBody(on) { const l = gardenLiveLook(); if (typeof _gw !== 'undefined') { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; } return { role: 'host', on, ...glWorldFields(), v: GL_V, look: l, name: _gllMyName(), tab: _GLL_TAB, hidden: typeof document !== 'undefined' && !!document.hidden }; }
+function _glhHereBody(on) { const l = gardenLiveLook(); if (typeof _gw !== 'undefined') { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; if (typeof gartMoveWhole === 'function') Object.assign(l, gartMoveWhole()); } return { role: 'host', on, ...glWorldFields(), v: GL_V, look: l, name: _gllMyName(), tab: _GLL_TAB, hidden: typeof document !== 'undefined' && !!document.hidden }; }
 function _glhPerm(fid) { const v = _gll.view; const p = v && v.perms && v.perms[fid]; return p || { lv: 'none', touch: false, share: 'keeper' }; }
 
 /* ---------- you are here ---------- */
@@ -143,7 +143,7 @@ function _glhWalk(A, ev) {
   if (GARDEN_WORLD.v >= 4 && routeTried && !way) { _glhSend(A.f, 'go', { w: A.w, x: A.x, y: A.y }); return; }
   const turns = _glhTurns(way);
   _gllWalkVia(A, turns.r, ev.x, ev.y);
-  if (_gll.actors.size > 1) _glhSend('all', 'go', { w: ev.w, x: ev.x, y: ev.y, ...turns, ...(Number.isInteger(ev.h) ? { h: ev.h } : {}), ...(ev.g ? { g: ev.g } : {}) });   // (with nobody else here, nobody needs telling: the walker's own feet are their own)
+  if (_gll.actors.size > 1) _glhSend('all', 'go', { w: ev.w, x: ev.x, y: ev.y, ...turns, ...(Number.isInteger(ev.h) ? { h: ev.h } : {}), ...(ev.g ? { g: ev.g } : {}), ...(ev.k === 1 ? { k: 1 } : {}) });   // (with nobody else here, nobody needs telling: the walker's own feet are their own)
 }
 function _glhWatchStart() {
   if (_glh.watch || typeof gardenWorldAdd !== 'function') return;
@@ -265,7 +265,7 @@ function _glhSendSnap(fid) {
  * Plants and decorations go as changes (gl:d). Everything else a snapshot says (the land, what is built, the design, how buildings are painted, rooms, the lake, wonders, weather, the season) has no change message: when any of it differs from
  * what everyone was last given, everyone gets the whole garden. Looked at every few seconds and only sent on a real change, so it costs next to nothing. The draft in the designer is not in a snapshot: only what is saved.
  */
-function _glhWorldSig(s) { const { v, at, ac, plants, decor, hearts, ...rest } = s; void v; void at; void ac; void plants; void decor; void hearts; return JSON.stringify(rest); }
+function _glhWorldSig(s) { const { v, at, ac, plants, decor, hearts, pf, ...rest } = s; void v; void at; void ac; void plants; void decor; void hearts; void pf; return JSON.stringify(rest); }   // (pf: which way you face, not a change to the garden)
 function _glhSnapAll() {
   const s = gardenSnapshot(); if (s) _glh.worldSig = _glhWorldSig(s);
   for (const A of _gll.actors.values()) if (A.f) _glhSendSnap(A.f);

@@ -15,7 +15,7 @@ function _glvAmbientClear() { if (window.GardenNativeLight) GardenNativeLight.cl
 function _glvFriend() { return _gscFriend(_glv.fid); }
 function _glvSend(k, body) { return _gllPipe('/api/garden-live/send', { k, body, f: _glv.fid, gen: _glv.gen, boot: _glv.boot }); }
 function _glvLookSig(l) { return JSON.stringify([l.a || null, l.g || null, l.pet || null]); }
-function _glvLook() { const l = gardenLiveLook(); if (typeof _gw !== 'undefined' && _gw.on) { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; } return l; }
+function _glvLook() { const l = gardenLiveLook(); if (typeof _gw !== 'undefined' && _gw.on) { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; if (typeof gartMoveWhole === 'function') Object.assign(l, gartMoveWhole()); } return l; }   // (move360: and the way you face and walk, h and gt)
 function gardenLiveVisitEnter(fid) {
   if (_glv.fid === fid && _gll.role === 'visit') return;
   _glvClear();
@@ -298,6 +298,7 @@ function _glvGotBug(u, item) {
 /* ---------- the people here: sprites in your world, as they are in the host's ---------- */
 function _glvActorAdd(ev) {
   let A = _gll.actors.get(ev.w);
+  if (ev.w === 0 && !Number.isInteger(ev.h) && _glv.snap && Array.isArray(_glv.snap.pf)) ev = { ...ev, h: _glv.snap.pf[0], gt: _glv.snap.pf[1] };   // (move360) the host: the way they faced when the garden was last sent
   if (A && ev.pet && A.petAway) A.petAway = false;
   if (!A) { A = _gllActor(ev); _gll.actors.set(ev.w, A); }
   else _gllActorLook(A, ev);   // the same complete look changes nothing on screen
