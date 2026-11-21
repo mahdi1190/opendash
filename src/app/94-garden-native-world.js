@@ -1358,7 +1358,9 @@ window.GardenNativeWorld = (function () {
       { const hut = typeof gardenIslandLogStack === 'function' && GardenIslandLayout.data && (GardenIslandLayout.data.static || []).find(p => p.id === 'ld-woodhut'); if (hut && window.GardenPaintVale && GardenPaintVale.wanted()) pointLights.push({ id: 'oldwood-hut:window', x: (hut.x + hut.w / 2) * W.cellW, y: W.sky + (hut.y + hut.h) * W.cellH - 22, radius: 78, height: 20, color: 0xffc47c, intensity: .5 }); }
       // (vf-perf) the land drawn a moment after a level-up: the model is the one the sync before built the walking grid for, so
       // that grid stands unless its own key says otherwise (the painted trunks); built again here it doubled the level-up's work
-      if (!terrainFlush) { _gw.grid = null; _gw.gq = null; _gw.solids = null; _gw.gridKey = ''; } _gw.cam.dirty = true;
+      // (vf-perf, 2) the grid is looked at again, not thrown away: the one there serves while a level's new grid is built in slices
+      // (_gwGridSliceable); thrown away, it was built whole in this task, 90 ms of a 401 ms level-up
+      if (!terrainFlush) { _gw.gq = null; _gw.gridKey = ''; _gw.frameGrid = null; } _gw.cam.dirty = true;
       if (typeof _gwGrid === 'function') _gwGrid(m);
       sortObjects();
     }
@@ -1845,6 +1847,9 @@ window.GardenNativeWorld = (function () {
       // Frame-rate independence: a slow frame (under ~18 fps) is simulated as
       // up to five equal sub-steps of at most 55 ms, so walking keeps real
       // speed instead of slowing down. At normal frame rates this is one step.
+      // (vf-perf, 2) the shared bake budget is told when this frame's step began: once the step has already run long (the land
+      // drawn again after a level-up), the painters wait for the next frame rather than add their slices to it
+      if (typeof _gbbState === 'function') { const B = _gbbState(); B.stepAt = performance.now(); if (!B.inStep) { B.inStep = true; queueMicrotask(() => { B.inStep = false; }); } }
       if (dead) return; const frameDt = Math.min(.25, Math.max(0, delta / 1000 || .016)), steps = Math.max(1, Math.ceil(frameDt / .055 - 1e-9)), dt = frameDt / steps;
       // Old-version lines can briefly preserve a shoreline cove without a
       // dashboard repaint. Ordinary swimming keeps this resident revision.

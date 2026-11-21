@@ -31,6 +31,8 @@ function gardenBakeRoom(cap, low) {
   // low: work that can wait (the margin round the screen, a soft copy, a sharper sprite, a prebake): it only takes time that the
   // bare ground on the screen has left, so after a repaint the screen fills in first, whatever layer it belongs to
   if (low && S.tokens < burst * .6) return 0;
+  // (vf-perf, 2) inside a frame's step that has already taken 14 ms (a sync, the land drawn again), nothing more this frame
+  if (S.inStep && now - S.stepAt > 14) return 0;
   let room = Math.min(cap || burst, S.tokens);
   // and no more than 6 ms between two drawn frames while you walk, 12 standing (a measured tour: more, and frames went missing),
   // unless no frame has come for a quarter second (a hidden page): then a slice now and then, so the work still ends
