@@ -157,7 +157,7 @@ function _gdzLayerOnly() {
   const svg = _gdp.svg, old = svg && svg.querySelector(':scope > .gd-dz'); if (!old) { _gdzStage(); return; }
   const html = gardenDesignLayer({ dz: T.draft }), t = gardenSceneElement('svg'); t.innerHTML = html;
   const nu = t.firstElementChild; svg.replaceChild(nu, old);
-  if (t._native) { old.destroy(); t.destroy(); nu.target.setDepth(-9400); }
+  if (t._native) { old.destroy(); t.destroy(); nu.target.setDepth(-9342); }
   if (svg._gdParts) svg._gdParts.layers.design = html;
 }
 function _gdzSay(text, bad) { const T = _gdzT(); T.say = text || ''; T.bad = !!bad; const el = document.querySelector('.gdz-say'); if (el) { el.textContent = T.say; el.classList.toggle('is-bad', T.bad); } }

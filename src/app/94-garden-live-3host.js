@@ -421,7 +421,7 @@ function _glhQueueRun(d) {
   _gllApi('/api/garden-live/queued', { ids: done }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}).finally(() => { _glh.queueBusy = false; });
 }
 function _glhResOf(ev, e) {
-  return { i: ev.i, w: ev.w, t: e.t, ok: true, ...(e.p ? { p: e.p } : {}), ...(e.x != null ? { x: e.x, y: e.y } : {}), ...(e.tx != null ? { tx: e.tx, ty: e.ty } : {}), ...(e.gi ? { u: e.gi } : {}), ...(e.n ? { n: e.n } : {}), ...(e.t === 'harvest' && e.gold === true ? { gold: true } : {}), ...(e.bug ? { item: e.bug, u: ev.u } : {}), ...(e.dropU ? { u: e.dropU, k: e.k, item: e.item, to: e.to } : {}) };
+  return { i: ev.i, w: ev.w, t: e.t, ok: true, ...(e.wait ? { why: 'wait' } : {}), ...(e.p ? { p: e.p } : {}), ...(e.x != null ? { x: e.x, y: e.y } : {}), ...(e.tx != null ? { tx: e.tx, ty: e.ty } : {}), ...(e.gi ? { u: e.gi } : {}), ...(e.n ? { n: e.n } : {}), ...(e.t === 'harvest' && e.gold === true ? { gold: true } : {}), ...(e.bug ? { item: e.bug, u: ev.u } : {}), ...(e.dropU ? { u: e.dropU, k: e.k, item: e.item, to: e.to } : {}) };
 }
 /** A new line in the diary: the lines before it about the same record can no longer be undone, nor your own Undo steps on it, and Put my garden back knows what it did. */
 function _glhLine(key, e) {
@@ -576,15 +576,18 @@ function _glhLand(ev, put, m) {
   const def = feat ? gardenLandFeature(id) : gardenLandRow(id);
   if (!feat && def) _gdEmit('land', { id, x: def.x, y: def.y, w: def.w, h: def.h });
   gardenModel();   // (the land on screen, and what you can walk on, are the garden's from this moment)
-  let out = true;
+  let out = true, placed = null;
   if (feat && GARDEN_WORLD.v >= 3 && typeof gardenFeatureSetNearby === 'function') {
     // whatever you own shows (the owner's rule): next to the friend who built it, else next to you, else by the garden's arrival point; only when none of them has room does it wait in the land office
-    const A = _gll.actors.get(ev.w), spots = [ev.x != null ? { x: ev.x, y: ev.y } : null, A && Number.isFinite(A.x) ? { x: Math.floor(A.x), y: Math.floor(A.y) } : null, typeof _gw !== 'undefined' && Number.isFinite(_gw.px) ? { x: Math.floor(_gw.px), y: Math.floor(_gw.py) } : null, GARDEN_WORLD.start ? { x: Math.floor(GARDEN_WORLD.start.x), y: Math.floor(GARDEN_WORLD.start.y) } : null].filter(Boolean);
+    // (the nearest clear spot to the friend first, close and then a little wider, so it goes up where they can see it; only then by you, or the arrival point)
+    const A = _gll.actors.get(ev.w), them = ev.x != null ? { x: ev.x, y: ev.y } : A && Number.isFinite(A.x) ? { x: Math.floor(A.x), y: Math.floor(A.y) } : null;
+    const spots = [them && { ...them, r: 6 }, them && { ...them, r: 11 }, typeof _gw !== 'undefined' && Number.isFinite(_gw.px) ? { x: Math.floor(_gw.px), y: Math.floor(_gw.py), r: 8 } : null, GARDEN_WORLD.start ? { x: Math.floor(GARDEN_WORLD.start.x), y: Math.floor(GARDEN_WORLD.start.y), r: 12 } : null].filter(Boolean);
     out = false;
     for (const at of spots) { try { if (gardenFeatureSetNearby(id, at).ok && gardenFeatureIsSetOut(id)) { out = true; break; } } catch (e) { /* the next spot */ } }
+    if (out) { const p = gardenFeatureRow(gardenLandFeature(id)); if (p && Number.isInteger(p.x) && Number.isInteger(p.y)) { placed = { tx: p.x + Math.floor((p.w || 1) / 2), ty: p.y + (p.h || 1) - 1 }; } }
   }
   setTimeout(() => { try { _glhSnapAll(); } catch (e) { /* the next world check */ } }, 60);   // everybody here sees the new land at once
-  return put(mark, { noUndo: true, land: id, ...(feat ? { feat: 1 } : {}), ...(out ? {} : { wait: 1 }) });
+  return put(mark, { noUndo: true, land: id, ...(feat ? { feat: 1 } : {}), ...(placed || {}), ...(out ? {} : { wait: 1 }) });
 }
 /** A friend opens one of your gates (full co-op, 2.75): with the find you hold, or one they bring themselves (r 1: friends are trusted). The same row your own opening writes, and its little prize is the garden's. */
 function _glhGate(ev, put, m) {

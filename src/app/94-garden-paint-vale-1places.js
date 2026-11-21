@@ -916,6 +916,9 @@
     const blooms = season === 'winter' ? ['#d8d2c4', '#b8a890'] : season === 'autumn' ? ['#c8783a', '#e0b050', '#a8503a', '#9a7ac8'] : season === 'spring' ? ['#f2efe2', '#e8c84a', '#d88aa8', '#9ab0e0'] : ['#9a7ac8', '#d86a7a', '#e8a040', '#f2efe2', '#c84a5a'];
     const leaf = season === 'winter' ? '#7a8468' : season === 'autumn' ? '#6e7a3e' : '#4f7a38', leafHi = season === 'winter' ? '#929a80' : season === 'autumn' ? '#8a9448' : '#6a9a48';
     const r0 = kit.rng(seed + 1), spots = []; for (const q of V.walk(pts, 9)) { const cy = (q.y - W.sky) / ch; if (cy < 59.2 || cy > 74.6) continue; for (const s of [-1, 1]) for (const d of [1.9, 2.4]) { const x = q.x + s * d * cw + (r0() - .5) * 6, y = q.y, gx = x / cw, gy = (y - W.sky) / ch; if (L.kind(gx, gy) === 'grass' && L.free(gx, gy) && !L.plot(gx, gy) && L.kind(gx - s * .5, gy) !== 'water') spots.push({ x, y, s }); } }
+    { const GP = window.GardenGroundPlanting || (window.GardenGroundPlanting = { rows: new Map(), set(id, cells) { this.rows.set(id, cells); }, has(x, y) { const k = x + ',' + y; for (const c of this.rows.values()) if (c.has(k)) return true; return false; } }), cells = new Set();
+      for (const p of spots) { const gy = Math.floor((p.y - W.sky) / ch); for (const dx of [-15, 0, 15]) cells.add(Math.floor((p.x + dx) / cw) + ',' + gy); }
+      GP.set('high-street', cells); }   // (what is planted here is in the ground for good: anything set out later keeps off it, 94-garden-1stored.js)
     if (!spots.length) return;
     const bb = kit.bboxOf(spots.map(p => ({ x: p.x, y: p.y })), 40);
     add(bb, seed, (B, r) => {

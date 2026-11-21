@@ -251,7 +251,14 @@ function _glvResult(b) {
     if (led && !led.ok) { _glvSettled(b.i, led, b.t); _gscSaveGarden(); }
     if (b.t === 'water') _gscXp('water', _glv.fid, _gllToday());
     if (b.t === 'gate' && P && P.f && typeof gardenToast === 'function') { const gt = gardenGateOf(P.f.p), z = gt && gardenZone(gt.n); gardenToast(`You opened the way into ${z ? String(z.name).replace(/^The /, 'the ') : 'a new part'} of ${_gdvFirst()}’s garden!`, { icon: 'key' }); }
-    if ((b.t === 'land' || b.t === 'build') && P && P.f && typeof gardenToast === 'function') { const r = b.t === 'land' ? gardenLandRow(P.f.p) : gardenLandFeature(P.f.p); gardenToast(`${r ? r.name : 'It'} is part of ${_gdvFirst()}’s garden now. Thank you for chipping in!`, { icon: b.t === 'land' ? 'trees' : 'hammer' }); }
+    if ((b.t === 'land' || b.t === 'build') && P && P.f && typeof gardenToast === 'function') {
+      const r = b.t === 'land' ? gardenLandRow(P.f.p) : gardenLandFeature(P.f.p), name = r ? r.name : 'It';
+      // (a build says where it went up: by you, a walk away, or waiting in the land office when there was no room anywhere: critic, 21 Nov)
+      let where = '';
+      if (b.t === 'build' && b.why === 'wait') where = ` There was no clear spot near you, so it waits in their land office, ready to set out where there is room.`;
+      else if (b.t === 'build' && Number.isInteger(b.tx) && typeof _gw !== 'undefined') { const d = Math.hypot(b.tx + .5 - _gw.px, b.ty + .5 - _gw.py); where = d <= 7 ? ' It stands just by you.' : ` It went up a short walk ${Math.abs(b.tx + .5 - _gw.px) > Math.abs(b.ty + .5 - _gw.py) ? (b.tx + .5 > _gw.px ? 'east' : 'west') : (b.ty + .5 > _gw.py ? 'south' : 'north')} of you, where there was room.`; try { _gllFloat(_glvSvg(), b.tx, b.ty, '🔨', 'Here'); } catch (e) { /* only a marker */ } }
+      gardenToast(`${name} is part of ${_gdvFirst()}’s garden now.${where} Thank you for chipping in!`, { icon: b.t === 'land' ? 'trees' : 'hammer', timeout: where ? 10000 : 6000 });
+    }
     if (b.t === 'catch') _glvGotBug(b.u, b.item);
     if (P && b.t === 'take' && b.u) { const d = g.led['gl.o.' + b.u]; if (d && d.to === _glv.fid) { delete g.led['gl.o.' + b.u]; _gscSaveGarden(); } }   // back in your bag (a post says the same, if this answer is lost)
     if (P && b.t === 'give' && b.u && b.p && gardenDecor(b.p)) {

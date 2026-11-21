@@ -132,6 +132,8 @@ function _gardenFeatureClearWhy(f, x, y, m) {
       if (kind && (o.kind === kind || pet && K[o.kind] && K[o.kind].pet === pet) && Math.hypot(o.x - cx, (o.y - fy) * 1.3) < 7) return `There is ${String(o.name || 'one').replace(/^the /i, 'a ')} close by already`;
     }
   }
+  // never on a painted flower border or other planting a painter has laid in the ground (a friend's village well went up on the high street's border: critic, 21 Nov)
+  { const GP = typeof window !== 'undefined' && window.GardenGroundPlanting; if (GP && GP.has) for (let cy = y - 1; cy <= y + h; cy++) for (let cx = x - 1; cx <= x + w; cx++) if (GP.has(cx, cy)) return 'Keep the flower border clear'; }
   // never on the beds you grow in (the lookout's legs and the fountain's basin stood on the starter bed: hunter, round 3),
   // nor at the end of a bridge or stepping stones (a rain barrel stood on the little bridge's landing)
   for (let cy = y - 1; cy <= y + h; cy++) for (let cx = x - reach; cx < x + w + reach; cx++) { const row = typeof gardenLandCell === 'function' ? gardenLandCell(cx, cy) : null; if (row && row.plot && row.cats && row.cats.length) return 'Keep the growing beds for planting'; }
@@ -175,11 +177,11 @@ function gardenFeatureSetNearby(id, near) {
   if (!f || !gardenLandOwnsFeature(id)) return _gdNo('Build this first');
   if (gardenFeatureIsSetOut(id)) return { ok: true, msg: '' };
   const from = near && Number.isFinite(near.x) && Number.isFinite(near.y) ? { x: near.x + .5, y: near.y + .5 } : typeof _gw !== 'undefined' && Number.isFinite(_gw.px) ? { x: _gw.px, y: _gw.py } : GARDEN_WORLD.start;
-  const w = f.w || 1, h = f.h || 1, candidates = [];
-  for (let y = Math.max(0, Math.floor(from.y) - 6 - h); y <= Math.min(GARDEN_WORLD.rows - h, Math.ceil(from.y) + 6); y++) for (let x = Math.max(0, Math.floor(from.x) - 6 - w); x <= Math.min(GARDEN_WORLD.cols - w, Math.ceil(from.x) + 6); x++) {
+  const w = f.w || 1, h = f.h || 1, candidates = [], R = near && Number.isFinite(near.r) ? Math.max(2, Math.min(14, near.r)) : 6;   // (r: how far to look; a friend's build looks wider round them before anywhere else)
+  for (let y = Math.max(0, Math.floor(from.y) - R - h); y <= Math.min(GARDEN_WORLD.rows - h, Math.ceil(from.y) + R); y++) for (let x = Math.max(0, Math.floor(from.x) - R - w); x <= Math.min(GARDEN_WORLD.cols - w, Math.ceil(from.x) + R); x++) {
     if (from.x >= x - .3 && from.x <= x + w + .3 && from.y >= y - .3 && from.y <= y + h + .3) continue;
     const distance = Math.hypot((x + w / 2 - from.x) * GARDEN_WORLD.cellW, (y + h / 2 - from.y) * GARDEN_WORLD.cellH);
-    if (distance <= 6 * GARDEN_WORLD.cellW) candidates.push({ x, y, distance });
+    if (distance <= R * GARDEN_WORLD.cellW) candidates.push({ x, y, distance });
   }
   candidates.sort((a, b) => a.distance - b.distance || a.y - b.y || a.x - b.x);
   const spot = candidates.find(p => !gardenFeaturePlaceWhy(f, p.x, p.y, m));

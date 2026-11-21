@@ -132,7 +132,7 @@ window.GardenNativeWorld = (function () {
     const root = rootNode.target;
     const group = (name, depth) => { const node = element(scene, 'g', { class: name }); node.target.setDepth(depth); rootNode.appendChild(node); return node; };
     const oceanBackdrop = scene.add.graphics().setDepth(-10010).setVisible(false); rootNode._inner.add(oceanBackdrop);
-    const terrain = group('gd-ground', -10000), pierBoards = group('gd-pier-boards', -9250), design = group('gd-dz', -9400), objects = group('gd-objects', 0), actors = group('gd-actors', 50000), pets = group('gd-pets', 51000), ui = group('gd-ui', 90000);
+    const terrain = group('gd-ground', -10000), pierBoards = group('gd-pier-boards', -9250), design = group('gd-dz', -9342), objects = group('gd-objects', 0), actors = group('gd-actors', 50000), pets = group('gd-pets', 51000), ui = group('gd-ui', 90000);
     const needGround = group('gd-need-ground gd-needs', -9260); needGround.setAttribute('pointer-events', 'none');
     const effects = element(scene, 'g', { class: 'gd-fx' }); ui.appendChild(effects);
     const editorPreview = element(scene, 'g', { class: 'gdz-native-preview', 'pointer-events': 'none' }); ui.appendChild(editorPreview); editorPreview.target.setVisible(false);
