@@ -10,6 +10,25 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.74.1] - 2026-11-21
+
+### Fixed
+
+- Friends now see what you do: sitting, kicking, poses, the moves wheel, carrying and setting down, throwing a stick, walking and running, and pets in the right place for belly rubs.
+- Fishing side by side shows both lines and both fishing bars.
+- A gate item one player holds now counts for everyone in the garden, and solved puzzles stay solved for both.
+- A garden still opening no longer fails with an error.
+- Benches have a seat for each person, a taken seat cannot be taken, and you sit on the bench, not behind it. Climbing trees, hiding behind them, the wish coin and the pump look right.
+- When several things are close, one clear prompt shows, and Tab picks another.
+- Walking is smoother, and levelling up no longer freezes the garden for seconds.
+
+### Added
+
+- Climb up to walk round the lighthouse gallery and other upper floors, and swim where you like in deep water.
+- Instruments make music, and each player who joins adds a part to the same tune.
+- Friends can do everything in each other's gardens: plant, build, buy land and trade, from one shared purse.
+- The mountains rise as a real range, Fleet Falls is taller, and many collisions and overlaps are fixed.
+
 ## [2.74.0] - 2026-11-20
 
 ### Changed
