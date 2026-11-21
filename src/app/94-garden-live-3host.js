@@ -606,8 +606,8 @@ function _glhSolve(ev, put, m) {
   const g = _gdG(), lk = 'gl.s.' + ev.i, mark = _gdMark([['led', lk]]);
   if (typeof gpSet === 'function') gpSet('explore.' + id, m.today);
   g.led[lk] = { d: m.today, k: 'gl', i: {}, n: 0, by: ev.f };
-  let out = false;
-  if (typeof gardenSightSetNearby === 'function' && typeof gardenSightIsSetOut === 'function' && !gardenSightIsSetOut(id)) { try { out = !!(gardenSightSetNearby(id).ok && gardenSightIsSetOut(id)); } catch (e) { out = false; } }
+  let out = typeof gardenIslandDefaultSight === 'function' && gardenIslandDefaultSight(id);   // (a place the layout already holds stands where it is)
+  if (!out && typeof gardenSightSetNearby === 'function' && typeof gardenSightIsSetOut === 'function' && !gardenSightIsSetOut(id)) { try { out = !!(gardenSightSetNearby(id).ok && gardenSightIsSetOut(id)); } catch (e) { out = false; } }
   _gdEmit('landshow', {});
   setTimeout(() => { try { _glhSnapAll(); } catch (e) { /* the next world check */ } }, 60);
   return put(mark, { noUndo: true, land: id, solve: 1, ...(out ? {} : { wait: 1 }) });
