@@ -229,10 +229,13 @@ function _gllEmote(A, id, instant) {
     try { const a = gardenVisualAnimate(el, frames, { duration: row.ms, fill: row.hold ? 'forwards' : 'none', easing: 'linear' }); if (!motion) { a.pause(); a.currentTime = row.ms * (row.hold ? 1 : 0.5); } else if (instant) a.finish(); anims.push(a); } catch (e) { /* an old browser stands still */ }
   }
   A.anims = anims; A.sit = !!row.hold; A.hold = row.hold ? id : '';
+  if (row.hold && typeof gardenWorldObjects === 'function') {   // (2.74.1) sat on a seat you placed (any decoration that seats): up on it, as on their screen (gartEmoteRun's seat lift)
+    try { let best = null, bd = 0.8; for (const o of gardenWorldObjects()) { const d = o.kind === 'decor' && gardenDecor(o.id); if (!d || !d.effect || d.effect.kind !== 'sit' || !o.top) continue; const k = Math.hypot(o.top.x - A.x, o.top.y + 0.35 - A.y); if (k < bd) { bd = k; best = o; } } if (best) { A.actLift = (best.top.lift || 0) + 2; A.emLift = true; } } catch (e) { /* on the ground */ }
+  }
   if (!row.hold) A.animT = setTimeout(() => _gllEmoteStop(A), motion ? row.ms : 1200);
   return true;
 }
-function _gllEmoteStop(A) { if (A.actUndo) { const u = A.actUndo; A.actUndo = null; try { u(); } catch (e) { /* gone */ } } clearTimeout(A.animT); for (const a of A.anims || []) { try { a.cancel(); } catch (e) { /* gone */ } } A.anims = null; A.hold = ''; }
+function _gllEmoteStop(A) { if (A.emLift) { A.emLift = false; A.actLift = 0; } if (A.actUndo) { const u = A.actUndo; A.actUndo = null; try { u(); } catch (e) { /* gone */ } } clearTimeout(A.animT); for (const a of A.anims || []) { try { a.cancel(); } catch (e) { /* gone */ } } A.anims = null; A.hold = ''; }
 /** A move with a place (a seat): walk there first if they are not there yet, rather than jump. */
 function _gllEmoteAt(A, ev) {
   if (String(ev.e).startsWith('act-') && A.dg) return;   // (2.74.1) drawn from what they are doing, whole (gl:dg)
