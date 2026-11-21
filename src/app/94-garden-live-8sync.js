@@ -56,9 +56,12 @@ function _glyAsked(A) {
 function _glySumIn(ev) {
   _gly.heard = Date.now();   // clock-ok: when the host was last heard
   if (ev.ac && typeof _glvAmbientClock === 'function') _glvAmbientClock(ev.ac);
-  const s = _glv.snap; if (!s || !Number.isInteger(ev.h)) return;
+  const s = _glv.snap;
+  if (!s) { _glyNoSnap(); return; }   // (live with no garden from the host at all: a page reloaded mid-visit, whose server let it straight back in)
+  if (!Number.isInteger(ev.h)) return;
   const detail = Number.isInteger(ev.h2), mine = _glySum(_glyGuestRows(s, detail));
-  if (mine.h === (detail ? ev.h2 : ev.h) && mine.n === ev.n) { _gly.bad = 0; _gly.catching = 0; return; }
+  const drOk = !Number.isInteger(ev.h3) || typeof gardenDropSum !== 'function' || gardenDropSum(s.dr || []) === ev.h3;   // (build phase 1: where things lie, too)
+  if (mine.h === (detail ? ev.h2 : ev.h) && mine.n === ev.n && drOk) { _gly.bad = 0; _gly.catching = 0; return; }
   _gly.bad += 1;
   if (_gly.bad >= 2 && _gly.asks < GL_SYNC.autoAsks) _glyAsk(false);
 }
@@ -70,6 +73,15 @@ function _glyAsk(byHand) {
   gardenLiveFx('sync', 'ask');
   _glyPaint(true);
   setTimeout(() => { if (_gly.catching === now) { _gly.catching = 0; _glyPaint(true); } }, 9000);
+}
+/** Live, but this page has never had the host's whole garden (it was reloaded during a visit: the server let it back in as the same
+ *  person, so nobody sent it again). Ask for it, a few seconds apart, until it comes; not counted against the visit's own asks. */
+function _glyNoSnap() {
+  if (!_glvLive() || _glv.snap) return;
+  const now = Date.now();   // clock-ok: spacing
+  if (now - (_gly.noSnapAt || 0) < 6000) return;
+  _gly.noSnapAt = now;
+  gardenLiveFx('sync', 'ask');
 }
 /** The whole garden has just arrived. */
 function _glySnapIn() { _gly.bad = 0; _gly.catching = 0; _gly.heard = Date.now(); _glyPaint(true); }   // clock-ok: when the host was last heard
@@ -160,10 +172,12 @@ function _glyPaint(force) {
 function _glyTick() {
   const now = Date.now();   // clock-ok: spacing
   if (typeof _gll === 'undefined' || typeof _gw === 'undefined' || !_gw.on) return;
+  if (typeof gardenDropTick === 'function') gardenDropTick();   // (build phase 1: where carried things lie, drawn, and told to friends: alone too)
   if (now - _gly.relayAt > GL_SYNC.relayMs) { _gly.relayAt = now; _gllApi('/api/relay').then((st) => { _gly.stale = !!(st && st.mine && st.stale); _glyPaint(true); }).catch(() => {}); }
   const hostLive = _gll.role === 'host' && _glh.on && _glhAnyone(), guestLive = _gll.role === 'visit' && _glvLive();
   if (guestLive && !_gly.liveAt) { _gly.liveAt = now; _gly.asks = 0; _gly.bad = 0; _gly.heard = 0; _gly.oldTold = false; }
   if (!guestLive) _gly.liveAt = 0;
+  if (guestLive && !_glv.snap && now - _gly.liveAt > 2500) _glyNoSnap();
   // the pages' beats go by this clock too: a hidden tab's own timers can be a minute late
   if (_gll.role === 'visit' && _glv.fid && now - (_glv.beatAt || 0) >= GL_SYNC.beatMs && typeof _glvBeat === 'function') _glvBeat();
   if (_gll.role === 'host' && _glh.on && now - (_glh.beatAt || 0) >= GL_SYNC.beatMs && typeof _glhBeat === 'function') _glhBeat();
@@ -174,7 +188,7 @@ function _glyTick() {
   if (hostLive && looking && now - _gly.sumAt >= GL_SYNC.sumMs) {
     _gly.sumAt = now;
     _glhDiff();   // (what is still to go goes first)
-    if (!_glyTooBig()) { const s = _glySum(_glyHostRows()); s.h2 = _glySum(_glyHostRows(true)).h; const ac = _glhAmbientClock(); if (ac) s.ac = ac; _glhSend('all', 'sum', s); }
+    if (!_glyTooBig()) { const s = _glySum(_glyHostRows()); s.h2 = _glySum(_glyHostRows(true)).h; if (typeof gardenDropSum === 'function') s.h3 = gardenDropSum(gardenDropRows(_gdG())); const ac = _glhAmbientClock(); if (ac) s.ac = ac; _glhSend('all', 'sum', s); }   // (build phase 1: h3, where things lie)
   }
   if ((hostLive || guestLive) && looking && now - _gly.atAt >= GL_SYNC.atMs && !_gw.moving) {
     _gly.atAt = now;

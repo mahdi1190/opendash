@@ -1038,6 +1038,10 @@ function gardenSnapshotClean(raw) {
   if (Array.isArray(raw.bk)) { const bk = raw.bk.slice(0, 12).filter(r => Array.isArray(r) && r.length === 8 && typeof r[0] === 'string' && /^[a-z0-9-]{1,32}$/.test(r[0]) && r.slice(1).every(n => Number.isInteger(n) && n >= 0 && n <= 31)); if (bk.length) out.bk = bk; }   // how they have painted their buildings, by building id; a number this version does not know draws as built
   if (Array.isArray(raw.pf) && raw.pf.length === 2 && int(raw.pf[0], 0, 15) !== null && ['w', 'r', 'c'].includes(raw.pf[1])) out.pf = [raw.pf[0], raw.pf[1]];   // (move360) which way the gardener faces, in sixteenths, and how they last walked
   if (Array.isArray(raw.tk)) out.tk = raw.tk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.23: ids of tricks; the page ignores any it does not know
+  if (Array.isArray(raw.dr)) {   // (build phase 1) where carried things were set down, one row per thing (94-garden-build-0rules.js gardenDropClean says the same)
+    const seen = new Set(); out.dr = [];
+    for (const r of raw.dr.slice(0, 40)) { if (!Array.isArray(r) || r.length !== 4 || typeof r[0] !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(r[0]) || seen.has(r[0]) || r[1] !== 'thing:' + r[0]) continue; const x = int(r[2], 0, W.cols * 10), y = int(r[3], 0, W.rows * 10); if (x === null || y === null) continue; seen.add(r[0]); out.dr.push([r[0], r[1], x, y]); }
+  }
   if (Array.isArray(raw.plants)) for (const p of raw.plants.slice(0, GARDEN_SNAPSHOT_MAX.plants)) {
     if (!Array.isArray(p) || !_GD_PLANT.has(p[0])) continue;
     const x = int(p[1], 0, W.cols - 1), y = int(p[2], 0, W.rows - 1);

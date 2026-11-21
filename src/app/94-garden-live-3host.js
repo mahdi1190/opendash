@@ -231,6 +231,7 @@ function _glhEvent(ev) {
       if (typeof gardenContestJoin === 'function') gardenContestJoin(ev.f);
       if (typeof _glgJoin === 'function') _glgJoin(ev.f);
       _glhResendDrops(ev.f);
+      if (typeof gardenDropTell === 'function') gardenDropTell(ev.f, true);   // (build phase 1: where things lie, and who carries what)
       _glhCatchUp(ev.f, A);
       if (typeof _gly !== 'undefined') _gly.atAt = 0;   // (where everyone stands, at the next tick)
       _glhBugsMaybe();
@@ -239,7 +240,7 @@ function _glhEvent(ev) {
     }
     case 'tr': if (typeof _gltHostOn === 'function') _gltHostOn(ev); return;
     case 'dz': _glhDesignIn(ev); return;
-    case 'leave': if (typeof _gltHostLeft === 'function') _gltHostLeft(ev.w); _glhRemove(ev.w); if (typeof gardenContestLeave === 'function') gardenContestLeave(ev.w); _glhReturnDrops(ev.w); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
+    case 'leave': if (typeof gardenDropLeft === 'function') gardenDropLeft(_gll.actors.get(ev.w)); if (typeof _gltHostLeft === 'function') _gltHostLeft(ev.w); _glhRemove(ev.w); if (typeof gardenContestLeave === 'function') gardenContestLeave(ev.w); _glhReturnDrops(ev.w); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
     case 'go': { const A = _gll.actors.get(ev.w); if (A && _gllHeldNudge(A, ev)) return; if (A) { _gllGoPace(A, ev); if (typeof gartMoveTold === 'function') gartMoveTold(A, ev); _glhWalk(A, ev); if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } return; }
     case 'em': {
       const A = _gll.actors.get(ev.w); if (!A) return;
@@ -277,7 +278,7 @@ function _glhSendSnap(fid) {
  * Plants and decorations go as changes (gl:d). Everything else a snapshot says (the land, what is built, the design, how buildings are painted, rooms, the lake, wonders, weather, the season) has no change message: when any of it differs from
  * what everyone was last given, everyone gets the whole garden. Looked at every few seconds and only sent on a real change, so it costs next to nothing. The draft in the designer is not in a snapshot: only what is saved.
  */
-function _glhWorldSig(s) { const { v, at, ac, plants, decor, hearts, pf, ...rest } = s; void v; void at; void ac; void plants; void decor; void hearts; void pf; return JSON.stringify(rest); }   // (pf: which way you face, not a change to the garden)
+function _glhWorldSig(s) { const { v, at, ac, plants, decor, hearts, pf, dr, ...rest } = s; void v; void at; void ac; void plants; void decor; void hearts; void pf; void dr; return JSON.stringify(rest); }   // (pf: which way you face, not a change to the garden; dr, build phase 1: where carried things lie travels on its own, gl:dr: never the whole garden again)
 /* ---------- designing together (full co-op, 2.75) ----------
    A friend here draws paths, paints ground, moves fixed things and makes things in your garden as you do (Menu > Design). Their finished
    design comes as text in up to two pieces (gl:dz); every row is checked (gardenDesignClean) and it becomes your garden's design in use,
@@ -379,11 +380,11 @@ function _glhIntent(ev) {
   if (ev.away) { e.away = ev.away; g.gq['d' + ev.i + '0'] = { to: ev.f, why: 'did', i: ev.i, at: _gdNow() }; }   // (in the same save: the answer cannot be lost)
   _glhLine(key, e);
   _glhPrune();
-  _gdSave();
+  if (GL_ACTS[ev.t] && GL_ACTS[ev.t].carry) _gdSaveQuiet(); else _gdSave();   // (build phase 1: a thing picked up or set down is drawn as a sprite of its own: saved, no repaint of the garden)
   if (!ev.away) { const result = _glhResOf(ev, e); _glhSend('all', 'res', result); _gllToolFeedback(result, false); }
   if ((ev.t === 'land' || ev.t === 'build' || ev.t === 'gate' || ev.t === 'solve') && typeof gardenToast === 'function') gardenToast(_glhDiaryWhat(e, 1) + (e.wait ? (ev.t === 'solve' ? '. It is in Land, under discovered places, for you to set out.' : '. There was no room for it nearby: set it out from the land office.') : '!'), { icon: ev.t === 'land' ? 'trees' : ev.t === 'gate' ? 'key' : 'hammer', timeout: e.wait ? 12000 : 9000 });   // (full co-op: a friend's gift to the garden, said out loud)
   const A = _gll.actors.get(ev.w);
-  if (A) _gllPose(A, _GL_POSE[ev.t] || 'pick', 760);
+  if (A && !(GL_ACTS[ev.t] && GL_ACTS[ev.t].carry)) _gllPose(A, _GL_POSE[ev.t] || 'pick', 760);
   if (ev.x != null && _GL_EMOJI[ev.t]) _gllFloat(_gw.svg, ev.x, ev.y, _GL_EMOJI[ev.t], A ? A.n : '');
   _glhFlushPosts();
   _glh.unseen++;
@@ -442,33 +443,33 @@ function _glhApply(ev, key) {
   const rec = hit.p ? g.plants[hit.p.uid] : hit.d ? g.decor[hit.d.uid] : null;
   if (act.on && !rec) return 'gone';
   // Whose it is: a plant is its planter's, a decoration its owner's (`own`: given to the host, it is the host's); no name there, the host's.
-  const owner = !rec ? '' : hit.p ? rec.by || '' : rec.own || '', mine = !!rec && owner === f;
+  const owner = !rec ? '' : hit.p ? rec.by || '' : rec.own || rec.from || '', mine = !!rec && owner === f;   // (from: a friend's gift here, theirs to take back)
   // full co-op (2.75): a friend with Play together may do to anything here what you may, yours or another friend's; what is someone else's still goes home to them (a take posts it back)
   if (act.mine && !mine && !_glhPermOf(ev).touch) return 'not-yours';
   const mp = hit.p ? 'plants' : hit.d ? 'decor' : '';
   const entry = { f, t, i: ev.i, d: today, at: _gdNow(), p: ev.p, x: ev.x, y: ev.y, ...(mp ? { mp } : {}) };   // (m.now is the model's, up to a minute behind: this one sorts against the visit's start)
   const put = (mark, extra) => { g.gl[key] = Object.assign(entry, { mark }, extra || {}); return ''; };
+  // (build phase 1, build-PLAN 2.1) what a friend does to the garden is an op, checked and applied by the SAME rules file as your own
+  // (94-garden-build-0rules.js), so the two pages can never disagree about what is allowed. Their op costs this garden nothing.
+  const W = gardenOpWorld(m), opDo = (op, extra) => { const why = gardenOpCheck(W, op, f); if (why) return why; const mark = _gdMark(gardenOpTouches(op, g, f)); gardenOpApply(g, op, f, W); return put(mark, extra); };
   switch (t) {
     case 'plant': {
-      const def = gardenPlant(ev.p);
-      const whyNot = _gdPlaceOk(m, def, ev.x, ev.y, 'plant'); if (whyNot) return whyNot;
-      const uid = _gdUid('p'), mark = _gdMark([['plants', uid]]), variants = (def.look.v || []).length || 1;
-      g.plants[uid] = { p: def.id, x: ev.x, y: ev.y, t: now, w: now, v: gardenHash(uid) % variants, by: f, gi: ev.i };
-      return put(mark, { u: uid, mp: 'plants' });
+      const def = gardenPlant(ev.p); if (!def) return 'Unknown seed';
+      const uid = _gdUid('p'), variants = (def.look.v || []).length || 1;
+      return opDo({ o: 'plant', i: 'seed:' + def.id, x: ev.x, y: ev.y, u: uid, v: gardenHash(uid) % variants, gi: ev.i, at: now }, { u: uid, mp: 'plants' });
     }
     case 'place': {
-      const def = gardenDecor(ev.p);
-      const whyNot = _gdPlaceOk(m, def, ev.x, ev.y, 'decor'); if (whyNot) return whyNot;
-      const uid = _gdUid('d'), mark = _gdMark([['decor', uid]]);
-      g.decor[uid] = { d: def.id, x: ev.x, y: ev.y, r: def.rot ? ((Number(ev.r) || 0) & 3) : 0, v: 0, at: now, by: f, own: f, gi: ev.i };
-      return put(mark, { u: uid, mp: 'decor' });
+      const def = gardenDecor(ev.p); if (!def) return 'Unknown decoration';
+      // (build phase 1, friends are trusted: one shared economy) what a friend puts down is a gift to this garden, marked `from`; the garden's
+      // ledger gains it (keyed by the friend's op id, once), so when anyone puts it away it goes into this garden's bag, never back by post
+      const uid = _gdUid('d');
+      return opDo({ o: 'put', i: 'decor:' + def.id, x: ev.x, y: ev.y, ...(ev.r != null ? { r: ev.r } : {}), u: uid, gi: ev.i, gift: 'gl.f.' + ev.i, at: now }, { u: uid, mp: 'decor', noUndo: true });
     }
     case 'water': {
-      const p = hit.p; if (!p.def.thirst || p.def.special === 'heart') return 'no-need';
-      if (m.rain.now) return 'rain';
-      if (!p.thirsty && (m.now - p.lastWater) / 3600000 < Math.min(8, p.def.thirst / 2)) return 'happy';
+      const p = hit.p;
+      const op = { o: 'water', u: p.uid, at: now, day: today }, why = gardenOpCheck(W, op, f); if (why) return why;
       const mark = _gdMark([['plants', p.uid]]);
-      rec.dh = Math.round(((Number(rec.dh) || 0) + (Number(p.dry) || 0)) * 10) / 10; rec.w = now;
+      gardenOpApply(g, op, f, W);   // (the rules file's watering: how thirsty it was, and when; a friend's own can, never this garden's)
       // the friend-garden rules: a little faster, once a plant a day, a few a day
       const boosted = Object.values(g.gl).filter(e => e && e.t === 'water' && e.d === today && e.b);
       const b = boosted.length < GSOC_BOOST.perDay && !boosted.some(e => e.u === p.uid) ? 1 : 0;
@@ -491,10 +492,9 @@ function _glhApply(ev, key) {
       return put(r.mark, { u: p.uid, n: r.n, noUndo: !!mine, ...(r.gold ? { gold: true } : {}) });
     }
     case 'dig': {
-      const p = hit.p; if (p.def.special === 'heart') return 'heart';
-      const mark = _gdMark([['plants', p.uid]]);
-      delete g.plants[p.uid];
-      return put(mark, { u: p.uid, noUndo: !!mine });
+      // (their own seed, dug up again soon after they planted it: taking back a mistake, so the seed goes back into their bag on the answer)
+      const back = mine && rec.gi && now - (Number(rec.t) || 0) < 30 * 60000 ? rec.gi : '';
+      return opDo({ o: 'dig', u: hit.p.uid, at: now }, { u: hit.p.uid, noUndo: !!mine, ...(back ? { gi: back } : {}) });
     }
     case 'feed': {
       const p = hit.p; if (p.def.special === 'heart') return 'heart';
@@ -505,28 +505,28 @@ function _glhApply(ev, key) {
       return put(mark, { u: p.uid });
     }
     case 'turn': {
-      const d = hit.d, def = d.def, mark = _gdMark([['decor', d.uid]]);
-      if (ev.r !== 1 && def.rot) rec.r = ((Number(rec.r) || 0) + 1) & 3;
-      else if (def.v > 1) rec.v = ((Number(rec.v) || 0) + 1) % def.v;
-      else return 'same';
-      rec.at = now;
-      return put(mark, { u: d.uid });
+      const d = hit.d, def = d.def;
+      if (!(ev.r !== 1 && def.rot) && !(def.v > 1)) return 'same';
+      return opDo({ o: 'turn', u: d.uid, ...(ev.r === 1 || !def.rot ? { s: true } : {}), at: now }, { u: d.uid });
     }
     case 'move': {
-      const it = hit.p || hit.d, kind = hit.p ? 'plant' : 'decor';
-      const whyNot = _gdPlaceOk(m, it.def, ev.tx, ev.ty, kind, it.uid); if (whyNot) return whyNot;
-      const mark = _gdMark([[hit.p ? 'plants' : 'decor', it.uid]]);
-      rec.x = ev.tx; rec.y = ev.ty;
-      return put(mark, { u: it.uid, tx: ev.tx, ty: ev.ty });
+      const it = hit.p || hit.d;
+      return opDo({ o: 'move', u: it.uid, m: hit.p ? 'plants' : 'decor', x: ev.tx, y: ev.ty, at: now }, { u: it.uid, tx: ev.tx, ty: ev.ty });
     }
     case 'take': {
-      const d = hit.d, mark = _gdMark([['decor', d.uid]]);
-      const gi = rec.own ? rec.gi : '';
-      if (rec.own) _gdDecorBack(rec);                         // back in its owner's bag, whoever put it away: its own post too, so if the answer is lost it still comes back, once
-      delete g.decor[d.uid];
-      return put(mark, { u: d.uid, noUndo: !!rec.own, ...(gi ? { gi } : {}) });
+      const d = hit.d, op = { o: 'lift', u: d.uid, at: now }, why = gardenOpCheck(W, op, f); if (why) return why;
+      // the friend who put it down takes it back (build-PLAN 1.3: anything put down can be picked up again): it goes back into their own
+      // bag, not this garden's, so this garden's ledger forgets the gift it had gained (their page puts it back in their bag on the answer)
+      const back = !rec.own && rec.from === f && rec.gi && _gbOwnLed(g, 'gl.f.' + rec.gi) ? 'gl.f.' + rec.gi : '';
+      const mark = _gdMark([...gardenOpTouches(op, g, f), ...(back ? [['led', back]] : [])]);
+      const gi = rec.own || back ? rec.gi : '';
+      if (rec.own) _gdDecorBack(rec);
+      if (back) delete g.led[back];                         // back in its owner's bag, whoever put it away: its own post too, so if the answer is lost it still comes back, once
+      gardenOpApply(g, op, f, W);
+      return put(mark, { u: d.uid, noUndo: !!rec.own || !!back, ...(gi ? { gi } : {}) });
     }
     case 'land': case 'build': case 'gate': case 'solve': return _glhLand(ev, put, m);
+    case 'grab': case 'set': return typeof gardenDropIntent === 'function' ? gardenDropIntent(ev, put) : 'kind';   // (build phase 1: 94-garden-build-1do.js)
     case 'give': {
       if (!mine) return 'not-yours';
       const d = hit.d, lk = 'gl.d.' + ev.i, gi = rec.gi, mark = _gdMark([['decor', d.uid], ['led', lk]]);
@@ -561,6 +561,7 @@ function _glhApply(ev, key) {
     default: return 'kind';
   }
 }
+function _gbOwnLed(g, k) { return !!g.led && Object.prototype.hasOwnProperty.call(g.led, k); }
 /** A friend buys a piece of this garden's land, or builds one of its things (full co-op, 2.75). They paid with their own coins before asking (their page's ledger); here it costs
  *  you nothing and is yours for good, the same rows your own purchase writes (land:<id> / feat:<id> in the ledger, so the snapshot, the map, the gates and what you can walk on
  *  follow by themselves). A thing that stands is set out near where they stand. No Undo: their coins are spent. Your own coins and level are never touched. */
@@ -845,6 +846,8 @@ function _glhDiaryWhat(e, n) {
     case 'take': return e.gi ? `${who} took back the ${what}` : `${who} took your ${what}`;
     case 'give': return `${who} gave you the ${what}`;
     case 'drop': return `${who} left a parcel`;
+    case 'grab': return `${who} picked something up`;
+    case 'set': return `${who} set something down`;
     case 'pick': return `${who} picked up a parcel`;
     case 'land': { const r = typeof gardenLandRow === 'function' ? gardenLandRow(e.land || e.p) : null; return `${who} bought ${r ? r.name : 'a piece of land'} for your garden`; }
     case 'build': { const r = typeof gardenLandFeature === 'function' ? gardenLandFeature(e.land || e.p) : null; return `${who} built ${r ? _gscA(r.name.toLowerCase().replace(/^the /, '')) : 'something'} in your garden`; }

@@ -324,9 +324,14 @@ window.GardenNativeWorld = (function () {
           ? { lawn: 0x83a875, light: 0xa3bd83, forest: 0x355b46, forestFloor: 0x5d7d57, leaf: 0x638853, leafLight: 0xa0b675, water: 0x5b9b9a, deep: 0x387b89, wild: 0x6c8e62 }
           : { lawn: 0x7daa77, light: 0xa2c486, forest: 0x315c48, forestFloor: 0x587d56, leaf: 0x5c885a, leafLight: 0x99ba7b, water: 0x599f9d, deep: 0x347b8b, wild: 0x639264 }) };
     }
+    const CULTIVATED_KINDS = new Set(['bed', 'patch', 'veg', 'rich', 'herb', 'berry']);   // (drawTerrain's soilKinds)
     function cultivatedSections(m) {
       const sections = new Set();
-      const remember = (item, w, h) => { for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) { const row = gardenLandCell(item.x + dx, item.y + dy); if (row) sections.add(row.id); } };
+      // (build phase 1, speed) only sections whose look it changes (a soil bed, a core plot, a field: drawTerrain and routePaintAllowance):
+      // a path laid on open lawn made the whole ground be drawn again, 700-900 ms on every screen, for no change on it
+      const fieldIds = new Set(((gardenIslandData().presentation || {}).fields || []).flatMap(f => f.sections));
+      const open = new Set(m.areas || []), counts = (row) => !!row && (CULTIVATED_KINDS.has(row.kind) || (row.plot === 'core' && !open.has(row.id)) || (!!row.plot && fieldIds.has(row.id)));   // (an open core plot is drawn the same either way)
+      const remember = (item, w, h) => { for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) { const row = gardenLandCell(item.x + dx, item.y + dy); if (counts(row)) sections.add(row.id); } };
       for (const item of m.plants || []) { const def = item.def || gardenPlant(item.id); if (def) remember(item, def.fp || 1, def.fp || 1); }
       for (const item of m.decor || []) { const def = item.def || gardenDecor(item.id); if (def && def.layer === 'ground') remember(item, def.w || 1, def.h || 1); }
       return sections;
@@ -2163,6 +2168,18 @@ window.GardenNativeWorld = (function () {
     api.frontierState = () => frontierMetadata;
     api.syncNeedRings = syncNeedRings;
     api.playerOcclusionState = playerOcclusionState;
+    /** Would a small thing h px tall standing at (x, y) cells be hidden, even in part, by a painted building's picture standing in front of it
+     *  (its roof over the strip behind it)? By the pictures' own pixels, so any layout's buildings answer (a set-down is never put out of sight). */
+    api.covered = (x, y, h) => {
+      const sx = x * W.cellW, sy = W.sky + y * W.cellH, th = h || 26, pts = [[0, -3], [0, -th * .5], [-8, -th * .4], [8, -th * .4], [0, -th]];
+      for (const record of fadingProps) {
+        const p = record.metadata && record.metadata.prop, b = record.bounds; if (record.editorLifted || !p || !b) continue;
+        if (sy >= W.sky + (p.y + p.h) * W.cellH - 2) continue;   // (in front of its foot: drawn over it, so seen)
+        if (sx + 8 < b.x || sx - 8 > b.x + b.width || sy < b.y || sy - th > b.y + b.height) continue;
+        try { if (record.handle && record.handle.hitPoint ? pts.some(([dx, dy]) => record.handle.hitPoint(sx + dx, sy + dy)) : propCovers(record, sx, sy, th, {})) return true; } catch (e) { /* not drawn yet */ }
+      }
+      return false;
+    };
     api.designLayer = designLayer;
     api.designPreview = designPreview;
     api.scheduleDesignPreview = paint => { editorPaint = paint; };

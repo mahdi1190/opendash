@@ -598,12 +598,15 @@ function _gwGrid(m, groundOnly) {
 /** Can a new grid wait for a sliced build? Only while you walk on the same garden with a grid already there, on land. */
 function _gwGridSliceable(mm) {
   const g = _gw.grid; if (!g || _gw.boat || !g.model || !g.hard) return false;
-  if ((g.model.visit ? g.model.visit.key : '') !== (mm.visit ? mm.visit.key : '')) return false;
+  if ((g.model.visit ? g.model.visit.fid : '') !== (mm.visit ? mm.visit.fid : '')) return false;   // (the same garden: a visit's model key changes every minute)
   // while you walk, or when a level opens land (the land drawn after it waits for you to stand a moment, and the grid you stand
   // on is what you see until then): standing at a level-up, the whole build in one task was 95 ms of a 413 ms task
   if (g.landSig != null && g.landSig !== gardenLevelLandSig(mm.level.level)) return true;
   // (or the painted trees' trunks changed: the planting drawn again after a level-up, 104 ms of a 322 ms task)
   if (g.trunkSig != null && g.trunkSig !== (_gwTrunkSig() || '')) return true;
+  // (build phase 1, build-PLAN 6) and when only what is placed changed (a thing put down, a seed planted, by you or a friend): built
+  // whole, the grid and its routes were a 70-125 ms task on every screen for each one; in slices, the grid you stand on serves a moment
+  if (g.landSig != null && g.landSig === gardenLevelLandSig(mm.level.level) && (g.trunkSig == null || g.trunkSig === (_gwTrunkSig() || ''))) return true;
   return typeof gardenBakeWalking === 'function' && gardenBakeWalking();
 }
 function* _gwGridJobRows(mm) {

@@ -144,7 +144,7 @@ function _gllPaint(A) {
   const crouch = A.sneakUntil > Date.now() && A.moving ? 0.93 : 1;   // clock-ok: a creep (the net's creep up on a bug)
   A.inner.setAttribute('transform', `scale(${(yaw % 180) && A.face < 0 ? -GL_ACT_SCALE : GL_ACT_SCALE} ${GL_ACT_SCALE * crouch})`);
 }
-function _gllPose(A, pose, ms) { A.pose = pose; A.poseUntil = Date.now() + (ms || 900); A.key = ''; _gllPaint(A); setTimeout(() => { if (_gll.actors.get(A.w) === A && A.inner && A.inner.isConnected) _gllPaint(A); }, (ms || 900) + 30); }  // clock-ok: how long a pose lasts
+function _gllPose(A, pose, ms) { A.pose = pose; A.poseUntil = Date.now() + (ms || 900); A.key = ''; setTimeout(() => { if (_gll.actors.get(A.w) === A) _gllPaint(A); }, 0); setTimeout(() => { if (_gll.actors.get(A.w) === A && A.inner && A.inner.isConnected) _gllPaint(A); }, (ms || 900) + 30); }  // clock-ok: how long a pose lasts
 /** Current stationary positions come from existing ordered cast/current-cell messages.
  * They are gameplay facts; a visible figure may still be finishing its interpolation. */
 function gardenLiveActorPosition(A) {

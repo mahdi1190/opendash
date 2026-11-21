@@ -267,7 +267,7 @@ function _ghBag() {
 function _ghQuick(box, m) {
   const thirsty = m.visit ? gardenVisitCount(m, 'water') : m.rain.now ? 0 : m.plants.filter(p => p.thirsty && p.def.thirst && p.def.special !== 'heart').length;
   const ripeN = m.visit ? gardenVisitCount(m, 'harvest') : m.ripe;
-  const undo = gardenCanUndo() ? _gd.undo[_gd.undo.length - 1] : null;
+  const undo = gardenCanUndo() ? (typeof gardenVisitUndoTop === 'function' && gardenVisitUndoTop()) || _gd.undo[_gd.undo.length - 1] : null;
   const html = (ripeN > 1 ? `<button type="button" class="gd-pill is-pick" data-quick="pick" data-tip="Pick everything that is ready (H)" aria-label="Pick all ${ripeN}">${icon('shopping-basket')}<b>${ripeN}</b></button>` : '')
     + (thirsty > 1 ? `<button type="button" class="gd-pill is-water" data-quick="water" data-tip="Water every thirsty plant (Shift+W)" aria-label="Water all ${thirsty}">${icon('droplets')}<b>${thirsty}</b></button>` : '')
     + (undo ? `<button type="button" class="gd-pill is-undo" data-quick="undo" data-tip="${escAttr('Undo ' + undo.label)}" aria-label="${escAttr('Undo ' + undo.label)}">${icon('undo-2')}</button>` : '');

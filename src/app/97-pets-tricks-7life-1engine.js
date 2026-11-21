@@ -39,7 +39,7 @@ function _plMark(P, id) { P['at_l-' + id] = performance.now(); }
 /** Every thing a row can go to, by the pets' word for its kind, read once each time the garden changes (the roaming loop's own key). */
 function _plThings() {
   let S = null; try { S = _ptwSpots(); } catch (e) { return {}; }
-  const key = S.key + '|' + (typeof _gks !== 'undefined' ? _gks.key : '');
+  const key = S.key + '|' + (typeof _gks !== 'undefined' ? _gks.key + '|' + _gks.dkey : '');
   if (_pl.things && _pl.thingsKey === key) return _pl.things;
   const out = {}, put = (kind, x, y, name, extra) => { (out[kind] || (out[kind] = [])).push(Object.assign({ x, y, name }, extra || {})); };
   let season = ''; try { season = gardenModel().season || ''; } catch (e) { season = ''; }

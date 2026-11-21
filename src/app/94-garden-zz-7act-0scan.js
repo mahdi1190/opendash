@@ -25,11 +25,19 @@ function _gksKey() {
   let feet = ''; try { feet = typeof GardenPaintVale !== 'undefined' && GardenPaintVale && GardenPaintVale.feetSig ? GardenPaintVale.feetSig() : ''; } catch (e) { feet = ''; }
   let id = ''; try { id = gardenIslandData().id; } catch (e) { id = ''; }
   let wr = 0; try { const w = window.GardenNative && GardenNative.world(); wr = w && w.waterAt && w.waterAt(0, 0) !== null ? 1 : 0; } catch (e) { wr = 0; }   // (the water is painted: a bank is laid on it again)
-  let sol = 0; try { sol = typeof _gw !== 'undefined' && _gw.solids ? _gw.solids.list.length : 0; } catch (e) { sol = 0; }   // (what blocks walking is known: a placed thing is checked against it again)
+  // (what blocks walking is known: a placed thing is checked against it again; the garden's own decorations do not count here, so a thing
+  // put down reads only the decorations again, _gksDecorKey, not the whole scan: 40-80 ms on both screens, build phase 1)
+  let sol = 0; try { if (typeof _gw !== 'undefined' && _gw.solids) for (const r of _gw.solids.list) if (!/^decoration/.test(String(r.src))) sol++; } catch (e) { sol = 0; }
   let lv = 0; try { lv = typeof gardenLevelLandSig === 'function' ? gardenLevelLandSig(_gksLevel()) : _gksLevel(); } catch (e) { lv = 0; }   // (a thing kept for a later level comes back when you reach it)
   let ar = ''; try { ar = typeof _GD_LAND !== 'undefined' && _GD_LAND ? _GD_LAND.size : ''; } catch (e) { ar = ''; }
-  // (n-move) the decorations' part last, after '#D': a decoration put down or taken up (a pet's puddle) only lays the decorations again
-  return [id, sol, wr, lv, ar, _gksGridRev(), m.visit ? m.visit.key : 'me', (m.areas || []).length, lp, feet, typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0, gardenThingsPlaced().length].join('|') + '#D' + (m.decor || []).length + '|' + (m.decor || []).reduce((h, d) => (h * 31 + Math.round(d.x * 7 + d.y * 131)) | 0, 0);
+  return [id, sol, wr, lv, ar, typeof _gw !== 'undefined' && _gw && _gw.grid ? 1 : 0, m.visit ? 'v:' + m.visit.fid : 'me', (m.areas || []).length, lp, feet, typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0, gardenThingsPlaced().length].join('|');
+}
+/** (build phase 1, build-PLAN 6) what is placed in this garden, apart from the rest: a thing put down changes only this, and only the placed
+ *  things are read again (the whole scan was 40-55 ms on every put-down, on both screens). Paths and ground cover offer nothing: not counted. */
+function _gksDecorKey() {
+  let m = null; try { m = gardenHere(); } catch (e) { return ''; }
+  let n = 0, h = 0; for (const d of m.decor || []) { if (d.def && d.def.layer === 'ground') continue; n++; h = (h * 31 + Math.round(d.x * 7 + d.y * 131) + (d.uid ? d.uid.length : 0)) | 0; }
+  return n + ':' + h;
 }
 /** The garden's level as a number (the model keeps { level, ... }). */
 function _gksLevel() { try { const L = gardenModel().level; return Number(L && typeof L === 'object' ? L.level : L) || 0; } catch (e) { return 0; } }
@@ -41,18 +49,12 @@ function gardenAffordThings() {
   const now = typeof performance !== 'undefined' ? performance.now() : 0;
   if (_gks.key !== null && now - _gks.t < 500) return _gks.list;
   _gks.t = now;
-  const key = _gksKey(); if (key === _gks.key) return _gks.list;
-  const oldKey = _gks.key; _gks.key = key;
-  const base = key.slice(0, key.lastIndexOf('#D'));
-  // (n-move) only the decorations changed (on a friend's screen a pet's puddles and leaves come and go as they walk): the rest is kept and
-  // only the decorations are laid again. The whole list was built again each time, 40-90 ms on the watching friend's screen
-  if (_gks.base && _gks.base.key === base && oldKey != null) {
-    const list = _gks.base.list.slice(), seen = new Set(_gks.base.seen);
-    const push = (t) => { if (!t || !Number.isFinite(t.x) || !Number.isFinite(t.y) || seen.has(t.src + ':' + t.id)) return; seen.add(t.src + ':' + t.id); list.push(t); };
-    _gksDecorPush(push);
-    _gks.list = list; _gks.unknown = list.filter(t => !t.kind).map(t => t.src + ':' + t.id);
-    return list;
+  const key = _gksKey(), dkey = _gksDecorKey();
+  if (key === _gks.key) {
+    if (dkey === _gks.dkey) return _gks.list;
+    _gks.dkey = dkey; _gks.list = _gksDecorRows(_gks.base || []); return _gks.list;
   }
+  _gks.key = key; _gks.dkey = dkey;
   const list = [], seen = new Set(); _gks.orphans = new Set(); _gks.moved = new Map();
   const push = (t) => { if (!t || !Number.isFinite(t.x) || !Number.isFinite(t.y) || seen.has(t.src + ':' + t.id)) return; seen.add(t.src + ':' + t.id); list.push(t); };
   const sightArt = new Map(); try { for (const s of GARDEN_LAND_SIGHTS) sightArt.set(s.id, s.art); } catch (e) { /* none */ }
@@ -90,10 +92,10 @@ function gardenAffordThings() {
   try { if (typeof GardenPaintVale !== 'undefined' && GardenPaintVale && GardenPaintVale.feet) for (const f of GardenPaintVale.feet()) { const nm = String(f.src || '').replace(/^painted /, '').split('|')[0], k = gardenKindOf({ id: nm, head: true }); if (k === 'building' || k === 'scenery') continue;   /* (a painted thing of no known kind is found too, kind '': it offers nothing and is listed in _gks.unknown) */ push({ id: 'painted:' + nm + ':' + Math.round(f.x0 * 10) + ',' + Math.round(f.y1 * 10), kind: k, x: (f.x0 + f.x1) / 2, y: f.y1, w: Math.max(0.4, f.x1 - f.x0), h: Math.max(0.2, f.y1 - f.y0), src: 'painted', name: nm }); } } catch (e) { /* no painter */ }
   // 4b. the clutter a painter stands from the layout alone (a quay's bench, crates, pots): found by its own word, like any painted thing
   try { if (typeof gardenIslandHarbourThings === 'function') for (const h of gardenIslandHarbourThings()) { const k = gardenKindOf({ id: h.key, head: true }); if (!k || k === 'building' || k === 'scenery') continue; const x0 = h.foot[0], x1 = h.foot[2]; if (list.some(t => t.src === 'painted' && t.kind === k && Math.abs(t.x - (x0 + x1) / 2) < 0.6 && Math.abs(t.y - h.foot[3]) < 0.6)) continue; push({ id: 'painted:' + h.key + ':' + Math.round(x0 * 10) + ',' + Math.round(h.foot[3] * 10), kind: k, x: (x0 + x1) / 2, y: h.foot[3], w: Math.max(0.4, x1 - x0), h: Math.max(0.2, h.foot[3] - h.foot[1]), src: 'painted', name: GARDEN_KINDS[k].name }); } } catch (e) { /* no harbour */ }
-  // 5. decorations placed in this garden (kept apart: see above)
-  _gks.base = { key: base, list: list.slice(), seen: new Set(seen) };
-  _gksDecorPush(push);
-  _gks.list = list; _gks.unknown = list.filter(t => !t.kind).map(t => t.src + ':' + t.id);
+  // 5. decorations placed in this garden (read again on their own when only they change: _gksDecorRows)
+  _gks.base = list.slice();
+  _gks.list = _gksDecorRows(list);
+  list.length = 0; for (const t of _gks.list) list.push(t); _gks.unknown = list.filter(t => !t.kind).map(t => t.src + ':' + t.id);
   // a placed thing moved aside once the walker knew what stops the feet: the world draws it again where it now lies
   const placedSig = list.filter(t => t.src === 'thing').map(t => t.id + '@' + t.x + ',' + t.y).join('|');
   // (vf-perf) the world is drawn again once (several moves in a row make one redraw) and only when you are not walking: it is the
@@ -103,9 +105,11 @@ function gardenAffordThings() {
   if (_gks.unknown.length && _gks.said !== _gks.unknown.join()) { _gks.said = _gks.unknown.join(); try { console.info('[garden] things of no known kind (they offer nothing; give them a kind in the layout or a word in GARDEN_KINDS): ' + _gks.unknown.join(', ')); } catch (e) { /* no console */ } }
   return list;
 }
-/** (n-move) The garden's decorations as things to do something with (gardenAffordThings' last part). */
-function _gksDecorPush(push) {
-  try { for (const d of gardenHere().decor || []) { const def = d.def || {}; if (def.layer === 'ground') continue; const w = def.w || 1, h = def.h || 1; push({ id: d.uid, kind: gardenKindOf({ decor: def.id, effect: def.effect && def.effect.kind, id: def.id }), x: d.x + w / 2, y: d.y + h, w, h, src: 'decor', name: def.name ? 'the ' + String(def.name).toLowerCase() : '', decor: def.id }); } } catch (e) { /* none */ }
+/** The scan's fixed part plus the decorations placed in this garden now (a new list). */
+function _gksDecorRows(base) {
+  const list = base.slice(), seen = new Set(base.map(t => t.src + ':' + t.id));
+  try { for (const d of gardenHere().decor || []) { const def = d.def || {}; if (def.layer === 'ground' || seen.has('decor:' + d.uid)) continue; seen.add('decor:' + d.uid); const w = def.w || 1, h = def.h || 1; list.push({ id: d.uid, kind: gardenKindOf({ decor: def.id, effect: def.effect && def.effect.kind, id: def.id }), x: d.x + w / 2, y: d.y + h, w, h, src: 'decor', name: def.name ? 'the ' + String(def.name).toLowerCase() : '', decor: def.id }); } } catch (e) { /* none */ }
+  return list;
 }
 /** Why a placed thing may not lie with its foot's middle at (x, y), w by h cells, or '' when it may: the same ground rule for every kind.
  *  Not on the water, a path, road or paved yard (a kind with onPath, a busker's pitch, may stand on setts), not on what stops the feet
@@ -144,7 +148,7 @@ function _gksResyncSoon() {
 /** Bumped when a placed thing lies somewhere new (the stage's cache key: 94-garden-4page.js), so the world draws it there. */
 function gardenAffordRev() { return _gks.rev || 0; }
 /** Rebuild on the next look (the layout or the land changed). */
-function gardenAffordReset() { _gks.key = null; _gks.t = 0; }
+function gardenAffordReset() { _gks.key = null; _gks.dkey = null; _gks.t = 0; }
 /** The pets' word for a thing -> every found thing it counts as. */
 function gardenAffordOfPet(word) {
   const kinds = new Set(GARDEN_KIND_BY_PET[word] || []);

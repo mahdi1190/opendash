@@ -855,7 +855,7 @@ function _gdpBindKeys() {
     if (!/^garden(:|$)/.test(String(state.view || '')) || !(ev.ctrlKey || ev.metaKey) || ev.shiftKey || ev.key.toLowerCase() !== 'z') return;
     const t = ev.target;
     if (t && (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable)) return;
-    if (!gardenCanUndo()) return;
+    if (!gardenCanUndo() && !(typeof gardenVisitOn === 'function' && gardenVisitOn())) return;   // (on a visit it always answers, even "nothing to take back")
     ev.preventDefault(); ev.stopImmediatePropagation();
     gardenUndo();
   }, true);
