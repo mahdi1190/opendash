@@ -1456,12 +1456,27 @@ window.GardenNativeWorld = (function () {
       coveringCanopies.length = 0;
       const actLift = typeof gartActLift === 'function' ? gartActLift() : 0;   // a figure up on a branch or a seat is that much higher
       const probes = [{ x, y: y - actLift - playerOcclusionHeight * .81 }, { x, y: y - actLift - playerOcclusionHeight * .48 }, { x: x - 6, y: y - actLift - playerOcclusionHeight * .54 }, { x: x + 6, y: y - actLift - playerOcclusionHeight * .54 }];
+      // (2.74.1) a friend up a tree or on a high seat: any crown over them fades on your screen too, as it does on theirs (the owner: you
+      // could not see them climb). Friends' figures stand in the objects layer, under every crown, so the crown they sit in counts as well.
+      // By kind: any lifted figure, any crown.
+      const lifted = [];
+      if (typeof _gll !== 'undefined' && _gll.actors) for (const F of _gll.actors.values()) {
+        const lift = typeof gartActFriendLift === 'function' ? gartActFriendLift(F) : F.actLift || 0;
+        if (F.me || !(lift > 6) || !F.root || !F.root.target || !Number.isFinite(F.x)) continue;
+        const fx = F.x * W.cellW, fy = W.sky + F.y * W.cellH, fh = 50 * GARDEN_ACTOR_SCALE;
+        lifted.push({ F, x: fx, y: fy, crowns: [], probes: [{ x: fx, y: fy - lift - fh * .8 }, { x: fx, y: fy - lift - fh * .45 }] });
+      }
       for (const crown of canopyOccluders) {
         const b = crown.bounds;
         let covered = false;
         if (crown.record.root.visible && crown.record.root.active && crown.record.depth > y + .01 && x + 8 >= b.x - 3 && x - 8 <= b.x + b.width + 3 && y - playerOcclusionHeight <= b.y + b.height + 3 && y >= b.y - 3) {
           const matrix = GardenNativeArt.inverse(crown.node._matrix);
           covered = probes.some(probe => { const point = GardenNativeArt.point(matrix, probe.x, probe.y); return crown.polygons.some(polygon => insidePolygon(point, polygon)); });
+        }
+        for (const L of lifted) {
+          if (!crown.record.root.visible || L.x + 8 < b.x - 3 || L.x - 8 > b.x + b.width + 3 || L.y - L.F.actLift - 50 > b.y + b.height + 3) continue;
+          const matrix = GardenNativeArt.inverse(crown.node._matrix);
+          if (L.probes.some(probe => { const point = GardenNativeArt.point(matrix, probe.x, probe.y); return crown.polygons.some(polygon => insidePolygon(point, polygon)); })) { covered = true; L.crowns.push(crown); }
         }
         const alpha = crown.normalAlpha * (covered ? .24 : 1);
         if (crown.faded !== covered || Math.abs(crown.node.target.alpha - alpha) > .0001) { crown.faded = covered; crown.node.target.setAlpha(alpha); }

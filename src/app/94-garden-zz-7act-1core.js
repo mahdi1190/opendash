@@ -699,7 +699,7 @@ function gartActRemote(A, id, off) {
   if (tag && (row.lying || lift)) { const y0 = tag.getAttribute('y'), y1 = row.lying ? String(Math.round(-26 * GARDEN_ACTOR_SCALE)) : String(Number(y0) - lift); tag.setAttribute('y', y1); const undo = H.stop; H.stop = () => { undo(); if (tag.getAttribute('y') === y1) tag.setAttribute('y', y0); }; }
   A.actHold = row.hold ? id : ''; { const undo = H.stop; H.stop = () => { A.actHold = ''; undo(); }; }
   A.anims = H.anims.concat(H.panims); A.actUndo = H.stop; A.sit = !!row.hold; A.hold = '';
-  if (!row.hold) A.animT = setTimeout(() => { if (typeof _gllEmoteStop === 'function') _gllEmoteStop(A); if (A.actId === id) A.actId = ''; }, Math.max(60, row.ms + 60 - off));
+  if (!row.hold) A.animT = setTimeout(() => { if (typeof _gllEmoteStop === 'function') _gllEmoteStop(A); if (A.actId === id) A.actId = ''; if (A.dgNext && typeof gartActDoingNext === 'function') gartActDoingNext(A); }, Math.max(60, row.ms + 60 - off));   // (2.74.1: and what they went on to, after it)
   return true;
 }
 /* ---------- the pet comes and joins in ---------- */

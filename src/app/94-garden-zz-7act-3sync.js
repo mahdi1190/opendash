@@ -91,7 +91,7 @@ function gartActRedraw(A) {
   if (!A || !A.actId || A.actPainting) return;
   const row = GARDEN_ACTS[A.actId]; if (!row) { A.actId = ''; return; }
   const off = performance.now() - (A.actT0 || performance.now());
-  if (!row.hold && off > row.ms) { A.actId = ''; return; }
+  if (!row.hold && off > row.ms) { A.actId = ''; if (A.dgNext) gartActDoingNext(A); return; }
   const id = A.actId; setTimeout(() => { if (A.actId === id && !A.moving) gartActRemote(A, id, performance.now() - A.actT0); }, 0);
 }
 function gartActDoingIn(A, ev) {
@@ -119,21 +119,43 @@ function gartActDoingIn(A, ev) {
   // the move
   const a = ev.a ? String(ev.a) : '';
   if (!a) {
+    A.dgNext = null; A.dgT0 = null;
     if (A.actId || A.actWant) { A.actWant = ''; A.actId = ''; A.then = null; if (typeof _gllEmoteStop === 'function') _gllEmoteStop(A); A.sit = false; A.key = ''; }
     A.standDeg = Number.isInteger(ev.d) ? ev.d : null; gartActStandFace(A);   // (standing: they face as they do, now or when their walk here ends)
     return;
   }
   const t0 = performance.now() - (Number(ev.t) || 0) * 100;
-  if (A.actWant === a && Math.abs((A.actT0 || 0) - t0) < 1500) return;   // the same move, said again
-  A.actX = Number.isFinite(ev.x) ? ev.x : A.x; A.actY = Number.isFinite(ev.y) ? ev.y : A.y; A.actDeg = Number.isInteger(ev.d) ? ev.d : null;
+  if (A.actWant === a && A.dgT0 != null && Math.abs(A.dgT0 - t0) < 1500) return;   // the same move, said again (their clock, not when it began here)
+  if (A.dgNext && A.dgNext.a === a && Math.abs(A.dgNext.t0 - t0) < 1500) return;   // (already waiting its turn)
+  const at = { x: Number.isFinite(ev.x) ? ev.x : A.x, y: Number.isFinite(ev.y) ? ev.y : A.y, d: Number.isInteger(ev.d) ? ev.d : null };
+  // a move that follows another (climb the tree, then sit on the branch: the table's then): the first is seen whole here before the next
+  const prev = A.actWant || A.actId, prow = prev && GARDEN_ACTS[prev];
+  if (prow && prow.then === a && !prow.hold) {
+    const left = A.actId === prev ? prow.ms - (performance.now() - (A.actT0 || 0)) : Infinity;
+    if (left > 80) { A.dgNext = { a, t0, at }; return; }
+  }
+  A.dgNext = null; A.dgT0 = t0;
+  gartActDoingStart(A, a, t0, at);
+}
+/** Start a move on their figure: walk there first if it is not there yet, and then do it from its beginning (the walk took the time
+ *  it took here); a figure that is there already, or a late arrival, joins it where it has got to (a held pose at its end). */
+function gartActDoingStart(A, a, t0, at) {
+  A.actX = at.x; A.actY = at.y; A.actDeg = at.d;
   const go = () => { if (A.actWant === a) gartActRemote(A, a, performance.now() - A.actT0); };
-  if (Number.isFinite(ev.x) && Math.hypot(ev.x - A.x, ev.y - A.y) > 0.05) {
-    if (Math.hypot(ev.x - A.x, ev.y - A.y) > 6 || typeof _gllWalkVia !== 'function') { A.x = ev.x; A.y = ev.y; A.tx = null; A.ty = null; A.way = null; A.moving = false; A.key = ''; A.actWant = a; A.actT0 = t0; go(); }
-    else { _gllWalkVia(A, null, ev.x, ev.y); A.actWant = a; A.actT0 = t0; A.then = go; }   // (walking there ends what they did before: then this)
+  if (Math.hypot(at.x - A.x, at.y - A.y) > 0.05) {
+    if (Math.hypot(at.x - A.x, at.y - A.y) > 6 || typeof _gllWalkVia !== 'function') { A.x = at.x; A.y = at.y; A.tx = null; A.ty = null; A.way = null; A.moving = false; A.key = ''; A.actWant = a; A.actT0 = t0; go(); }
+    else { _gllWalkVia(A, null, at.x, at.y); A.actWant = a; A.actT0 = t0; A.then = () => { const row = GARDEN_ACTS[a]; if (row && !row.hold && performance.now() - t0 < row.ms + 4000) A.actT0 = performance.now(); go(); }; }   // (walking there ends what they did before: then this, from its start)
     return;
   }
   A.actWant = a; A.actT0 = t0;
   go();
+}
+/** Their move has ended here: the one they went on to (dgNext) now. */
+function gartActDoingNext(A) {
+  const n = A.dgNext; if (!n || _gll.actors.get(A.w) !== A) return;
+  A.dgNext = null; A.dgT0 = n.t0;
+  const row = GARDEN_ACTS[n.a], late = performance.now() - n.t0;
+  gartActDoingStart(A, n.a, row && !row.hold && late < row.ms + 4000 ? performance.now() : n.t0, n.at);
 }
 /** A figure that has stopped turns the way they said they face (gl:dg d), once. From gartMoveActor too, when their walk ends. */
 function gartActStandFace(A) {
@@ -156,6 +178,14 @@ function gartActRubCopy(A, id) {
     A.rubT = setTimeout(go, 6100);
   };
   go();
+}
+/** How high a friend's figure is drawn now (world px): on a seat or a branch, its lift; on the way up to one (an act whose next move
+ *  is a raised seat: up the trunk to the branch), most of that. For the crowns over them (94-garden-native-painted.js fadeUnder). */
+function gartActFriendLift(F) {
+  if (!F || F.me) return 0;
+  if (F.actLift > 0) return F.actLift;
+  const row = F.actId && GARDEN_ACTS[F.actId], next = row && row.then && GARDEN_ACTS[row.then];
+  return next && next.seat ? 30 * next.seat : 0;
 }
 /** Their stick: a thing of the world on my screen, in their hand and flying (part 0), in the grass (1), in their pet's mouth (2), at their feet (3). */
 function _gadStickSprite(A) {
