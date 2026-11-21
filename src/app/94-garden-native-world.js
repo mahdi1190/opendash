@@ -1384,17 +1384,17 @@ window.GardenNativeWorld = (function () {
       if (_gw.hold && casting) _gw.hold = null;
       if (_gw.hold && !_gw.hold.steer && _gw.t - _gw.hold.t0 > .28) _gw.hold.steer = true;
       let dx = (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0), dy = (keys.has('down') ? 1 : 0) - (keys.has('up') ? 1 : 0);
-      let want = 0, ux = 0, uy = 0, distance = 0, target = null, direct = false;
+      let want = 0, ux = 0, uy = 0, distance = 0, target = null, direct = false, running = false;
       const pushed = _gwPushOut(dt);
       if (!pushed && !casting && (dx || dy)) {
         _gw.path = []; _gw.then = null; _gw.netting = null; _gw.hold = null;
         const length = Math.hypot(dx * W.cellW, dy * W.cellH); ux = dx * W.cellW / length; uy = dy * W.cellH / length;
         if (typeof gartMoveSteer === 'function') [ux, uy] = gartMoveSteer(ux, uy, dt);   // a turning circle, not a snap (94-garden-zz-6move.js)
-        _gw.sneak = keys.has('creep'); want = _gw.sneak ? GW_SPEED.sneak : (keys.has('shift') ? GW_SPEED.run : GW_SPEED.walk) * _gwWalkBonus(); direct = true;   // hold Shift to run, Z to creep
+        _gw.sneak = keys.has('creep'); running = !_gw.sneak && keys.has('shift'); want = _gw.sneak ? GW_SPEED.sneak : (running ? GW_SPEED.run : GW_SPEED.walk) * _gwWalkBonus(); direct = true;   // hold Shift to run, Z to creep
         _gw.glide = { ux, uy };   // (move360) let go and you carry on a hair's step as you slow, the way you were going
       } else if (!pushed && !casting && _gw.hold && _gw.hold.steer) {
         _gw.glide = null;
-        const pt = point(_gw.hold.cx, _gw.hold.cy); if (pt) { dx = (pt.x - _gw.px) * W.cellW; dy = (pt.y - _gw.py) * W.cellH; distance = Math.hypot(dx, dy); if (distance > 10) { ux = dx / distance; uy = dy / distance; direct = true; want = Math.min(distance > 150 ? GW_SPEED.run : GW_SPEED.walk, Math.sqrt(2 * GW_ACC * distance) + 34); } }
+        const pt = point(_gw.hold.cx, _gw.hold.cy); if (pt) { dx = (pt.x - _gw.px) * W.cellW; dy = (pt.y - _gw.py) * W.cellH; distance = Math.hypot(dx, dy); if (distance > 10) { ux = dx / distance; uy = dy / distance; direct = true; running = keys.has('shift') || distance > 150 || (_gw.gait === 'r' && distance > 40);   /* (n-move) Shift runs here too, as with the keys */ want = Math.min(running ? GW_SPEED.run : GW_SPEED.walk, Math.sqrt(2 * GW_ACC * distance) + 34); } }
       } else if (!pushed && !casting && _gw.path.length) {
         while (_gw.path.length > 1 && _gwLos({ x: _gw.px, y: _gw.py }, _gw.path[1], GW_CLEAR)) _gw.path.shift();
         target = _gw.path[0]; dx = (target.x - _gw.px) * W.cellW; dy = (target.y - _gw.py) * W.cellH; distance = Math.hypot(dx, dy); ux = dx / (distance || 1); uy = dy / (distance || 1);
@@ -1406,14 +1406,18 @@ window.GardenNativeWorld = (function () {
           if (_gwFree(_gw.px + bx / bl * 6 / W.cellW, _gw.py + by / bl * 6 / W.cellH)) { ux = bx / bl; uy = by / bl; }
         }
         let remaining = distance; for (let i = 1; i < _gw.path.length; i++) remaining += Math.hypot((_gw.path[i].x - _gw.path[i - 1].x) * W.cellW, (_gw.path[i].y - _gw.path[i - 1].y) * W.cellH);
-        want = Math.min(_gw.sneak ? GW_SPEED.sneak : (_gw.clickRun && remaining > 90 ? GW_SPEED.run : GW_SPEED.walk) * _gwWalkBonus(), Math.sqrt(2 * GW_ACC * remaining) + 34);
+        // (n-move) a click's run is a run to the end: it slows in its last steps (the square root below) but never drops to a walk for them
+        running = !_gw.sneak && !!_gw.clickRun;
+        want = Math.min(_gw.sneak ? GW_SPEED.sneak : (running ? GW_SPEED.run : GW_SPEED.walk) * _gwWalkBonus(), Math.sqrt(2 * GW_ACC * remaining) + 34);
       }
-      if (want) _gw.gait = _gw.sneak ? 'c' : want >= GW_SPEED.run * _gwWalkBonus() * 0.97 && (_gw.spd || 0) > GW_SPEED.walk * _gwWalkBonus() * 0.9 ? 'r' : 'w';   // (round 3: the legs break into a run once the pace is past a walk, not from the first step)   // (round 2) the gait chosen, for the legs and for friends: slow ground no longer turns a run into a walk
+      // (round 2) the gait chosen, for the legs and for friends: slow ground no longer turns a run into a walk. (n-move) A run is a run from its
+      // first step: the legs broke into it only once the pace passed a walk, a tenth of a second of walking legs every time Shift went down
+      if (want) _gw.gait = _gw.sneak ? 'c' : running ? 'r' : 'w';
       if (want && typeof gardenPlayWalk === 'function') want *= gardenPlayWalk();
       // (move360) keys let go: a short glide to a stop (a walk stops in about 0.08 s and 6 px, a run in 0.13 s), never a dead halt mid-stride
       const gliding = !want && !pushed && !casting && !_gw.path.length && !!_gw.glide && (_gw.spd || 0) > 3 && gardenMotionOn();
       if (gliding) { ux = _gw.glide.ux; uy = _gw.glide.uy; direct = true; } else if (!want) _gw.glide = null;
-      _gw.spd = want ? (_gw.spd || 0) + clamp(want - (_gw.spd || 0), -GW_ACC * dt * 1.4, GW_ACC * dt) : gliding ? Math.max(0, _gw.spd - GW_ACC * 1.8 * dt) : 0;
+      _gw.spd = want ? (_gw.spd || 0) + clamp(want - (_gw.spd || 0), -GW_ACC * dt * 1.4, GW_ACC * dt * (running ? 1.5 : 1)) : gliding ? Math.max(0, _gw.spd - GW_ACC * 1.8 * dt) : 0;
       _gw.moving = false;
       if ((want || gliding) && _gw.spd > 3) {
         const step = _gw.spd * dt;
