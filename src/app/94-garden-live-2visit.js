@@ -256,7 +256,7 @@ function _glvResult(b) {
       // (a build says where it went up: by you, a walk away, or waiting in the land office when there was no room anywhere: critic, 21 Nov)
       let where = '';
       if (b.t === 'build' && b.why === 'wait') where = ` There was no clear spot near you, so it waits in their land office, ready to set out where there is room.`;
-      else if (b.t === 'build' && Number.isInteger(b.tx) && typeof _gw !== 'undefined') { const d = Math.hypot(b.tx + .5 - _gw.px, b.ty + .5 - _gw.py); where = d <= 7 ? ' It stands just by you.' : ` It went up a short walk ${Math.abs(b.tx + .5 - _gw.px) > Math.abs(b.ty + .5 - _gw.py) ? (b.tx + .5 > _gw.px ? 'east' : 'west') : (b.ty + .5 > _gw.py ? 'south' : 'north')} of you, where there was room.`; try { _gllFloat(_glvSvg(), b.tx, b.ty, '🔨', 'Here'); } catch (e) { /* only a marker */ } }
+      else if (b.t === 'build' && Number.isInteger(b.tx) && typeof _gw !== 'undefined') { const d = Math.hypot(b.tx + .5 - _gw.px, b.ty + .5 - _gw.py); where = d <= 4 ? ' It stands just by you.' : ` It went up a short walk ${Math.abs(b.tx + .5 - _gw.px) > Math.abs(b.ty + .5 - _gw.py) ? (b.tx + .5 > _gw.px ? 'east' : 'west') : (b.ty + .5 > _gw.py ? 'south' : 'north')} of you, where there was room.`; try { _gllFloat(_glvSvg(), b.tx, b.ty, '🔨', 'Here'); } catch (e) { /* only a marker */ } }
       gardenToast(`${name} is part of ${_gdvFirst()}’s garden now.${where} Thank you for chipping in!`, { icon: b.t === 'land' ? 'trees' : 'hammer', timeout: where ? 10000 : 6000 });
     }
     if (b.t === 'catch') _glvGotBug(b.u, b.item);
