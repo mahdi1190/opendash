@@ -155,6 +155,31 @@ function gartActTaken(r) {
   } catch (e) { /* alone */ }
   return false;
 }
+/** A place to stand for a move that is not a seat, when a friend's figure is on it: the nearest spot beside it (a body's width off, on open
+ *  ground, the same distance from the thing) that nobody is on. Any kind, any move; a seat's own places are kept by gartActTaken. */
+function _gaStandClear(spot) {
+  if (!spot || !spot.stand || spot.seated || typeof _gll === 'undefined' || !_gll.actors || !_gll.actors.size) return spot;
+  const who = []; for (const A of _gll.actors.values()) { if (!A || A.me || A.rm || A.away) continue; const at = A.actAt || A; if (Number.isFinite(at.x) && Number.isFinite(at.y)) who.push(at); }
+  const busy = (x, y) => who.some(a => Math.hypot(a.x - x, (a.y - y) * 1.3) < 0.62);
+  if (!busy(spot.stand.x, spot.stand.y)) return spot;
+  for (const [dx, dy] of [[0.7, 0], [-0.7, 0], [0.6, 0.35], [-0.6, 0.35], [1.05, 0.1], [-1.05, 0.1], [0, 0.6]]) {
+    const x = spot.stand.x + dx, y = spot.stand.y + dy;
+    if (!busy(x, y) && (typeof _gwFree !== 'function' || _gwFree(x, y, 0.2))) return Object.assign({}, spot, { stand: { x, y } });
+  }
+  return spot;
+}
+/** Nothing free in reach, but a place right here that a friend is on (the stump's one seat): the words for that, else ''. */
+function gartActTakenWords() {
+  if (typeof _gw === 'undefined' || !_gw.on) return '';
+  try {
+    if (!_ga.list) { _ga.list = _gaStaticRows(); _ga.listT = performance.now(); }
+    const px = _gw.px, py = _gw.py, d = (r) => Math.hypot(r.x - px, (r.y - py) * 1.3);
+    const r = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src) && gartActTaken(r)).sort((a, b) => d(a) - d(b))[0];
+    if (!r) return '';
+    const row = GARDEN_ACTS[r.act];
+    return row && row.seat == null && !r.seated ? 'Someone is already there.' : 'Someone is already sitting there.';
+  } catch (e) { return ''; }
+}
 /** Everything in reach, the nearest first (things with a place before the water's edge). */
 function gartActNearby() {
   if (typeof _gw === 'undefined' || !_gw.on) return [];
@@ -165,7 +190,12 @@ function gartActNearby() {
   // where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near; and a tree offers each
   // of its moves where you would do it (in front of the trunk: climb; at its side: hide behind it; out under the crown: a nap)
   const ds = (r) => !r.stand ? d(r) : r.src === 'tree' ? Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3) : Math.min(d(r), Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3));   // (where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near)
-  rows.sort((a, b) => ds(a) - (a.pri || 0) - ds(b) + (b.pri || 0));   // (pri: a wall before the tree that grows against it)
+  // the way you face counts too: what you walked up to comes before what is at your back (walking up to a log seat by a fire offered
+  // "Warm your hands" for the fire behind you; in front of a bench, a nap under the tree beside it). Up to a cell for a thing right behind.
+  const h = typeof _gmv !== 'undefined' && Number.isFinite(_gmv.h) ? _gmv.h * Math.PI / 180 : null;
+  const back = (r) => { if (h == null) return 0; const p = r.stand && r.src === 'tree' ? r.stand : r, vx = p.x - px, vy = p.y - py, n = Math.hypot(vx, vy); if (n < 0.35) return 0; return (1 - (Math.cos(h) * vx + Math.sin(h) * vy) / n) * 0.5; };
+  const score = new Map(); for (const r of rows) score.set(r, ds(r) - (r.pri || 0) + back(r));
+  rows.sort((a, b) => score.get(a) - score.get(b));   // (pri: a wall before the tree that grows against it)
   if (!rows.length) return _gaWaterRows(px, py);
   return rows;
 }
@@ -315,6 +345,7 @@ function gartActRun(id, spot) {
     return true;
   }
   if (spot && gartActTaken(spot)) { try { gardenToast(GARDEN_ACTS[spot.act] && GARDEN_ACTS[spot.act].seat == null && !spot.seated ? 'Someone is already there.' : 'Someone is already sitting there.'); } catch (e) { /* fine */ } return false; }   // (one person to a seat)
+  spot = _gaStandClear(spot);   // (a move done standing, never on top of a friend: warming your hands at a fire stood you on a friend sat on the log)
   if (_ga.carry && !row.carry) gartActSetDown();   // (you put down what you carry to do something else)
   if (row.rubPet && typeof _ptwFree === 'function' && !_ptwFree(_gw.px + GA_RUB_AT[0], _gw.py + GA_RUB_AT[1])) { try { gardenToast('Not here: your pet needs open ground beside you to roll over.'); } catch (e) { /* fine */ } return false; }   // (never on a wall, a step or a thing: pets do not stand on props)
   if (row.lying && !(spot && spot.stand) && !gartActGroundClear(_gw.px, _gw.py)) { try { gardenToast('Not here. Find some grass, or the beach, to lie down on.'); } catch (e) { /* fine */ } return false; }
@@ -396,6 +427,9 @@ function gartActStop(done) {
   if (cur.row.prop === 'fiddle') setTimeout(_gaResync, 0);
   if (cur.row.rubPet) { try { const P = gpPetMe(); if (P && P.root && P.root._pcH && cur.rubH === P.root._pcH) petClipStop(P.root); } catch (e) { /* no pet */ } }
   if (cur.H && cur.H.stop) cur.H.stop();
+  // a held move that ends where you stand (a nap's time is up, you stand up from a seat): friends hear at once, at the next quarter second,
+  // not when the next "where I am" falls due (their copy of you lay asleep five seconds after you had stood up)
+  if (cur.doing && cur.row.hold && typeof _gly !== 'undefined') _gly.atAt = 0;
   if (cur.row.after && done && window.GardenNativeActions && _gaMotion()) { const W = GARDEN_WORLD; for (let i = 0; i < 6; i++) setTimeout(() => { try { GardenNativeActions.effect('water', _gw.px * W.cellW, W.sky + _gw.py * W.cellH, { width: 16 }); } catch (e) { /* fine */ } }, i * 450); }
   if (cur.doing) { try { if (typeof _gwBody === 'function') _gwBody(); } catch (e) { /* fine */ } }
 }

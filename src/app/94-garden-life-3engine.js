@@ -747,7 +747,7 @@ function _glDirect(W) {
 }
 /* ---------- start and stop: your own garden ---------- */
 function gardenLifeSync(m) {
-  if (typeof _gw === 'undefined' || !_gw.on || !_gw.svg) return;
+  if (typeof _gw === 'undefined' || !_gw.on || !_gw.svg || !m) return;   // (no garden yet: the scene is made before a friend's garden has arrived; reading it crashed the visit's opening, 'tod')
   if (m && m.visit) { gardenLifeVisit(_gw.svg, m.visit.snap); return; }   // a friend's garden: creatures from their objects, nothing sent, nothing earned
   if (gardenFun() === 'off' && !_gl.on) return;
   if (!_gl.on || !_gl.W || !_gl.W.own) {

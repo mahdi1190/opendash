@@ -2082,7 +2082,7 @@ function gardenWorldInteract() {
     for (let r = 1; r <= gardenRod().st.range; r++) for (const dy of [1, 0, -1]) { const x = px + _gw.face * r, y = py + dy; if (x >= 0 && x < W.cols && y >= 0 && y < W.rows && wet(x, y)) { gardenFishFront(); return; } }
     for (let r = 1; r <= gardenRod().st.range; r++) if (py + r < W.rows && wet(px, py + r)) { gardenFishFront(); return; }
   }
-  { const s = _ghProject(_gw.px, _gw.py - 1.4), r = _gw.box && _gw.box.getBoundingClientRect(); gameDeny(null, { at: s && r ? { x: r.left + s.x, y: r.top + s.y } : null, silent: true, say: 'Nothing in reach.' }); }
+  { const s = _ghProject(_gw.px, _gw.py - 1.4), r = _gw.box && _gw.box.getBoundingClientRect(), taken = typeof gartActTakenWords === 'function' ? gartActTakenWords() : ''; gameDeny(null, { at: s && r ? { x: r.left + s.x, y: r.top + s.y } : null, silent: true, say: taken || 'Nothing in reach.' }); }   // (a seat a friend is on: say so, not "nothing")
 }
 
 /* ---------- the world's API for anything that lives in it (docs/dev/GARDEN.md, "The world API") ---------- */

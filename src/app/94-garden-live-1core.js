@@ -145,6 +145,9 @@ function _gllStationaryAt(A, x, y, source) {
   const W = GARDEN_WORLD; if (!A || !Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x >= W.cols || y >= W.rows) return;
   const previous = A.stationaryPosition;
   if (source === 'cell' && previous && Math.floor(previous.x) === Math.floor(x) && Math.floor(previous.y) === Math.floor(y)) return;
+  // a cell report only says which cell: a figure already inside it (sat on a seat at 42.97, behind a trunk) is where it is, never put back
+  // to the middle of the cell (a sitter seen later by a friend who was elsewhere when they sat was drawn on the bench's back rail)
+  if (source === 'cell' && Number.isFinite(A.x) && Number.isFinite(A.y) && Math.floor(A.x) === Math.floor(x) && Math.floor(A.y) === Math.floor(y) && A.tx == null) { A.stationaryPosition = { x: A.x, y: A.y, source }; return; }
   A.stationaryPosition = { x, y, source };
   // There is no visible walk to preserve when both ends of an already-complete pose are culled.
   if (typeof _gwInView === 'function' && !_gwInView(A.x, A.y, 1.5) && !_gwInView(x, y, 1.5)) { A.x = x; A.y = y; A.tx = null; A.ty = null; A.way = null; A.pace = 0; A.moving = false; A.key = ''; }
