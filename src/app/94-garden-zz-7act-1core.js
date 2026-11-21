@@ -271,7 +271,8 @@ function _gaPlace() {
   // never under the garden's own messages strip at the top (a welcome, a find): below it, and above the thing's foot at most
   let y = s.y; try { const m = _gw.box.querySelector('.gd-msgs'), mb = m && m.childElementCount ? m.getBoundingClientRect() : null, bb = _gw.box.getBoundingClientRect(); const floor = mb && mb.height ? mb.bottom - bb.top + 34 : 40; if (y < floor) { const foot = _ghProject(r.x, r.y); y = Math.min(Math.max(y, floor), foot ? foot.y - 6 : y); } } catch (e) { /* as it was */ }
   el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(y)}px) translate(-50%, -100%)`;
-  if (_ga.ch && !_ga.ch.hidden) _ga.ch.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(y) + 6}px) translate(-50%, 0)`;
+  // the chooser under your own feet, not under the prompt: there it lay over the thing itself and over a friend sat on it
+  if (_ga.ch && !_ga.ch.hidden) { const me = _ghProject(_gw.px, _gw.py + 0.45), bb = _gw.box.getBoundingClientRect(), cy = me ? Math.min(me.y, bb.height - 120) : Math.round(y) + 6; _ga.ch.style.transform = `translate(${Math.round(me ? me.x : s.x)}px, ${Math.round(Math.max(cy, y + 6))}px) translate(-50%, 0)`; }
 }
 /** E or Space: the prompt's action, if one is showing. Returns true when it did something. */
 function gartActInteract() {

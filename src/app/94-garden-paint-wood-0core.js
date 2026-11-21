@@ -338,7 +338,8 @@ window.GardenPaintWood = (function () {
     // the Great Oak's shadow (the vale paints the tree, 94-garden-paint-vale-1places.js, at the same foot): laid on this floor as
     // the kit's own crown shade along the light, so it is soft, dappled and long at dusk like every other tree's
     { const g = (pres.plazas || []).find(p => p.id === 'great-oak-clearing'); if (g && window.GardenPaintTrees && typeof gardenSizePx === 'function') out.oakShadow = { kit: 'greatoak', x: (g.x + 2.9) * W.cellW, y: W.sky + (g.y - 1.5) * W.cellH, h: Math.round(gardenSizePx('greatOak', 1)) }; }
-    keepOldWoodInView(out, data, W, (x, y) => { const c = cellAt(x, y), r = (data.regions || []).find(q => WOODS[q.id] && WOODS[q.id].mood === 'old'); return !!(c && r && inside(x + .5, y + .5, r.polygons[0]) && !wet(c) && !c.plantingReserved && !isPath(c) && !statics.has(x + ',' + y) && !onWall(x + .5, y + 1) && !(c.row && (c.row.plot || c.locked && /^l[sc]-/.test(c.row.id || ''))) && !near(x, y, 1, isPath) && !plazas.some(p => Math.hypot((x + .5 - p.x) / ((p.rx || 3.2) + 1), (y + .5 - p.y) / ((p.ry || 2.4) + 1)) < 1)); });
+    // (every wood, not only the old one: the west woods' beech stood in front of the great stump and hid its parlour, and anyone sat on its log)
+    for (const wr of (data.regions || []).filter(q => WOODS[q.id] && q.polygons && q.polygons[0])) keepOldWoodInView(out, data, W, wr, (x, y) => { const c = cellAt(x, y), r = wr; return !!(c && r && inside(x + .5, y + .5, r.polygons[0]) && !wet(c) && !c.plantingReserved && !isPath(c) && !statics.has(x + ',' + y) && !onWall(x + .5, y + 1) && !(c.row && (c.row.plot || c.locked && /^l[sc]-/.test(c.row.id || ''))) && !near(x, y, 1, isPath) && !plazas.some(p => Math.hypot((x + .5 - p.x) / ((p.rx || 3.2) + 1), (y + .5 - p.y) / ((p.ry || 2.4) + 1)) < 1)); });
     // no tree stands in front of a house in the woods hiding its face (a willow at Sallow carr stood over Thistle's front
     // door): a crown that covers a fifth of a house's front, from in front of it, goes, and ferns grow at its foot instead
     { const fronts = houses.map(h => [h.x * W.cellW - 6, W.sky + (h.y + (h.h || 1)) * W.cellH - 120, (h.x + (h.w || 1)) * W.cellW + 6, W.sky + (h.y + (h.h || 1)) * W.cellH]);
@@ -523,8 +524,8 @@ window.GardenPaintWood = (function () {
    * wall, the pond or a ruin painted over it: the ring of wall, the postern and
    * the pond read as missing. A tree whose crown would cover one becomes a low
    * yew if that clears it, else ferns and holly at its foot. Only this wood. */
-  function keepOldWoodInView(out, data, W, spotOk) {
-    const region = (data.regions || []).find(r => WOODS[r.id] && WOODS[r.id].mood === 'old'); if (!region) return;
+  function keepOldWoodInView(out, data, W, region, spotOk) {
+    if (!region) return;
     const cw = W.cellW, ch = W.cellH, py = y => W.sky + y * ch, keep = [], poly = region.polygons[0];
     const box = (x0, y0, x1, y1) => keep.push([x0 * cw, py(y0), x1 * cw, py(y1)]);
     const LIFT = { 'ld-chapel': 6, 'ld-tower': 3.4, 'ld-statue': 2.6, 'ld-woodhut': 2.6, 'ld-icehouse': 2.2, 'ld-labyrinth': 1.2 };
