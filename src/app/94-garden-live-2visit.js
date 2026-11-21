@@ -124,7 +124,7 @@ function _glvWalked(pt) {
 function _glvGoSend(x, y) {
   const gap = _glv.mode === 'thin' ? GL_WALK_GAP.thin : GL_WALK_GAP.normal, t = Date.now();   // clock-ok: spacing messages
   clearTimeout(_glv.goT);
-  const go = () => { _glv.goAt = Date.now(); _glvSend('go', { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 }); };  // clock-ok: spacing messages
+  const go = () => { _glv.goAt = Date.now(); _glvSend('go', { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, ...(typeof gartMoveTell === 'function' ? gartMoveTell() : {}) }); };  // clock-ok: spacing messages
   if (t - _glv.goAt >= gap) go(); else _glv.goT = setTimeout(go, gap - (t - _glv.goAt));
 }
 /** Keys and holding have no destination: where you are is sent as you go, at most every 0.8 s, and once more when you stop. Nothing while you stand still. */
@@ -410,7 +410,7 @@ function _glvEvent(ev) {
     }
     case 'go': {
       const A = _gll.actors.get(ev.w); if (!A) return;   // (you are not one of them: your own feet are the world's)
-      _gllGoPace(A, ev); _gllWalkVia(A, ev.r, ev.x, ev.y); if (_glv.follow === ev.w) _glvFollowGo(ev.x - 0.8, ev.y + 0.3);
+      _gllGoPace(A, ev); if (typeof gartMoveTold === 'function') gartMoveTold(A, ev); _gllWalkVia(A, ev.r, ev.x, ev.y); if (_glv.follow === ev.w) _glvFollowGo(ev.x - 0.8, ev.y + 0.3);
       return;
     }
     case 'em': {

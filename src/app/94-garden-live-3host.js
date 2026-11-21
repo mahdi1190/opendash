@@ -116,7 +116,7 @@ function gardenLiveHostGone() {
 // A reload: the visit goes on, and whichever tab speaks next is the host.
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('pagehide', () => { if (!_glh.on) return; try { fetch('/api/garden-live/here', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'host', on: 'release', tab: _GLL_TAB }) }); } catch (e) { /* the server sees the silence */ } });
 /** Your own walk: where you are going, once; keys and holding are sent as you go, at most every 0.8 s. Nothing while nobody is here. */
-function gardenLiveWalked(pt) { if (_gll.role === 'visit') { _glvWalked(pt); return; } if (!_glh.on || !_glhAnyone()) return; _glh.lastGo = Date.now(); _glh.goX = pt.x; _glh.goY = pt.y; _glhSend('all', 'go', { x: Math.round(pt.x * 10) / 10, y: Math.round(pt.y * 10) / 10, ..._glhTurns(_gw.path) }); }  // clock-ok: spacing messages
+function gardenLiveWalked(pt) { if (_gll.role === 'visit') { _glvWalked(pt); return; } if (!_glh.on || !_glhAnyone()) return; _glh.lastGo = Date.now(); _glh.goX = pt.x; _glh.goY = pt.y; _glhSend('all', 'go', { x: Math.round(pt.x * 10) / 10, y: Math.round(pt.y * 10) / 10, ..._glhTurns(_gw.path), ...(typeof gartMoveTell === 'function' ? gartMoveTell() : {}) }); }  // clock-ok: spacing messages
 /** The way round the beds, as turns on the wire: every point but the last (that is the destination). */
 function _glhTurns(path) {
   const pts = (path || []).slice(0, -1).slice(0, 12).map(p => [Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10]);
@@ -143,7 +143,7 @@ function _glhWalk(A, ev) {
   if (GARDEN_WORLD.v >= 4 && routeTried && !way) { _glhSend(A.f, 'go', { w: A.w, x: A.x, y: A.y }); return; }
   const turns = _glhTurns(way);
   _gllWalkVia(A, turns.r, ev.x, ev.y);
-  if (_gll.actors.size > 1) _glhSend('all', 'go', { w: ev.w, x: ev.x, y: ev.y, ...turns });   // (with nobody else here, nobody needs telling: the walker's own feet are their own)
+  if (_gll.actors.size > 1) _glhSend('all', 'go', { w: ev.w, x: ev.x, y: ev.y, ...turns, ...(Number.isInteger(ev.h) ? { h: ev.h } : {}), ...(ev.g ? { g: ev.g } : {}) });   // (with nobody else here, nobody needs telling: the walker's own feet are their own)
 }
 function _glhWatchStart() {
   if (_glh.watch || typeof gardenWorldAdd !== 'function') return;
@@ -229,7 +229,7 @@ function _glhEvent(ev) {
     }
     case 'tr': if (typeof _gltHostOn === 'function') _gltHostOn(ev); return;
     case 'leave': if (typeof _gltHostLeft === 'function') _gltHostLeft(ev.w); _glhRemove(ev.w); if (typeof gardenContestLeave === 'function') gardenContestLeave(ev.w); _glhReturnDrops(ev.w); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
-    case 'go': { const A = _gll.actors.get(ev.w); if (A) { _gllGoPace(A, ev); _glhWalk(A, ev); if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } return; }
+    case 'go': { const A = _gll.actors.get(ev.w); if (A) { _gllGoPace(A, ev); if (typeof gartMoveTold === 'function') gartMoveTold(A, ev); _glhWalk(A, ev); if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } return; }
     case 'em': {
       const A = _gll.actors.get(ev.w); if (!A) return;
       if (ev.c === 'em') _gllEmoteAt(A, ev);

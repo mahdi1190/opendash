@@ -292,6 +292,12 @@ function gartMoveActor(A) {
     st.lpx = st.lpy = null;
     if (busy || !motion) st.h = A.dir === 'n' ? -90 : A.dir === 'e' ? (A.face < 0 ? 180 : 0) : 90;
     if (!A.moving) st.v = 0;
+    // (move360) stood still: they turn to the way they last said they face (every walk message carries it), through the in-between drawings
+    if (!busy && !A.moving && A.hd != null && motion) {
+      let d = _gmvWrap(A.hd - st.h); const step = GPL_MOVE.turnRate * dt; st.h = _gmvWrap(st.h + (Math.abs(d) <= step ? d : Math.sign(d) * step));
+      const D = _gmvDrawing(st.h, Number.isFinite(A.yaw) && gplYawDir(A.yaw) === A.dir ? A.yaw : null, 45);
+      if (D.dir !== A.dir || D.yaw !== A.yaw || ((D.yaw % 180) && D.mirror !== A.face)) { A.dir = D.dir; A.yaw = D.yaw; if (D.yaw % 180) A.face = D.mirror; A.key = ''; if (typeof _gllPaint === 'function') _gllPaint(A); }
+    }
     if (A.carryId && !busy && typeof gartActCarryActor === 'function') { const b0 = A.inner.firstChild; if (b0 && b0.querySelector) gartActCarryActor(A, b0); }
     return;
   }
@@ -313,6 +319,20 @@ function gartMoveActor(A) {
   if (A.inner.getAttribute('transform') !== tf) A.inner.setAttribute('transform', tf);
   if (!motion) return;
   const body = A.inner.firstChild; if (!body || !body.querySelector) return;
-  const L = _gmvStride(st, body, S, { px: A.x, py: A.y, moving: true, v: st.v, sneak, dir: A.dir, yaw: A.yaw, mirror });
+  const v = A.gait === 'r' ? Math.max(st.v, 230) : A.gait === 'w' ? Math.min(st.v, 200) : st.v;   // (move360) the gait they said, not a guess from how fast their figure catches up
+  const L = _gmvStride(st, body, S, { px: A.x, py: A.y, moving: true, v, sneak, dir: A.dir, yaw: A.yaw, mirror });
   if (typeof gartActCarryActor === 'function') gartActCarryActor(A, body, L);   // (carrying: both hands on it, as yours)
+}
+
+/** (move360) What your walk messages say besides where: the way you face (in sixteenths of a turn, screen degrees as gartMoveFacingDeg) and the gait (w walk, r run, c creep). */
+function gartMoveTell() {
+  const h = Math.round(((_gmvWrap(_gmv.h || 0) % 360) + 360) % 360 / 22.5) % 16;
+  const g = typeof _gw === 'undefined' ? 'w' : _gw.sneak && _gw.moving ? 'c' : (_gw.spd || 0) > 205 ? 'r' : 'w';
+  return { h, g };
+}
+/** (move360) A friend's walk message heard: keep the way they face and their gait on their figure (gartMoveActor uses both). */
+function gartMoveTold(A, ev) {
+  if (!A || !ev) return;
+  if (Number.isInteger(ev.h) && ev.h >= 0 && ev.h < 16) A.hd = _gmvWrap(ev.h * 22.5);
+  if (ev.g === 'w' || ev.g === 'r' || ev.g === 'c') { A.gait = ev.g; if (ev.g === 'c') A.sneakUntil = Date.now() + 1500; }   // clock-ok: a creep lasts while they keep saying so
 }
