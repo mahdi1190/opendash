@@ -1181,8 +1181,12 @@ window.GardenPaintedTerrain = (function () {
     const W = GARDEN_WORLD, L = readLayout(W); if (!L) return null;
     const season = sc.season || 'summer', sig = 'gpt-3|' + season + '|' + (GardenIslandLayout.fingerprint || '');
     const old = current; if (old) { if (old.fadeTick && old.scene && old.scene.events) old.scene.events.off('update', old.fadeTick); old.roomEntrances = null; old.handle.destroy(old.sig === sig); for (const s of sprites) s.destroy(); sprites = []; if (old.sig !== sig) for (const k of old.spriteKeys) if (scene.textures.exists(k)) scene.textures.remove(k); }
-    const ops = ok(() => compose(L, season)); if (!ops) return null;
-    standOps = ops.filter(o => /\.boulder\(|\.stand\(/.test(String(o.draw))); standMemo = null; standSigNow = sig;
+    // (vf-perf) the fells' painting depends on the layout and the season only: a repaint for a level or an opened field
+    // (the whole world is drawn again) takes the same ops, rocks and stands as last time instead of working them out again
+    const same = composed && composed.sig === sig;
+    const ops = same ? composed.ops : ok(() => compose(L, season)); if (!ops) return null;
+    if (!same) { composed = { sig, ops, occ: null, feet: null }; standOps = ops.filter(o => /\.boulder\(|\.stand\(/.test(String(o.draw))); standMemo = null; }
+    standSigNow = sig;
     const rb = kit.bboxOf(L.regionLoops.flat().concat(L.terraces.flatMap(t => t.pts)));
     const box = { x: 0, y: W.sky - 150, w: W.cols * W.cellW, h: Math.min(W.sky + W.rows * W.cellH, rb[3] + 80) - (W.sky - 150) };
     const handle = kit.chunked(scene, parent, ops, { key: sig, box, K, chunk: CHUNK, depth: DEPTH, budgetMB: 32 });
@@ -1191,7 +1195,7 @@ window.GardenPaintedTerrain = (function () {
     // landmarks and the trees (in the root they were drawn over every object: the Horn's foot hid the grotto under it
     // and anyone standing just in front of it)
     const standIn = objParent || parent;
-    const feetNew = []; const occ = occluders(L, ops, season, sig, feetNew); feet = feetNew.map(f => Object.freeze(f)); feetSigNow = feet.length + ':' + feet.reduce((h, f) => (Math.imul(h, 31) + Math.round(f.x0 * 64) * 7 + Math.round(f.y0 * 64)) | 0, 0);
+    let feetNew = []; const occ = composed.occ || occluders(L, ops, season, sig, feetNew); if (composed.occ) feetNew = composed.feet; else { composed.occ = occ; composed.feet = feetNew; } feet = feetNew.map(f => Object.freeze(f)); feetSigNow = feet.length + ':' + feet.reduce((h, f) => (Math.imul(h, 31) + Math.round(f.x0 * 64) * 7 + Math.round(f.y0 * 64)) | 0, 0);
     // (each lays its shadow on the ground through the shared kit, but not a peak: that is a hillside, painted with its own shade, and laying so large a picture over cost 55 ms)
     const fades = [];
     for (const o of occ) { const im = kit.sprite(scene, standIn, o.key, o.box, o.draw, o.x, o.y, o.K, !o.key.includes('|peak|')); if (im) { sprites.push(im); keys.push(o.key); spritePx += im._gptPx || 0; if (o.fade) fades.push({ im, f: o.fade, to: o.fadeTo }); } }
@@ -1218,7 +1222,7 @@ window.GardenPaintedTerrain = (function () {
    * same rocks); worked out once per painting, when walking first asks. Only rocks on the fells' own ground count (the
    * drawing is clipped to it); pebbles (the brush's stone) stay walked over.
    */
-  let standOps = null, standMemo = null, standSigNow = '';
+  let standOps = null, standMemo = null, standSigNow = '', composed = null;
   // px: smaller than this is a stone you step over (the brush's smallest boulders, 7 to 12 px, are smaller than your feet:
   // as blocks they were little walls with next to nothing drawn on them, the collision audit, 19 Nov 2026)
   const STAND_MIN = Object.freeze({ w: 13, h: 7 });
