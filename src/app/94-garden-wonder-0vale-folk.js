@@ -28,7 +28,8 @@ function gardenFolkLive() {
   try { if (typeof gardenFun === 'function' && gardenFun() === 'off') return false; if (typeof _wdOn === 'function' && !_wdOn('folk')) return false; } catch (e) { return false; }
   return true;
 }
-function _vfrMinute() { try { const p = Clock.parts(_gdNow()); return p.h * 60 + p.mi + (Number(p.s) || 0) / 60; } catch (e) { const d = new Date(); return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60; } }
+function _vfrMinute() { const sh = Number(_vfr.shift) || 0; return (((_vfrClockMinute() + sh) % 1440) + 1440) % 1440; }   // (_vfr.shift: minutes on, for the dev tools and the audit's sandbox day only)
+function _vfrClockMinute() { try { const p = Clock.parts(_gdNow()); return p.h * 60 + p.mi + (Number(p.s) || 0) / 60; } catch (e) { const d = new Date(); return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60; } }
 function _vfrWeekday(iso) { return new Date(iso + 'T12:00:00').getDay(); }
 /* ---------- the finder's view of this layout ---------- */
 function _vfrDoorOf(t) {
@@ -41,7 +42,7 @@ function _vfrDoorOf(t) {
 }
 function _vfrOpenAt(x, y, m) { try { const z = gardenIslandZoneAt(Math.floor(x), Math.floor(y)); return !z || (m.areas || []).includes('zn-' + z); } catch (e) { return true; } }
 function _vfrCtx(m) {
-  const things = (typeof gardenAffordThings === 'function' ? gardenAffordThings() : []).filter(t => t.kind && !(t.kind === 'person'));
+  const things = (typeof gardenAffordThings === 'function' ? gardenAffordThings() : []).filter(t => t.kind && t.kind !== 'person' && !(t.needs && typeof gardenWorkOwned === 'function' && !gardenWorkOwned(t.needs)));   // (a longer pier not built yet is not there to sit on)
   const spotsMemo = new Map(), doorMemo = new Map();
   const free = (x, y) => typeof _gwFree !== 'function' || _gwFree(x, y);
   return {
@@ -83,7 +84,7 @@ function _vfrBegin(m) {
   if (dirty) _wdSave();
   _vfr.homes = new Map(); _vfr.away = new Set();
   // the way in to the vale: the arrival road's first point (where visitors come ashore), else the arrival point itself
-  const road = (() => { let p = null; try { const r = typeof gardenIslandArrivalRoad === 'function' ? gardenIslandArrivalRoad() : null; p = r && r.points && r.points[0]; } catch (e) { p = null; } const st = GARDEN_WORLD.start; return { id: 'road', kind: 'road', x: p ? p.x : st.x + 0.5, y: p ? p.y : st.y + 0.5 }; })();
+  const road = (() => { let p = null; try { const r = typeof gardenIslandArrivalRoad === 'function' ? gardenIslandArrivalRoad() : null; const q = r && (r.entry || (r.points && r.points[0])); p = Array.isArray(q) ? { x: q[0], y: q[1] } : q && Number.isFinite(q.x) ? q : null; } catch (e) { p = null; } const st = GARDEN_WORLD.start; return { id: 'road', kind: 'road', x: p ? p.x : st.x + 0.5, y: p ? p.y : st.y + 0.5 }; })();
   for (const r of rows) {
     const t = ctx.things.find(q => q.id === homes.get(r.id));
     if (t && ctx.open(t)) _vfr.homes.set(r.id, t);
@@ -419,7 +420,7 @@ function _vfrHostSend(now) {
     if (V.hold && V.hold.by != null) r.h = Math.max(0, Math.min(9, Number(V.hold.by) || 0));
     l.push(r); if (l.length >= 16) break;
   }
-  const sig = JSON.stringify(l.map(r => [r.i, r.tx, r.ty, r.a, r.f, r.h]));
+  const sig = JSON.stringify(l.map(r => [r.i, Math.round(r.x / 5), Math.round(r.y / 5), r.tx, r.ty, r.a, r.f, r.h]));   // (where they are, to half a cell: a walk is told every 0.8 s, a rest every 8 s)
   if (sig === _vfl.sig && now - _vfl.sentAt < 8000) return;
   _vfl.sig = sig; _vfl.sentAt = now;
   try { _glhSend('all', 'fk', { l }); } catch (e) { /* only a message */ }
@@ -451,7 +452,8 @@ function _vfgFrame(dt) {
   for (const V of _vfg.V.values()) {
     if (!V.S) { V.S = wdSprite({ id: 'vfg-' + V.id, x: V.x, y: V.y, hit: 0.75, hitUp: 16, label: V.row.name, cursor: 'hand', ground: true, svg: '', lift: 0, update() { }, onClick: () => gardenFolkGuestTalk(V.id) }); V.drawn = ''; }
     // first to where the host last saw them, then on along to where they are going, at their own pace
-    const aim = Math.hypot(V.x - V.to.x, V.y - V.to.y) > 0.15 ? V.to : V.goal, dx = (aim.x - V.x) * G.cellW, dy = (aim.y - V.y) * G.cellH, d = Math.hypot(dx, dy), st = VALE_FOLK_SPEED * (V.row.speed || 1) * dt * (aim === V.to ? 1.25 : 1);
+    if (V.to && Math.hypot(V.x - V.to.x, V.y - V.to.y) <= 0.15) V.to = null;   // (caught up with where the host saw them: from now on, along to where they are going)
+    const aim = V.to || V.goal, dx = (aim.x - V.x) * G.cellW, dy = (aim.y - V.y) * G.cellH, d = Math.hypot(dx, dy), st = VALE_FOLK_SPEED * (V.row.speed || 1) * dt * (aim === V.to ? 1.25 : 1);
     const walking = d > 1.5 && V.a === 'walk';
     if (d > 0.5) { const k = Math.min(1, st / d); V.x += dx / G.cellW * k; V.y += dy / G.cellH * k; if (Math.abs(dx) > 0.5) V.face = dx > 0 ? 1 : -1; }
     if (!walking) V.face = V.a === 'talk' && V.mine && typeof _gw !== 'undefined' ? (_gw.px > V.x ? 1 : -1) : V.f;

@@ -49,6 +49,7 @@ if (TINY) {
   for (const t of aff.things || []) {
     if (!t.kind || t.kind === 'person' || faulted.has(t.id)) continue;
     const s = stat.get(t.id), p = placed.get(t.id), K = ctxVm.K[t.kind] || {};
+    if (!s && !p) continue;   // (a longer pier's decks are built later, through lake works: not there in a new garden)
     things.push({ id: t.id, kind: t.kind, x: t.at[0], y: t.at[1], w: s ? s.w : (p && p.w) || K.w || 1, h: s ? s.h : (p && p.h) || K.h || 1, front: p && p.front, src: s ? 'layout' : 'thing', door: s && s.door ? { x: s.door.x + 0.5, y: s.door.y + 0.5 } : null, region: t.region || '' });
   }
   zones = new Map((island.regions || []).map(r => [r.id, r.zone || 0]));
