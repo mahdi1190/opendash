@@ -106,7 +106,7 @@
     const FY = x => (R.footAt(x) * ch + L.cpt(0, 0).y) - oy, X = x => (x - a0) * cw;
     const T0 = performance.now(), ST = 1, m0 = a0 - .45, m1 = a1 + .45, NX = Math.ceil((m1 - m0) * cw / ST) + 2, SD = .025;
     const E = new Float32Array(NX), DC = new Float32Array(NX); let dMax = 0;
-    for (let i = 0; i < NX; i++) { E[i] = ridgeH(kit, m0 + i * ST / cw, R.summits, R); DC[i] = crestD(E[i]); dMax = Math.max(dMax, DC[i]); }
+    for (let i = 0; i < NX; i++) { E[i] = ridgeH(kit, m0 + i * ST / cw, R.summits, R); DC[i] = crestD(E[i]); dMax = Math.max(dMax, DC[i]); if ((i & 31) === 31 && late()) yield; }
     const ND = Math.ceil(dMax / SD) + 3, Z = new Float32Array(NX * ND);
     for (let i = 0; i < NX; i++) { const x = m0 + i * ST / cw; for (let j = 0; j < ND; j++) { const d = j * SD; Z[j * NX + i] = d > DC[i] + SD * 2 ? -1 : rangeZ(kit, R, x, Math.min(d, DC[i]), E[i]); } if (late()) yield; }
     const T1 = performance.now();
@@ -149,7 +149,7 @@
       sky[i] = ymin; if (late()) yield;
     }
     sky[0] = sky[1]; sky[PW - 1] = sky[PW - 2];
-    for (let yy = 0; yy < PH; yy++) for (let i = 1; i < PW - 1; i++) { const o = (yy * PW + i) * 4; if (px[o + 3] === 0 && px[o - 1] === 255 && px[o + 7] === 255) for (let q = 0; q < 4; q++) px[o + q] = (px[o - 4 + q] + px[o + 4 + q]) >> 1; }
+    for (let yy = 0; yy < PH; yy++) { for (let i = 1; i < PW - 1; i++) { const o = (yy * PW + i) * 4; if (px[o + 3] === 0 && px[o - 1] === 255 && px[o + 7] === 255) for (let q = 0; q < 4; q++) px[o + q] = (px[o - 4 + q] + px[o + 4 + q]) >> 1; } if ((yy & 15) === 15 && late()) yield; }
     yield; cx.putImageData(img, 0, 0); const T2 = performance.now(); if (late()) yield;
     // the picture, soft (made here, once: the blur is the dearest single step)
     const c2 = document.createElement('canvas'); c2.width = PW; c2.height = PH; { const g2 = c2.getContext('2d'); g2.filter = 'blur(.8px)'; g2.drawImage(cv, 0, 0); g2.filter = 'none'; g2.globalAlpha = .45; g2.drawImage(cv, 0, 0); }

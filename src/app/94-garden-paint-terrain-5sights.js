@@ -89,15 +89,15 @@ window.GardenPaintSeat = (function () {
   }
   const queue = []; let timer = null, pumped = 0, pumpWorst = 0;
   function pump() {
-    const t0 = performance.now();
-    while (queue.length && performance.now() - t0 < 8) {
+    const t0 = performance.now(), room = typeof gardenBakeRoom === 'function' ? gardenBakeRoom(8) : 8;   // (vf-perf: the shared budget a frame, 94-garden-paint-0budget.js)
+    while (queue.length && performance.now() - t0 < room) {
       let best = 0, bd = Infinity;
       for (let i = 0; i < queue.length; i++) { const j = queue[i], cam = j.scene && j.scene.cameras && j.scene.cameras.main, v = cam && cam.worldView; const d = v ? Math.hypot(j.x - v.centerX, j.y - v.centerY) : 0; if (j.dead) { best = i; bd = -1; break; } if (d < bd) { bd = d; best = i; } }
       const j = queue.splice(best, 1)[0]; if (j.dead || !j.scene || !j.scene.sys || !j.scene.textures) continue;
       try { j.im = j.make(); if (j.im) { j.im.setVisible(j.vis); j.im.setAlpha(j.alpha); } } catch (e) { /* the scene went while it waited */ }
       pumped++;
     }
-    pumpWorst = Math.max(pumpWorst, performance.now() - t0);
+    pumpWorst = Math.max(pumpWorst, performance.now() - t0); if (typeof gardenBakeSpent === 'function') gardenBakeSpent(performance.now() - t0);
     if (!queue.length) { clearInterval(timer); timer = null; }
   }
   const status = () => ({ waiting: queue.length, painted: pumped, worstTickMs: Math.round(pumpWorst) });

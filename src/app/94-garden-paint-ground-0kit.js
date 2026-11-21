@@ -204,6 +204,9 @@ window.GardenPaintGround = (function () {
         const s = (inView ? 0 : 1e7) + need * 1e6 + dist(ch, v) - (ch.job ? 5e5 : 0); if (s < bs) { bs = s; best = ch; }
       }
       if (!best && opts.prebake && bakedPx < budget * .9 && !(typeof _gw !== 'undefined' && _gw.moving)) for (const ch of list) if (!ch.image) { const d = dist(ch, v); if (d < bs) { bs = d; best = ch; } }
+      // (vf-perf) the slice comes out of the one budget every background painter shares a frame (94-garden-paint-0budget.js)
+      const room = typeof gardenBakeRoom === 'function' ? gardenBakeRoom(slice) : slice, b0 = performance.now();
+      if (room < 1.5) best = null;
       if (best) { let k = follow && (best.low || !meets(best.bb, near)) ? Math.min(K, minK) : K;
         /* (a bare chunk on the screen gets a quick picture at level 1 first and is made sharp on the next ticks: baked straight at
             level 3, a chunk took up to half a second, and after a jump the game's flat background showed through in straight-edged
@@ -212,9 +215,10 @@ window.GardenPaintGround = (function () {
         /* (while you walk, a bare or repainted chunk is painted no sharper than level 2 when one of its ops is costly there or has never been timed: one band of three kinds took 60 ms at level 3; it is made sharp when you stop) */
         if (moving && follow && (!best.image || best.dirty)) for (const l of [2, 1.5, 1]) if (k > l && l >= minK && (heavy(best, k) || (k > 2 && best.ops.some(o => !(o.cost > 0))))) k = l;
         const tStart = performance.now(), quick = follow && !best.image && k <= 1 && meets(best.bb, v);
-        bakeStep(best, k, slice);
+        bakeStep(best, k, room);
         // (and while the slice lasts, the next bare chunks on the screen get their quick pictures in the same tick)
-        if (quick) for (let n = 0; n < 4; n++) { const left = slice - (performance.now() - tStart); if (left < 1.5) break; let nx = null, nd = Infinity; for (const ch of list) { if (ch.image || !meets(ch.bb, v)) continue; const d = dist(ch, v); if (d < nd) { nd = d; nx = ch; } } if (!nx) break; bakeStep(nx, nx.job ? nx.job.K : Math.min(K, 1), left); } }
+        if (quick) for (let n = 0; n < 4; n++) { const left = room - (performance.now() - tStart); if (left < 1.5) break; let nx = null, nd = Infinity; for (const ch of list) { if (ch.image || !meets(ch.bb, v)) continue; const d = dist(ch, v); if (d < nd) { nd = d; nx = ch; } } if (!nx) break; bakeStep(nx, nx.job ? nx.job.K : Math.min(K, 1), left); } }
+      if (typeof gardenBakeSpent === 'function') gardenBakeSpent(performance.now() - b0);
       // over the budget: let go the farthest, sharpest chunk that is off the screen (one well away first); short of room for the margin: one well away
       if (bakedPx > budget || wantRoom) { const over = bakedPx > budget; let far = null, fd = -1; for (const ch of list) { if (!ch.image || meets(ch.bb, v)) continue; const away = !meets(ch.bb, keep); if (!away && !over) continue; const d = dist(ch, v) * ch.K * (away ? 1 : .001); if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
     };

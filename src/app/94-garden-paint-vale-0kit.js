@@ -335,13 +335,14 @@ window.GardenPaintVale = (function () {
     // (vf-perf) a thing with a prep (a dear picture worked out in steps: the range) is worked on for what is left of this frame's
     // few milliseconds and stays at the head of the queue until it is ready; it is made on a frame of its own, so its marks and
     // its upload never share a frame with the last step of its working
-    while (cur.queue.length && performance.now() - t0 < 6) {
+    const room = typeof gardenBakeRoom === 'function' ? gardenBakeRoom(6) : 6;   // (the shared budget a frame, 94-garden-paint-0budget.js)
+    while (cur.queue.length && performance.now() - t0 < room) {
       const [o, u] = cur.queue[0];
-      if (o.prep && !o.prepped) { const s0 = performance.now(); o.prepped = !!ok(() => o.prep(t0 + 6)); stats.prepWorstMs = Math.max(stats.prepWorstMs || 0, Math.round(performance.now() - s0)); break; }
+      if (o.prep && !o.prepped) { const s0 = performance.now(); o.prepped = !!ok(() => o.prep(t0 + room)); stats.prepWorstMs = Math.max(stats.prepWorstMs || 0, Math.round(performance.now() - s0)); break; }
       cur.queue.shift(); const s0 = performance.now(); ok(() => cur.make(o, u)); const ms = performance.now() - s0; if (ms > (stats.slowMs || 0)) { stats.slowMs = Math.round(ms); stats.slow = o.key || 'tree'; }
     }
     for (const c of [cur.objects, cur.root]) if (c && c.sort) c.sort('depth');
-    stats.queueWorstMs = Math.max(stats.queueWorstMs || 0, Math.round(performance.now() - t0));
+    stats.queueWorstMs = Math.max(stats.queueWorstMs || 0, Math.round(performance.now() - t0)); if (typeof gardenBakeSpent === 'function') gardenBakeSpent(performance.now() - t0);
   }
   function clear(nextGroundSig) {
     if (cur) {

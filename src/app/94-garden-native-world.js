@@ -1196,7 +1196,7 @@ window.GardenNativeWorld = (function () {
       // Precipitation changes the live atmosphere. Actual ice and shoreline
       // geometry already participate through the surface and lake revisions.
       const cultivated = typeof gardenIslandActive === 'function' && gardenIslandActive() ? cultivatedSections(m) : null;
-      const tk = [packOn() ? 'painted' : '', sc.season, sc.tod, m.level.level, (sc.areas || []).join(','), designRev, surfaceKey, lake && lake.revision, cultivated && [...cultivated].sort().join(','), deckKey].join('|');
+      const tk = [packOn() ? 'painted' : '', sc.season, sc.tod, typeof gardenLevelLandSig === 'function' ? gardenLevelLandSig(m.level.level) : m.level.level, (sc.areas || []).join(','), designRev, surfaceKey, lake && lake.revision, cultivated && [...cultivated].sort().join(','), deckKey].join('|');
       // (village fix round 3) a new level or a newly opened piece of land while you are walking (the garden earns a level
       // from what you find on a walk) waits to be drawn until you stop: drawing the whole ground again is far longer than a
       // frame, and walking must never stall. The walk itself already follows the new land; only the paint waits.

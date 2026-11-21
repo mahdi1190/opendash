@@ -508,7 +508,7 @@ function _gwRouteSourceInputs(m) {
   // are in routeState and the canonical contours; the remaining mutable
   // inputs are prop footprints, trunk/soft boxes and full-decor occupancy.
   // Compare exact values, not a model revision or a lossy geometry hash.
-  const values = [m.level.level, m.visit ? 'visit:' + m.visit.fid : 'home'];
+  const values = [gardenLevelLandSig(m.level.level), m.visit ? 'visit:' + m.visit.fid : 'home'];   // (vf-perf: what the level changes on the land, not the level)
   let start = values.length, count = 0; values.push(0);
   for (const p of m.plants) if (gardenPlantBlocks(p)) { values.push(p.x, p.y, p.fp || 1); count++; }
   values[start] = count; start = values.length; count = 0; values.push(0);
@@ -534,7 +534,7 @@ function _gwRouteSourceInputs(m) {
 function _gwGrid(m, groundOnly) {
   if (_gw.boat && !groundOnly) return _gwContinuousBoatGrid(m);
   const mm = m || gardenHere(), shore = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(mm) : null, otherShapes = typeof gardenOtherWaterShapes === 'function' ? gardenOtherWaterShapes(mm) : null, state = _gwRouteState();
-  const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + mm.level.level + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature() + '|' + (_gwTrunkSig() || '') + '|' + (typeof gardenOrchardShortcutSig === 'function' ? gardenOrchardShortcutSig() : '');
+  const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + gardenLevelLandSig(mm.level.level) + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature() + '|' + (_gwTrunkSig() || '') + '|' + (typeof gardenOrchardShortcutSig === 'function' ? gardenOrchardShortcutSig() : '');
   if (!_gw.grid || _gw.gridKey !== key || _gw.grid.model !== mm || _gw.grid.routeState !== state || _gw.grid.otherShapes !== otherShapes) {
     const saved = _gw.routeSnapshot, inputs = _gwRouteSourceInputs(mm);
     const stats = _gw.routeGridStats || (_gw.routeGridStats = { coarseBuilds: 0, preparations: 0, reused: 0, boatPreparations: 0, preflightChecks: 0, preflightReused: 0 }); stats.preflightChecks++;
@@ -2245,3 +2245,34 @@ function gardenWorldPainted(m) {
 }
 /** (the village's name for the same thing: 94-garden-world-0walk.js _gwFieldForms) */
 function _gwForm(pts, src) { return _gwFormOf(pts, src); }
+/** (vf-perf) What the garden's level changes in the land, the walk and the painted ground, as a short key: the level itself redrew
+ *  the whole world and rebuilt the walker's map at every level-up (1.7 to 2.2 s), though most levels change nothing there. The level
+ *  reaches the land only through gardenAreaAt's old areas (where no land cell answers first), the things a layout keeps for a level,
+ *  and the steps a painter registers (window.__gardenLevelSteps: the Cloudbreak's lip stones and cave stair). The key counts the
+ *  steps passed, so it changes exactly at a level where one of them does. */
+function gardenLevelLandSig(level) {
+  const lv = Number(level) || 0, W = GARDEN_WORLD, memoKey = (W.lh || '') + '|' + W.v + '|' + W.cols + 'x' + W.rows;
+  let M = gardenLevelLandSig._m;
+  if (!M || M.key !== memoKey) {
+    const steps = new Set();
+    try {
+      for (const a of GARDEN_AREAS) {
+        if (a.buy || !(a.lv > 1)) continue; let reached = false;
+        for (let y = Math.max(0, a.y); y < Math.min(W.rows, a.y + a.h) && !reached; y++) for (let x = Math.max(0, a.x); x < Math.min(W.cols, a.x + a.w); x++) {
+          if (typeof gardenIslandOceanCell === 'function' && gardenIslandOceanCell(x, y)) continue;
+          if (typeof gardenLandCell === 'function' && gardenLandCell(x, y)) continue;
+          reached = true; break;
+        }
+        if (reached) steps.add(a.lv);
+      }
+    } catch (e) { return 'lv' + lv; }   // (no table yet: the level itself, as before)
+    M = gardenLevelLandSig._m = { key: memoKey, steps };
+  }
+  const all = new Set(M.steps);
+  for (const s of (typeof window !== 'undefined' && window.__gardenLevelSteps) || []) all.add(Number(s) || 0);
+  const now = typeof performance !== 'undefined' ? performance.now() : 0;   // (the layout's things change only when it loads: looked at again every two seconds)
+  if (!M.thingSteps || now - M.thingAt > 2000) { M.thingAt = now; M.thingSteps = []; try { if (typeof gardenThingsPlaced === 'function') for (const r of gardenThingsPlaced()) if (r && r.level) M.thingSteps.push(Number(r.level) || 0); } catch (e) { /* none */ } }
+  for (const s of M.thingSteps) all.add(s);
+  let n = 0; for (const s of all) if (lv >= s) n++;
+  return 'ls' + n + '/' + all.size;
+}

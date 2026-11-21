@@ -868,12 +868,13 @@ window.GardenPaintWood = (function () {
     if (S.stale.length && performance.now() - S.staleAt > 4000) { for (const o of S.stale) dropStale(S.scene, o); S.stale = []; }   // (any old picture left after four seconds goes)
     let resident = 0, budget = 1; const vx = view.x + view.w / 2, vy = view.y + view.h / 2, pick = () => { let best = null, bd = Infinity; for (const ch of S.chunks.values()) { const seen = hit(ch.box, view); if (ch.image && (ch.K >= wantK || !seen) || !hit(ch.box, near) || (S.job && S.job.ch === ch)) continue; const d = Math.hypot(ch.box.x + CH / 2 - vx, (ch.box.y + CH / 2 - vy) * 1.4) - (seen ? 1e6 : 0) + (ch.image ? 5e5 : 0); if (d < bd) { bd = d; best = ch; } } return best; };
     for (const ch of S.chunks.values()) if (ch.image) { resident++; if (hit(ch.box, view)) ch.used = S.frame; }
-    const j0 = performance.now();
-    for (let n = 0; n < 6 && performance.now() - j0 < 7; n++) {
+    const j0 = performance.now(), jRoom = typeof gardenBakeRoom === 'function' ? gardenBakeRoom(7) : 7;   // (the shared budget a frame, 94-garden-paint-0budget.js)
+    for (let n = 0; n < 6 && performance.now() - j0 < jRoom; n++) {
       if (!S.job) { const todo = pick(); if (!todo) break; S.job = { ch: todo, gen: bakeChunk(todo, hit(todo.box, view) ? wantK : Math.min(wantK, 1.5)) }; }
-      let done = false; try { while (performance.now() - j0 < 7) { const g0 = performance.now(); const st = S.job.gen.next(); const gd = performance.now() - g0; if (gd > slowStep.ms) { slowStep.ms = +gd.toFixed(1); slowStep.at = S.job.ch.key + ':' + (S.job.phase || ''); } if (st.done) { done = true; break; } } } catch (e) { lastError = String(e && e.stack || e); done = true; }
+      let done = false; try { while (performance.now() - j0 < jRoom) { const g0 = performance.now(); const st = S.job.gen.next(); const gd = performance.now() - g0; if (gd > slowStep.ms) { slowStep.ms = +gd.toFixed(1); slowStep.at = S.job.ch.key + ':' + (S.job.phase || ''); } if (st.done) { done = true; break; } } } catch (e) { lastError = String(e && e.stack || e); done = true; }
       budget = 0; if (!done) break; S.job.ch.used = S.frame; S.job = null; resident++;
     }
+    if (typeof gardenBakeSpent === 'function') gardenBakeSpent(performance.now() - j0);
     const tBake = performance.now() - t0; S.tw = S.tw || { bake: 0, trees: 0, sort: 0, light: 0 }; S.tw.bake = Math.max(S.tw.bake, tBake);
     { let bytes = 0; for (const c of S.chunks.values()) if (c.image) bytes += c.bytes || 0; if (resident > MAX_CHUNKS || bytes > CAP_MB * 1048576) { const far = [...S.chunks.values()].filter(c => c.image && !hit(c.box, near)).sort((a, b) => a.used - b.used); let over = bytes - CAP_MB * 1048576, n = resident - MAX_CHUNKS; for (const c of far) { if (over <= 0 && n <= 0) break; over -= c.bytes || 0; n--; dropChunk(c); } } }
     if (S.sortRoot && S.root.sort) { S.root.sort('depth'); S.sortRoot = false; }

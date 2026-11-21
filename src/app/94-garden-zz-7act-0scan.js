@@ -26,7 +26,7 @@ function _gksKey() {
   let id = ''; try { id = gardenIslandData().id; } catch (e) { id = ''; }
   let wr = 0; try { const w = window.GardenNative && GardenNative.world(); wr = w && w.waterAt && w.waterAt(0, 0) !== null ? 1 : 0; } catch (e) { wr = 0; }   // (the water is painted: a bank is laid on it again)
   let sol = 0; try { sol = typeof _gw !== 'undefined' && _gw.solids ? _gw.solids.list.length : 0; } catch (e) { sol = 0; }   // (what blocks walking is known: a placed thing is checked against it again)
-  let lv = 0; try { lv = _gksLevel(); } catch (e) { lv = 0; }   // (a thing kept for a later level comes back when you reach it)
+  let lv = 0; try { lv = typeof gardenLevelLandSig === 'function' ? gardenLevelLandSig(_gksLevel()) : _gksLevel(); } catch (e) { lv = 0; }   // (a thing kept for a later level comes back when you reach it)
   let ar = ''; try { ar = typeof _GD_LAND !== 'undefined' && _GD_LAND ? _GD_LAND.size : ''; } catch (e) { ar = ''; }
   return [id, sol, wr, lv, ar, _gksGridRev(), m.visit ? m.visit.key : 'me', (m.decor || []).length, (m.decor || []).reduce((h, d) => (h * 31 + Math.round(d.x * 7 + d.y * 131)) | 0, 0), (m.areas || []).length, lp, feet, typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0, gardenThingsPlaced().length].join('|');
 }

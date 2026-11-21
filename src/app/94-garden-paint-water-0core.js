@@ -518,12 +518,13 @@ window.GardenPaintWater = (function () {
           return;
         }
         const Q = S.mirrorQueue; if (!Q) return;
-        const t0 = performance.now();
-        while (Q.length && performance.now() - t0 < 4) {
+        const t0 = performance.now(), room = typeof gardenBakeRoom === 'function' ? gardenBakeRoom(4) : 4;   // (the shared budget a frame, 94-garden-paint-0budget.js)
+        while (Q.length && performance.now() - t0 < room) {
           const m = Q.shift(); if (mirrorIds.has(m.id)) continue; const pic = ok(() => mirrorCanvas(m)); mirrorIds.set(m.id, 1); m.o = null; if (!pic) continue;
           m.pic = pic; m.bb = [m.x0 - pic.pad, m.foot, m.x0 + m.w + pic.pad, m.foot + m.hu]; mirrors.push(m); mirrorMB += pic.c.width * pic.c.height * 4 / 1048576;
           L.add({ bb: m.bb, decor: true, seed: 9, tag: 'water mirror ping', draw() {} });   // (a no-op: it only marks the chunks it touches to be painted again)
         }
+        if (typeof gardenBakeSpent === 'function') gardenBakeSpent(performance.now() - t0);
         if (!Q.length) S.mirrorQueue = null;
       },
       count: () => mirrors.length, mb: () => +mirrorMB.toFixed(1),
