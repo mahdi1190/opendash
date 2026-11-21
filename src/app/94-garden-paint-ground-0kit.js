@@ -75,7 +75,7 @@ window.GardenPaintGround = (function () {
   }
 
   /* ---------- 1. the zoom-following chunked layer ---------- */
-  const LEVELS = [.75, 1, 1.5, 2, 3, 4], SHARP = .76, PAD = 2, HEAVY_MS = 14, registry = new Set(), slow = { opMs: 0, op: '', uploadMs: 0, tickMs: 0 };
+  const LEVELS = [.75, 1, 1.5, 2, 3, 4], SHARP = .76, PAD = 2, HEAVY_MS = 14, registry = new Set(), COST = new Map(), opKey = o => o.tag || o.name || 's' + o.seed + '@' + (o.bb ? o.bb.map(Math.round).join(',') : ''), slow = { opMs: 0, op: '', uploadMs: 0, tickMs: 0 };
   /** The bake level the camera needs now: the smallest level within 20% of the screen's own pixel density. */
   function levelFor(zoom, lo, hi) { const need = (zoom || 1) * SHARP; let k = LEVELS[LEVELS.length - 1]; for (const l of LEVELS) if (l >= need) { k = l; break; } return clamp(k, lo == null ? LEVELS[0] : lo, hi == null ? 4 : hi); }
   // Chunk canvases are used again once their picture is let go. Every new canvas is memory the script engine is told
@@ -152,10 +152,13 @@ window.GardenPaintGround = (function () {
       const J = ch.job, cx = J.cx;
       while (J.next < ch.ops.length) {
         // (vf-perf) an op timed before that would not fit in what is left of this slice waits for the next slice (one alone may)
+        // (a repaint makes its ops again: what the same op cost before is remembered by its tag, so a level-up's new ops are not
+        // run blind, a 56 ms slice after the land was drawn again)
+        { const o = ch.ops[J.next]; if (!(o.cost > 0)) { const c = COST.get(opts.key + '|' + opKey(o)); if (c) o.cost = c; } }
         { const o = ch.ops[J.next]; if (ms && J.next > 0 && performance.now() > s + .5 && o.cost > 0 && o.cost * K * K > ms - (performance.now() - s)) break; }
         const o = ch.ops[J.next++], o0 = performance.now();
         ok(() => { cx.save(); if (o.clip) cx.clip(o.clip, 'evenodd'); o.draw(J.B, rng(o.seed || 1), ch.bb); cx.restore(); cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.filter = 'none'; });
-        { const od = performance.now() - o0, per = od / (K * K); if (!(o.cost >= per)) o.cost = per; if (od > slow.opMs) { slow.opMs = +od.toFixed(1); slow.op = (o.tag || o.name || 'seed ' + o.seed) + ' @' + ch.id + ' x' + K; } }
+        { const od = performance.now() - o0, per = od / (K * K); if (!(o.cost >= per)) { o.cost = per; if (COST.size > 20000) COST.clear(); COST.set(opts.key + '|' + opKey(o), per); } if (od > slow.opMs) { slow.opMs = +od.toFixed(1); slow.op = (o.tag || o.name || 'seed ' + o.seed) + ' @' + ch.id + ' x' + K; } }
         if (ms && performance.now() - s > ms) break;
       }
       const took = performance.now() - s; J.ms += took; sliceWorst = Math.max(sliceWorst, took);

@@ -154,7 +154,7 @@ window.GardenPaintTerrainKit = (function () {
   /* ---------- the chunked baker ---------- */
   // ops: [{ bb: [x0, y0, x1, y1] world px, seed, clip: Path2D-able loops or null, draw(B, r, chunkBB) }]
   // opts: { key, box: {x, y, w, h}, K, chunk (world px), depth }
-  const PAD = 2;
+  const PAD = 2, COST_T = new Map(), opKey = o => o.tag || o.name || 's' + o.seed + '@' + (o.bb ? o.bb.map(Math.round).join(',') : '');
   function chunked(scene, parent, ops, opts) {
     // Layers baked at 1 px a world px or more follow the camera's zoom through the shared kit (crisp at every zoom, the same
     // slices, streaming and budget); a far backdrop baked small on purpose (K under 1) keeps this fixed baker.
@@ -177,10 +177,11 @@ window.GardenPaintTerrainKit = (function () {
         const J = ch.job, cx = J.cx;
         while (J.next < ch.ops.length) {
           // (vf-perf) an op timed before that would not fit in what is left of this slice waits for the next one (one alone may)
+          { const o = ch.ops[J.next]; if (!(o.costT > 0)) { const c = COST_T.get(ch.key + '|' + opKey(o)); if (c) o.costT = c; } }   /* (remembered through a repaint) */
           if (slice && performance.now() > s + .5 && ch.ops[J.next].costT > slice - (performance.now() - s)) break;   /* (costT: its ms here, kept apart from the ground baker's cost) */
           const o = ch.ops[J.next++], o0 = performance.now();
           ok(() => { cx.save(); if (o.clip) { cx.clip(o.clip, 'evenodd'); } o.draw(J.B, rng(o.seed || 1), ch.bb); cx.restore(); cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.filter = 'none'; });
-          { const od = performance.now() - o0; if (!(o.costT >= od)) o.costT = od; }
+          { const od = performance.now() - o0; if (!(o.costT >= od)) { o.costT = od; if (COST_T.size > 20000) COST_T.clear(); COST_T.set(ch.key + '|' + opKey(o), od); } }
           if (slice && performance.now() - s > slice) break;
         }
         J.ms += performance.now() - s; sliceWorst = Math.max(sliceWorst, performance.now() - s);

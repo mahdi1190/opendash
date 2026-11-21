@@ -441,13 +441,16 @@ function gardenLockedPlotOpenToFeet(x, y, id) {
   const knots = GardenPaintWood.thicketCells ? GardenPaintWood.thicketCells() : null;
   return !!knots && !knots.has(y * GARDEN_WORLD.cols + x);
 }
-function _gwBuildGrid(m) {
+/** (vf-perf) The walking grid, built a row at a time: _gwBuildGrid runs it through at once; a new grid wanted while you walk
+ *  (a level-up opens land) is built in short slices between frames by _gwGridJobStep, so no frame waits for the whole map. */
+function _gwBuildGrid(m) { const it = _gwBuildGridRows(m); let r; while (!(r = it.next()).done); return r.value; }
+function* _gwBuildGridRows(m) {
   const W = GARDEN_WORLD, g = new Uint8Array(W.cols * W.rows), otherWater = new Uint8Array(g.length), waterCover = new Uint8Array(g.length), shore = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(m) : null;
   const lvl = m.level.level;
   // a shut village field stops the feet along its painted outline (_gwBuildSolids); its cells only steer the routes round it
   const fieldOf = new Map(); for (const ff of _gwFieldForms()) for (const c of ff.cells) { const i = c[1] * W.cols + c[0]; (fieldOf.get(i) || fieldOf.set(i, []).get(i)).push(ff.form); }
   const fieldShut = [];
-  for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
+  for (let y = 0; y < W.rows; y++) { for (let x = 0; x < W.cols; x++) {
     let blocked = false;
     const a = gardenAreaAt(x, y, lvl);
     if (a.startsWith('locked:zn-')) blocked = true;   // (vale final, east: land past a shut gate stops the feet at its cells, where its hedge is painted, even under a field's outline; 2 cells of the shut valley were walkable)
@@ -463,7 +466,7 @@ function _gwBuildGrid(m) {
     if (c && c.decor) { const d = gardenDecorById(m, c.decor); if (!d || gardenDecorCol(d.def) === 'full') blocked = true; }   // (a seat is full: you walk up to it to sit)
     // (a tree's trunk and a small decoration are boxes, not cells: _gwBuildSolids)
     g[y * W.cols + x] = blocked ? 1 : 0;
-  }
+  } yield; }
   g.hard = g.slice();
   // (a painted fence, hedge or wall panel: the feet stop at the panel as drawn, _gwBuildSolids; its cell stays shut to the routes' planner)
   for (const dc of m.decor) { if (!gardenFenceBand(dc)) continue; const i = dc.y * W.cols + dc.x; if (dc.x >= 0 && dc.y >= 0 && dc.x < W.cols && dc.y < W.rows && !gardenAreaAt(dc.x, dc.y, lvl).startsWith('locked:') && !(gardenPropAt(dc.x, dc.y) && gardenPropCol(gardenPropAt(dc.x, dc.y)) === 'full')) g.hard[i] = 0; }
@@ -536,12 +539,21 @@ function _gwGrid(m, groundOnly) {
   const mm = m || gardenHere(), shore = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(mm) : null, otherShapes = typeof gardenOtherWaterShapes === 'function' ? gardenOtherWaterShapes(mm) : null, state = _gwRouteState();
   const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + gardenLevelLandSig(mm.level.level) + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature() + '|' + (_gwTrunkSig() || '') + '|' + (typeof gardenOrchardShortcutSig === 'function' ? gardenOrchardShortcutSig() : '');
   if (!_gw.grid || _gw.gridKey !== key || _gw.grid.model !== mm || _gw.grid.routeState !== state || _gw.grid.otherShapes !== otherShapes) {
+    if (_gw.gridJob && _gw.gridJob.key === key && _gw.gridJob.state === state && _gwGridSliceable(mm)) { _gw.grid.model = mm; return _gw.grid; }   /* (its sliced build is on the way) */
     const saved = _gw.routeSnapshot, inputs = _gwRouteSourceInputs(mm);
     const stats = _gw.routeGridStats || (_gw.routeGridStats = { coarseBuilds: 0, preparations: 0, reused: 0, boatPreparations: 0, preflightChecks: 0, preflightReused: 0 }); stats.preflightChecks++;
     if (saved && saved.state === state && saved.grid.shore === shore && saved.grid.otherShapes === otherShapes && _gwRouteArraySame(saved.inputs, inputs)) {
-      _gw.grid = saved.grid; _gw.solids = saved.solids; _gw.grid.model = mm; _gw.gridKey = key; stats.preflightReused++; stats.reused++;
+      _gw.grid = saved.grid; _gw.solids = saved.solids; _gw.grid.model = mm; _gw.grid.landSig = gardenLevelLandSig(mm.level.level); _gw.gridKey = key; stats.preflightReused++; stats.reused++;
       return _gw.grid;
     }
+    // (vf-perf) while you walk, the land changing under you (a level-up) is built in slices between frames and swapped in when
+    // it is whole; the grid you stand on serves until then, a fraction of a second. Built at once, it was a 125 ms task inside
+    // the step that moved you (a CPU profile of a real-key tour, 21 Nov 2026).
+    if (_gwGridSliceable(mm)) {
+      if (!_gw.gridJob) { _gw.gridJob = { key, mm, state, shore, otherShapes, inputs, saved, it: _gwGridJobRows(mm), at: performance.now() }; setTimeout(_gwGridJobStep, 0); }
+      _gw.grid.model = mm; return _gw.grid;
+    }
+    _gw.gridJob = null;
     const grid = _gwBuildGrid(mm), solids = _gwBuildSolids(mm); stats.coarseBuilds++;
     // Model clocks, watering and Design paint invalidate presentation too. Keep
     // the prepared shoreline anchors when every physical input is unchanged,
@@ -554,14 +566,55 @@ function _gwGrid(m, groundOnly) {
       _gw.grid = grid; _gw.solids = solids; grid.routeRevision = ++stats.preparations;
       _gwPrepareRouteGrid(grid); _gw.routeSnapshot = { grid, solids, state, inputs };
     }
-    _gw.grid.routeState = state; _gw.gridKey = key;
+    _gw.grid.routeState = state; _gw.grid.landSig = gardenLevelLandSig(mm.level.level); _gw.gridKey = key;
   }
   _gw.grid.model = mm;
   return _gw.grid;
 }
+/** Can a new grid wait for a sliced build? Only while you walk on the same garden with a grid already there, on land. */
+function _gwGridSliceable(mm) {
+  const g = _gw.grid; if (!g || _gw.boat || !g.model || !g.hard) return false;
+  if ((g.model.visit ? g.model.visit.key : '') !== (mm.visit ? mm.visit.key : '')) return false;
+  // while you walk, or when a level opens land (the land drawn after it waits for you to stand a moment, and the grid you stand
+  // on is what you see until then): standing at a level-up, the whole build in one task was 95 ms of a 413 ms task
+  if (g.landSig != null && g.landSig !== gardenLevelLandSig(mm.level.level)) return true;
+  return typeof gardenBakeWalking === 'function' && gardenBakeWalking();
+}
+function* _gwGridJobRows(mm) {
+  const grid = yield* _gwBuildGridRows(mm); yield;
+  const solids = _gwBuildSolids(mm); yield;
+  return { grid, solids };
+}
+/** One slice of the walking grid's sliced build: about 4 ms, then the frames get their turn. */
+function _gwGridJobStep() {
+  const J = _gw.gridJob; if (!J) return;
+  const s = performance.now(), stats = _gw.routeGridStats;
+  try {
+    while (!J.done && performance.now() - s < 4) {
+      if (!J.built) {
+        const r = J.it.next(); if (!r.done) continue;
+        J.built = r.value; stats.coarseBuilds++;
+        if (_gwRoutePhysicalSame(J.saved, J.built.grid, J.built.solids, J.state)) { J.reuse = J.done = true; break; }
+        J.built.grid.routeRevision = ++stats.preparations; J.prep = _gwPrepareRouteGridRows(J.built.grid); continue;
+      }
+      // the grid's preparation reads the solid boxes from _gw.solids: the new ones while it runs, the old ones for the walk between
+      const old = _gw.solids; _gw.solids = J.built.solids;
+      try { while (performance.now() - s < 4) if (J.prep.next().done) { J.done = true; break; } } finally { _gw.solids = old; }
+    }
+  } catch (e) { if (_gw.gridJob === J) { _gw.gridJob = null; _gw.grid = null; } return; }   /* (a fault: the next look builds it whole) */
+  const spent = performance.now() - s; if (typeof gardenBakeSpent === 'function') gardenBakeSpent(spent);
+  _gw.gridJobWorst = Math.max(_gw.gridJobWorst || 0, +spent.toFixed(1));
+  if (_gw.gridJob !== J) return;
+  if (!J.done) { setTimeout(_gwGridJobStep, 0); return; }
+  const { grid, solids } = J.built, saved = J.saved;
+  if (J.reuse) { _gw.grid = saved.grid; _gw.solids = saved.solids; Object.assign(_gw.grid, { model: J.mm, shore: grid.shore, otherShapes: grid.otherShapes, otherBuckets: grid.otherBuckets }); saved.state = J.state; saved.inputs = J.inputs; stats.reused++; }
+  else { _gw.grid = grid; _gw.solids = solids; _gw.routeSnapshot = { grid, solids, state: J.state, inputs: J.inputs }; }
+  _gw.grid.routeState = J.state; _gw.grid.landSig = gardenLevelLandSig(J.mm.level.level); _gw.gridKey = J.key; _gw.gridJob = null; _gw.gq = null; _gw.frameGrid = null;
+  _gw.gridJobs = (_gw.gridJobs || 0) + 1; _gw.gridJobMs = Math.round(performance.now() - J.at);
+}
 function gardenWorldRouteGridStatus() {
   const stats = _gw.routeGridStats || {};
-  return { coarseBuilds: stats.coarseBuilds || 0, preparations: stats.preparations || 0, reused: stats.reused || 0, preflightChecks: stats.preflightChecks || 0, preflightReused: stats.preflightReused || 0, boatPreparations: stats.boatPreparations || 0, physicalRevision: _gw.grid && _gw.grid.routeRevision || 0, anchors: _gw.grid && _gw.grid.anchors ? _gw.grid.anchors.size : 0 };
+  return { coarseBuilds: stats.coarseBuilds || 0, preparations: stats.preparations || 0, reused: stats.reused || 0, preflightChecks: stats.preflightChecks || 0, preflightReused: stats.preflightReused || 0, boatPreparations: stats.boatPreparations || 0, physicalRevision: _gw.grid && _gw.grid.routeRevision || 0, anchors: _gw.grid && _gw.grid.anchors ? _gw.grid.anchors.size : 0, slicedBuilds: _gw.gridJobs || 0, slicedLastMs: _gw.gridJobMs || 0, slicedWorstSliceMs: _gw.gridJobWorst || 0 };
 }
 function _gwContinuousBoatGrid(m) {
   const land = _gwGrid(m || gardenHere(), true), to = gardenLakeOpenTo(), key = land.routeRevision + '|boat:' + to;
@@ -591,7 +644,8 @@ function _gwWaterProbe(grid, x, y, fx, fy) {
   if (!grid.liquid && grid.otherShapes) for (const shape of _gwOtherShoreCandidates(grid, x, y, fx, fy)) inspect(shape);
   return result;
 }
-function _gwPrepareRouteGrid(grid) {
+function _gwPrepareRouteGrid(grid) { const it = _gwPrepareRouteGridRows(grid); while (!it.next().done); }
+function* _gwPrepareRouteGridRows(grid) {
   // Only cells touched by a continuous shoreline need extra edge clearance.
   // Two dry cell centres can still have a wet bank tip between them.
   const shoreCells = grid.shoreCells = new Uint8Array(grid.length);
@@ -611,7 +665,7 @@ function _gwPrepareRouteGrid(grid) {
   }
   const W = GARDEN_WORLD, candidate = (x, y) => _gwGridFeet(grid, x, y, GW_FOOT.x, GW_FOOT.y) && !_gwSolidHit(x, y, GW_FOOT.x, GW_FOOT.y) && (grid.liquid || gardenWonderWalkFine(x, y, GW_FOOT.y));
   const offsets = [.5, .25, .75, .08, .92];
-  for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
+  for (let y = 0; y < W.rows; y++) { if (y) yield; for (let x = 0; x < W.cols; x++) {
     const index = y * W.cols + x; grid[index] = 1;
     if (grid.hard[index] || !grid.liquid && !grid.otherShapes && grid.otherWater[index]) continue;
     if (candidate(x + .5, y + .5)) { grid[index] = 0; continue; }
@@ -620,7 +674,7 @@ function _gwPrepareRouteGrid(grid) {
     const near = shape => { const b = shape.bounds; return b && x + 1 >= b.x && x <= b.x + b.width && y + 1 >= b.y && y <= b.y + b.height; };
     if (!(grid.shore && near(grid.shore)) && !(grid.otherShapes && _gwOtherShoreCandidates(grid, x + .5, y + .5, .5, .5).some(near))) { if (!grid.liquid) grid[index] = 0; continue; }
     search: for (const dy of offsets) for (const dx of offsets) if (candidate(x + dx, y + dy)) { grid[index] = 0; grid.anchors.set(index, { x: x + dx, y: y + dy }); break search; }
-  }
+  } }
   if (!grid.liquid && typeof gardenIslandCrossingGeometry === 'function') for (const crossing of gardenIslandCrossingGeometry()) {
     if (crossing.kind === 'hump-bridge') continue;
     // A narrow diagonal deck can pass between every coarse offset above, or
