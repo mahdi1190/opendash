@@ -863,7 +863,9 @@ function _gwMoveBy(dx, dy) {
     const mx = (_gw.px - x0) * W.cellW, my = (_gw.py - y0) * W.cellH, vx = dx * W.cellW, vy = dy * W.cellH, st = Math.hypot(vx, vy) || 1;
     const along = (mx * vx + my * vy) / st, backs = (vx && mx * Math.sign(vx) < -.1) || (vy && my * Math.sign(vy) < -.1);
     const got = Math.hypot(mx, my);
-    if ((backs && along < st * .3 && got < st * .5) || (backs && along < 0 && got < st) || got < Math.min(.35, st * .12)) { _gw.px = x0; _gw.py = y0; moved = false; }
+    // (next merge) except a give round the corner of a box or a slanted wall: the whole step on one key, a little give on the other, and
+    // the way on open for two more such steps. Those are slides, not shakes (the collision audit's slide-stall went from 2 to 866 without this)
+    if (((backs && along < st * .1) || (backs && along < 0 && got < st)) && !_gwRoundsOn(x0, y0, _gw.px, _gw.py, dx, dy) || got < Math.min(.35, st * .12)) { _gw.px = x0; _gw.py = y0; moved = false; }
   }
   // (n-move) and a corner the slides take turns at (a few pixels one way, then back), each step honest on its own: when the feet come back
   // within a pixel and a half of where they were two to ten steps ago, having got nowhere, it is a corner, and you stop there
@@ -939,9 +941,17 @@ function _gwMoveByEdge(dx, dy) {
   // down with a give under a pixel against the across part, open for three steps running. A wall met square and a true inside
   // corner are still honest stops. (The collision audit's slide-stall: 106 of them, most at banks the shore slide met at a kink.)
   // (move360 round 3) a slide that backs away on one key of a diagonal press more than it gets on the way you press is no slide
-  const backs = (px, py) => dx && dy && gain(px, py) < .25 && ((px - x0) * W.cellW * Math.sign(dx) < -.5 || (py - y0) * W.cellH * Math.sign(dy) < -.5);
+  // (next merge) only a slide that all but turns its back on the press (under a tenth of the step the way you press): one that slides
+  // on round a slanted edge at a slower pace is a slide, as in any game (with .25 the collision audit's slide-stall went from 2 to 740)
+  const backs = (px, py) => dx && dy && gain(px, py) < .1 && ((px - x0) * W.cellW * Math.sign(dx) < -.5 || (py - y0) * W.cellH * Math.sign(dy) < -.5);
+  // (next merge) a give that would turn its back on the press is dropped here, before the last-resort give below gets its turn: that
+  // one goes on across or up the edge (open three steps running) where the first give only backed off, and you slide on, not stop
+  if ((x !== x0 || y !== y0) && (gain(x, y) < -.05 || backs(x, y)) && !(held && _gwRoundsOn(x0, y0, x, y, dx, dy))) { x = x0; y = y0; held = ''; _gw.slideHold = null; }
   const useShore = shore.shore && shore.moved && !backOnGive && gain(shore.x, shore.y) >= gain(x, y) && gain(shore.x, shore.y) >= -.05 && !backs(shore.x, shore.y), mx = useShore ? shore.x : x, my = useShore ? shore.y : y;
-  if (dx && dy && Math.hypot((mx - x0) * W.cellW, (my - y0) * W.cellH) < Math.hypot(dx * W.cellW, dy * W.cellH) * .15) {
+  // (next merge) also when what is left slides almost square to the press (under a tenth of the step the way you press): a give that gets
+  // on further wins then, so a steep bank or wall is slid along instead of crept along sideways and stopped by the step rules
+  const tiny = Math.hypot((mx - x0) * W.cellW, (my - y0) * W.cellH) < Math.hypot(dx * W.cellW, dy * W.cellH) * .15;
+  if (dx && dy && (tiny || gain(mx, my) < .1)) {
     const vx = dx * W.cellW, vy = dy * W.cellH, sx = Math.sign(dx), sy = Math.sign(dy), open3 = (ax, ay) => _gwFree(x0 + ax / W.cellW, y0 + ay / W.cellH) && _gwFree(x0 + 2 * ax / W.cellW, y0 + 2 * ay / W.cellH) && _gwFree(x0 + 3 * ax / W.cellW, y0 + 3 * ay / W.cellH);
     let g2 = null;
     for (let g = .5; g <= 3.5 && !g2; g += .5) if (open3(vx, -sy * g)) g2 = { x: x0 + vx / W.cellW, y: y0 - sy * g / W.cellH, kind: 'y' };
@@ -954,13 +964,23 @@ function _gwMoveByEdge(dx, dy) {
     // nor a give from where a give under the same press set out before: the slide had carried the feet back into the same bend,
     // so it is a closed corner, and the honest thing is to stop there (the shake came round every four frames)
     const F = _gw.giveFrom, loop = g2 && F && F.sx === sx && F.sy === sy && Math.hypot((x0 - F.x) * W.cellW, (y0 - F.y) * W.cellH) < 1.2;
-    if (g2 && !loop && !(back && Math.hypot((mx - x0) * W.cellW, (my - y0) * W.cellH) > .05)) { _gw.giveFrom = { x: x0, y: y0, sx, sy }; _gw.px = g2.x; _gw.py = g2.y; _gw.slideHold = { sx, sy, kind: g2.kind }; return true; }
+    if (g2 && !loop && (tiny || gain(g2.x, g2.y) > gain(mx, my)) && !(back && Math.hypot((mx - x0) * W.cellW, (my - y0) * W.cellH) > .05)) { _gw.giveFrom = { x: x0, y: y0, sx, sy }; _gw.px = g2.x; _gw.py = g2.y; _gw.slideHold = { sx, sy, kind: g2.kind }; return true; }
   }
   if (useShore) { _gw.px = shore.x; _gw.py = shore.y; return true; }
   if (x === x0 && y === y0) return false;
   // (round 2, movement) never back against the way you press: at the shut plank gate a south-east press gave way north, step by step
-  if (gain(x, y) < -.05 || backs(x, y)) { _gw.slideHold = null; return false; }
+  if ((gain(x, y) < -.05 || backs(x, y)) && !(held && _gwRoundsOn(x0, y0, x, y, dx, dy))) { _gw.slideHold = null; return false; }   // (next merge: a give round a corner is a slide)
   _gw.px = x; _gw.py = y; return true;
+}
+/** (next merge) Does the step from (x0, y0) to (x1, y1) under a diagonal press (dx, dy) round a corner: the whole step on one key the way
+ *  you press, at most 3.6 px of give against the other key, and the same step open twice more ahead? Any edge of any layout: no places. */
+function _gwRoundsOn(x0, y0, x1, y1, dx, dy) {
+  if (!dx || !dy) return false;
+  const W = GARDEN_WORLD, mx = (x1 - x0) * W.cellW, my = (y1 - y0) * W.cellH, vx = dx * W.cellW, vy = dy * W.cellH;
+  const onX = mx * Math.sign(vx) >= Math.abs(vx) * .9 && my * Math.sign(vy) >= -3.6, onY = my * Math.sign(vy) >= Math.abs(vy) * .9 && mx * Math.sign(vx) >= -.76;   // (up to 3.5 px of give up or down, under a pixel across)
+  if ((!onX && !onY) || mx * vx + my * vy < -.05 * (vx * vx + vy * vy)) return false;   // (never a step that goes back overall)
+  const sx = x1 - x0, sy = y1 - y0;
+  return _gwFree(x1 + sx, y1 + sy) && _gwFree(x1 + 2 * sx, y1 + 2 * sy);
 }
 /**
  * Walking by the keys (or steering with the pointer) onto and along a crossing: where you press within 38 degrees of a
