@@ -647,6 +647,7 @@ function _gcaHelpReelOpen(A) {
   _gwReelOpen({ helper: true, def: { cat: 'fish' }, diff: 6, bar: 0.26, beh: 'mixed', cm: 120, line: 1, vWords: 'The second line: keep it in your bar to help ' + (A && A.n ? A.n : 'them') });
   const R = _gw.reel; if (!R) return;
   R.helper = true; R.helpTo = A.w; R.pullAt = 0; R.inFor = 0; R.el.classList.add('is-second');
+  R.heavy = 0; if (R.tnBox) { R.tnBox.remove(); R.tnBox = null; R.tnEl = null; }   // (their line takes the strain: yours cannot snap)
 }
 /** Once a frame in the help state: the bar and the fish as any reel, with no landing of its own (the fish is theirs). */
 function gardenHelpReelStep(dt) {
