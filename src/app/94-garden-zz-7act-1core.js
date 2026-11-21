@@ -336,7 +336,8 @@ function gartActInteract() {
   if (_ga.cur && _ga.cur.doing) { gartActStop(); return true; }
   if (!(_ga.near && _ga.near.carry) && typeof gardenCarryLost === 'function' && gardenCarryLost()) return true;   // (build phase 1: a friend got it first)
   if (!_ga.near || !_ga.el || _ga.el.hidden) return false;
-  return gartActRun(_ga.near.act, _ga.near);
+  const near = _ga.near, done = gartActRun(near.act, near);
+  return done || !!near.carry;   // (a pick-up refused, someone has it: said in a line, and E does nothing else, never the stall beside it)
 }
 /* ---------- doing it ---------- */
 const _GA_SEL = Object.freeze({ s: { root: '.gpl-root', up: '.gpl-up', head: '.gpl-hd', armL: '.gpl-af.gpl-b', armR: '.gpl-af.is-r', legL: '.gpl-lf.gpl-a', legR: '.gpl-lf.gpl-b', kneeL: '.gpl-kn.is-a', kneeR: '.gpl-kn.is-b' }, e: { root: '.gpl-root', up: '.gpl-up', head: '.gpl-hd', armL: '.gpl-as.gpl-a', armR: '.gpl-as.gpl-b', legL: '.gpl-lg.gpl-a', legR: '.gpl-lg.gpl-b', kneeL: '.gpl-kn.is-a', kneeR: '.gpl-kn.is-b' } });
@@ -406,7 +407,7 @@ function gartActRun(id, spot) {
     return true;
   }
   if (spot && gartActTaken(spot)) { try { gardenToast(GARDEN_ACTS[spot.act] && GARDEN_ACTS[spot.act].seat == null && !spot.seated ? 'Someone is already there.' : 'Someone is already sitting there.'); } catch (e) { /* fine */ } return false; }   // (one person to a seat)
-  if (row.carry && spot && spot.carry && typeof gardenCarryWhy === 'function') { const why = gardenCarryWhy(spot.src); if (why) { try { gardenToast(why, { icon: 'hand' }); } catch (e) { /* fine */ } return false; } }   // (build phase 1: one person carries a thing at a time)
+  if (row.carry && spot && spot.carry && typeof gardenCarryWhy === 'function') { const why = gardenCarryWhy(spot.src); if (why) { if (!(typeof gardenCarryLost === 'function' && gardenCarryLost())) try { gardenToast(why, { icon: 'hand' }); } catch (e) { /* fine */ } return false; } }   // (build phase 1: one person carries a thing at a time)
   spot = _gaStandClear(spot);   // (a move done standing, never on top of a friend: warming your hands at a fire stood you on a friend sat on the log)
   if (_ga.carry && !row.carry) gartActSetDown();   // (you put down what you carry to do something else)
   if (row.rubPet && typeof _ptwFree === 'function' && !_ptwFree(_gw.px + GA_RUB_AT[0], _gw.py + GA_RUB_AT[1])) { try { if (!_ga.quiet) gardenToast('Not here: your pet needs open ground beside you to roll over.'); } catch (e) { /* fine */ } return false; }   // (never on a wall, a step or a thing: pets do not stand on props)

@@ -119,7 +119,10 @@ function _gbdHolder(key) {
 }
 function gardenCarryWhy(key) {
   const by = _gbdHolder(key);
-  return by && by !== '@me' ? 'Someone is carrying that already.' : '';
+  if (!by || by === '@me') return '';
+  let who = '';
+  try { const A = /^w\d+$/.test(by) ? _gll.actors.get(Number(by.slice(1))) : [..._gll.actors.values()].find(a => a.f === by); if (A && A.n) who = String(A.n).split(/\s+/)[0]; else if (by === '@host' && _gbdVisit() && typeof _gdvFirst === 'function') who = _gdvFirst() || ''; } catch (e) { /* someone */ }
+  return who ? `${who} is carrying that.` : 'Someone is carrying that already.';
 }
 /** You pick it up. At home: saved at once (it no longer lies anywhere). On a visit: asked of the host, carried at once; if the host says
  *  someone else got it first, it leaves your arms again (gardenCarryRefused). Returns '' or why not. */
@@ -180,7 +183,7 @@ function gardenCarryLost() {
   let who = 'Someone';
   try {
     const A = /^w\d+$/.test(L.by) ? _gll.actors.get(Number(L.by.slice(1))) : [..._gll.actors.values()].find(a => a.f === L.by);
-    if (A && A.n) who = String(A.n).split(/\s+/)[0];
+    if (A && A.n) who = String(A.n).split(/\s+/)[0]; else if (L.by === '@host' && _gbdVisit() && typeof _gdvFirst === 'function') who = _gdvFirst() || who;
   } catch (e) { /* someone */ }
   try { gardenToast(`${who} picked that up just before you.`, { icon: 'hand' }); } catch (e) { /* fine */ }
   return true;
@@ -230,7 +233,8 @@ function gardenDropShow(force) {
     const by = _gbdHolder(t.id), held = !!by, at = gardenDropAt(t.id);
     // where each thing last lay, and when someone else took it from there (E pressed there a moment later says so, gardenCarryLost)
     if (!held) _gbd.lay.set(t.id, at || { x: t.x, y: t.y });
-    else if (by !== '@me' && _gbd.lay.has(t.id)) { const w = _gbd.lay.get(t.id); _gbd.lay.delete(t.id); _gbd.lost = { id: t.id, x: w.x, y: w.y, by, at: nowL }; }
+    else if (by === '@me' || (by === '@host' && !_gbdVisit())) _gbd.lay.delete(t.id);   // (in your own arms: nothing lost)
+    else if (by !== '@me' && !(by === '@host' && !_gbdVisit()) && _gbd.lay.has(t.id)) { const w = _gbd.lay.get(t.id); _gbd.lay.delete(t.id); _gbd.lost = { id: t.id, x: w.x, y: w.y, by, at: nowL }; }
     want.push(t.id + ':' + (held ? 'h' : at ? Math.round(at.x * 10) + ',' + Math.round(at.y * 10) : 'home'));
   }
   const sig = want.join('|');
@@ -298,11 +302,11 @@ function gardenDropIntent(ev, put) {
   return put(mark, { noUndo: true, p: key, x: Math.min(GARDEN_WORLD.cols - 1, Math.floor(ev.fx / 10)), y: Math.min(GARDEN_WORLD.rows - 1, Math.floor(ev.fy / 10)) });
 }
 /** A friend left while carrying something: it is set down where they last stood (nothing is ever lost), saved like any set-down. */
-function gardenDropLeft(A) {
+function gardenDropLeft(A, only) {
   if (!A || !A.f) return;
   let any = false;
   for (const [key, who] of [..._gbd.held]) {
-    if (who !== A.f) continue;
+    if (who !== A.f || (only && key !== only)) continue;
     _gbd.held.delete(key);
     const x = Number.isFinite(A.x) ? A.x : (gardenCarryThing(key) || {}).x, y = Number.isFinite(A.y) ? A.y + 0.1 : (gardenCarryThing(key) || {}).y;
     if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
@@ -327,10 +331,14 @@ function gardenDropTick() {
       // a friend's pick-up said yes to, that their screen never took (the answer was lost, or their page gave up waiting): after a while it
       // goes back where it lay, so it is never shown in nobody's arms on one screen and in someone's on another
       const nowP = performance.now();
+      // and one that was in their arms and is not any more, with no set-down asked for (their page went elsewhere, or gave up): it is set
+      // down where they stand, as when someone leaves (nothing is ever lost, and every screen agrees nobody holds it)
       for (const [k, q] of [..._gbd.hostGrab]) {
         const A = [..._gll.actors.values()].find(a => a.f === q.f);
         if (_gbd.held.get(k) !== q.f) { _gbd.hostGrab.delete(k); continue; }
-        if (A && A.carryId === k) { _gbd.hostGrab.delete(k); continue; }
+        if (!A) continue;   // (gone: gardenDropLeft)
+        if (A.carryId === k) { q.seen = true; q.off = 0; continue; }
+        if (q.seen) { if (!q.off) { q.off = nowP; continue; } if (nowP - q.off < 4000) continue; _gbd.hostGrab.delete(k); gardenDropLeft(A, k); continue; }
         if (nowP - q.at < 8000) continue;
         _gbd.hostGrab.delete(k); _gbd.held.delete(k);
         if (q.inv) { gardenOpApply(_gdG(), Object.assign({}, q.inv, { at: _gdNow() }), q.f, gardenOpWorld()); _gdSave(); }
