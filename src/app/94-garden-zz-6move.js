@@ -44,7 +44,9 @@ function _gmvDrawing(h, prev, step) {
     return { dir: a > 0 ? 's' : 'n', yaw: a > 0 ? 0 : 180, mirror: 1, sx: 1 };
   }
   step = step || GMV_STEP;
-  const u = _gmvWrap(90 - h), yawRaw = Math.abs(u), mirror = u < 0 ? -1 : 1;
+  // the heading's own terms stretch a row by 1.6 (gartMoveStep); a cell is square on the ground, so the way the body faces is the angle in cells
+  const hr = h * Math.PI / 180, hg = Math.atan2(Math.sin(hr) / 1.6, Math.cos(hr)) * 180 / Math.PI;
+  const u = _gmvWrap(90 - hg), yawRaw = Math.abs(u), mirror = u < 0 ? -1 : 1;
   let yaw = Math.round(yawRaw / step) * step;
   if (Number.isFinite(prev) && Math.abs(yawRaw - prev) < step * 0.5 + 4 && prev % step === 0) yaw = prev;
   yaw = Math.max(0, Math.min(180, yaw));
