@@ -122,10 +122,12 @@ function _gllPaint(A) {
   if (A.photo && now < A.photo.until && !A.moving) { pose = A.photo.body.i ? 'hold' : 'idle'; dir = 's'; }
   if (A.fish && !A.moving) { pose = 'fish'; dir = 'e'; }   // a line out (94-garden-live-4fx.js): side on, the rod drawn there
   if (typeof GPL_POSE_FRONT !== 'undefined' && GPL_POSE_FRONT.has(pose)) dir = 's';
-  const key = pose + dir + (motion ? 'm' : '');
+  // (move360) walking or standing, the in-between drawing for the way they face (gartMoveActor sets A.yaw); anything else a plain front, side or back
+  const yaw = (pose === 'stride' || pose === 'idle' || pose === 'walk') && Number.isFinite(A.yaw) && typeof gplYawDir === 'function' && gplYawDir(A.yaw) === dir ? A.yaw : dir === 'e' ? 90 : dir === 'n' ? 180 : 0;
+  const key = pose + dir + yaw + (motion ? 'm' : '');
   if (A.key !== key) {
     let s = '';
-    try { s = typeof gartPlayerSvg === 'function' ? gartPlayerSvg(A.a, { dir, pose, motion, stageRod: pose === 'fish', gear: A.g }) : ''; } catch (e) { s = ''; }
+    try { s = typeof gartPlayerSvg === 'function' ? gartPlayerSvg(A.a, { dir, pose, motion, stageRod: pose === 'fish', gear: A.g, yaw }) : ''; } catch (e) { s = ''; }
     if (!s) s = '<ellipse cx="0" cy="0.6" rx="11" ry="1.8" fill="#000000" opacity="0.14"/><rect x="-6" y="-40" width="12" height="26" rx="5" fill="#5a8a5a"/><circle cx="0" cy="-48" r="8" fill="#e8b890"/><rect x="-5" y="-14" width="4" height="14" rx="2" fill="#4a5a7a"/><rect x="1" y="-14" width="4" height="14" rx="2" fill="#4a5a7a"/>';
     A.inner.innerHTML = s;   // allow-listed ids through the avatar kit (profileAvatarNormalize), or the fixed figure above
     A.key = key;
@@ -133,7 +135,7 @@ function _gllPaint(A) {
     else if (A.actHold && typeof gartActRemote === 'function') { const id = A.actHold; setTimeout(() => { if (A.actHold === id) gartActRemote(A, id); }, 0); }   // a new drawing (they stopped walking, a look changed): the held move from the things-to-do table goes back on it
   }
   const crouch = A.sneakUntil > Date.now() && A.moving ? 0.93 : 1;   // clock-ok: a creep (the net's creep up on a bug)
-  A.inner.setAttribute('transform', `scale(${dir === 'e' && A.face < 0 ? -GL_ACT_SCALE : GL_ACT_SCALE} ${GL_ACT_SCALE * crouch})`);
+  A.inner.setAttribute('transform', `scale(${(yaw % 180) && A.face < 0 ? -GL_ACT_SCALE : GL_ACT_SCALE} ${GL_ACT_SCALE * crouch})`);
 }
 function _gllPose(A, pose, ms) { A.pose = pose; A.poseUntil = Date.now() + (ms || 900); A.key = ''; _gllPaint(A); setTimeout(() => { if (_gll.actors.get(A.w) === A && A.inner && A.inner.isConnected) _gllPaint(A); }, (ms || 900) + 30); }  // clock-ok: how long a pose lasts
 /** Current stationary positions come from existing ordered cast/current-cell messages.

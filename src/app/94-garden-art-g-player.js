@@ -19,7 +19,7 @@
    Motion is CSS on named limbs (94-garden-art.css, .gpl-*), transforms only: gpl-root, gpl-up (above the hips), gpl-hd (the head: two groups, behind and in front of the body),
    gpl-af / gpl-as (arms, front and side), gpl-lf / gpl-lg (legs). The moves (97-pets-tricks-6emote.js) and the walk both drive those. Reduced motion and the Fun level stop it with everything else.
    ============================================================ */
-const _GPL = { cache: new Map(), dir: 's', pose: '', until: 0, key: '', t: 0, lastX: null, lastY: null };
+const _GPL = { cache: new Map(), dir: 's', yaw: 0, pose: '', until: 0, key: '', t: 0, lastX: null, lastY: null };
 const GPL_POSES = Object.freeze(['walk', 'stride', 'water', 'dig', 'pick', 'fish', 'hold']);   // stride: the walk with its legs driven by the distance covered (94-garden-zz-6move.js), not a CSS clock
 /** Poses that face the camera whatever way the person was going (a catch held up: gartPlayerPaint and the other people's figures both ask). One row per pose; arms and class names are in _gplPoseArms. */
 const GPL_POSE_FRONT = Object.freeze(new Set(['hold']));
@@ -205,7 +205,7 @@ function _gplKneed(art, x, hipY, ky, kx, cls, kcls, id, hx) {
 function _gplDraw(a, dir, pose, o) {
   const fo = profileFigureOpts(a), PP = _pfSP;
   if (!PP) return '';
-  const uid = 'gpl' + _gplHash(JSON.stringify(a)) + dir + pose;
+  const uid = 'gpl' + _gplHash(JSON.stringify(a)) + dir + pose + (Number.isFinite(o.yaw) ? 'y' + Math.round(o.yaw * 10) : '');
   const L = profileAvatarSvg(a, { size: 128, uid, layers: true, motion: !!o.motion });
   // the body comes bare-headed: the head is the portrait's. Arms hanging straight (a hand out of reach, straight down): the walk and the moves swing them
   const bare = Object.assign({}, a, { hair: 'bald', hat: 'none', glasses: 'none', earrings: 'none', facial: 'none', headphones: 'none', scarf: 'none' });   // and the portrait's scarf, every way round: a daisy chain stays a daisy chain
@@ -221,6 +221,7 @@ function _gplDraw(a, dir, pose, o) {
   const slung = o.gear && typeof _gplSlung === 'function' ? _gplSlung(o.gear, pose) : '';
   const held = o.gear && o.gear.hd && typeof gardenLookHeldTool === 'function' ? gardenLookHeldTool(o.gear.hd) : null;   // an umbrella, a balloon: in the hand when it is free
   const side = dir === 'e', back = dir === 'n';
+  const yaw = Number.isFinite(o.yaw) ? o.yaw : side ? 90 : back ? 180 : 0;   // (move360) 0 facing you, 90 side on (east), 180 away; 22.5 steps
   // The Painted village (94-garden-art-g-cast.js, -g-paint.js): the head a little smaller on the body, as the scene kit's people are in proportion,
   // and the face modelled: eye sockets, the shaded side of the nose and jaw, the lit cheek, a lit nose tip (_gplPaintFace). Every wardrobe piece stays.
   const HK = o.painted ? 0.84 : 1, yN = _gplY(63), hs = (m) => (HK === 1 ? m : `translate(0 ${_gplN(yN)}) scale(${HK}) translate(0 ${_gplN(-yN)}) ${m}`);
@@ -239,32 +240,41 @@ function _gplDraw(a, dir, pose, o) {
     const armFar = P ? _gplArm(far, j(F.shoulders.far), len, P.a[1] || '', P.a[0], P.a[2]) : _gplArm(far, j(F.shoulders.far), len, 'gpl-as gpl-a');
     const armNear = P ? _gplArm(near, j(F.shoulders.near), len, P.b[1] || '', P.b[0], P.tool || P.b[2]) : _gplArm(near, j(F.shoulders.near), len, 'gpl-as gpl-b', 0, held);
     // the head turned the way it walks: the face slides over the egg, the ears the other way; what hangs behind goes behind (a ponytail trails)
-    const t = _GPL_TURN;
+    const t = _GPL_TURN * (yaw < 80 ? 0.7 : yaw > 100 ? 2.3 : 1);   // (at 112.5 the face has mostly gone round out of sight)   // (move360) at 67.5 the face is still partly towards you, at 112.5 turning away
     const head = _gplG(`translate(${_gplN(-t * 0.7)} 0)`, L.ears) + L.skull + `<clipPath id="${uid}h"><path d="${PF_HEAD_D}"/><rect x="20" y="60" width="45" height="70"/></clipPath><g clip-path="url(#${uid}h)">${_gplG(`translate(${t} 0)`, L.face)}</g>` + _gplG(`translate(${_gplN(t * 0.22)} 0)`, L.hair) + _gplG(`translate(${t} 0)`, L.glasses) + _gplG(`translate(${_gplN(t * 0.22)} 0)`, L.hat) + L.phones + L.extra;
     upper = `<g class="gpl-hd" style="${headO}">${_gplG(hs(_gplPort()), `<g transform="translate(100 0) scale(-1 1)">${L.hairback}</g>`)}</g>`
       + _gplG(fig, F.back) + armFar + _gplG(_gplPort(), L.neck) + _gplG(fig, F.mid) + _gplG(hs(_gplPort()), L.strands) + _gplG(_gplPort(), L.scarf) + armNear
       + `<g class="gpl-hd" style="${headO}">${_gplG(hs(_gplPort()), head)}</g>`;
   } else {
-    const kb = _GPL_BUST[a.build] || 0.8, port = _gplPort(), bust = _gplPort(kb);
-    const KXF = 3.0, dx = 9.4 * (kb / 0.8) * S;
-    const legArt = (sgn) => _gplG(_gplM(sgn * KXF * S, KY * S, sgn * dx, 0), F.legA);
-    legs = _gplKneed(legArt(-1), -dx - 0.2 * KXF * S, hipY, KY * S, KXF * S, 'gpl-lf gpl-a', 'is-a', uid + 'ka', -dx) + _gplKneed(legArt(1), dx + 0.2 * KXF * S, hipY, KY * S, KXF * S, 'gpl-lf gpl-b', 'is-b', uid + 'kb', dx);
+    // (move360) three-quarter views: tq is how far the body has turned towards its own east (the walker mirrors it for the west).
+    // Front on (yaw 0) and from behind (yaw 180) tq is 0 and this is the drawing as before.
+    const tq = Math.abs(Math.sin(yaw * Math.PI / 180)) < 0.01 ? 0 : Math.sin(yaw * Math.PI / 180);
+    const kb = (_GPL_BUST[a.build] || 0.8), kbT = kb * (1 - 0.16 * tq), port = _gplPort(), bust = _gplPort(kbT);
+    const KXF = 3.0 * (1 - 0.1 * tq), dx = 9.4 * (kb / 0.8) * S * (1 - 0.38 * tq), lx = (back ? -1 : 1) * 1.2 * tq * S;   // the legs closer together, the hips a little round
+    const legArt = (sgn, ox) => _gplG(_gplM(sgn * KXF * S, KY * S, sgn * dx + ox, 0), F.legA);
+    const legL = _gplKneed(legArt(-1, lx), -dx + lx - 0.2 * KXF * S, hipY, KY * S, KXF * S, 'gpl-lf gpl-a', 'is-a', uid + 'ka', -dx + lx), legR = _gplKneed(legArt(1, lx), dx + lx + 0.2 * KXF * S, hipY, KY * S, KXF * S, 'gpl-lf gpl-b', 'is-b', uid + 'kb', dx + lx);
+    legs = tq && !back ? legR + legL : legL + legR;   // the nearer leg drawn last (turned east from the front, that is the left one)
     // the arms: the figure's, without the fine pieces, as wide as the portrait's sleeves (its seams are at 24 and 76)
     const FpL = a.watch === 'none' ? Fp : profileFigureSvg(Object.assign({}, bare, { watch: 'none' }), { layers: true, arms: hang, uid: uid + 'b', size: 240, plain: true });
-    const w = B.arm + T.g * 0.6, ax = (16.4 * kb / w) * S, ay = KY * S, jx = 34 * kb * S, jy = _gplY(88), sh = Fp.shoulders.near;
-    const armArt = (sgn, art) => _gplG(_gplM(sgn * ax, ay, sgn * (jx - sh[0] * ax), jy - sh[1] * ay), art), len = 19.1 * ay;
-    const armL = armArt(-1, FpL.nearArm), armR = armArt(1, Fp.nearArm);
-    const left = P ? _gplArm(armL, [-jx, jy], len, P.a[1] || '', -P.a[0], P.a[2], P.k) : _gplArm(armL, [-jx, jy], len, 'gpl-af gpl-b');
-    const right = P ? _gplArm(armR, [jx, jy], len, P.b[1] || '', P.b[0], P.tool || P.b[2], P.k) : _gplArm(armR, [jx, jy], len, 'gpl-af gpl-a is-r', 0, held);
-    const lower = _gplG(bust, _gplLower(a, fo, T, uid, back)), cape = a.outer === 'cape';   // a cape lies over the arms
+    const w = B.arm + T.g * 0.6, ax = (16.4 * kb / w) * S * (1 - 0.12 * tq), ay = KY * S, jx0 = 34 * kbT * S, jy = _gplY(88), sh = Fp.shoulders.near;
+    // turned: the far shoulder comes in behind the body, the near one a little in front of it
+    const farL = back, jxL = jx0 * (tq ? (farL ? 1 - 0.24 * tq : 1 - 0.06 * tq) : 1), jxR = jx0 * (tq ? (farL ? 1 - 0.06 * tq : 1 - 0.24 * tq) : 1);
+    const armArt = (sgn, art, jx) => _gplG(_gplM(sgn * ax, ay, sgn * (jx - sh[0] * ax), jy - sh[1] * ay), art), len = 19.1 * ay;
+    const armL = armArt(-1, FpL.nearArm, jxL), armR = armArt(1, Fp.nearArm, jxR);
+    let left = P ? _gplArm(armL, [-jxL, jy], len, P.a[1] || '', -P.a[0], P.a[2], P.k) : _gplArm(armL, [-jxL, jy], len, 'gpl-af gpl-b');
+    let right = P ? _gplArm(armR, [jxR, jy], len, P.b[1] || '', P.b[0], P.tool || P.b[2], P.k) : _gplArm(armR, [jxR, jy], len, 'gpl-af gpl-a is-r', 0, held);
+    let farArm = '';
+    if (tq) { if (farL) { farArm = left; left = ''; } else { farArm = right; right = ''; } }   // the far arm goes behind the body
+    const lower = farArm + _gplG(bust, _gplLower(a, fo, T, uid, back)), cape = a.outer === 'cape';   // a cape lies over the arms
+    const hq = tq * 3.4, turnF = (inner, k) => (tq && inner ? _gplG(`translate(${_gplN(hq * k)} 0)`, inner) : inner);   // (move360) the face slides round the head as the body turns
     if (back) {
       upper = lower + _gplG(bust, _gplBackBust(a, fo, uid) + _gplHipBag(a, true)) + left + right + _gplG(bust, L.neck)
         + `<g class="gpl-hd" style="${headO}">${_gplG(port, L.back + (a.outer === 'cape' ? '' : L.outerback)) + _gplG(hs(port), L.hairback + L.strands)}</g>` + _gplG(bust, _gplClipUp(L.scarf, uid) + _gplBackPack(a, fo, T))
-        + `<g class="gpl-hd" style="${headO}">${_gplG(hs(port), _gplBackHead(a, L))}</g>`;
+        + `<g class="gpl-hd" style="${headO}">${_gplG(hs(port), turnF(_gplBackHead(a, L), -0.4))}</g>`;
     } else {
       upper = `<g class="gpl-hd" style="${headO}">${_gplG(port, L.back + L.outerback) + _gplG(hs(port), L.hairback)}</g>` + lower + (cape ? left + right : '') + _gplG(bust, L.neck + L.body + _gplHipBag(a, false) + (cape ? _gplCapeFront(fo) : '')) + (cape ? '' : left + right)
         + _gplG(hs(port), L.strands) + _gplG(bust, L.scarf)
-        + `<g class="gpl-hd" style="${headO}">${_gplG(hs(port), L.ears + L.skull + L.face + L.hair + L.glasses + L.hat + L.phones + L.extra)}</g>`;
+        + `<g class="gpl-hd" style="${headO}">${_gplG(hs(port), turnF(L.ears, -0.45) + L.skull + (tq ? `<clipPath id="${uid}h"><path d="${PF_HEAD_D}"/><rect x="20" y="60" width="60" height="70"/></clipPath><g clip-path="url(#${uid}h)">${turnF(L.face, 1)}</g>` : L.face) + turnF(L.hair, 0.25) + turnF(L.glasses, 1) + turnF(L.hat, 0.3) + L.phones + L.extra)}</g>`;
     }
   }
   return `<g class="gpl gpl-${pose} gpl-d${dir}"><g class="gpl-root" style="transform-origin:0px 0px">${legs}<g class="gpl-up" style="transform-origin:0px ${_gplN(hipY)}px">${back ? '' : slung}${upper}${back ? slung : ''}</g></g></g>${o.gear && o.gear.bt && typeof gardenBoatOnFigure === 'function' ? gardenBoatOnFigure() : ''}`;
@@ -273,16 +283,26 @@ function _gplDraw(a, dir, pose, o) {
 /** The figure as a fragment (cached per look, way round and pose). */
 function gartPlayerSvg(avatar, o) {
   o = o || {};
-  const dir = o.dir === 'n' || o.dir === 'e' ? o.dir : 's';
+  let dir = o.dir === 'n' || o.dir === 'e' ? o.dir : 's';
   const pose = GPL_POSES.includes(o.pose) ? o.pose : 'idle';
+  // (move360) a yaw (0 facing you .. 180 away, in 22.5 steps) picks one of nine drawings; the walker mirrors them for the west: sixteen ways round.
+  // Only the walk and standing have the in-between drawings: every action pose keeps its own front, side or back.
+  let yaw = Number(o.yaw);
+  if (!Number.isFinite(yaw) || (pose !== 'idle' && pose !== 'stride' && pose !== 'walk')) yaw = null;
+  else { yaw = Math.max(0, Math.min(180, Math.round(yaw / 22.5) * 22.5)); dir = gplYawDir(yaw); if (yaw === 0 || yaw === 90 || yaw === 180) yaw = null; }
+  if (yaw != null) o = Object.assign({}, o, { yaw }); else if (o.yaw != null) { o = Object.assign({}, o); delete o.yaw; }
   let a;
   try { a = profileAvatarNormalize(avatar); } catch (e) { return ''; }
   if (o.painted == null) o = Object.assign({}, o, { painted: !o.flat && typeof gardenFigurePaintOn === 'function' && gardenFigurePaintOn() });
-  const key = JSON.stringify(a) + dir + pose + (o.painted ? 'p' : '') + (o.motion ? 'm' : '') + (o.stageRod ? 'r' : '') + (o.gear ? JSON.stringify(o.gear) : '');
+  const key = JSON.stringify(a) + dir + pose + (yaw != null ? 'y' + yaw : '') + (o.painted ? 'p' : '') + (o.motion ? 'm' : '') + (o.stageRod ? 'r' : '') + (o.gear ? JSON.stringify(o.gear) : '');
   let s = _GPL.cache.get(key);
-  if (s == null) { try { s = _gplDraw(a, dir, pose, o); } catch (e) { s = ''; } if (_GPL.cache.size > 40) _GPL.cache.clear(); _GPL.cache.set(key, s); }
+  if (s == null) { try { s = _gplDraw(a, dir, pose, o); } catch (e) { s = ''; } if (_GPL.cache.size > 90) _GPL.cache.clear(); _GPL.cache.set(key, s); }
   return s && !o.flat && typeof gardenFigurePaintIf === 'function' ? gardenFigurePaintIf(s, 'actor') : s;   // the Painted village paints the figure into the scene's light (94-garden-art-g-paint.js)
 }
+/** (move360) Which of the three drawing families a yaw belongs to: front (s), side (e) or back (n). */
+function gplYawDir(yaw) { return yaw <= 45 ? 's' : yaw >= 135 ? 'n' : 'e'; }
+/** (move360) The yaw a family is drawn at when it has no in-between drawing. */
+function gplDirYaw(dir) { return dir === 'e' ? 90 : dir === 'n' ? 180 : 0; }
 /** The same person as an <svg>, standing, front on: anywhere outside the walker (a friend's garden). */
 function gartPlayerFigureSvg(avatar, o) {
   o = o || {};
@@ -302,17 +322,20 @@ function gartPlayerPaint(inner, gw) {
     let pose = moving ? (typeof gartMoveFrame === 'function' ? 'stride' : 'walk') : 'idle', stageRod = false;
     if ((gw.fishing && gw.fishing.state !== 'idle') || gw.casting) { pose = 'fish'; stageRod = true; }   // the fishing game draws the rod and the line itself
     if (_GPL.pose && now < _GPL.until && !moving) pose = _GPL.pose;
-    const av = _gplAvatar(), dir = GPL_POSE_FRONT.has(pose) ? 's' : stageRod ? 'e' : _GPL.dir;   // fishing is side on: the game's rod starts from the hand on the side you face; a catch held up faces you
+    const av = _gplAvatar(), dir = GPL_POSE_FRONT.has(pose) ? 's' : stageRod ? 'e' : _GPL.dir;
+    // (move360) walking or standing: the in-between drawing for the way you face, unless something turned you to a plain front, side or back since
+    const acting = typeof gartActBusy === 'function' && gartActBusy();
+    const yaw = !acting && (pose === 'stride' || pose === 'idle' || pose === 'walk') && Number.isFinite(_GPL.yaw) && gplYawDir(_GPL.yaw) === dir ? _GPL.yaw : gplDirYaw(dir);   // fishing is side on: the game's rod starts from the hand on the side you face; a catch held up faces you
     const gear = typeof _gplMyGear === 'function' ? _gplMyGear() : null;
-    const key = pose + dir + (motion ? 'm' : '') + (stageRod ? 'r' : '') + JSON.stringify(av) + JSON.stringify(gear);   // a compare: a wardrobe change shows at once, nothing else redraws
+    const key = pose + dir + yaw + (motion ? 'm' : '') + (stageRod ? 'r' : '') + JSON.stringify(av) + JSON.stringify(gear);   // a compare: a wardrobe change shows at once, nothing else redraws
     if (_GPL.key !== key || !inner.firstChild || inner._gplKey !== key) {
-      const s = gartPlayerSvg(av, { dir, pose, motion, stageRod, gear });
+      const s = gartPlayerSvg(av, { dir, pose, motion, stageRod, gear, yaw });
       if (!s) return false;
       _GPL.key = key; inner._gplKey = key;
       inner.innerHTML = s;
     }
     const S = typeof GW_SCALE === 'number' ? GW_SCALE : 0.74;
-    inner.setAttribute('transform', `scale(${dir === 'e' && gw.face < 0 ? -S : S} ${S})`);
+    inner.setAttribute('transform', `scale(${(yaw % 180) && (stageRod || typeof gartMoveMirror !== 'function' ? gw.face : gartMoveMirror()) < 0 ? -S : S} ${S})`);
     return true;
   } catch (e) { return false; }
 }

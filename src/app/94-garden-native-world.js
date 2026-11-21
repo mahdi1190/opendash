@@ -1408,7 +1408,7 @@ window.GardenNativeWorld = (function () {
     function drawPlayer(time) {
       if (typeof gartPlayerStep === 'function') gartPlayerStep(_gw);
       const pose = typeof _GPL !== 'undefined' && _GPL.pose && Date.now() < _GPL.until ? _GPL.pose : '';
-      const appearance = [_gw.moving ? 1 : 0, _gw.face, typeof _GPL === 'undefined' ? 's' : _GPL.dir, pose, _gw.fishing && _gw.fishing.state !== 'idle' ? 1 : 0, _gd.rev, gardenMotionOn() ? 1 : 0].join('|');
+      const appearance = [_gw.moving ? 1 : 0, _gw.face, typeof _GPL === 'undefined' ? 's' : _GPL.dir + (_GPL.yaw == null ? '' : _GPL.yaw), typeof gartMoveMirror === 'function' ? gartMoveMirror() : 1, pose, _gw.fishing && _gw.fishing.state !== 'idle' ? 1 : 0, _gd.rev, gardenMotionOn() ? 1 : 0].join('|');
       if (appearance !== playerViewKey || playerProfile !== state.profile || playerWardrobe !== state.wardrobe || !playerInner.firstChild) {
         playerViewKey = appearance; playerProfile = state.profile; playerWardrobe = state.wardrobe;
         if (typeof gartPlayerPaint === 'function') gartPlayerPaint(playerInner, _gw);
@@ -1881,7 +1881,8 @@ window.GardenNativeWorld = (function () {
       const avatar = _gplAvatar(), gear = typeof _gplMyGear === 'function' ? _gplMyGear() : null, motion = _gartMotionOk(), key = JSON.stringify([avatar, gear, motion]);
       if (!playerPosePreparation || playerPosePreparation.key !== key) {
         const poses = [];
-        for (const pose of ['idle', 'stride']) for (const dir of ['s', 'n', 'e']) poses.push({ pose, dir });
+        // (move360) the sixteen ways round are nine drawings (the west mirrors the east): all of them, walking and standing, made while loading
+        for (const pose of ['stride', 'idle']) for (let yaw = 0; yaw <= 180; yaw += 22.5) poses.push({ pose, dir: typeof gplYawDir === 'function' ? gplYawDir(yaw) : yaw <= 45 ? 's' : yaw >= 135 ? 'n' : 'e', yaw });
         poses.push({ pose: 'fish', dir: 'e', stageRod: true });
         playerPosePreparation = { key, poses, next: 0, frame: -1 };
       }
