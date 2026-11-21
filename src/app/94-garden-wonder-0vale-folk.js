@@ -530,7 +530,7 @@ function _vfrFrame(dt) {
   for (const row of _vfr.rows || []) {
     if (!_vfr.plans.has(row.id)) continue;
     const V = _vfrV(row.id), w = _vfrWhere(row.id, minute); if (!w) continue;
-    list.push(V);
+    list.push(V); V.offWalk = false;
     if (V.x == null) { V.x = w.x; V.y = w.y; V.inside = w.inside || !!w.e.offmap; }
     if (V.entry !== w.e) { V.entry = w.e; V.arrived = false; V.rubbing = false; V.path = null; V.pathFor = ''; }
     const e = V.entry, to = e.spot, near = _vfrNearView(V.x, V.y, v, VFR_NEAR) || _vfrNearView(to.x, to.y, v, VFR_NEAR) && !e.inside;
