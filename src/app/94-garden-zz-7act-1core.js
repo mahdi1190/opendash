@@ -277,7 +277,7 @@ function gartActFrame() {
   if (now - _ga.t < 200) { if (_ga.near && _ga.el && !_ga.el.hidden) _gaPlace(); return; }
   _ga.t = now;
   const el = _gaPromptEl(); if (!el) return;
-  const busy = (_ga.cur && _ga.cur.doing) || (typeof _wd !== 'undefined' && !!_wd.talk) || !!_gw.boat || (typeof _gwFishBusy === 'function' && _gwFishBusy()) || (typeof gardenDesignOn === 'function' && gardenDesignOn()) || (typeof GardenNative !== 'undefined' && GardenNative.inRoom && GardenNative.inRoom());
+  const busy = (_ga.cur && _ga.cur.doing) || (typeof _wd !== 'undefined' && !!_wd.talk) || !!_gw.boat || (typeof _gwFishBusy === 'function' && _gwFishBusy()) || (typeof gardenDesignOn === 'function' && gardenDesignOn()) || (typeof GardenNative !== 'undefined' && GardenNative.inRoom && GardenNative.inRoom()) || (typeof gardenWorldCovered === 'function' && gardenWorldCovered());   // (a panel over the world: no prompt on top of it)
   const opts = busy ? [] : _ga.carry ? [{ key: 'carry-down', act: 'carry', name: '', x: _gw.px, y: _gw.py, down: true }] : _gaOptions(gartActNearby());
   // one clear prompt: the best thing here (or the one you picked with Tab, while it is still in reach); the others in a small chooser below it
   const near = opts.find(o => o.key === _ga.pickKey) || opts[0] || null;
@@ -320,9 +320,26 @@ function gartActCycle(back) {
   const i = Math.max(0, opts.findIndex(o => o.key === _ga.near.key)), n = opts[(i + (back ? opts.length - 1 : 1)) % opts.length];
   _ga.pickKey = n.key; _ga.t = 0; gartActFrame(); return true;
 }
+/** How far over its foot a small thing's picture reaches, in cells, and a little gap: the 'Pick it up' prompt sits just over the thing as drawn
+ *  (fix loop 1, 21 Nov 2026: a cell over its foot put it at the chest of whoever stood behind the basket, and it read as theirs). Measured
+ *  once per kind of drawing from the picture itself (_GAW_ART, world px, drawn unscaled at the foot), so any carried kind is right. */
+const _gaTops = new Map();
+function _gaArtTop(art) {
+  const W = GARDEN_WORLD, fb = 1.05;
+  if (!art || typeof _GAW_ART === 'undefined' || !_GAW_ART[art]) return fb;
+  if (_gaTops.has(art)) return _gaTops.get(art);
+  let v = fb;
+  try {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('style', 'position:absolute;left:-9999px;top:0;width:10px;height:10px;visibility:hidden');
+    svg.innerHTML = '<g>' + _GAW_ART[art]({}, false, { art }) + '</g>'; document.body.appendChild(svg);
+    const bb = svg.firstChild.getBBox(); svg.remove();
+    if (bb && bb.height > 0) v = Math.max(0.3, (-bb.y + 7) / W.cellH);   // (its top, and 7 world px of air)
+  } catch (e) { v = fb; }
+  _gaTops.set(art, v); return v;
+}
 function _gaPlace() {
   const r = _ga.near, el = _ga.el; if (!r || !el) return;
-  const s = typeof _ghProject === 'function' ? _ghProject(r.x, r.promptY != null ? r.promptY : r.top != null ? Math.max(r.top + 0.55, r.y - 6) : r.src === 'tree' ? r.y - 3.2 : r.carry ? r.y - 1.05 : r.y - 1.9) : null; if (!s) return;   // (promptY: over a ladder's top, up on its floor)
+  const s = typeof _ghProject === 'function' ? _ghProject(r.x, r.promptY != null ? r.promptY : r.top != null ? Math.max(r.top + 0.55, r.y - 6) : r.src === 'tree' ? r.y - 3.2 : r.carry ? r.y - _gaArtTop(r.art) : r.y - 1.9) : null; if (!s) return;   // (promptY: over a ladder's top, up on its floor)
   // never under the garden's own messages strip at the top (a welcome, a find): below it, and above the thing's foot at most
   // (n-move) the page's sizes are read at most every 600 ms (and when the prompt's words change), not every frame: reading them right after
   // the last frame moved the prompt forced the page to lay itself out again, 7-20 ms of every walking frame with a prompt showing

@@ -27,7 +27,7 @@
    gardenDropKey(item)            -> the one key a thing lies under in g.dr (a thing is in one place only: it can never be two)
 
    `world` is what this garden is like now, worked out by the caller (the page from its model, Node from the page engine):
-     { cols, rows, now, today, placeOk(kind, def, x, y, ignoreUid) -> '' | why, has(item) -> n, plant(id), decor(id), waterWhy(uid, who),
+     { cols, rows, now, today, placeOk(kind, def, x, y, ignoreUid, o) -> '' | why (o.back: an Undo putting it back), has(item) -> n, plant(id), decor(id), waterWhy(uid, who),
        thing(id) -> { id, x, y, carry } | null (a thing of the layout that can be carried), free(x, y) -> bool,
        heldBy(item) -> '' | who (somebody carries it now: '@host' the garden's owner, else a friend's id), waterWhy(uid) -> '' | why, dry(uid) -> hours of thirst }
    Rule 17: what can be carried is said by the thing's KIND (GARDEN_KINDS acts with carry), never by a name or a cell.
@@ -71,7 +71,7 @@ function gardenOpCheck(world, op, who) {
       const id = gardenOpItem(op.i).id, def = W.decor && W.decor(id); if (!def) return 'Unknown decoration';
       if (!who && W.has && W.has(op.i) < 1) return `You have no ${String(def.name).toLowerCase()} to place: the shop has them`;
       if (_gbOwn(g.decor, op.u)) return 'That is placed already';
-      return W.placeOk ? W.placeOk('decor', def, op.x, op.y) : '';
+      return W.placeOk ? W.placeOk('decor', def, op.x, op.y, undefined, op.rec ? { back: true } : undefined) : '';   // (an Undo's put back: only what is there now counts)
     }
     case 'plant': {
       const id = gardenOpItem(op.i).id, def = W.plant && W.plant(id); if (!def) return 'Unknown seed';

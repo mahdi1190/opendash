@@ -1200,7 +1200,9 @@ window.GardenPaintedProps = (function () {
         const quad = [pt(ta, -hw + 1), pt(tb, -hw + 1), pt(tb, hw - 15), pt(ta, hw - 15)].map(p => [p.x - c.x, p.y - c.y]), xs = quad.map(p => p[0]), ys = quad.map(p => p[1]);
         const pk = bake(scene, 'gateplank|' + Math.round(deck.length) + '|' + Math.round(hw), [Math.min(...xs) - 2, Math.min(...ys) - 2, Math.max(...xs) + 2, Math.max(...ys) + 3], B2 => { B2.f(B2.poly(quad.map(([x, y]) => [x + .6, y + 1.4])), 'rgba(30,24,16,.4)').f(B2.poly(quad), '#c4a272').s(`M${quad[0][0]} ${quad[0][1]}L${quad[3][0]} ${quad[3][1]}`, '#e8cc98', .8, .8); for (const p of [.2, .8]) { const x = quad[0][0] + (quad[3][0] - quad[0][0]) * p + 1, y = quad[0][1] + (quad[3][1] - quad[0][1]) * p; B2.f(B2.circ(x, y, .8), '#2a2420'); } });
         const puff = bake(scene, 'gatedust', [-9, -6, 9, 6], B2 => B2.f(B2.ell(0, 0, 8, 5), B2.rad(0, 0, 8, [[0, 'rgba(214,200,170,.8)'], [1, 'rgba(214,200,170,0)']])));
-        const plank = h.add(image(scene, pk, c.x, c.y - 46));
+        // (laid into the deck you walk on, so it is ground, under everyone's feet, with the deck's masonry: as a standing thing it sorted
+        // as an object standing on the east road, one you could walk through: the collision audit, fix loop 1, 21 Nov 2026)
+        const plank = h.ground(image(scene, pk, c.x, c.y - 46));
         h.move(plank, (node, t) => { const f = Math.min(1, t / .55); node.setPosition(c.x, c.y - 46 * (1 - f * f)).setAlpha(.4 + .6 * f); if (f >= 1 && !node._knocked) { node._knocked = true; for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2, d = h.add(image(scene, puff, c.x, c.y)); h.move(d, (n2, t2) => { const g = Math.min(1, (t2 - t) / .9); n2.setPosition(c.x + Math.cos(a) * (6 + g * 18), c.y + Math.sin(a) * (2 + g * 6) - g * 6).setAlpha((1 - g) * .8); return g < 1; }); } } return true; });
       }
     }

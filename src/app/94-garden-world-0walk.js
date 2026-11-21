@@ -2222,11 +2222,14 @@ function gardenWorldKey(ev, down, arrowsOnly) {
   if ((k === 'j' || k === 'J') && !ev.ctrlKey && !ev.metaKey && !ev.altKey) { if (typeof gardenJournalOpen === 'function') gardenJournalOpen(); ev.preventDefault(); return true; }   // the Field Journal
   if (arrowsOnly) return false;
   if ((k === 'e' || k === 'E') && typeof _wd !== 'undefined' && _wd.talk && _wd.talk.next) { if (!ev.repeat && performance.now() - (_wd.talk.at || 0) > 250) _wd.talk.next(); ev.preventDefault(); return true; }   // (round 2, folk) E moves a talk on
+  // (a panel open over the world: E does nothing behind it; Space and Enter are the focused button's own)
+  if ((k === ' ' || k === 'e' || k === 'E') && typeof gardenWorldCovered === 'function' && gardenWorldCovered()) { if (k !== ' ') ev.preventDefault(); return true; }
   if (k === ' ' || k === 'e' || k === 'E') { if (ev.repeat) { ev.preventDefault(); return true; } gardenWorldInteract(); ev.preventDefault(); return true; }
   return false;
 }
 /** Space / E: do the sensible thing right here: a bite, a door beside you, a bug in reach, a ripe plant, water in front of you. */
 function gardenWorldInteract() {
+  if (typeof gardenWorldCovered === 'function' && gardenWorldCovered()) return;   // (a panel over the world: nothing behind it is done)
   if (typeof _gwFishBusy === 'function' && _gwFishBusy()) { if (typeof _gwFishPress === 'function') _gwFishPress(); return; }
   if (typeof gartActInteract === 'function' && gartActInteract()) return;   // the prompt's action: sit, climb, ring... (94-garden-zz-7act-1core.js)
   const m = gardenHere(), W = GARDEN_WORLD;
