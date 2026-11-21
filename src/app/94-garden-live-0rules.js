@@ -21,7 +21,9 @@ const GL_WORLD_PREDECESSOR='94f5b2dbe4dce765cafb2b40',GL_WORLD_MECHANICS1='c3454
 function glWorldFields(source){
  if(source===undefined){
   if(typeof _gdv!=='undefined'&&_gdv.on&&_gdv.clean)source=_gdv.clean;
-  else if(typeof state!=='undefined'&&state?.garden)source=state.garden;
+  // (2.74.2) a garden never opened yet (a fresh pair who visit straight away) has no saved world: it will start on this one, so it says this one.
+  // It said none, the host's computer refused the visit as another world, and the first visit after pairing stayed 'look' until something saved it.
+  else if(typeof state!=='undefined'&&state?.garden&&(state.garden.seen?.world!=null||state.garden.wv!=null))source=state.garden;
   else source={wv:GARDEN_WORLD.v,lh:GARDEN_WORLD.lh};
  }
  source=source?.visit?.snap||source;

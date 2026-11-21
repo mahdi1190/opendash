@@ -1405,6 +1405,56 @@ window.GardenNativeWorld = (function () {
       if (pushed) _gw.moving = true;
       if (_gw.moving && typeof _gwSaveSoon === 'function') _gwSaveSoon();
     }
+    /** Is a figure with its feet at (sx, sy) world px, ph tall, behind this painted prop (so it fades)? memo keeps the last pixel test. */
+    function propCovers(record, sx, sy, ph, memo) {
+        const p = record.metadata.prop, b = record.bounds;
+        // (village fix round 2) a house fades only when it really stands over you: a good share of your figure inside the
+        // body of its picture (its eaves, flower boxes and the air at the picture's sides left out), with your feet behind
+        // its foot. Walking a lane beside a cottage, or standing at a door beside a tower, faded the whole building to
+        // half see-through, grass showing through its walls, as if it were a fault in the drawing.
+        // (across: the walls stand on the building's own ground, its cells, not across the whole picture, which is wider than the
+        // house by its eaves, its planting and, for the lighthouse, the air either side of a narrow tower)
+        const footY = W.sky + (p.y + p.h) * W.cellH, bx0 = Math.max(b.x, p.x * W.cellW) + 3, bx1 = Math.min(b.x + b.width, (p.x + p.w) * W.cellW) - 3, by0 = b.y + 18;
+        const ox = Math.max(0, Math.min(sx + 7, bx1) - Math.max(sx - 7, bx0)), oy = Math.max(0, Math.min(sy, footY) - Math.max(sy - ph, by0));
+        let behind = sy < footY - 6 && sx > bx0 && sx < bx1 && ox >= 8 && oy >= ph * .4;
+        if (behind && p.id === 'ld-falls' && record.handle.fallsCoversPlayer) behind = record.handle.fallsCoversPlayer(sx, sy);
+        // (only when you are within the middle of it and under its top: beside a barn's gable it faded with nothing hidden)
+        if (behind && p.id !== 'ld-falls') behind = sx > b.x + b.width * .12 && sx < b.x + b.width * .88 && sy - ph * .6 > b.y;
+        // (a lamp post or a finger post hides nothing: standing at the old lamp turned you into the dark outline, hunter, round 3)
+        if (behind && (p.art === 'lamp' || p.art === 'finger' || b.width < 46)) behind = false;
+        // (High orchard fix round 1) the treehouse chestnut fades by its crown, which spreads well past its two cells: walking the
+        // beach or the mother walk beside it you went behind the crown unseen, and standing at the trunk the whole tree faded
+        // (layfix east: the crown as drawn now, rounder and over its own trunk: standing at the ladder or on the beach beside it no longer ghosts the house)
+        else if (p.id === 'ld-treehouse') { const tx = (p.x + p.w / 2) * W.cellW - 92, ty = footY - 176; behind = sy < footY - 6 && ((sx - tx) / 92) ** 2 + ((sy - 30 - ty) / 78) ** 2 < 1; }
+        // a painted building fades only where its own picture covers you (head, chest or hips), not over the whole box round
+        // it: the lighthouse, its cottage and its rocks went ghostly whenever you stood beside the tower (coast round 3).
+        // Tested again only when you have moved a pixel, a handful of reads of one texture.
+        else if (behind && record.handle.hitPoint) { const k = Math.round(sx) + ',' + Math.round(sy); if (memo._fadeAt !== k) { memo._fadeAt = k; memo._fadeHit = [.85, .55, .25].some(f => record.handle.hitPoint(sx, sy - ph * f)); } behind = memo._fadeHit; }
+        return behind;
+    }
+    /** Friends on screen this frame, as figures for the fades: feet (world px), lift, height; top collects the depth they are drawn at. */
+    function friendFigures() {
+      const out = [];
+      if (typeof _gll === 'undefined' || !_gll.actors) return out;
+      for (const F of _gll.actors.values()) {
+        if (F.me || F.rm || F.away || !F.root || !F.root.target || !F.root.target.active || !Number.isFinite(F.x) || !Number.isFinite(F.y)) continue;
+        const lift = typeof gartActFriendLift === 'function' ? gartActFriendLift(F) : F.actLift || 0, row = F.actId && typeof GARDEN_ACTS !== 'undefined' ? GARDEN_ACTS[F.actId] : null;
+        const y = W.sky + F.y * W.cellH;
+        out.push({ F, w: F.w, x: F.x * W.cellW, y, lift: lift > 0 ? lift : 0, ph: 50 * GARDEN_ACTOR_SCALE, hide: !!(row && row.hideBehind), top: y + .001 });
+      }
+      return out;
+    }
+    /** After the fades: each friend drawn over what has faded for them (one frame's list), back in their row when nothing covers them. */
+    function placeFriends(peers) {
+      const now = performance.now();
+      for (const Q of peers) {
+        const F = Q.F;
+        if (F._crownHits) for (const [im, t] of F._crownHits) { if (now - t > 160 || !im.active) { F._crownHits.delete(im); continue; } if (im.visible && Number.isFinite(im.depth) && im.depth > Q.y + .01) Q.top = Math.max(Q.top, im.depth + .002); }
+        const raise = !Q.hide && Q.top > Q.y + .001, spr = F.spr;
+        if (raise) { if (spr) spr.z = (Q.top - W.sky) / W.cellH; if (F.root.target.depth !== Q.top) { F.root.target.setDepth(Q.top); sorted = true; } F._raised = true; }
+        else if (F._raised) { F._raised = false; if (spr) spr.z = null; F.root.target.setDepth(Q.y); sorted = true; }
+      }
+    }
     function drawPlayer(time) {
       if (typeof gartPlayerStep === 'function') gartPlayerStep(_gw);
       const pose = typeof _GPL !== 'undefined' && _GPL.pose && Date.now() < _GPL.until ? _GPL.pose : '';
@@ -1425,32 +1475,18 @@ window.GardenNativeWorld = (function () {
       // nearly solid and your outline shows through it: at .38 it went to a pale ghost, and a player at its door
       // seemed to stand inside a glass house (art director, round 3)
       propBehind = 0;
+      // (2.74.2) friends are drawn by the same rules as you: whatever they stand behind (a stall's awning, a house, a crown, a bush) fades on your
+      // screen and they are drawn over it, as their own screen draws them (the owner could not see a friend fishing behind the market stall).
+      // Hiding behind a tree is the one move that keeps the tree in front. By kind: any friend, any fading thing.
+      const peers = friendFigures();
       for (const record of fadingProps) {
         if (record.editorLifted) continue;
-        const p = record.metadata.prop, b = record.bounds, sx = _gw.px * W.cellW, sy = W.sky + _gw.py * W.cellH;
-        // (village fix round 2) a house fades only when it really stands over you: a good share of your figure inside the
-        // body of its picture (its eaves, flower boxes and the air at the picture's sides left out), with your feet behind
-        // its foot. Walking a lane beside a cottage, or standing at a door beside a tower, faded the whole building to
-        // half see-through, grass showing through its walls, as if it were a fault in the drawing.
-        // (across: the walls stand on the building's own ground, its cells, not across the whole picture, which is wider than the
-        // house by its eaves, its planting and, for the lighthouse, the air either side of a narrow tower)
-        const footY = W.sky + (p.y + p.h) * W.cellH, bx0 = Math.max(b.x, p.x * W.cellW) + 3, bx1 = Math.min(b.x + b.width, (p.x + p.w) * W.cellW) - 3, by0 = b.y + 18;
-        const ph = playerOcclusionHeight || 50, ox = Math.max(0, Math.min(sx + 7, bx1) - Math.max(sx - 7, bx0)), oy = Math.max(0, Math.min(sy, footY) - Math.max(sy - ph, by0));
-        let behind = sy < footY - 6 && sx > bx0 && sx < bx1 && ox >= 8 && oy >= ph * .4;
-        if (behind && p.id === 'ld-falls' && record.handle.fallsCoversPlayer) behind = record.handle.fallsCoversPlayer(sx, sy);
-        // (only when you are within the middle of it and under its top: beside a barn's gable it faded with nothing hidden)
-        if (behind && p.id !== 'ld-falls') behind = sx > b.x + b.width * .12 && sx < b.x + b.width * .88 && sy - playerOcclusionHeight * .6 > b.y;
-        // (a lamp post or a finger post hides nothing: standing at the old lamp turned you into the dark outline, hunter, round 3)
-        if (behind && (p.art === 'lamp' || p.art === 'finger' || b.width < 46)) behind = false;
-        // (High orchard fix round 1) the treehouse chestnut fades by its crown, which spreads well past its two cells: walking the
-        // beach or the mother walk beside it you went behind the crown unseen, and standing at the trunk the whole tree faded
-        // (layfix east: the crown as drawn now, rounder and over its own trunk: standing at the ladder or on the beach beside it no longer ghosts the house)
-        else if (p.id === 'ld-treehouse') { const tx = (p.x + p.w / 2) * W.cellW - 92, ty = footY - 176; behind = sy < footY - 6 && ((sx - tx) / 92) ** 2 + ((sy - 30 - ty) / 78) ** 2 < 1; }
-        // a painted building fades only where its own picture covers you (head, chest or hips), not over the whole box round
-        // it: the lighthouse, its cottage and its rocks went ghostly whenever you stood beside the tower (coast round 3).
-        // Tested again only when you have moved a pixel, a handful of reads of one texture.
-        else if (behind && record.handle.hitPoint) { const k = Math.round(sx) + ',' + Math.round(sy); if (record._fadeAt !== k) { record._fadeAt = k; record._fadeHit = [.85, .55, .25].some(f => record.handle.hitPoint(sx, sy - playerOcclusionHeight * f)); } behind = record._fadeHit; }
-        if (record.behind !== behind) { record.behind = behind; record.root.setAlpha(behind ? (p.id === 'ld-treehouse' ? .55 : .8) : 1); }
+        const p = record.metadata.prop, sx = _gw.px * W.cellW, sy = W.sky + _gw.py * W.cellH;
+        const behind = propCovers(record, sx, sy, playerOcclusionHeight || 50, record);
+        let seen = behind;
+        for (const Q of peers) { const memo = (record._peerMemo || (record._peerMemo = new Map())); let m = memo.get(Q.w); if (!m) memo.set(Q.w, m = {}); if (propCovers(record, Q.x, Q.y - Q.lift, Q.ph, m)) { seen = true; if (Number.isFinite(record.root.depth)) Q.top = Math.max(Q.top, record.root.depth + .002); } }
+        if (record.behind !== behind) record.behind = behind;
+        if (record.seenBehind !== seen) { record.seenBehind = seen; record.root.setAlpha(seen ? (p.id === 'ld-treehouse' ? .55 : .8) : 1); }
         if (behind) propBehind++;
       }
       coveringCanopies.length = 0;
@@ -1459,13 +1495,8 @@ window.GardenNativeWorld = (function () {
       // (2.74.1) a friend up a tree or on a high seat: any crown over them fades on your screen too, as it does on theirs (the owner: you
       // could not see them climb). Friends' figures stand in the objects layer, under every crown, so the crown they sit in counts as well.
       // By kind: any lifted figure, any crown.
-      const lifted = [];
-      if (typeof _gll !== 'undefined' && _gll.actors) for (const F of _gll.actors.values()) {
-        const lift = typeof gartActFriendLift === 'function' ? gartActFriendLift(F) : F.actLift || 0;
-        if (F.me || !(lift > 6) || !F.root || !F.root.target || !Number.isFinite(F.x)) continue;
-        const fx = F.x * W.cellW, fy = W.sky + F.y * W.cellH, fh = 50 * GARDEN_ACTOR_SCALE;
-        lifted.push({ F, x: fx, y: fy, crowns: [], probes: [{ x: fx, y: fy - lift - fh * .8 }, { x: fx, y: fy - lift - fh * .45 }] });
-      }
+      // (2.74.2: every friend, not only one up a tree: a crown in front of them fades and they are drawn over it, as on their screen)
+      const lifted = peers.map(Q => ({ Q, F: Q.F, x: Q.x, y: Q.y, lift: Q.lift, probes: [{ x: Q.x, y: Q.y - Q.lift - Q.ph * .8 }, { x: Q.x, y: Q.y - Q.lift - Q.ph * .45 }] }));
       for (const crown of canopyOccluders) {
         const b = crown.bounds;
         let covered = false;
@@ -1473,11 +1504,14 @@ window.GardenNativeWorld = (function () {
           const matrix = GardenNativeArt.inverse(crown.node._matrix);
           covered = probes.some(probe => { const point = GardenNativeArt.point(matrix, probe.x, probe.y); return crown.polygons.some(polygon => insidePolygon(point, polygon)); });
         }
+        const own = covered;
         for (const L of lifted) {
-          if (!crown.record.root.visible || L.x + 8 < b.x - 3 || L.x - 8 > b.x + b.width + 3 || L.y - L.F.actLift - 50 > b.y + b.height + 3) continue;
+          if (!crown.record.root.visible || L.x + 8 < b.x - 3 || L.x - 8 > b.x + b.width + 3 || L.y - L.lift - 50 > b.y + b.height + 3 || L.y < b.y - 3) continue;
+          if (!(L.lift > 6) && !(crown.record.depth > L.y + .01)) continue;   // (a crown behind a friend on the ground is drawn under them anyway)
           const matrix = GardenNativeArt.inverse(crown.node._matrix);
-          if (L.probes.some(probe => { const point = GardenNativeArt.point(matrix, probe.x, probe.y); return crown.polygons.some(polygon => insidePolygon(point, polygon)); })) { covered = true; L.crowns.push(crown); }
+          if (L.probes.some(probe => { const point = GardenNativeArt.point(matrix, probe.x, probe.y); return crown.polygons.some(polygon => insidePolygon(point, polygon)); })) { covered = true; if (Number.isFinite(crown.record.depth)) L.Q.top = Math.max(L.Q.top, crown.record.depth + .002); }
         }
+        crown.ownCover = own;
         const alpha = crown.normalAlpha * (covered ? .24 : 1);
         if (crown.faded !== covered || Math.abs(crown.node.target.alpha - alpha) > .0001) { crown.faded = covered; crown.node.target.setAlpha(alpha); }
         if (covered) coveringCanopies.push(crown.id);
@@ -1488,10 +1522,11 @@ window.GardenNativeWorld = (function () {
       if (doing) {
         let top = y + .001;
         for (const record of fadingProps) if (record.behind && record.root && Number.isFinite(record.root.depth)) top = Math.max(top, record.root.depth + .002);
-        for (const crown of canopyOccluders) if (crown.faded && Number.isFinite(crown.record.depth)) top = Math.max(top, crown.record.depth + .002);
+        for (const crown of canopyOccluders) if (crown.faded && crown.ownCover && Number.isFinite(crown.record.depth)) top = Math.max(top, crown.record.depth + .002);
         for (const im of externalCanopies) if (Number.isFinite(im.depth)) top = Math.max(top, im.depth + .002);
         if (top !== y + .001) playerNode.target.setDepth(top);
       }
+      placeFriends(peers);
     }
     function restoreCanopyAlpha() { for (const crown of canopyOccluders) { if (crown.node.target.active) crown.node.target.setAlpha(crown.normalAlpha); crown.faded = false; } coveringCanopies.length = 0; externalCanopies.length = 0; silhouetteVisible = false; xray.target.setVisible(false); }
     function silhouetteBody(source, body) {

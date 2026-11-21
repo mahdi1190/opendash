@@ -882,7 +882,7 @@ window.GardenPaintWood = (function () {
       // story house (Hollin's hut) once you are near it
       // (the picture's width includes its shadow and dapple margins: a fruit tree's fade oval by it was twice the crown, so
       // the tree beside the orchard bell stood as a grey ghost with you a stride away; the crown is at most about its height)
-      if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const cov = (q) => t.kit ? kitCrownCovers(q, t) : gardenCrownCovers(q.x, q.y, t.x, t.y, t.h * t.scale, Math.min(t.im.displayWidth, t.h * t.scale * 1.05), t.im), under = cov(pl), near = t.hides && Math.hypot((pl.x - t.hides.x) / S.W.cellW, (pl.y - t.hides.y) / S.W.cellH) < 3.5; t.fade = near || under || friendsUp.some(cov) || GardenNativePainted.fishingCrownCovers(t.im); if (under) { underN++; if (t.im.active && t.im.visible) S.covering.push(t.im); } fading.push(t); }
+      if (vis && pl) for (const t of b.trees) { if (!t.im) continue; const cov = (q) => t.kit ? kitCrownCovers(q, t) : gardenCrownCovers(q.x, q.y, t.x, t.y, t.h * t.scale, Math.min(t.im.displayWidth, t.h * t.scale * 1.05), t.im), under = cov(pl), near = t.hides && Math.hypot((pl.x - t.hides.x) / S.W.cellW, (pl.y - t.hides.y) / S.W.cellH) < 3.5; t.fade = near || under || (typeof gardenCrownFeetHit === 'function' ? gardenCrownFeetHit(friendsUp, t.im, cov) : friendsUp.some(cov)) || GardenNativePainted.fishingCrownCovers(t.im); if (under) { underN++; if (t.im.active && t.im.visible) S.covering.push(t.im); } fading.push(t); }
     }
     // Several crowns over you fade further each, so you are as easy to see under three as under one (stacked at the one-crown
     // fade you read as a ghost deep in the wood)

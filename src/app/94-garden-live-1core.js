@@ -288,7 +288,7 @@ const _GL_POSE = Object.freeze({ plant: 'dig', water: 'water', weed: 'pick', har
 const _GLL_PARCEL_SVG = '<ellipse cx="0" cy="1" rx="11" ry="3" fill="#000000" fill-opacity="0.16"/><rect x="-9" y="-15" width="18" height="15" rx="2" fill="#e8799a" stroke="#b84a6f"/><rect x="-2" y="-15" width="4" height="15" fill="#fff0c8"/><path d="M0 -15c-6 -7 -10 -2 -6 0zM0 -15c6 -7 10 -2 6 0z" fill="#fff0c8" stroke="#d9c188"/>';
 /** Someone in the world: a sprite like anything else that moves, sorted with everything else. The host's page and a visitor's use the same one. */
 function _gllSprite(A, onClick) {
-  return gardenWorldAdd({
+  return A.spr = gardenWorldAdd({   // (A.spr: the native world draws them over what they stand behind, 94-garden-native-world.js placeFriends)
     id: 'gl-' + A.w, svg: '', x: A.x, y: A.y, hit: 0.75, hitUp: 30, cursor: 'hand', label: A.n,
     update(dt, sp) {
       if (sp.dressed !== sp.node) { sp.dressed = sp.node; _gllDress(A, sp.node); }

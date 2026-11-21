@@ -193,16 +193,26 @@ function gartActStandFace(A) {
  *  apart on the wire, so the rub is drawn from what they are doing, not from those. */
 function gartActRubCopy(A, id) {
   clearTimeout(A.rubT);
-  const go = () => {
-    if (A.actId !== id || _gll.actors.get(A.w) !== A) return;
-    const P = A.pp; if (!P || !P.root) { A.rubT = setTimeout(go, 500); return; }
-    P.tx = null; P.ty = null; P.busy = 0; P.cb = null; P.x = A.x + GA_RUB_AT[0]; P.y = A.y + GA_RUB_AT[1]; P.z = -1; P.dir = -1;   // (as _gaRubTick lays it: at the reaching hand, head towards them)
-    if (A.pf) A.pf.seen = true;   // (their last place for it is where it walked to: this is where it lies)
-    const clip = typeof _gaBellyClip === 'function' && _gaBellyClip() || 'rollover', def = typeof petClipDef === 'function' ? petClipDef(clip) : null;
-    try { if (!(P.root._pcH && P.rubbing)) { P.sit(); P.rubbing = true; P.clip(clip, def && def.ms || 2400, () => { P.rubbing = false; }); } } catch (e) { /* it sits */ }
-    A.rubT = setTimeout(go, 6100);
-  };
-  go();
+  // (2.74.2) held every frame from their pet's own step (gartActRubHold), by the same rule as your own rub (_gaRubTick): it lies at their
+  // hand, rolls over, and rolls again six seconds on, for as long as the rub lasts. The old one-shot copy kept a "rubbing" flag that a clip
+  // stopped by anything else never cleared, so a second rub in a row drew the pet standing beside them, and their pet's place messages
+  // walked it off. A new rub always starts its roll at once.
+  A.rub = { id, t: -1e9, H: null };
+}
+/** From their pet's step (94-garden-live-5pets.js _gllPetStep): true while a rub holds it (then nothing else moves it this frame). */
+function gartActRubHold(A, P) {
+  const R = A.rub; if (!R) return false;
+  if (A.actId !== R.id || !GARDEN_ACTS[R.id] || !GARDEN_ACTS[R.id].rubPet || !P || !P.root) { A.rub = null; return false; }
+  P.tx = null; P.ty = null; P.lifeGoal = false; P.x = A.x + GA_RUB_AT[0]; P.y = A.y + GA_RUB_AT[1]; P.z = -1; P.dir = -1;   // (as _gaRubTick lays it: at the reaching hand, head towards them)
+  if (A.pf) A.pf.seen = true;   // (their last place for it is where it walked to: this is where it lies)
+  const now = performance.now();
+  if ((P.root._pcH && P.root._pcH === R.H) || now - R.t < 6100) return true;
+  P.busy = 0; P.cb = null; if (P.act && typeof P.setAct === 'function') { try { P.setAct(''); } catch (e) { /* fine */ } }
+  if (P.root._pcH && typeof petClipStop === 'function') { try { petClipStop(P.root); } catch (e) { /* fine */ } }
+  const clip = typeof _gaBellyClip === 'function' && _gaBellyClip() || 'rollover';
+  R.t = now;
+  try { if (typeof P.clip === 'function') P.clip(clip); else petClipRun(P.root, clip); R.H = P.root && P.root._pcH; } catch (e) { /* it sits */ }
+  return true;
 }
 /** How high a friend's figure is drawn now (world px): on a seat or a branch, its lift; on the way up to one (an act whose next move
  *  is a raised seat: up the trunk to the branch), most of that. For the crowns over them (94-garden-native-painted.js fadeUnder). */
