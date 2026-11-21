@@ -171,4 +171,35 @@ function gardenFolkPathPump(ms) {
   _vfp.stats.ms += performance.now() - t0;
 }
 /** For the audit and the collision view: how the paths are doing. */
-function gardenFolkPathStats() { return Object.assign({ waiting: _vfp.jobs.length + (_vfp.cur ? 1 : 0), kept: _vfp.cache.size, field: !!_vfp.cost }, _vfp.stats); }
+/**
+ * THE PLACE GRAPH (npcs-PLAN 3.5): its nodes are the places the day's plans use (stand points and doors), the plaza centres and the
+ * route junctions of whatever layout is loaded; its edges are paths between them, found on demand and kept in the LRU above (keyed by
+ * the grid key and both ends). While nobody walks, the legs of today's plans are found ahead (lowest priority), so a leg starting
+ * later is a lookup, not a search while you walk. Read from the layout and the plans only: no place is named here.
+ */
+const _vfg2 = { key: '', nodes: [], warm: '' };
+function gardenFolkPlaceGraph(plans, doorOf) {
+  const key = _vfp.key + '|' + (plans ? plans.size : 0);
+  if (_vfg2.key === key && _vfg2.nodes.length) return _vfg2;
+  const seen = new Map(), add = (x, y, why) => { if (!Number.isFinite(x) || !Number.isFinite(y)) return; const k = Math.floor(x) + ',' + Math.floor(y); if (!seen.has(k)) seen.set(k, { x, y, why }); };
+  for (const p of (plans ? plans.values() : [])) for (const e of p) if (e.spot) { if (e.inside && doorOf) { const d = doorOf(e.spot); if (d) add(d.x, d.y, 'door'); } else add(e.spot.x, e.spot.y, 'stand'); }
+  try {
+    const D = gardenIslandData() || {}, ends = new Map();
+    for (const r of D.routes || []) { const P = r.points || []; for (const q of [P[0], P[P.length - 1]]) if (Array.isArray(q)) { const k = Math.round(q[0]) + ',' + Math.round(q[1]); ends.set(k, (ends.get(k) || 0) + 1); } }
+    for (const [k, n] of ends) if (n >= 2) { const [x, y] = k.split(',').map(Number); add(x + 0.5, y + 0.5, 'junction'); }
+    for (const pl of D.plazas || []) { const c = pl.center || pl.c || (Array.isArray(pl.points) && pl.points.length ? pl.points.reduce((a, q) => [a[0] + q[0] / pl.points.length, a[1] + q[1] / pl.points.length], [0, 0]) : null); if (Array.isArray(c)) add(c[0], c[1], 'plaza'); else if (c && Number.isFinite(c.x)) add(c.x, c.y, 'plaza'); }
+  } catch (e) { /* no layout */ }
+  _vfg2.key = key; _vfg2.nodes = [...seen.values()];
+  return _vfg2;
+}
+/** Find today's legs ahead while nobody walks (each once a day and grid). */
+function gardenFolkPathWarm(plans, doorOf, day) {
+  const k = _vfp.key + '|' + day; if (_vfg2.warm === k || !plans || !_vfp.cost) return;
+  _vfg2.warm = k;
+  for (const p of plans.values()) for (let i = 1; i < p.length; i++) {
+    const a = p[i - 1], b = p[i]; if (!a.spot || !b.spot || (a.inside && b.inside)) continue;
+    const from = a.inside && doorOf ? doorOf(a.spot) : a.spot, to = b.inside && doorOf ? doorOf(b.spot) : b.spot; if (!from || !to) continue;
+    gardenFolkPathAsk(from, to, () => { }); const j = _vfp.jobs[_vfp.jobs.length - 1]; if (j) j.pri = -1;
+  }
+}
+function gardenFolkPathStats() { return Object.assign({ waiting: _vfp.jobs.length + (_vfp.cur ? 1 : 0), kept: _vfp.cache.size, field: !!_vfp.cost, nodes: _vfg2.nodes.length }, _vfp.stats); }

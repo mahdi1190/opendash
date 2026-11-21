@@ -223,7 +223,7 @@ function _vfrNearView(x, y, v, pad) { return x > v.x0 - pad && x < v.x1 + pad &&
 const _vfrArt = new Map();
 function _vfrMarkup(V, pose, walk, face, mark, view) {
   view = view === 's' || view === 'n' ? view : 'e';
-  const cast = V.row.cast, k = cast + '|' + pose + '|' + (walk ? 1 : 0) + '|' + face + '|' + (mark ? 1 : 0) + view;
+  const cast = V.row.cast, k = cast + '|' + pose + '|' + (walk ? 1 : 0) + '|' + face + '|' + (mark === 'wave' ? 2 : mark ? 1 : 0) + view;
   let s = _vfrArt.get(k); if (s != null) return s;
   // walking: the stride rig drives the legs (planted feet, every way round); standing: front on, or side on for what they do there
   let fig = typeof gardenCastSvg === 'function' ? gardenCastSvg(cast, { stride: !!walk, view: view === 'e' ? '' : view, fish: pose === 'fish' }) : '';
@@ -236,7 +236,8 @@ function _vfrMarkup(V, pose, walk, face, mark, view) {
   let extra = '';
   if (pose === 'fish') extra = `<path d="M${face * 6} -22L${face * 34} -52" stroke="#6e4c2a" stroke-width="1.6" stroke-linecap="round"/><path d="M${face * 34} -52Q${face * 64} -24 ${face * 88} 16" stroke="#f4f4ea" stroke-width=".5" fill="none" opacity=".8"/>`;
   const top = typeof gardenCastTop === 'function' ? gardenCastTop(cast) : 50;
-  const m = mark ? `<g class="wd-mark" transform="translate(0 ${-top - 8})"><rect x="-9" y="-6" width="18" height="11" rx="5.5" fill="#fffdf4" stroke="#6a5a44" stroke-width="0.6"/><circle cx="-4" cy="-0.5" r="1.1" fill="#6a5a44"/><circle cy="-0.5" r="1.1" fill="#6a5a44"/><circle cx="4" cy="-0.5" r="1.1" fill="#6a5a44"/></g>` : '';
+  const m = mark === 'wave' ? `<g class="wd-mark vf-wave" transform="translate(${face * 6} ${-top - 6})"><circle r="6.4" fill="#fffdf4" stroke="#6a5a44" stroke-width="0.6"/><path d="M-2.6 2.6V-1.2M-1 2.4V-3M.6 2.4V-3.2M2.2 2.6V-2.2M-2.6 2.6q2.4 2.4 4.8 0l1.6 -2.4" stroke="#6a5a44" stroke-width="1" fill="none" stroke-linecap="round"/></g>`
+    : mark ? `<g class="wd-mark" transform="translate(0 ${-top - 8})"><rect x="-9" y="-6" width="18" height="11" rx="5.5" fill="#fffdf4" stroke="#6a5a44" stroke-width="0.6"/><circle cx="-4" cy="-0.5" r="1.1" fill="#6a5a44"/><circle cy="-0.5" r="1.1" fill="#6a5a44"/><circle cx="4" cy="-0.5" r="1.1" fill="#6a5a44"/></g>` : '';
   s = gardenActorSized(fig + extra + m);
   if (_vfrArt.size > 160) _vfrArt.clear();
   _vfrArt.set(k, s); return s;
@@ -294,7 +295,9 @@ function _vfrDraw(V, walking) {
   else if (at && e.clip === 'sit') pose = V.id === 'bramble' && V.rubbing ? 'rub' : 'sit';
   else if (at && e.clip === 'fish') pose = 'fish';
   else if (at && e.clip === 'read') pose = 'read';
-  const mark = !!V.mark && !V.hold, face = V.face < 0 ? -1 : 1, view = _vfrView3(V, walking && !V.hold, pose), k = pose + (walking ? 'w' : '') + face + (mark ? 'm' : '') + view;
+  const nod = V.nod && performance.now() < V.nod.until ? V.nod : null; if (V.nod && !nod) V.nod = null;
+  if (nod) { const O = _vfr.V.get(nod.other); if (O) { V.h = Math.atan2((O.y - V.y) * 30 * 1.6, (O.x - V.x) * 48) * 180 / Math.PI; if (Math.abs(O.x - V.x) > 0.2) V.face = O.x > V.x ? 1 : -1; } }   // (a nod in passing: the head and body turn to the other a moment)
+  const mark = V.mark && !V.hold ? true : nod ? 'wave' : false, face = V.face < 0 ? -1 : 1, view = _vfrView3(V, walking && !V.hold, pose), k = pose + (walking ? 'w' : '') + face + (mark ? (mark === 'wave' ? 'v' : 'm') : '') + view;
   if (V.drawn !== k) { V.drawn = k; wdArt(S, _vfrMarkup(V, pose, walking && !V.hold, face, mark, view)); }
   S.x = V.x; S.y = V.y;
   _vfrStride(V, walking && !V.hold, view);
@@ -436,7 +439,16 @@ function _vfrCrossings(list) {
     const who = valeFolkAside(a.id, b.id);
     if (!who) {
       // close friends meeting on the way stop for a word (the relationship table's 'close'), once an hour of play for a pair
-      if (valeFolkRel(a.id, b.id) !== 'close' || a.hold || b.hold || a.greet || b.greet || !(a.path && a.path.length) || !(b.path && b.path.length) || d > 1.9) continue;
+      const rel = valeFolkRel(a.id, b.id);
+      if (rel !== 'close') {
+        // (round 2) everyone else the table knows as 'warm': a wave in passing, both turning to the other a moment, without stopping
+        if (rel !== 'warm' || a.hold || b.hold || a.greet || b.greet || d > 2.2) continue;
+        const k = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id, now = performance.now(); _vfr.waved = _vfr.waved || new Map();
+        if (now - (_vfr.waved.get(k) || -1e9) < 600e3) continue; _vfr.waved.set(k, now);
+        a.nod = { until: now + 1600, other: b.id }; b.nod = { until: now + 1600, other: a.id };
+        continue;
+      }
+      if (a.hold || b.hold || a.greet || b.greet || !(a.path && a.path.length) || !(b.path && b.path.length) || d > 1.9) continue;
       const k = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id, now = performance.now(); _vfr.greeted = _vfr.greeted || new Map();
       if (now - (_vfr.greeted.get(k) || -1e9) < 3600e3) continue; _vfr.greeted.set(k, now);
       a.greet = { until: now + 2600, other: b.id }; b.greet = { until: now + 2600, other: a.id };
@@ -478,6 +490,7 @@ function _vfrFrame(dt) {
   const m = _vfr.m; if (!m) return;
   // plan one villager a frame, never while you walk (rule 8)
   if (_vfr.queue.length && !walking) _vfrPlanOne(m);
+  else if (!walking && !_vfr.queue.length && typeof gardenFolkPlaceGraph === 'function') { try { const dOf = (t) => _vfr.ctx && _vfr.ctx.door ? _vfr.ctx.door(t) : t; gardenFolkPlaceGraph(_vfr.plans, dOf); gardenFolkPathWarm(_vfr.plans, dOf, _vfr.day); } catch (e) { /* found as they go */ } }
   const minute = _vfrMinute(), v = _vfrView(), now = performance.now(), list = [];
   for (const row of _vfr.rows || []) {
     if (!_vfr.plans.has(row.id)) continue;
