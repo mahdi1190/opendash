@@ -5,17 +5,20 @@
      the player's page and the host's page (94-garden-build-1do.js gardenDo, 94-garden-live-3host.js),
      lib/friends/live.mjs (gardenOpShape: what may cross the wire) and lib/agent-engine.mjs (the assistant's garden tool).
 
-     op = { o, ... }   o: put | lift | turn | plant | dig | water | drop | grab
+     op = { o, ... }   o: put | lift | turn | move | plant | dig | water | drop | grab
        put    { i: 'decor:<id>', x, y, r?, u }           a thing from your bag, set out (u: its new uid)
        lift   { u }                                       a set-out thing back into the bag
        turn   { u, s? }                                   a quarter turn (s: the next look instead)
+       move   { u, m: 'decor'|'plants', x, y }            a set-out thing or a plant to another square (its growth and history kept)
        plant  { i: 'seed:<id>', x, y, u, v }              a seed from your bag (v: its look)
        dig    { u }                                       a plant dug up
        water  { u }                                       one plant watered
        drop   { i: 'thing:<id>', fx, fy }                 something carried, set down where you stand (fx, fy: tenths of a cell). It stays,
                                                           for everyone, and anyone there may pick it up again
        grab   { i: 'thing:<id>' }                         pick it up (from where it lies, or from its own place in the layout)
-     Undo ops (gardenOpApply hands them back as `inverse`) may also carry rec / to / un: the exact record to put back.
+     Undo ops (gardenOpApply hands them back as `inverse`) may also carry rec / to / un / back: the exact record to put back.
+     A friend's op (who set): it is a gift to this garden (put: by, from, and gift, the ledger row that adds it to this garden's bag; plant: by),
+     and it costs this garden nothing (the friend pays from their own purse, on their own device, when the host says yes: build-PLAN 4.2).
 
    gardenOpShape(op)              -> '' | why    the op's own shape (ids, numbers in bounds): the wire's check, needs no garden
    gardenOpCheck(world, op, who)  -> '' | why    the plain reason it cannot happen in this garden now, or ''
@@ -24,12 +27,12 @@
    gardenDropKey(item)            -> the one key a thing lies under in g.dr (a thing is in one place only: it can never be two)
 
    `world` is what this garden is like now, worked out by the caller (the page from its model, Node from the page engine):
-     { cols, rows, now, today, placeOk(kind, def, x, y, ignoreUid) -> '' | why, has(item) -> n, plant(id), decor(id),
+     { cols, rows, now, today, placeOk(kind, def, x, y, ignoreUid) -> '' | why, has(item) -> n, plant(id), decor(id), waterWhy(uid, who),
        thing(id) -> { id, x, y, carry } | null (a thing of the layout that can be carried), free(x, y) -> bool,
        heldBy(item) -> '' | who (somebody carries it now: '@host' the garden's owner, else a friend's id), waterWhy(uid) -> '' | why, dry(uid) -> hours of thirst }
    Rule 17: what can be carried is said by the thing's KIND (GARDEN_KINDS acts with carry), never by a name or a cell.
    ============================================================ */
-const GARDEN_OPS = Object.freeze(['put', 'lift', 'turn', 'plant', 'dig', 'water', 'drop', 'grab']);
+const GARDEN_OPS = Object.freeze(['put', 'lift', 'turn', 'move', 'plant', 'dig', 'water', 'drop', 'grab']);
 const GB_DROP_MAX = 40;          // things lying about in one garden (the snapshot's bound, build-PLAN 3.6)
 const GB_HOME_NEAR = 0.6;        // set down this close to its own place in the layout, a thing is back home (no record at all)
 const _GB_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -53,6 +56,7 @@ function gardenOpShape(op) {
     case 'put': if (!it || it.k !== 'decor' || !cell(op.x, C.cols) || !cell(op.y, C.rows) || !_GB_ID_RE.test(String(op.u || ''))) return 'put'; if (op.r != null && !(Number.isInteger(op.r) && op.r >= 0 && op.r <= 3)) return 'turn'; return '';
     case 'plant': if (!it || it.k !== 'seed' || !cell(op.x, C.cols) || !cell(op.y, C.rows) || !_GB_ID_RE.test(String(op.u || ''))) return 'plant'; return '';
     case 'lift': case 'turn': case 'dig': case 'water': return _GB_ID_RE.test(String(op.u || '')) ? '' : 'id';
+    case 'move': return _GB_ID_RE.test(String(op.u || '')) && (op.m === 'decor' || op.m === 'plants') && cell(op.x, C.cols) && cell(op.y, C.rows) ? '' : 'move';
     case 'drop': if (!it || it.k !== 'thing' || !tenth(op.fx, C.cols) || !tenth(op.fy, C.rows)) return 'drop'; return '';
     case 'grab': return it && it.k === 'thing' ? '' : 'grab';
   }
@@ -84,6 +88,12 @@ function gardenOpCheck(world, op, who) {
       if (op.s ? !(def.v > 1) : !def.rot && !(def.v > 1)) return `${def.name} looks the same every way round`;
       return '';
     }
+    case 'move': {
+      const rec = _gbOwn(g[op.m], op.u) ? g[op.m][op.u] : null; if (!rec) return 'Nothing to move';
+      if (op.back) return '';
+      const def = op.m === 'decor' ? W.decor && W.decor(rec.d) : W.plant && W.plant(rec.p); if (!def) return 'Nothing to move';
+      return W.placeOk ? W.placeOk(op.m === 'decor' ? 'decor' : 'plant', def, op.x, op.y, op.u) : '';
+    }
     case 'dig': {
       const rec = _gbOwn(g.plants, op.u) ? g.plants[op.u] : null; if (!rec) return 'Nothing to dig up there';
       const def = W.plant && W.plant(rec.p); if (def && def.special === 'heart') return 'The old oak stays: it is your garden’s heart';
@@ -92,7 +102,7 @@ function gardenOpCheck(world, op, who) {
     case 'water': {
       if (!_gbOwn(g.plants, op.u)) return 'Nothing to water there';
       if (op.rec) return '';
-      return W.waterWhy ? W.waterWhy(op.u) : '';
+      return W.waterWhy ? W.waterWhy(op.u, who) : '';
     }
     case 'grab': {
       const k = gardenDropKey(op.i), lying = _gbOwn(g.dr, k), t = W.thing && W.thing(k);
@@ -116,14 +126,15 @@ function gardenOpCheck(world, op, who) {
   return 'That cannot be done';
 }
 /** The rows an op writes, before it is applied (the page's Undo mark keeps their old values). */
-function gardenOpTouches(op, g) {
+function gardenOpTouches(op, g, who) {
   g = g || {};
   switch (op.o) {
-    case 'put': return [['decor', op.u], ['disc', gardenOpItem(op.i).id]];
+    case 'put': return who ? [['decor', op.u], ...(op.gift ? [['led', op.gift]] : [])] : [['decor', op.u], ['disc', gardenOpItem(op.i).id]];
     case 'lift': case 'turn': return [['decor', op.u]];
-    case 'plant': return [['plants', op.u], ['disc', gardenOpItem(op.i).id], ['led', op.lk || 'p.' + (op.day || '') + '.' + op.u]];
+    case 'move': return [[op.m, op.u]];
+    case 'plant': return who ? [['plants', op.u]] : [['plants', op.u], ['disc', gardenOpItem(op.i).id], ['led', op.lk || 'p.' + (op.day || '') + '.' + op.u]];
     case 'dig': return [['plants', op.u], ...(op.un || []).map(k => ['led', k])];
-    case 'water': return [['plants', op.u], ['wl', op.day || '']];
+    case 'water': return who ? [['plants', op.u]] : [['plants', op.u], ['wl', op.day || '']];
     case 'drop': case 'grab': return [['dr', gardenDropKey(op.i)]];
   }
   return [];
@@ -136,8 +147,12 @@ function gardenOpApply(g, op, who, world) {
   switch (op.o) {
     case 'put': {
       const id = gardenOpItem(op.i).id, def = (W.decor && W.decor(id)) || {};
-      map('decor')[op.u] = op.rec ? _gbCopy(op.rec) : Object.assign({ d: id, x: op.x, y: op.y, r: def.rot ? ((Number(op.r) || 0) & 3) : 0, v: 0, at: now }, who ? { by: who, from: who } : {});
+      map('decor')[op.u] = op.rec ? _gbCopy(op.rec) : Object.assign({ d: id, x: op.x, y: op.y, r: def.rot ? ((Number(op.r) || 0) & 3) : 0, v: 0, at: now }, who ? { by: who, from: who } : {}, who && op.gi ? { gi: op.gi } : {});
       touch('decor', op.u);
+      if (who) {   // a friend's gift: this garden's bag gains it (keyed by their op id, once), so whoever puts it away later puts it in this garden's bag
+        if (op.gift && !_gbOwn(map('led'), op.gift)) { g.led[op.gift] = { d: today, k: 'gl', i: { ['decor:' + id]: 1 }, n: 0 }; touch('led', op.gift); }
+        return { inverse: { o: 'lift', u: op.u }, dirty };
+      }
       const fresh = !op.rec && !map('disc')[id];
       if (fresh) { g.disc[id] = today; touch('disc', id); }
       return { inverse: { o: 'lift', u: op.u, ...(fresh ? { undisc: id } : {}) }, dirty };
@@ -157,11 +172,20 @@ function gardenOpApply(g, op, who, world) {
     }
     case 'plant': {
       const id = gardenOpItem(op.i).id, lk = op.lk || 'p.' + today + '.' + op.u;
-      map('plants')[op.u] = op.rec ? _gbCopy(op.rec) : Object.assign({ p: id, x: op.x, y: op.y, t: now, w: now, v: Number(op.v) || 0 }, who ? { by: who } : {});
+      map('plants')[op.u] = op.rec ? _gbCopy(op.rec) : Object.assign({ p: id, x: op.x, y: op.y, t: now, w: now, v: Number(op.v) || 0 }, who ? { by: who } : {}, who && op.gi ? { gi: op.gi } : {});
       touch('plants', op.u);
       let fresh = false;
+      if (who) return { inverse: { o: 'dig', u: op.u }, dirty };   // (their seed, from their own bag: nothing leaves this garden's)
       if (!op.rec) { map('led')[lk] = { d: today, k: 'p', i: { ['seed:' + id]: -1 }, x: 2, n: 1 }; touch('led', lk); if (!map('disc')[id]) { g.disc[id] = today; fresh = true; touch('disc', id); } }
       return { inverse: { o: 'dig', u: op.u, un: op.rec ? [] : [lk], ...(fresh ? { undisc: id } : {}) }, dirty, fresh };
+    }
+    case 'move': {
+      const rec = map(op.m)[op.u], was = { x: rec.x, y: rec.y, at: rec.at, pk: rec._packed };
+      rec.x = op.x; rec.y = op.y;
+      if (op.back) { if (op.back.at === undefined) delete rec.at; else rec.at = op.back.at; if (op.back.pk === undefined) delete rec._packed; else rec._packed = op.back.pk; }
+      else { if (op.m === 'decor' && !rec._packed) rec.at = now; delete rec._packed; }
+      touch(op.m, op.u);
+      return { inverse: { o: 'move', u: op.u, m: op.m, x: was.x, y: was.y, back: { at: was.at, pk: was.pk } }, dirty };
     }
     case 'dig': {
       const rec = _gbCopy(map('plants')[op.u]); delete g.plants[op.u]; touch('plants', op.u);
@@ -173,8 +197,8 @@ function gardenOpApply(g, op, who, world) {
       const pl = map('plants')[op.u], was = _gbCopy(pl), day = op.day || today, wl = map('wl');
       const wasDay = _gbCopy(wl[day]);
       if (op.rec) { map('plants')[op.u] = _gbCopy(op.rec); if (op.wl === undefined) delete wl[day]; else wl[day] = _gbCopy(op.wl); }
-      else { const dry = Number(op.dry != null ? op.dry : W.dry ? W.dry(op.u) : 0) || 0; pl.dh = Math.round(((Number(pl.dh) || 0) + dry) * 10) / 10; pl.w = now; (wl[day] = wl[day] || {})[op.u] = 1; }
-      touch('plants', op.u); touch('wl', day);
+      else { const dry = Number(op.dry != null ? op.dry : W.dry ? W.dry(op.u) : 0) || 0; pl.dh = Math.round(((Number(pl.dh) || 0) + dry) * 10) / 10; pl.w = now; if (!who) (wl[day] = wl[day] || {})[op.u] = 1; }   // (a friend waters from their own can: this garden's day of watering is not used)
+      touch('plants', op.u); if (!who) touch('wl', day);
       return { inverse: { o: 'water', u: op.u, day, rec: was, wl: wasDay }, dirty };
     }
     case 'drop': {

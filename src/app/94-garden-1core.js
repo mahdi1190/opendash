@@ -489,6 +489,7 @@ function gardenWallet() {
     if (!e || typeof e !== 'object') return;
     coins += Number(e.c) || 0; xp += e.k === 'gl' && !e.ok ? 0 : Number(e.x) || 0;   // (a visit's record that has not been answered: its x is still a cell, not XP)
     _gdAddItems(items, e.i);
+    if (e.k === 'gl' && !e.ok) { coins += Number(e.hc) || 0; _gdAddItems(items, e.hi); }   // (asked of a friend's garden, not answered yet: held, so it is not spent twice; paid only when they say yes)
     if (e.k && _GD_N_KINDS[e.k]) n[_GD_N_KINDS[e.k]] += Number(e.n) || 0;
     if (e.nn && typeof e.nn === 'object') for (const [k, v] of Object.entries(e.nn)) if (k in n) n[k] += Number(v) || 0;
   };
@@ -1185,11 +1186,9 @@ function gardenMovePlant(uid, x, y) {
   const m = gardenModel(), p = gardenPlacementItem(m, 'plant', uid);
   if (!p) return _gdNo('Nothing to move');
   if (!p.packed && p.x === x && p.y === y) return { ok: true, msg: '' };
-  const why = _gdPlaceOk(m, p.def, x, y, 'plant', uid); if (why) return _gdNo(why);
-  const mark = [..._gdMark([['plants', uid]]), ..._gdLiveTouched(uid)];
-  const pl = _gdG().plants[uid]; pl.x = x; pl.y = y; delete pl._packed;
-  _gdEmit('move', { uid, id: p.def.id, type: 'plant', x: p.x, y: p.y, tx: x, ty: y, fp: p.fp });
-  return _gdDone(`Moved the ${p.def.name.toLowerCase().replace(/^the /, '')}`, 'moving', mark, { icon: 'move' });
+  const r = gardenDo({ o: 'move', u: uid, m: 'plants', x, y }, { pre: () => _gdLiveTouched(uid), msg: `Moved the ${p.def.name.toLowerCase().replace(/^the /, '')}`, label: 'moving', icon: 'move' });   // (build phase 1: one op through the rules file, Undo by its inverse)
+  if (r.ok) _gdEmit('move', { uid, id: p.def.id, type: 'plant', x: p.x, y: p.y, tx: x, ty: y, fp: p.fp });
+  return r;
 }
 function gardenPlaceDecor(decorId, x, y, r) {
   { const v = _gdvAsk('place', { id: decorId, x, y, r }); if (v) return v; }
@@ -1204,11 +1203,9 @@ function gardenMoveDecor(uid, x, y) {
   const m = gardenModel(), d = gardenPlacementItem(m, 'decor', uid);
   if (!d) return _gdNo('Nothing to move');
   if (!d.packed && d.x === x && d.y === y) return { ok: true, msg: '' };
-  const why = _gdPlaceOk(m, d.def, x, y, 'decor', uid); if (why) return _gdNo(why);
-  const mark = [..._gdMark([['decor', uid]]), ..._gdLiveTouched(uid)];
-  const e = _gdG().decor[uid]; e.x = x; e.y = y; if (!d.packed) e.at = m.now; delete e._packed;
-  _gdEmit('move', { uid, id: d.def.id, type: 'decor', x: d.x, y: d.y, tx: x, ty: y });
-  return _gdDone('', 'moving ' + d.def.name.toLowerCase(), mark, { quiet: true });
+  const r = gardenDo({ o: 'move', u: uid, m: 'decor', x, y }, { pre: () => _gdLiveTouched(uid), label: 'moving ' + d.def.name.toLowerCase(), quiet: true });   // (build phase 1: one op)
+  if (r.ok) _gdEmit('move', { uid, id: d.def.id, type: 'decor', x: d.x, y: d.y, tx: x, ty: y });
+  return r;
 }
 function gardenRotateDecor(uid) {
   { const v = _gdvAsk('turn', { uid }); if (v) return v; }

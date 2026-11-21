@@ -447,30 +447,27 @@ function _glhApply(ev, key) {
   const mp = hit.p ? 'plants' : hit.d ? 'decor' : '';
   const entry = { f, t, i: ev.i, d: today, at: _gdNow(), p: ev.p, x: ev.x, y: ev.y, ...(mp ? { mp } : {}) };   // (m.now is the model's, up to a minute behind: this one sorts against the visit's start)
   const put = (mark, extra) => { g.gl[key] = Object.assign(entry, { mark }, extra || {}); return ''; };
+  // (build phase 1, build-PLAN 2.1) what a friend does to the garden is an op, checked and applied by the SAME rules file as your own
+  // (94-garden-build-0rules.js), so the two pages can never disagree about what is allowed. Their op costs this garden nothing.
+  const W = gardenOpWorld(m), opDo = (op, extra) => { const why = gardenOpCheck(W, op, f); if (why) return why; const mark = _gdMark(gardenOpTouches(op, g, f)); gardenOpApply(g, op, f, W); return put(mark, extra); };
   switch (t) {
     case 'plant': {
-      const def = gardenPlant(ev.p);
-      const whyNot = _gdPlaceOk(m, def, ev.x, ev.y, 'plant'); if (whyNot) return whyNot;
-      const uid = _gdUid('p'), mark = _gdMark([['plants', uid]]), variants = (def.look.v || []).length || 1;
-      g.plants[uid] = { p: def.id, x: ev.x, y: ev.y, t: now, w: now, v: gardenHash(uid) % variants, by: f, gi: ev.i };
-      return put(mark, { u: uid, mp: 'plants' });
+      const def = gardenPlant(ev.p); if (!def) return 'Unknown seed';
+      const uid = _gdUid('p'), variants = (def.look.v || []).length || 1;
+      return opDo({ o: 'plant', i: 'seed:' + def.id, x: ev.x, y: ev.y, u: uid, v: gardenHash(uid) % variants, gi: ev.i, at: now }, { u: uid, mp: 'plants' });
     }
     case 'place': {
-      const def = gardenDecor(ev.p);
-      const whyNot = _gdPlaceOk(m, def, ev.x, ev.y, 'decor'); if (whyNot) return whyNot;
+      const def = gardenDecor(ev.p); if (!def) return 'Unknown decoration';
       // (build phase 1, friends are trusted: one shared economy) what a friend puts down is a gift to this garden, marked `from`; the garden's
       // ledger gains it (keyed by the friend's op id, once), so when anyone puts it away it goes into this garden's bag, never back by post
-      const uid = _gdUid('d'), lk = 'gl.f.' + ev.i, mark = _gdMark([['decor', uid], ['led', lk]]);
-      g.decor[uid] = { d: def.id, x: ev.x, y: ev.y, r: def.rot ? ((Number(ev.r) || 0) & 3) : 0, v: 0, at: now, by: f, from: f, gi: ev.i };
-      if (!g.led[lk]) g.led[lk] = { d: today, k: 'gl', i: { ['decor:' + def.id]: 1 }, n: 0 };
-      return put(mark, { u: uid, mp: 'decor', noUndo: true });
+      const uid = _gdUid('d');
+      return opDo({ o: 'put', i: 'decor:' + def.id, x: ev.x, y: ev.y, ...(ev.r != null ? { r: ev.r } : {}), u: uid, gi: ev.i, gift: 'gl.f.' + ev.i, at: now }, { u: uid, mp: 'decor', noUndo: true });
     }
     case 'water': {
-      const p = hit.p; if (!p.def.thirst || p.def.special === 'heart') return 'no-need';
-      if (m.rain.now) return 'rain';
-      if (!p.thirsty && (m.now - p.lastWater) / 3600000 < Math.min(8, p.def.thirst / 2)) return 'happy';
+      const p = hit.p;
+      const op = { o: 'water', u: p.uid, at: now, day: today }, why = gardenOpCheck(W, op, f); if (why) return why;
       const mark = _gdMark([['plants', p.uid]]);
-      rec.dh = Math.round(((Number(rec.dh) || 0) + (Number(p.dry) || 0)) * 10) / 10; rec.w = now;
+      gardenOpApply(g, op, f, W);   // (the rules file's watering: how thirsty it was, and when; a friend's own can, never this garden's)
       // the friend-garden rules: a little faster, once a plant a day, a few a day
       const boosted = Object.values(g.gl).filter(e => e && e.t === 'water' && e.d === today && e.b);
       const b = boosted.length < GSOC_BOOST.perDay && !boosted.some(e => e.u === p.uid) ? 1 : 0;
@@ -492,12 +489,7 @@ function _glhApply(ev, key) {
       // a harvest of their own plant has been posted: it is theirs, there is no taking it back
       return put(r.mark, { u: p.uid, n: r.n, noUndo: !!mine, ...(r.gold ? { gold: true } : {}) });
     }
-    case 'dig': {
-      const p = hit.p; if (p.def.special === 'heart') return 'heart';
-      const mark = _gdMark([['plants', p.uid]]);
-      delete g.plants[p.uid];
-      return put(mark, { u: p.uid, noUndo: !!mine });
-    }
+    case 'dig': return opDo({ o: 'dig', u: hit.p.uid, at: now }, { u: hit.p.uid, noUndo: !!mine });
     case 'feed': {
       const p = hit.p; if (p.def.special === 'heart') return 'heart';
       if (rec.f && _gdDayOf(rec.f) === today) return 'fed';
@@ -507,25 +499,20 @@ function _glhApply(ev, key) {
       return put(mark, { u: p.uid });
     }
     case 'turn': {
-      const d = hit.d, def = d.def, mark = _gdMark([['decor', d.uid]]);
-      if (ev.r !== 1 && def.rot) rec.r = ((Number(rec.r) || 0) + 1) & 3;
-      else if (def.v > 1) rec.v = ((Number(rec.v) || 0) + 1) % def.v;
-      else return 'same';
-      rec.at = now;
-      return put(mark, { u: d.uid });
+      const d = hit.d, def = d.def;
+      if (!(ev.r !== 1 && def.rot) && !(def.v > 1)) return 'same';
+      return opDo({ o: 'turn', u: d.uid, ...(ev.r === 1 || !def.rot ? { s: true } : {}), at: now }, { u: d.uid });
     }
     case 'move': {
-      const it = hit.p || hit.d, kind = hit.p ? 'plant' : 'decor';
-      const whyNot = _gdPlaceOk(m, it.def, ev.tx, ev.ty, kind, it.uid); if (whyNot) return whyNot;
-      const mark = _gdMark([[hit.p ? 'plants' : 'decor', it.uid]]);
-      rec.x = ev.tx; rec.y = ev.ty;
-      return put(mark, { u: it.uid, tx: ev.tx, ty: ev.ty });
+      const it = hit.p || hit.d;
+      return opDo({ o: 'move', u: it.uid, m: hit.p ? 'plants' : 'decor', x: ev.tx, y: ev.ty, at: now }, { u: it.uid, tx: ev.tx, ty: ev.ty });
     }
     case 'take': {
-      const d = hit.d, mark = _gdMark([['decor', d.uid]]);
+      const d = hit.d, op = { o: 'lift', u: d.uid, at: now }, why = gardenOpCheck(W, op, f); if (why) return why;
+      const mark = _gdMark(gardenOpTouches(op, g, f));
       const gi = rec.own ? rec.gi : '';
       if (rec.own) _gdDecorBack(rec);                         // back in its owner's bag, whoever put it away: its own post too, so if the answer is lost it still comes back, once
-      delete g.decor[d.uid];
+      gardenOpApply(g, op, f, W);
       return put(mark, { u: d.uid, noUndo: !!rec.own, ...(gi ? { gi } : {}) });
     }
     case 'land': case 'build': case 'gate': case 'solve': return _glhLand(ev, put, m);

@@ -2122,6 +2122,9 @@ window.GardenNativeWorld = (function () {
     api.frontierState = () => frontierMetadata;
     api.syncNeedRings = syncNeedRings;
     api.playerOcclusionState = playerOcclusionState;
+    /** Would a small thing h px tall standing at (x, y) cells be hidden by a painted building's picture (its roof over the strip behind it)?
+     *  The same test the fades use, by the pictures themselves, so any layout's buildings answer (a set-down is never put out of sight). */
+    api.covered = (x, y, h) => { const sx = x * W.cellW, sy = W.sky + y * W.cellH; for (const record of fadingProps) { if (record.editorLifted || !record.metadata || !record.metadata.prop) continue; try { if (propCovers(record, sx, sy, h || 26, {})) return true; } catch (e) { /* not drawn yet */ } } return false; };
     api.designLayer = designLayer;
     api.designPreview = designPreview;
     api.scheduleDesignPreview = paint => { editorPaint = paint; };

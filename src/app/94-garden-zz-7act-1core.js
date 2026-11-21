@@ -334,6 +334,7 @@ function _gaPlace() {
 function gartActInteract() {
   if (_ga.carry && !(_ga.cur && _ga.cur.doing)) { gartActSetDown(); return true; }
   if (_ga.cur && _ga.cur.doing) { gartActStop(); return true; }
+  if (!(_ga.near && _ga.near.carry) && typeof gardenCarryLost === 'function' && gardenCarryLost()) return true;   // (build phase 1: a friend got it first)
   if (!_ga.near || !_ga.el || _ga.el.hidden) return false;
   return gartActRun(_ga.near.act, _ga.near);
 }
@@ -694,12 +695,21 @@ function _gaSetDownDraw(id, x, y) {
   const t = gardenAffordThings().find(q => q.id === id), K = t && GARDEN_KINDS[t.kind], row = K ? { art: K.art } : null; if (!row || !_GAW_ART[row.art]) return;
   _ga.down = _ga.down || new Map();
   const old = _ga.down.get(id); if (old) { try { old.remove(); } catch (e) { /* gone */ } }
-  try { _ga.down.set(id, gardenWorldAdd({ id: 'ga-down-' + id, x, y, z: y, lift: 0, ground: false, svg: _GAW_ART[row.art]({}, false, row), update(dt, Sp) { if (!_ga.down || _ga.down.get(id) !== Sp) Sp.remove(); } })); } catch (e) { /* drawn on the next paint */ }
+  try { _ga.down.set(id, gardenWorldAdd({ id: 'ga-down-' + id, x, y, z: y, lift: 0, ground: false, svg: _GAW_ART[row.art]({}, false, row), update(dt, Sp) {
+    if (!_ga.down || _ga.down.get(id) !== Sp) { Sp.remove(); return; }
+    // (build phase 1, build-PLAN 3.2) set down on a visit and not yet agreed by the host: a pending copy, see-through with a soft shimmer
+    const pend = typeof _gbd !== 'undefined' && _gbd.pend.has(id), op = pend ? (0.6 + 0.1 * Math.sin(performance.now() / 160)).toFixed(2) : '1';
+    if (Sp.node && Sp._op !== op) { Sp._op = op; try { Sp.node.setAttribute('opacity', op); } catch (e) { /* the next frame */ } }
+  } })); } catch (e) { /* drawn on the next paint */ }
 }
 /** E while carrying: set it down at your feet, just in front. It stays there, for everyone, until someone picks it up again. */
 function gartActSetDown() {
   const c = _ga.carry; if (!c) return false;
-  const W = GARDEN_WORLD, deg = (typeof gartMoveFacingDeg === 'function' ? gartMoveFacingDeg() : 90) * Math.PI / 180, x0 = _gw.px + Math.cos(deg) * 0.5, y0 = _gw.py + Math.sin(deg) * 0.35 + 0.05, clear = typeof _gwFree !== 'function' || _gwFree(x0, y0, 0.15);
+  const W = GARDEN_WORLD, deg = (typeof gartMoveFacingDeg === 'function' ? gartMoveFacingDeg() : 90) * Math.PI / 180;
+  // facing away from the camera, in front of you is behind your own figure (it seemed to vanish: critic, 21 Nov): then it goes down beside
+  // you, on the side you lean to, at your feet
+  const away = Math.sin(deg) < -0.35, side = Math.cos(deg) < -0.1 ? -1 : 1;
+  const x0 = away ? _gw.px + side * 0.62 : _gw.px + Math.cos(deg) * 0.5, y0 = away ? _gw.py + 0.08 : _gw.py + Math.sin(deg) * 0.35 + 0.05, clear = typeof _gwFree !== 'function' || _gwFree(x0, y0, 0.15);
   let x = clear ? x0 : _gw.px, y = clear ? y0 : _gw.py + 0.08;   // (never into a post or a wall: at your feet then)
   // (build phase 1) its whole foot on open ground, nudged up to a cell to the nearest spot that is (rule 12: never half into a wall or a hedge);
   // nowhere near: you keep it, and are told so

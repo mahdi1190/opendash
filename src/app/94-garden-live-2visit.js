@@ -160,7 +160,11 @@ function _glvSit(d) {
 /** What leaves your bag first: one record, a live intent's or one that waits for them (`extra`: q). The sender always pays first; a refusal hands it back. */
 function _glvDebit(i, t, f, debit, extra) {
   const g = _gdG();
-  g.led['gl.o.' + i] = { d: _gllToday(), k: 'gl', ...(debit ? { i: { [debit]: -1 } } : {}), n: 0, to: _glv.fid, t, p: f.p, x: f.x, y: f.y, ...(f.k ? { k2: f.k, item: f.item, to2: f.to } : {}), ...(f.r != null ? { r: f.r } : {}), ...(extra || {}) };
+  // (build phase 1, pay on confirm: build-PLAN 4.2) what it costs is HELD while the host decides (hi, hc: it is out of your bag, so it cannot
+  // be spent twice) and only PAID when the host says yes (_glvSettled turns it into i, c); a refusal deletes the record, so nothing is ever paid
+  // for something that did not happen
+  const ex = Object.assign({}, extra || {}), hc = Number(ex.c) || 0; delete ex.c;
+  g.led['gl.o.' + i] = { d: _gllToday(), k: 'gl', ...(debit ? { hi: { [debit]: -1 } } : {}), ...(hc ? { hc } : {}), n: 0, to: _glv.fid, t, p: f.p, x: f.x, y: f.y, ...(f.k ? { k2: f.k, item: f.item, to2: f.to } : {}), ...(f.r != null ? { r: f.r } : {}), ...ex };
   _gscSaveGarden();
 }
 /** An intent, with an id. `debit`: what leaves your bag now. Sent no faster than the rate allows: a drag across a row is a row of messages. */
@@ -183,6 +187,8 @@ function _glvDoPump() {
 function _glvSettled(i, led, t) {
   const g = _gdG();
   led.ok = 1; led.x = t === 'plant' ? 2 : t === 'place' ? 1 : 0;
+  if (led.hi) { led.i = led.hi; delete led.hi; }   // (paid now, once: the host has said yes)
+  if (led.hc) { led.c = led.hc; delete led.hc; }
   if (t === 'plant' && led.p) { g.gv[i] = { f: led.to, p: led.p, at: _gscNow() }; const ks = Object.keys(g.gv); if (ks.length > 240) for (const k of ks.sort((x, y) => g.gv[x].at - g.gv[y].at).slice(0, 40)) delete g.gv[k]; }
 }
 /** The host said yes: what you see stays, until their next change says the same. */
@@ -227,7 +233,7 @@ function _glvResult(b) {
       if ((P.t === 'grab' || P.t === 'set') && typeof gardenCarryRefused === 'function') { gardenCarryRefused(P, b.why); return; }   // (build phase 1: someone else got it first)
       const at = _glvCellAt(P.f && P.f.x, P.f && P.f.y);
       if (b.why === 'level' && typeof gardenVisitDenied === 'function') gardenVisitDenied(P.t);
-      else gameDeny(null, { at: at || undefined, say: P.t === 'solve' ? (b.why === 'have' ? 'It was solved here already.' : 'That did not reach their garden. It is solved on your screen.') : P.t === 'gate' ? (b.why === 'have' ? 'It is open already.' : 'That gate needs its find first.') : (P.t === 'land' || P.t === 'build') ? ({ have: 'They have that already. Your coins are back.', 'not-yet': 'That is not open in this garden yet. Your coins are back.', spot: 'Something is in the way there. Your coins are back.' }[b.why] || 'That did not go through. Your coins are back.') : 'That did not work here.', kind: 'tool' });
+      else gameDeny(null, { at: at || undefined, say: P.t === 'solve' ? (b.why === 'have' ? 'It was solved here already.' : 'That did not reach their garden. It is solved on your screen.') : P.t === 'gate' ? (b.why === 'have' ? 'It is open already.' : 'That gate needs its find first.') : (P.t === 'land' || P.t === 'build') ? ({ have: 'They have that already. Your coins are back.', 'not-yet': 'That is not open in this garden yet. Your coins are back.', spot: 'Something is in the way there. Your coins are back.' }[b.why] || 'That did not go through. Your coins are back.') : / /.test(String(b.why || '')) ? String(b.why).slice(0, 100) + '.' : 'That did not work here.', kind: 'tool' });   // (build phase 1: the rules file's own plain reason, the same words you would see at home)
     }
     return;
   }
@@ -265,7 +271,7 @@ function _glvResult(b) {
     if (P && b.t === 'give' && b.u && b.p && gardenDecor(b.p)) {
       // given for good: it stays spent. (If a week's refund already handed it back, this is where it leaves your bag again.)
       const d = g.led['gl.o.' + b.u];
-      if (d) { if (d.to === _glv.fid) { d.t = 'gave'; d.ok = 1; } } else g.led['gl.o.' + b.u] = { d: _gllToday(), k: 'gl', i: { ['decor:' + b.p]: -1 }, n: 0, to: _glv.fid, t: 'gave', ok: 1 };
+      if (d) { if (d.to === _glv.fid) { if (!d.ok) _glvSettled(b.u, d, 'place'); d.t = 'gave'; d.ok = 1; } } else g.led['gl.o.' + b.u] = { d: _gllToday(), k: 'gl', i: { ['decor:' + b.p]: -1 }, n: 0, to: _glv.fid, t: 'gave', ok: 1 };
       _gscSaveGarden();
     }
     if (P && P.f && P.f.x != null && typeof gameCheer === 'function' && !(GL_ACTS[b.t] && GL_ACTS[b.t].carry)) { const at = _glvCellAt(P.f.x, P.f.y); if (at) gameCheer(null, { at, text: b.t === 'plant' ? '+2' : '', tone: b.t === 'water' ? 'water' : 'xp' }); }
@@ -451,6 +457,7 @@ function _glvEvent(ev) {
       _gll.byVersion = ev.by && ev.by.v === 2 ? 2 : 1;
       if (ev.by) for (const [kind, x, y, n] of ev.by.r) _gll.by.set(kind + '|' + x + '|' + y, ev.by.n[n]);
       if (typeof _glySnapIn === 'function') _glySnapIn();
+      if (typeof gardenDropSnapIn === 'function') gardenDropSnapIn(ev.snap);   // (build phase 1: where things lie)
       if (first && typeof _gsvPaint === 'function') _gsvPaint();   // (no saved copy to look at: this may be the first the page has seen of it)
       _gdvTouch();
       return;

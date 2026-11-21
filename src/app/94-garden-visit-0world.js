@@ -337,7 +337,7 @@ function gardenVisitQueueFlush() {
 function gardenVisitMount(root, f, view) {
   const same = _gdv.on && _gdv.fid === f.id;
   if (same && _gdp.entry === view && _gdp.root && _gdp.root.isConnected && root.querySelector(':scope > .gd-tab-garden') === _gdp.root) { _gdv.f = f; _gdvTouch(); return; }
-  if (!same) { if (typeof _gw !== 'undefined') _gw.placed = false; _gdv.undo0 = _gd.undo.length; _gdv.watered.clear(); _gdv.clean = null; if (typeof gardenLifeVisitStop === 'function') gardenLifeVisitStop(); }
+  if (!same) { if (typeof gardenCarryForget === 'function') gardenCarryForget(); if (typeof _gw !== 'undefined') _gw.placed = false; _gdv.undo0 = _gd.undo.length; _gdv.watered.clear(); _gdv.clean = null; if (typeof gardenLifeVisitStop === 'function') gardenLifeVisitStop(); }
   _gdv.on = true; _gdv.fid = f.id; _gdv.f = f; _gdv.tagKey = ''; _gdvTouch();
   root.textContent = ''; root.className = 'gsv-worldhost';
   _gdpWorldMount(root, view);
@@ -347,6 +347,7 @@ function gardenVisitMount(root, f, view) {
 }
 function gardenVisitUnmount() {
   if (!_gdv.on) return;
+  if (typeof gardenCarryForget === 'function') gardenCarryForget();   // (what you carried there stays in that garden: its host has it where you stood)
   _gdpWorldUnmount();
   if (typeof gardenLifeVisitStop === 'function') gardenLifeVisitStop();
   _gdv.on = false; _gdv.fid = ''; _gdv.f = null; _gdv.memo = null; _gdv.raw = null; _gdv.clean = null;
