@@ -710,7 +710,7 @@ function gartActSetDown() {
   // facing away from the camera, in front of you is behind your own figure (it seemed to vanish: critic, 21 Nov): then it goes down beside
   // you, on the side you lean to, at your feet
   const away = Math.sin(deg) < -0.35, side = Math.cos(deg) < -0.1 ? -1 : 1;
-  const x0 = away ? _gw.px + side * 0.62 : _gw.px + Math.cos(deg) * 0.5, y0 = away ? _gw.py + 0.08 : _gw.py + Math.sin(deg) * 0.35 + 0.05, clear = typeof _gwFree !== 'function' || _gwFree(x0, y0, 0.15);
+  const x0 = away ? _gw.px + side * 0.62 : _gw.px + Math.cos(deg) * 0.5, y0 = away ? _gw.py + 0.08 : _gw.py + Math.sin(deg) * 0.55 + 0.05, clear = typeof _gwFree !== 'function' || _gwFree(x0, y0, 0.15);
   let x = clear ? x0 : _gw.px, y = clear ? y0 : _gw.py + 0.08;   // (never into a post or a wall: at your feet then)
   // (build phase 1) its whole foot on open ground, nudged up to a cell to the nearest spot that is (rule 12: never half into a wall or a hedge);
   // nowhere near: you keep it, and are told so
