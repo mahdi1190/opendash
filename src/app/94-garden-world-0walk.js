@@ -555,6 +555,9 @@ function _gwGrid(m, groundOnly) {
   if (_gw.boat && !groundOnly) return _gwContinuousBoatGrid(m);
   const mm = m || gardenHere(), shore = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(mm) : null, otherShapes = typeof gardenOtherWaterShapes === 'function' ? gardenOtherWaterShapes(mm) : null, state = _gwRouteState();
   const key = (mm.visit ? mm.visit.key : _gd.memoKey) + '|' + mm.level.level + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0) + '|' + (shore && shore.revision || 0) + '|' + gardenPierDeckSignature() + '|' + (_gwTrunkSig() || '') + '|' + (typeof gardenOrchardShortcutSig === 'function' ? gardenOrchardShortcutSig() : '');
+  // a placed thing moved aside (gardenAffordRev): only what stops the feet is made again (15 ms), its foot's box goes with it; the grid and
+  // its prepared routes (about 280 ms) stay
+  const ar = typeof gardenAffordRev === 'function' ? gardenAffordRev() : 0;
   if (!_gw.grid || _gw.gridKey !== key || _gw.grid.model !== mm || _gw.grid.routeState !== state || _gw.grid.otherShapes !== otherShapes) {
     const saved = _gw.routeSnapshot, inputs = _gwRouteSourceInputs(mm);
     const stats = _gw.routeGridStats || (_gw.routeGridStats = { coarseBuilds: 0, preparations: 0, reused: 0, boatPreparations: 0, preflightChecks: 0, preflightReused: 0 }); stats.preflightChecks++;
@@ -574,9 +577,10 @@ function _gwGrid(m, groundOnly) {
       _gw.grid = grid; _gw.solids = solids; grid.routeRevision = ++stats.preparations;
       _gwPrepareRouteGrid(grid); _gw.routeSnapshot = { grid, solids, state, inputs };
     }
-    _gw.grid.routeState = state; _gw.gridKey = key;
+    _gw.grid.routeState = state; _gw.gridKey = key; _gw.grid.affordRev = ar;
   }
   _gw.grid.model = mm;
+  if (_gw.grid && _gw.solids && _gw.grid.affordRev !== ar) { const was = _gw.solids; _gw.solids = _gwBuildSolids(mm); _gw.grid.affordRev = ar; if (_gw.routeSnapshot && _gw.routeSnapshot.solids === was) _gw.routeSnapshot.solids = _gw.solids; }
   return _gw.grid;
 }
 function gardenWorldRouteGridStatus() {

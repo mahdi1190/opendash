@@ -74,7 +74,9 @@ const GL_EMOTES = Object.freeze(['wave', 'cheer', 'clap', 'bow', 'shrug', 'sit',
   // where someone already is, told to whoever arrives later (up on a floor, out in the water): put there at once, no climb
   'act-onlevel', 'act-inwater',
   // and back on the ground (down from a floor or out of the water any way at all, a reset, a floor no longer drawn): their copy comes down
-  'act-onground']);
+  'act-onground',
+  // music (20 Nov): the band's other places at a pitch
+  'act-whistle', 'act-squeeze', 'act-drum']);
 const GL_PHRASES = Object.freeze([
   Object.freeze({ id: 'hi', t: 'Hello!' }), Object.freeze({ id: 'lovely', t: 'Your garden is lovely' }), Object.freeze({ id: 'look', t: 'Look at this!' }),
   Object.freeze({ id: 'help', t: 'Can I help?' }), Object.freeze({ id: 'thanks', t: 'Thank you!' }), Object.freeze({ id: 'follow', t: 'Follow me!' }),
@@ -86,11 +88,11 @@ const GL_TOGETHER = Object.freeze(['high5', 'follow', 'unfollow', 'sit', 'greet'
 /** What people SEE each other do (gl:fx, a kind of its own: an older app has no such kind and drops it, so GL_V stays). Ids and cells on the wire, each side draws them from its own tables;
  *  an id this version does not know is ignored. `c` is the family, `e` the step or the id: pet (a clip of the pet library, or pat / eat), petplay (an environment/guide endpoint or critical exact-request guide stop; optional u 1..3 plus i species addresses the host pack), wow (a pet spectacle), nap (on / off), roam (a species of the host's pack),
  *  fish (a step of the line), bug (a step of the net), got (what was caught or found: `e` its kind, `i` its id), make (a recipe's id), cheer (a moment of yours: a garden level, an achievement's id, a photo taken), ct (a contest round: the host's, see GL_CT), snap (ask for a group photo: `i` its id, `x` and `y` the middle of the frame, see GL_SNAP). `to` and `w` are slots as in gl:em. */
-const GL_FX_KINDS = Object.freeze(['pet', 'petplay', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make', 'cr', 'egg', 'pick', 'cheer', 'ct', 'snap', 'hall', 'fs', 'sync', 'use', 'pose', 'kite', 'soap', 'leaf', 'marble']);
-const GL_FX_STEPS = Object.freeze({ sync: Object.freeze(['ask', 'at', 'away', 'back']), fs: Object.freeze(['hook', 'land', 'free']), fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in', 'big', 'help']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), ct: Object.freeze(['start', 'board', 'end', 'stop']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop', 'gear']), cheer: Object.freeze(['level', 'ach', 'photo']), snap: Object.freeze(['ask']), hall: Object.freeze(['in', 'at', 'out']), use: Object.freeze(['bell', 'wish', 'collect', 'machine']), kite: Object.freeze(['take', 'letgo', 'state']), soap: Object.freeze(['take', 'letgo', 'release', 'state']), leaf: Object.freeze(['launch', 'control', 'retrieve', 'state']), marble: Object.freeze(['set', 'roll', 'reset', 'state']) });
+const GL_FX_KINDS = Object.freeze(['pet', 'petplay', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make', 'cr', 'egg', 'pick', 'cheer', 'ct', 'snap', 'hall', 'fs', 'sync', 'use', 'pose', 'kite', 'soap', 'leaf', 'marble', 'tune']);
+const GL_FX_STEPS = Object.freeze({ sync: Object.freeze(['ask', 'at', 'away', 'back']), fs: Object.freeze(['hook', 'land', 'free']), fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in', 'big', 'help']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), ct: Object.freeze(['start', 'board', 'end', 'stop']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop', 'gear']), cheer: Object.freeze(['level', 'ach', 'photo']), snap: Object.freeze(['ask']), hall: Object.freeze(['in', 'at', 'out']), use: Object.freeze(['bell', 'wish', 'collect', 'machine']), kite: Object.freeze(['take', 'letgo', 'state']), soap: Object.freeze(['take', 'letgo', 'release', 'state']), leaf: Object.freeze(['launch', 'control', 'retrieve', 'state']), marble: Object.freeze(['set', 'roll', 'reset', 'state']), tune: Object.freeze(['on', 'off', 'ping', 'pong']) });
 /** What only the garden's host may say (the host decides: who netted a bug, who took a gift, which creatures are about, what the pets notice), and what goes to the host alone (a claim, a poke). A guest's own fx of these kinds is refused at both ends. */
-const GL_FX_HOST_ONLY = Object.freeze(new Set(['bug|gone', 'bug|lost', 'cr|react', 'cr|look', 'cr|greet', 'egg|fire', 'pick|spawn', 'pick|take', 'pick|gone', 'roam|*', 'ct|*', 'kite|state', 'soap|state', 'leaf|state', 'marble|state']));
-const GL_FX_TO_HOST = Object.freeze(new Set(['bug|claim', 'pick|claim', 'cr|poke', 'fs|hook', 'fs|land', 'fs|free', 'sync|ask', 'sync|away', 'sync|back', 'pose|on', 'pose|off', 'kite|take', 'kite|letgo', 'soap|take', 'soap|letgo', 'soap|release', 'leaf|launch', 'leaf|control', 'leaf|retrieve', 'marble|set', 'marble|roll', 'marble|reset']));
+const GL_FX_HOST_ONLY = Object.freeze(new Set(['tune|pong', 'bug|gone', 'bug|lost', 'cr|react', 'cr|look', 'cr|greet', 'egg|fire', 'pick|spawn', 'pick|take', 'pick|gone', 'roam|*', 'ct|*', 'kite|state', 'soap|state', 'leaf|state', 'marble|state']));
+const GL_FX_TO_HOST = Object.freeze(new Set(['tune|ping', 'bug|claim', 'pick|claim', 'cr|poke', 'fs|hook', 'fs|land', 'fs|free', 'sync|ask', 'sync|away', 'sync|back', 'pose|on', 'pose|off', 'kite|take', 'kite|letgo', 'soap|take', 'soap|letgo', 'soap|release', 'leaf|launch', 'leaf|control', 'leaf|retrieve', 'marble|set', 'marble|roll', 'marble|reset']));
 const glFxHostOnly = (b) => !!b && (GL_FX_HOST_ONLY.has(b.c + '|' + b.e) || GL_FX_HOST_ONLY.has(b.c + '|*') || b.c === 'petplay' && b.u != null);
 const glFxToHost = (b) => !!b && GL_FX_TO_HOST.has(b.c + '|' + b.e);
 const GL_FX_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -238,6 +240,13 @@ function glFxOk(b) {
   if (b.c === 'snap' && !(GL_ID_RE.test(String(b.i || '')) && Number.isInteger(b.x) && Number.isInteger(b.y) && b.x >= 0 && b.y >= 0)) return 'snap';
   if (b.c === 'hall' && b.e !== 'out' && !(Number.isInteger(b.x) && Number.isInteger(b.y) && b.x >= 0 && b.x <= 59 && b.y >= 0 && b.y <= 37)) return 'hall';
   if (b.c === 'hall' && b.i != null && !GL_FX_ID_RE.test(String(b.i))) return 'id';   // (`i`: which hidden room; none is the stage)
+  // playing music together (94-garden-zz-7act-3music.js): on / off: `i` the instrument's thing, `n` its place there (0 to 3, none is 0);
+  // ping (to the host alone) and pong (the host's answer): `v` the asker's token, and in a pong the host's tune clock, `tt` seconds and `n` ms
+  if (b.c === 'tune') {
+    if ((b.e === 'on' || b.e === 'off') && (!GL_FX_ID_RE.test(String(b.i || '')) || b.n != null && !(Number.isInteger(b.n) && b.n >= 0 && b.n <= 3))) return 'tune';
+    if ((b.e === 'ping' || b.e === 'pong') && !/^[0-9a-z]{1,8}$/.test(String(b.v || ''))) return 'tune';
+    if (b.e === 'pong' && !(Number.isInteger(b.tt) && b.tt >= 0 && b.tt <= 999 && (b.n == null || Number.isInteger(b.n) && b.n >= 0 && b.n <= 999))) return 'tune';
+  }
   return '';
 }
 /** PETS IN PLACE (docs/dev/GARDEN_TOGETHER.md section 18). A person's own computer says where its pets really are, so every screen shows them in the same place (`gl:pp`, a kind of its own: an older app drops

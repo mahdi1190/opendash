@@ -168,6 +168,7 @@ function gartActDoingIn(A, ev) {
  *  it took here); a figure that is there already, or a late arrival, joins it where it has got to (a held pose at its end). */
 function gartActDoingStart(A, a, t0, at) {
   A.actX = at.x; A.actY = at.y; A.actDeg = at.d;
+  A.emAt = { e: 'act-' + a, x: at.x, y: at.y };   // (where their own screen put them for it: a band's place keeps them exactly there, 94-garden-zz-7act-3music.js)
   const go = () => { if (A.actWant === a) gartActRemote(A, a, performance.now() - A.actT0); };
   if (Math.hypot(at.x - A.x, at.y - A.y) > 0.05) {
     if (Math.hypot(at.x - A.x, at.y - A.y) > 6 || typeof _gllWalkVia !== 'function') { A.x = at.x; A.y = at.y; A.tx = null; A.ty = null; A.way = null; A.moving = false; A.key = ''; A.actAt = { x: at.x, y: at.y }; A.actWant = a; A.actT0 = t0; go(); }

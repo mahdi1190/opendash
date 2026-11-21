@@ -371,7 +371,7 @@ window.GardenNative = (function () {
       typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0,
       state.profile, state.wardrobe, state.pet, state.game && state.game.seen,
       typeof _gm !== 'undefined' && _gm.rev, gardenFun(), gardenMotionOn(), ui,
-      weather && weather.today && [weather.today.sunrise, weather.today.sunset], typeof gardenSocialBadge === 'function' ? gardenSocialBadge() : 0,
+      weather && weather.today && [weather.today.sunrise, weather.today.sunset], typeof gardenSocialBadge === 'function' ? gardenSocialBadge() : 0, typeof gardenActDrawRev === 'function' ? gardenActDrawRev() : 0,
     ], (key, value) => key === 'def' && value && value.id ? value.id : value);
   }
   function refreshLiveHud(s, model) {

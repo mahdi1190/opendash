@@ -230,7 +230,10 @@ function gartActNearby() {
   const rows = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src) && !gartActTaken(r));   // (a ball off rolling, a pile kicked apart: nothing to do there just now)
   // where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near; and a tree offers each
   // of its moves where you would do it (in front of the trunk: climb; at its side: hide behind it; out under the crown: a nap)
-  const ds = (r) => !r.stand ? d(r) : r.src === 'tree' ? Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3) : Math.min(d(r), Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3));   // (where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near)
+  // (a thing with several places, each its own (a band's pitch: one instrument each, a long bench's seats): only where you would stand counts,
+  // or every place is as near as the thing's middle and the first in the list was offered wherever you stood)
+  const many = new Map(); for (const r of rows) if (r.stand && r.src) many.set(r.src, (many.get(r.src) || 0) + 1);
+  const ds = (r) => !r.stand ? d(r) : r.src === 'tree' || many.get(r.src) > 1 ? Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3) : Math.min(d(r), Math.hypot(r.stand.x - px, (r.stand.y - py) * 1.3));   // (where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near)
   // (vale final fix 1, by kind) a big thing that answers from further off (its reach: the falls) is measured against that reach, and a
   // tree's moves give way to a made thing at about the same distance: trees stand everywhere, and their climb or nap took the prompt
   // from the falls' shower, the notices on a board and the camera's photo
@@ -361,7 +364,8 @@ function gartActPlay(gpl, id, o) {
     }
   };
   play('enter', row.enter, false);
-  if (row.loop && motion) H.timers.push(setTimeout(() => { for (const a of H.anims) { try { a.cancel(); } catch (e) { /* gone */ } } H.anims.length = 0; play('loop', row.loop, true); }, row.ms));
+  const loopAt = row.music && row.loop && typeof gmLoopAt === 'function' ? gmLoopAt(row.ms, row.loop.ms || 2000) : row.ms;   // (an instrument: the loop starts on the tune's beat, so a bow stroke or a drum hit lands with the note, on every screen)
+  if (row.loop && motion) H.timers.push(setTimeout(() => { for (const a of H.anims) { try { a.cancel(); } catch (e) { /* gone */ } } H.anims.length = 0; play('loop', row.loop, true); }, loopAt));
   else if (row.loop && !motion) { /* the end pose holds */ }
   // what it holds
   const prop = row.skim ? _gaSkimProp(o.skips || 3) : row.prop && !o.noProp && GA_PROPS[row.prop];
@@ -375,6 +379,7 @@ function gartActPlay(gpl, id, o) {
     if (row.prop === 'ducks') _gaDucks(g, H, motion, row.ms);
     if (row.skim) _gaSkimFly(g, H, motion, row.ms, o.skips || 3);
     if (row.bow && motion) { const bw = g.querySelector('.ga-bow'); if (bw) H.timers.push(setTimeout(() => { try { H.panims.push(gardenVisualAnimate(bw, [{ offset: 0, transform: 'translate(4px,3px)' }, { offset: 0.5, transform: 'translate(-5px,-4px)', easing: 'ease-in-out' }, { offset: 1, transform: 'translate(4px,3px)' }], { duration: 900, iterations: Infinity, easing: 'ease-in-out' })); } catch (e) { /* the bow rests */ } }, row.ms)); }   // the bow saws along its length, with the arm
+    if (row.propMove && motion) for (const m of row.propMove) { const el = g.querySelector(m.sel); if (el) H.timers.push(setTimeout(() => { try { H.panims.push(gardenVisualAnimate(el, m.frames, { duration: m.ms, iterations: Infinity, easing: 'ease-in-out' })); } catch (e) { /* it rests */ } }, row.music && typeof gmLoopAt === 'function' ? gmLoopAt(row.ms, m.ms) : row.ms)); }   // a held thing's own parts (a squeezebox's bellows, a drum's tipper), in time with the arms
     if (row.prop === 'swimwater' && motion) { const wd = g.querySelector('.ga-wade'); if (wd) try { H.panims.push(gardenVisualAnimate(wd, [{ offset: 0, opacity: 0 }, { offset: 0.06, opacity: 1 }, { offset: 0.3, opacity: 1 }, { offset: 0.4, opacity: 0 }, { offset: 1, opacity: 0 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* no wading ring */ } }
     if (row.prop === 'swimwater') { if (motion) { try { H.panims.push(gardenVisualAnimate(g.querySelector('.ga-swim') || g, [{ offset: 0, opacity: 0 }, { offset: 0.2, opacity: 0 }, { offset: 0.42, opacity: 1 }, { offset: 1, opacity: 1 }], { duration: row.ms, fill: 'forwards' })); } catch (e) { /* shows at once */ } } }
   }
@@ -441,7 +446,7 @@ function _gaStart(cur) {
   // (2.74.2) told after the extras above, so the first whole state already has the stick's throw, the thing in your arms, the ball
   _gaTell(cur.id, spot && spot.stand ? _gw.px : null, spot && spot.stand ? _gw.py : null);
   if (row.use && typeof gardenLiveFx === 'function' && (row.use === 'bell' || row.use === 'wish')) { try { const on = spot && Number.isFinite(spot.x) && Number.isFinite(spot.y) ? spot : { x: _gw.px, y: _gw.py }; gardenLiveFx('use', row.use, { x: Math.floor(on.x), y: Math.floor(on.y) });   /* (at the thing itself: the wish shows over the well's mouth on their screen, not beside it) */ } catch (e) { /* alone */ } }
-  if (row.prop === 'fiddle' || row.fiddle) _gaResync();
+  if (row.music || row.prop === 'fiddle' || row.fiddle) { _gaResync(); if (typeof gardenMusicStart === 'function') gardenMusicStart(cur); }   // (an instrument: its place at the pitch is drawn empty, and you join the tune, 94-garden-zz-7act-3music.js)
   if (row.clouds) _gaSky(cur, true);
   _gaFirst(cur);
   if (!row.hold) cur.endT = setTimeout(() => { if (_ga.cur !== cur) return; gartActStop(true); if (row.then && GARDEN_ACTS[row.then]) _gaThen(row.then, cur); }, (_gaMotion() ? row.ms : 1200) + 60);
@@ -480,7 +485,7 @@ function gartActStop(done) {
   _ga.cur = null; clearTimeout(cur.endT);
   if (cur.row.clouds) _gaSky(cur, false);
   if (cur.row.fetch) _ga.fetch = null;
-  if (cur.row.prop === 'fiddle') setTimeout(_gaResync, 0);
+  if (cur.row.music || cur.row.prop === 'fiddle') { setTimeout(_gaResync, 0); if (typeof gardenMusicStop === 'function') gardenMusicStop(cur); }
   if (cur.row.rubPet) { try { const P = gpPetMe(); if (P && P.root && P.root._pcH && cur.rubH === P.root._pcH) petClipStop(P.root); } catch (e) { /* no pet */ } }
   if (cur.H && cur.H.stop) cur.H.stop();
   // a held move that ends where you stand (a nap's time is up, you stand up from a seat): friends hear at once, at the next quarter second,
@@ -612,7 +617,17 @@ function gartActHidden(id) { const t = _gaHide.get(id); return t != null && (t =
 function gartActCarried(id) { return _gaHide.get(id) === Infinity; }
 /** Where a carried thing was set down (this visit), or null. */
 function gartActMovedTo(id) { return _gaMoved.get(id) || null; }
-function _gaResync() { try { if (typeof GardenNative !== 'undefined' && GardenNative.sync) GardenNative.sync(); } catch (e) { /* next paint */ } }
+/** Draw the world again now: something an act changes in a drawing (an instrument in someone's hands, a thing in use) is not in the garden's
+ *  model, so the drawing revision below is part of both repaint keys (94-garden-native-runtime.js, 94-garden-native-world.js); without it the
+ *  repaint was skipped until the next minute. The model is passed, never nothing (a sync with no model reached the life layer as undefined). */
+function _gaResync() {
+  gardenActDrawRev.n = (gardenActDrawRev.n || 0) + 1;
+  // a whole repaint is 60-80 ms: never while you walk (a friend taking up an instrument as you pass); it waits until you stop, once
+  const walking = typeof _gw !== 'undefined' && !!(_gw.moving || (_gw.path && _gw.path.length) || (_gw.keys && _gw.keys.size));
+  clearTimeout(_gaResync.t); if (walking) { _gaResync.t = setTimeout(() => { gardenActDrawRev.n--; _gaResync(); }, 300); return; }
+  try { if (typeof GardenNative !== 'undefined' && GardenNative.sync && typeof gardenHere === 'function') GardenNative.sync(gardenHere()); } catch (e) { /* next paint */ }
+}
+function gardenActDrawRev() { return gardenActDrawRev.n || 0; }
 function _gaRec(id) { try { const w = GardenNative.world(), e = w && w.entities; return e instanceof Map ? e.get('prop:' + id) : null; } catch (e) { return null; } }
 function _gaShow(id, on) { const rec = _gaRec(id); if (rec && rec.root && rec.root.setAlpha) rec.root.setAlpha(on ? 1 : 0); }
 /** The ball flies off the foot and rolls back to its place; the leaves burst and settle back slowly. */

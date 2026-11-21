@@ -1188,7 +1188,7 @@ window.GardenNativeWorld = (function () {
       const lake = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(m) : null;
       const surfaceKey = (typeof _GD_ICE === 'undefined' ? 0 : _GD_ICE.size) + ':' + (typeof _GD_WALK_EXTRA === 'undefined' ? 0 : _GD_WALK_EXTRA.size);
       const decks = gardenPierDecks(m.works || [], m), deckKey = decks.map(p => [p.id, p.x, p.y, p.w, p.h].join(',')).join(';');
-      const key = (m.visit ? m.visit.key : _gd.memoKey || _gd.rev) + '|' + designRev + '|' + m.tod + '|' + m.season + '|' + surfaceKey + '|' + (lake && lake.revision || 0) + '|' + deckKey + '|' + (typeof gardenAffordRev === 'function' ? gardenAffordRev() : 0);   // (a placed thing moved aside: 94-garden-zz-7act-0scan.js)
+      const key = (m.visit ? m.visit.key : _gd.memoKey || _gd.rev) + '|' + designRev + '|' + m.tod + '|' + m.season + '|' + surfaceKey + '|' + (lake && lake.revision || 0) + '|' + deckKey + '|' + (typeof gardenAffordRev === 'function' ? gardenAffordRev() : 0) + '|' + (typeof gardenActDrawRev === 'function' ? gardenActDrawRev() : 0);   // (a placed thing moved aside: 94-garden-zz-7act-0scan.js)
       if (model === m && modelKey === key) return;
       model = m; modelKey = key;
       const sc = gardenSceneFromModel(m), opts = { uid: 'gnative', size: 'l', crop: 'world', interactive: true, still: false, native: true, readOnly: !!m.visit, friend: m.visit && m.visit.drawFriend };

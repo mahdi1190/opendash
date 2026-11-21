@@ -146,9 +146,9 @@ function _gllStationaryAt(A, x, y, source) {
   const W = GARDEN_WORLD; if (!A || !Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x >= W.cols || y >= W.rows) return;
   const previous = A.stationaryPosition;
   if (source === 'cell' && previous && Math.floor(previous.x) === Math.floor(x) && Math.floor(previous.y) === Math.floor(y)) return;
-  // a cell report only says which cell: a figure already inside it (sat on a seat at 42.97, behind a trunk) is where it is, never put back
+  // a cell report only says which cell: a figure already inside it (sat on a seat at 42.97, behind a trunk, at a band's place) is where it is, never put back
   // to the middle of the cell (a sitter seen later by a friend who was elsewhere when they sat was drawn on the bench's back rail)
-  if (source === 'cell' && Number.isFinite(A.x) && Number.isFinite(A.y) && Math.floor(A.x) === Math.floor(x) && Math.floor(A.y) === Math.floor(y) && A.tx == null) { A.stationaryPosition = { x: A.x, y: A.y, source }; return; }
+  if (source === 'cell' && !A.moving && A.tx == null && Number.isFinite(A.x) && Number.isFinite(A.y) && Math.floor(A.x) === Math.floor(x) && Math.floor(A.y) === Math.floor(y)) { A.stationaryPosition = { x: A.x, y: A.y, source }; return; }
   A.stationaryPosition = { x, y, source };
   // There is no visible walk to preserve when both ends of an already-complete pose are culled.
   if (typeof _gwInView === 'function' && !_gwInView(A.x, A.y, 1.5) && !_gwInView(x, y, 1.5)) { A.x = x; A.y = y; A.tx = null; A.ty = null; A.way = null; A.pace = 0; A.moving = false; A.key = ''; }
@@ -247,7 +247,10 @@ function _gllEmote(A, id, instant) {
 function _gllEmoteStop(A) { if (A.emLift) { A.emLift = false; A.actLift = 0; } if (A.actUndo) { const u = A.actUndo; A.actUndo = null; try { u(); } catch (e) { /* gone */ } } clearTimeout(A.animT); for (const a of A.anims || []) { try { a.cancel(); } catch (e) { /* gone */ } } A.anims = null; A.hold = ''; }
 /** A move with a place (a seat): walk there first if they are not there yet, rather than jump. */
 function _gllEmoteAt(A, ev) {
+  A.emAt = Number.isFinite(ev.x) && Number.isFinite(ev.y) ? { e: String(ev.e), x: ev.x, y: ev.y } : null;   // (where their own screen put them for it: a held move keeps them exactly there, 94-garden-zz-7act-3music.js)
   if (String(ev.e).startsWith('act-') && A.dg) return;   // (2.74.1) drawn from what they are doing, whole (gl:dg)
+  if (Number.isFinite(ev.x) && !A.moving && A.tx == null && Math.hypot(ev.x - A.x, ev.y - A.y) <= 0.05) { A.x = ev.x; A.y = ev.y; }   // (a hair from it, as a walk sent in tenths leaves them: exactly there, no walk)
+  if (A.actHold && String(ev.e) === 'act-' + A.actHold && !A.moving && Number.isFinite(ev.x) && Math.hypot(ev.x - A.x, ev.y - A.y) <= 0.05) { A.actAt = { x: ev.x, y: ev.y }; return; }   // (the held move they are already doing, said again for someone new: it carries on, not starts again)
   // (where they said they did it, kept as theirs while they do it: a seat they are walking to, or sat on, is not free on this screen even
   // when their figure here is still on its way or stopped a little off it; any step of theirs gives it up, _gllWalkTo)
   const at = Number.isFinite(ev.x) && Number.isFinite(ev.y) ? { x: ev.x, y: ev.y } : null;
