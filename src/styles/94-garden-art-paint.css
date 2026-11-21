@@ -44,3 +44,20 @@
 .gpl-walk .gpl-cloth { animation: gpl-hairw .2s ease-in-out -.05s infinite alternate; }
 @keyframes gpl-hairw { from { transform: rotate(-2.4deg) translateY(0); } to { transform: rotate(2.2deg) translateY(.6px); } }
 @media (prefers-reduced-motion: reduce) { .gca *, .gpl .gpl-hair, .gpl .gpl-cloth { animation: none !important; } }
+/* the vale's folk (94-garden-wonder-0vale-folk.js): sat on a seat (legs out over its front, the hips on it), reading, Bramble's rub-out; their homes' smoke and reeds (94-garden-folk-2art.js) */
+.gca-sit .gca-lg.gca-a { animation: none; transform: rotate(-78deg); }
+.gca-sit .gca-lg.gca-b { animation: none; transform: rotate(-70deg); }
+.gca-fish .gca-lg.gca-a { animation: none; transform: rotate(-52deg); }
+.gca-fish .gca-lg.gca-b { animation: none; transform: rotate(-38deg); }
+.gca-read .gca-hd { animation: none; transform: rotate(9deg); }
+.gca-rub .gca-hd { animation: none; transform: rotate(12deg); }
+.gca-rub .gca-ar.gca-a { animation: vf-rub .24s ease-in-out infinite alternate; }
+@keyframes vf-rub { from { transform: rotate(-58deg); } to { transform: rotate(-38deg); } }
+.gca-talk .gca-hd { animation: vf-talk 1.3s ease-in-out infinite alternate; }
+@keyframes vf-talk { 0% { transform: rotate(-2deg); } 40% { transform: rotate(3deg); } 100% { transform: rotate(-1deg); } }
+.vfa-smoke .vfa-puff { transform-box: fill-box; transform-origin: 50% 50%; animation: vfa-rise 4.2s ease-out infinite; }
+.vfa-smoke .vfa-p2 { animation-delay: -1.4s; }
+.vfa-smoke .vfa-p3 { animation-delay: -2.8s; }
+@keyframes vfa-rise { 0% { transform: translate(0, 4px) scale(.6); opacity: 0; } 25% { opacity: .55; } 100% { transform: translate(5px, -14px) scale(1.5); opacity: 0; } }
+.vfa-reeds { transform-box: fill-box; transform-origin: 50% 100%; animation: gda-sway 3.4s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) { .vfa-smoke .vfa-puff, .vfa-reeds, .gca-rub .gca-ar.gca-a, .gca-talk .gca-hd { animation: none !important; } }

@@ -834,7 +834,7 @@ const GW_CLEAR = 0.07;                                // planning keeps this muc
 function _gwFree(x, y, m) {
   const fx = GW_FOOT.x + (m || 0), fy = GW_FOOT.y + (m || 0);
   return _gwFootCells(x, y, fx, fy)
-    && !_gwSolidHit(x, y, fx, fy) && gardenWonderWalkFine(x, y, fy, m);   // (over the lake: the island's shape and the line of stones, not whole cells)
+    && !_gwSolidHit(x, y, fx, fy) && gardenWonderWalkFine(x, y, fy, m) && !(_gw.folkSolid && gardenFolkBlocks(x, y));   // (one of the folk in the way, 94-garden-wonder-0vale-folk.js)   // (over the lake: the island's shape and the line of stones, not whole cells)
 }
 /** Can the feet go in a straight line from a to b? (`m`: with that much room to spare.) Sampled finer than a corner can hide in. */
 function _gwLos(a, b, m) {
@@ -853,7 +853,8 @@ function _gwMoveBy(dx, dy) {
   const wg = _gw.wedge;
   if (wg && wg.sx === sx && wg.sy === sy && Math.hypot((x0 - wg.x) * W.cellW, (y0 - wg.y) * W.cellH) < .5) return false;
   _gw.wedge = null;
-  let moved = _gwMoveByEdge(dx, dy);
+  // the vale's folk are solid to your own steps only (route planning and the folk's own paths do not see them: they move)
+  let moved = false; _gw.folkSolid = typeof gardenFolkBlocks === 'function'; try { moved = _gwMoveByEdge(dx, dy); } finally { _gw.folkSolid = false; }
   // (n-move) wedged in a corner (between a bank and a trunk, say), the slides could nudge the feet a pixel back and forth for a few frames,
   // the figure stepping on the spot and shimmering before it gave up. A step that gets almost nowhere is no step, and nor is a small one
   // that backs off against the way you go, nor one no longer than a step that takes you
@@ -1554,7 +1555,8 @@ function _gwCamTarget() {
   if (fit) { x = (wpx - vw) / 2; y = vh > hpx ? hpx - vh : (hpx - vh) / 2; }
   else {
     const fx = _gw.px * W.cellW, fy = W.sky + _gw.py * W.cellH - 20;
-    x = Math.max(0, Math.min(wpx - vw, fx - vw / 2)); y = Math.max(0, Math.min(hpx - vh, fy - vh * 0.56));
+    const talk = typeof _wd !== 'undefined' && !!_wd.talk;   // (round 2, folk) a talk card along the bottom: the view rises so the two of you stand above it
+    x = Math.max(0, Math.min(wpx - vw, fx - vw / 2)); y = Math.max(0, Math.min(hpx - vh, fy - vh * (talk ? 0.4 : 0.56)));
   }
   return { x, y, w: vw, h: vh };
 }
@@ -1963,7 +1965,8 @@ function _gwOpenProp(p) {
     photo: () => { if (typeof gardenPhotoOpen === 'function') gardenPhotoOpen(); }, timelapse: () => { if (typeof gardenTimelapseOpen === 'function') gardenTimelapseOpen(); },
     sail: () => { if (typeof gardenBoatAsk === 'function' && gardenBoatAsk()) return; gardenPopupOpen('sail'); },
     hall: () => gardenPopupOpen('catch', { sub: 'hall', title: 'The lake hall' }), lake: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The lake' }),
-    angler: () => { if (typeof wdAnglerTalk === 'function' && wdAnglerTalk(p)) return; gardenPopupOpen('catch', { sub: 'lake', title: 'The old angler' }); },   // he talks first, once a day (94-garden-wonder-1kin.js) smoker: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The smoker' }),
+    angler: () => { if (typeof gardenFolkLive === 'function' && gardenFolkLive()) return;   // (he walks his own day now: talk to him where he is, 94-garden-wonder-0vale-folk.js)
+      if (typeof wdAnglerTalk === 'function' && wdAnglerTalk(p)) return; gardenPopupOpen('catch', { sub: 'lake', title: 'The old angler' }); },   // he talks first, once a day (94-garden-wonder-1kin.js) smoker: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The smoker' }),
     craft: () => gardenPopupOpen('craft'),
     lands: () => gardenPopupOpen('lands'),
     lf: () => gardenLandPropOpen(p),
@@ -2190,6 +2193,7 @@ function gardenWorldKey(ev, down, arrowsOnly) {
   if (k === 'Tab' && !ev.ctrlKey && !ev.altKey && !ev.metaKey && typeof gartActCycle === 'function' && gartActCycle(ev.shiftKey)) { ev.preventDefault(); return true; }   // several things close by: the next one is the prompt's (94-garden-zz-7act-1core.js)
   if ((k === 'j' || k === 'J') && !ev.ctrlKey && !ev.metaKey && !ev.altKey) { if (typeof gardenJournalOpen === 'function') gardenJournalOpen(); ev.preventDefault(); return true; }   // the Field Journal
   if (arrowsOnly) return false;
+  if ((k === 'e' || k === 'E') && typeof _wd !== 'undefined' && _wd.talk && _wd.talk.next) { if (!ev.repeat && performance.now() - (_wd.talk.at || 0) > 250) _wd.talk.next(); ev.preventDefault(); return true; }   // (round 2, folk) E moves a talk on
   if (k === ' ' || k === 'e' || k === 'E') { if (ev.repeat) { ev.preventDefault(); return true; } gardenWorldInteract(); ev.preventDefault(); return true; }
   return false;
 }
@@ -2199,7 +2203,7 @@ function gardenWorldInteract() {
   if (typeof gartActInteract === 'function' && gartActInteract()) return;   // the prompt's action: sit, climb, ring... (94-garden-zz-7act-1core.js)
   const m = gardenHere(), W = GARDEN_WORLD;
   const px = Math.floor(_gw.px), py = Math.floor(_gw.py);
-  for (const p of gardenPropsNow()) if (p.act) { const door = _gwPropApproachPoint(p, false); if (door && Math.abs(door.x - .5 - px) <= 1 && Math.abs(door.y - .5 - py) <= 1) { _gwOpenProp(p); return; } }
+  for (const p of gardenPropsNow()) if (p.act && !(p.act === 'angler' && typeof gardenFolkLive === 'function' && gardenFolkLive())) { const door = _gwPropApproachPoint(p, false); if (door && Math.abs(door.x - .5 - px) <= 1 && Math.abs(door.y - .5 - py) <= 1) { _gwOpenProp(p); return; } }
   // a way in to a side place beside you (the boat loft's doorway, the hothouse, the den's doors): E went past them to
   // fishing off the quay, or to nothing at all (hunter, round 3). The way in stands where its sight paints its door.
   if (typeof GRM_ROOMS !== 'undefined' && typeof _grd !== 'undefined' && typeof gardenRoomGo === 'function') {

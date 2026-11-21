@@ -1654,7 +1654,7 @@ window.GardenNativeWorld = (function () {
       const activity = fishing ? null : activitySubject(); if (fishing) activityCamera = null;
       const fit = fishing ? fishViewMode === 'fit' : activity ? activityCamera.mode === 'fit' : prefs.cam === 'fit';
       let vh = fit ? Math.max(height, width / ar) : GW_ZOOMS[clamp(Number.isInteger(Number(prefs.zoom)) && prefs.zoom != null ? Number(prefs.zoom) : typeof _gwCamDefaultIdx === 'function' ? _gwCamDefaultIdx() : 2, 0, GW_ZOOMS.length - 1)], vw = vh * ar;
-      let x = _gw.px * W.cellW - vw / 2, y = W.sky + _gw.py * W.cellH - vh / 2 - 24 - (typeof gardenHeightView === 'function' ? gardenHeightView() : 0);   // (up on a floor or a ladder: the view goes up with you)
+      let x = _gw.px * W.cellW - vw / 2, y = W.sky + _gw.py * W.cellH - vh / 2 - 24 - (typeof gardenHeightView === 'function' ? gardenHeightView() : 0) + (typeof _wd !== 'undefined' && _wd.talk ? vh * 0.14 : 0);   // (a talk card along the bottom: the view rises so the two of you stand above it)   // (up on a floor or a ladder: the view goes up with you)
       if (!fishing && !fit && !activity) { const z = Math.min(1, vh / 420); x += camLead.x * z; y += camLead.y * z; }
       if (fishing && !fit) {
         const f = _gw.fishing, fx = _gw.px * W.cellW, fy = W.sky + _gw.py * W.cellH - 25, bx = f.bx * W.cellW, by = W.sky + f.by * W.cellH;

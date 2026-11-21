@@ -250,7 +250,7 @@ function _glhEvent(ev) {
       else if (ev.c === 'do' && ev.e === 'follow' && ev.to === 0) _gllFloat(_gw.svg, A.x, A.y - 1.4, '🚶', A.n);
       return;
     }
-    case 'fx': { const A = _gll.actors.get(ev.w); if (ev.c === 'tune') { if (typeof gardenMusicHeard === 'function') gardenMusicHeard(A || null, ev); return; } if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return; }
+    case 'fx': { const A = _gll.actors.get(ev.w); if (ev.c === 'folk') { if (typeof gardenFolkHeldBy === 'function') gardenFolkHeldBy(A || null, ev); return; } if (ev.c === 'tune') { if (typeof gardenMusicHeard === 'function') gardenMusicHeard(A || null, ev); return; } if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return; }
     case 'pp': _gllPlacesIn(ev); return;
     case 'dg': { const A = _gll.actors.get(ev.w); if (A && typeof gartActDoingIn === 'function') gartActDoingIn(A, ev); return; }   // what they are doing, whole (94-garden-zz-7act-3sync.js)
     case 'do': _glhIntent(Object.assign({}, ev, { k: ev.ik })); return;
