@@ -368,7 +368,7 @@ function gartMoveTell() {
     return { h: hw, g: _gw.sneak ? 'c' : _gw.clickRun ? 'r' : 'w' };
   }
   const g = _gmv.tellGait || 'w';
-  return { h, g, ...(typeof _gw !== 'undefined' && _gw.moving ? { k: 1 } : {}) };
+  return { h, g, ...(typeof _gw !== 'undefined' && _gw.moving ? { kw: 1 } : {}) };
 }
 /** (move360) A friend's walk message heard: keep the way they face and their gait on their figure (gartMoveActor uses both).
  *  whole: a whole-state message (gl:who, a join, the host's list, the garden snapshot): someone you have only just seen, or seen again after a
@@ -386,7 +386,7 @@ function gartMoveTold(A, ev, whole) {
     }
   }
   if (g === 'w' || g === 'r' || g === 'c') { A.gait = g; if (!whole) A.sneakUntil = g === 'c' ? Date.now() + 1500 : 0; }   // clock-ok: a creep lasts while they keep saying so
-  if (!whole) { A.keyWalk = ev.k === 1; A.drift = null; }   // (k: walking by the keys and still going; a message without it is where they stopped)
+  if (!whole) { A.keyWalk = ev.kw === 1; A.drift = null; A.lux = A.luy = null; }   // (kw: walking by the keys and still going; a message without it is where they stopped)
 }
 /** (move360 round 3) A friend walking by the keys, between two of their messages: on the way they were going, at their pace, never into
  *  anything that blocks walking, for at most the time the next message takes. Returns whether the figure moved. */

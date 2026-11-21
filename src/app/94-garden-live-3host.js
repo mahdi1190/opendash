@@ -143,7 +143,7 @@ function _glhWalk(A, ev) {
   if (GARDEN_WORLD.v >= 4 && routeTried && !way) { _glhSend(A.f, 'go', { w: A.w, x: A.x, y: A.y }); return; }
   const turns = _glhTurns(way);
   _gllWalkVia(A, turns.r, ev.x, ev.y);
-  if (_gll.actors.size > 1) _glhSend('all', 'go', { w: ev.w, x: ev.x, y: ev.y, ...turns, ...(Number.isInteger(ev.h) ? { h: ev.h } : {}), ...(ev.g ? { g: ev.g } : {}), ...(ev.k === 1 ? { k: 1 } : {}) });   // (with nobody else here, nobody needs telling: the walker's own feet are their own)
+  if (_gll.actors.size > 1) _glhSend('all', 'go', { w: ev.w, x: ev.x, y: ev.y, ...turns, ...(Number.isInteger(ev.h) ? { h: ev.h } : {}), ...(ev.g ? { g: ev.g } : {}), ...(ev.kw === 1 ? { kw: 1 } : {}) });   // (with nobody else here, nobody needs telling: the walker's own feet are their own)
 }
 function _glhWatchStart() {
   if (_glh.watch || typeof gardenWorldAdd !== 'function') return;

@@ -190,6 +190,7 @@ function _gllStep(A, dt, quiet) {
         } else {
           // (move360 round 3) a walk by the keys goes on (they said k: still going): the figure keeps on the way it was going at that pace until the
           // next place comes, so the first step of every walk is not half a step, a stand of 0.7 s, then the walk
+          if (d > 0.5) { A.lux = dx / d; A.luy = dy / d; }   // (the last bit of the way, walked in one frame, says the way too)
           if (A.keyWalk && A.lux != null && typeof gartMoveDrift === 'function') A.drift = { ux: A.lux, uy: A.luy, v: A.pace || (A.gait === 'r' ? GL_ACT_RUN : GL_ACT_SPEED), until: Date.now() + 950 };   // clock-ok: how long to carry on
           A.tx = null; A.ty = null; A.way = null; A.pace = 0; moving = false;
           A.stopAt = Date.now() + 170;   // clock-ok: the next step of a walk sent as it goes is on its way: no standing pose for a moment
