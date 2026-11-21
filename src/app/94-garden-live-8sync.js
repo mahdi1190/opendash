@@ -58,7 +58,8 @@ function _glySumIn(ev) {
   if (ev.ac && typeof _glvAmbientClock === 'function') _glvAmbientClock(ev.ac);
   const s = _glv.snap; if (!s || !Number.isInteger(ev.h)) return;
   const detail = Number.isInteger(ev.h2), mine = _glySum(_glyGuestRows(s, detail));
-  if (mine.h === (detail ? ev.h2 : ev.h) && mine.n === ev.n) { _gly.bad = 0; _gly.catching = 0; return; }
+  const drOk = !Number.isInteger(ev.h3) || typeof gardenDropSum !== 'function' || gardenDropSum(s.dr || []) === ev.h3;   // (build phase 1: where things lie, too)
+  if (mine.h === (detail ? ev.h2 : ev.h) && mine.n === ev.n && drOk) { _gly.bad = 0; _gly.catching = 0; return; }
   _gly.bad += 1;
   if (_gly.bad >= 2 && _gly.asks < GL_SYNC.autoAsks) _glyAsk(false);
 }
@@ -174,7 +175,7 @@ function _glyTick() {
   if (hostLive && looking && now - _gly.sumAt >= GL_SYNC.sumMs) {
     _gly.sumAt = now;
     _glhDiff();   // (what is still to go goes first)
-    if (!_glyTooBig()) { const s = _glySum(_glyHostRows()); s.h2 = _glySum(_glyHostRows(true)).h; const ac = _glhAmbientClock(); if (ac) s.ac = ac; _glhSend('all', 'sum', s); }
+    if (!_glyTooBig()) { const s = _glySum(_glyHostRows()); s.h2 = _glySum(_glyHostRows(true)).h; if (typeof gardenDropSum === 'function') s.h3 = gardenDropSum(gardenDropRows(_gdG())); const ac = _glhAmbientClock(); if (ac) s.ac = ac; _glhSend('all', 'sum', s); }   // (build phase 1: h3, where things lie)
   }
   if ((hostLive || guestLive) && looking && now - _gly.atAt >= GL_SYNC.atMs && !_gw.moving) {
     _gly.atAt = now;

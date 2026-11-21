@@ -229,6 +229,7 @@ function _glhEvent(ev) {
       if (typeof gardenContestJoin === 'function') gardenContestJoin(ev.f);
       if (typeof _glgJoin === 'function') _glgJoin(ev.f);
       _glhResendDrops(ev.f);
+      if (typeof gardenDropTell === 'function') gardenDropTell(ev.f, true);   // (build phase 1: where things lie, and who carries what)
       _glhCatchUp(ev.f, A);
       if (typeof _gly !== 'undefined') _gly.atAt = 0;   // (where everyone stands, at the next tick)
       _glhBugsMaybe();
@@ -237,7 +238,7 @@ function _glhEvent(ev) {
     }
     case 'tr': if (typeof _gltHostOn === 'function') _gltHostOn(ev); return;
     case 'dz': _glhDesignIn(ev); return;
-    case 'leave': if (typeof _gltHostLeft === 'function') _gltHostLeft(ev.w); _glhRemove(ev.w); if (typeof gardenContestLeave === 'function') gardenContestLeave(ev.w); _glhReturnDrops(ev.w); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
+    case 'leave': if (typeof gardenDropLeft === 'function') gardenDropLeft(_gll.actors.get(ev.w)); if (typeof _gltHostLeft === 'function') _gltHostLeft(ev.w); _glhRemove(ev.w); if (typeof gardenContestLeave === 'function') gardenContestLeave(ev.w); _glhReturnDrops(ev.w); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
     case 'go': { const A = _gll.actors.get(ev.w); if (A && _gllHeldNudge(A, ev)) return; if (A) { _gllGoPace(A, ev); _glhWalk(A, ev); if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } return; }
     case 'em': {
       const A = _gll.actors.get(ev.w); if (!A) return;
@@ -381,7 +382,7 @@ function _glhIntent(ev) {
   if (!ev.away) { const result = _glhResOf(ev, e); _glhSend('all', 'res', result); _gllToolFeedback(result, false); }
   if ((ev.t === 'land' || ev.t === 'build' || ev.t === 'gate' || ev.t === 'solve') && typeof gardenToast === 'function') gardenToast(_glhDiaryWhat(e, 1) + (e.wait ? (ev.t === 'solve' ? '. It is in Land, under discovered places, for you to set out.' : '. There was no room for it nearby: set it out from the land office.') : '!'), { icon: ev.t === 'land' ? 'trees' : ev.t === 'gate' ? 'key' : 'hammer', timeout: e.wait ? 12000 : 9000 });   // (full co-op: a friend's gift to the garden, said out loud)
   const A = _gll.actors.get(ev.w);
-  if (A) _gllPose(A, _GL_POSE[ev.t] || 'pick', 760);
+  if (A && !(GL_ACTS[ev.t] && GL_ACTS[ev.t].carry)) _gllPose(A, _GL_POSE[ev.t] || 'pick', 760);
   if (ev.x != null && _GL_EMOJI[ev.t]) _gllFloat(_gw.svg, ev.x, ev.y, _GL_EMOJI[ev.t], A ? A.n : '');
   _glhFlushPosts();
   _glh.unseen++;
@@ -525,6 +526,7 @@ function _glhApply(ev, key) {
       return put(mark, { u: d.uid, noUndo: !!rec.own, ...(gi ? { gi } : {}) });
     }
     case 'land': case 'build': case 'gate': case 'solve': return _glhLand(ev, put, m);
+    case 'grab': case 'set': return typeof gardenDropIntent === 'function' ? gardenDropIntent(ev, put) : 'kind';   // (build phase 1: 94-garden-build-1do.js)
     case 'give': {
       if (!mine) return 'not-yours';
       const d = hit.d, lk = 'gl.d.' + ev.i, gi = rec.gi, mark = _gdMark([['decor', d.uid], ['led', lk]]);
@@ -843,6 +845,8 @@ function _glhDiaryWhat(e, n) {
     case 'take': return e.gi ? `${who} took back the ${what}` : `${who} took your ${what}`;
     case 'give': return `${who} gave you the ${what}`;
     case 'drop': return `${who} left a parcel`;
+    case 'grab': return `${who} picked something up`;
+    case 'set': return `${who} set something down`;
     case 'pick': return `${who} picked up a parcel`;
     case 'land': { const r = typeof gardenLandRow === 'function' ? gardenLandRow(e.land || e.p) : null; return `${who} bought ${r ? r.name : 'a piece of land'} for your garden`; }
     case 'build': { const r = typeof gardenLandFeature === 'function' ? gardenLandFeature(e.land || e.p) : null; return `${who} built ${r ? _gscA(r.name.toLowerCase().replace(/^the /, '')) : 'something'} in your garden`; }

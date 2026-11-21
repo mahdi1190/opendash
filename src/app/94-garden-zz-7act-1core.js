@@ -405,6 +405,7 @@ function gartActRun(id, spot) {
     return true;
   }
   if (spot && gartActTaken(spot)) { try { gardenToast(GARDEN_ACTS[spot.act] && GARDEN_ACTS[spot.act].seat == null && !spot.seated ? 'Someone is already there.' : 'Someone is already sitting there.'); } catch (e) { /* fine */ } return false; }   // (one person to a seat)
+  if (row.carry && spot && spot.carry && typeof gardenCarryWhy === 'function') { const why = gardenCarryWhy(spot.src); if (why) { try { gardenToast(why, { icon: 'hand' }); } catch (e) { /* fine */ } return false; } }   // (build phase 1: one person carries a thing at a time)
   spot = _gaStandClear(spot);   // (a move done standing, never on top of a friend: warming your hands at a fire stood you on a friend sat on the log)
   if (_ga.carry && !row.carry) gartActSetDown();   // (you put down what you carry to do something else)
   if (row.rubPet && typeof _ptwFree === 'function' && !_ptwFree(_gw.px + GA_RUB_AT[0], _gw.py + GA_RUB_AT[1])) { try { if (!_ga.quiet) gardenToast('Not here: your pet needs open ground beside you to roll over.'); } catch (e) { /* fine */ } return false; }   // (never on a wall, a step or a thing: pets do not stand on props)
@@ -616,7 +617,12 @@ function gartActHidden(id) { const t = _gaHide.get(id); return t != null && (t =
 /** Being carried: not drawn on the ground at all. */
 function gartActCarried(id) { return _gaHide.get(id) === Infinity; }
 /** Where a carried thing was set down (this visit), or null. */
-function gartActMovedTo(id) { return _gaMoved.get(id) || null; }
+function gartActMovedTo(id) {
+  // (build phase 1) where it lies is saved, for everyone (94-garden-build-1do.js): a garden on this version says so; an older host's garden
+  // keeps what friends set down for the visit only, as before
+  if (typeof gardenDropKnown === 'function' && gardenDropKnown()) return gardenDropAt(id);
+  return _gaMoved.get(id) || null;
+}
 /** Draw the world again now: something an act changes in a drawing (an instrument in someone's hands, a thing in use) is not in the garden's
  *  model, so the drawing revision below is part of both repaint keys (94-garden-native-runtime.js, 94-garden-native-world.js); without it the
  *  repaint was skipped until the next minute. The model is passed, never nothing (a sync with no model reached the life layer as undefined). */
@@ -653,7 +659,10 @@ function _gaKickAt(sp, deg) {
 }
 /** Pick it up: it leaves the ground and is in your hands until you set it down (E). */
 function _gaPick(cur) {
-  const sp = cur.spot; _ga.carry = { id: sp.src, art: sp.art };
+  const sp = cur.spot;
+  // (build phase 1) picking it up is a saved op: at home it no longer lies anywhere; on a visit the host decides who got it first
+  if (typeof gardenCarryGrab === 'function') { const why = gardenCarryGrab(sp.src); if (why) { try { gardenToast(why, { icon: 'hand' }); } catch (e) { /* fine */ } return; } }
+  _ga.carry = { id: sp.src, art: sp.art };
   setTimeout(() => { const d = _ga.down && _ga.down.get(sp.src); if (d) { try { d.remove(); } catch (e) { /* gone */ } _ga.down.delete(sp.src); } }, 380);
   setTimeout(() => { _gaHide.set(sp.src, Infinity); _gaShow(sp.src, false); _ga.list = null; }, 380);
 }
@@ -687,15 +696,17 @@ function _gaSetDownDraw(id, x, y) {
   const old = _ga.down.get(id); if (old) { try { old.remove(); } catch (e) { /* gone */ } }
   try { _ga.down.set(id, gardenWorldAdd({ id: 'ga-down-' + id, x, y, z: y, lift: 0, ground: false, svg: _GAW_ART[row.art]({}, false, row), update(dt, Sp) { if (!_ga.down || _ga.down.get(id) !== Sp) Sp.remove(); } })); } catch (e) { /* drawn on the next paint */ }
 }
-/** E while carrying: set it down at your feet, just in front. It stays there for this visit. */
+/** E while carrying: set it down at your feet, just in front. It stays there, for everyone, until someone picks it up again. */
 function gartActSetDown() {
   const c = _ga.carry; if (!c) return false;
   _ga.carry = null;
   const W = GARDEN_WORLD, deg = (typeof gartMoveFacingDeg === 'function' ? gartMoveFacingDeg() : 90) * Math.PI / 180, x0 = _gw.px + Math.cos(deg) * 0.5, y0 = _gw.py + Math.sin(deg) * 0.35 + 0.05, clear = typeof _gwFree !== 'function' || _gwFree(x0, y0, 0.15), x = clear ? x0 : _gw.px, y = clear ? y0 : _gw.py + 0.08;   // (never into a post or a wall: at your feet then)
-  _gaMoved.set(c.id, { x, y }); _gaHide.delete(c.id);
+  _gaHide.delete(c.id);
   // (round 6) where you set it down it is a thing of the world of its own, at its new place with its contact shadow (the still picture stays
   // hidden: moving the world's own record left it drawn nowhere), until you pick it up again
-  _gaShow(c.id, false); _gaSetDownDraw(c.id, x, y);
+  // (build phase 1) and it stays there, saved, for everyone: a drop op (94-garden-build-1do.js), with Undo; an older host's garden, this visit only
+  if (typeof gardenDropKnown === 'function' && gardenDropKnown()) gardenCarrySet(c.id, x, y);
+  else { _gaMoved.set(c.id, { x, y }); _gaShow(c.id, false); _gaSetDownDraw(c.id, x, y); }
   _gaCarriedSweep(true);
   try { if (typeof _gwBody === 'function') _gwBody(); } catch (e) { /* fine */ }
   try { if (window.GardenNativeActions) GardenNativeActions.effect('place', x * W.cellW, W.sky + y * W.cellH, { width: 24 }); } catch (e) { /* fine */ }

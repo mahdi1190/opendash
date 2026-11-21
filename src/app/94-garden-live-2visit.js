@@ -169,7 +169,7 @@ function _glvIntent(t, f, debit, extra) {
   const i = _gllNewId();
   if (debit || extra) _glvDebit(i, t, f, debit, extra);   // (extra: {c: -coins}, what buying a friend's land or building there costs you: full co-op, 2.75)
   _glv.pending.set(i, { t, debit: !!(debit || extra), f });
-  if (typeof gartPlayerAct === 'function') gartPlayerAct(_GL_POSE[t] || 'pick', 760);
+  if (typeof gartPlayerAct === 'function' && !(GL_ACTS[t] && GL_ACTS[t].carry)) gartPlayerAct(_GL_POSE[t] || 'pick', 760);
   _glvSendDo({ i, t, ...f });
   if (typeof _gdvTouch === 'function') _gdvTouch();
 }
@@ -224,6 +224,7 @@ function _glvResult(b) {
       const P = _glv.pending.get(b.i); _glv.pending.delete(b.i);
       if (P.resend && (b.why === 'level' || b.why === 'wait')) { _gdvTouch(); return; }   // asked again and not looked at: it may have happened the first time, when the answer was lost. It stays spent until a real answer or a week.
       _glvRefund(b.i, P); _gdvTouch();
+      if ((P.t === 'grab' || P.t === 'set') && typeof gardenCarryRefused === 'function') { gardenCarryRefused(P, b.why); return; }   // (build phase 1: someone else got it first)
       const at = _glvCellAt(P.f && P.f.x, P.f && P.f.y);
       if (b.why === 'level' && typeof gardenVisitDenied === 'function') gardenVisitDenied(P.t);
       else gameDeny(null, { at: at || undefined, say: P.t === 'solve' ? (b.why === 'have' ? 'It was solved here already.' : 'That did not reach their garden. It is solved on your screen.') : P.t === 'gate' ? (b.why === 'have' ? 'It is open already.' : 'That gate needs its find first.') : (P.t === 'land' || P.t === 'build') ? ({ have: 'They have that already. Your coins are back.', 'not-yet': 'That is not open in this garden yet. Your coins are back.', spot: 'Something is in the way there. Your coins are back.' }[b.why] || 'That did not go through. Your coins are back.') : 'That did not work here.', kind: 'tool' });
@@ -237,7 +238,7 @@ function _glvResult(b) {
   }
   const pendingFeedback = me && b.i && _glv.pending.get(b.i);
   _gllToolFeedback(pendingFeedback ? Object.assign({}, pendingFeedback.f, b) : b, me);
-  if (A) _gllPose(A, _GL_POSE[b.t] || 'pick', 760);
+  if (A && !(GL_ACTS[b.t] && GL_ACTS[b.t].carry)) _gllPose(A, _GL_POSE[b.t] || 'pick', 760);
   if (b.t === 'drop') { _glvParcelAdd(b); }
   if (!me && (b.t === 'land' || b.t === 'build') && b.p && typeof gardenToast === 'function') { const r = b.t === 'land' ? gardenLandRow(b.p) : gardenLandFeature(b.p); gardenToast(`${A ? A.n : 'A friend'} ${b.t === 'land' ? 'bought' : 'built'} ${r ? r.name : 'something'} for ${_gdvFirst()}’s garden`, { icon: b.t === 'land' ? 'trees' : 'hammer' }); }
   // a gift is what this page saw left for you, not what any message says it is
@@ -473,6 +474,7 @@ function _glvEvent(ev) {
       const A = _gll.actors.get(ev.w); if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return;
     }
     case 'd': _glvDelta(ev.ops); return;
+    case 'dr': if (typeof gardenDropIn === 'function') gardenDropIn(ev); return;   // (build phase 1: where things lie in their garden)
     default:
   }
 }

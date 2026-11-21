@@ -30,6 +30,8 @@ function _gadBody() {
   if (f && Number.isFinite(f.x)) { b.p = { wait: 0, out: 1, back: 2, home: 3 }[f.phase] || 0; b.fx = _gadR2(f.x); b.fy = _gadR2(f.y); }
   const m = [];
   for (const [id, at] of _gaMoved) if (!(_ga.carry && _ga.carry.id === id) && at && Number.isFinite(at.x) && !at.theirs) m.push([String(id).slice(0, 64), Math.max(0, Math.round(at.x * 10)), Math.max(0, Math.round(at.y * 10))]);
+  // (build phase 1) where things lie is saved and the host's word (gl:dr); the host still says it here for one release, for a friend on an older app
+  if (_gll.role === 'host' && typeof gardenDropList === 'function') for (const r of gardenDropList()) if (!m.some(q => q[0] === r[0]) && !(_ga.carry && _ga.carry.id === r[0])) m.push([r[0], r[2], r[3]]);
   if (m.length) b.m = m.slice(-(typeof GL_DG_MAX_MOVED === 'number' ? GL_DG_MAX_MOVED : 6));
   if (_gll.role === 'host') _gadGatesOut(b);
   return b;
@@ -80,6 +82,7 @@ function gartActDoingPush(force) {
   _gadSend(b);
 }
 function gartActDoingTick() {
+  try { if (typeof gardenDropTick === 'function') gardenDropTick(); } catch (e) { /* next tick */ }
   try {
     const n = typeof _gll !== 'undefined' ? _gll.actors.size : 0;
     if (n !== _gad.n) { if (n > _gad.n) _gad.sig = ''; _gad.n = n; }   // (someone came in: they hear it all)
@@ -103,13 +106,14 @@ function gartActDoingIn(A, ev) {
   const hold = ev.i ? String(ev.i) : '';
   if (A.carryId !== hold) {
     const was = A.carryId; A.carryId = hold; A.carryArt = ev.h ? String(ev.h) : '';
-    if (was && !(ev.m || []).some(r => r[0] === was)) { _gaHide.delete(was); _gaShow(was, true); }
+    if (was && typeof gardenDropKnown === 'function' && gardenDropKnown()) { _gaHide.delete(was); setTimeout(() => { try { gardenDropShow(true); } catch (e) { /* next tick */ } }, 0); }   // (build phase 1: where it lies now is the host's list)
+    else if (was && !(ev.m || []).some(r => r[0] === was)) { _gaHide.delete(was); _gaShow(was, true); }
     if (hold) { _gaHide.set(hold, Infinity); _gaShow(hold, false); const d = _ga.down && _ga.down.get(hold); if (d) { try { d.remove(); } catch (e) { /* gone */ } _ga.down.delete(hold); } _ga.list = null; }
     A.key = '';
     try { const b0 = A.inner && A.inner.firstChild; if (b0 && b0.querySelector) gartActCarryActor(A, b0); } catch (e) { /* the next frame */ }   // (now: a set-down while standing leaves their arms empty)
   }
   // what they have set down elsewhere: at its new place on my screen too
-  for (const r of ev.m || []) {
+  for (const r of (typeof gardenDropKnown === 'function' && gardenDropKnown()) ? [] : ev.m || []) {   // (build phase 1: where things lie is the host's saved list, gl:dr)
     const id = String(r[0]), x = r[1] / 10, y = r[2] / 10, at = _gaMoved.get(id);
     if (id === hold || (at && Math.abs(at.x - x) < 0.05 && Math.abs(at.y - y) < 0.05 && _ga.down && _ga.down.get(id))) continue;
     _gaMoved.set(id, { x, y, theirs: true }); _gaHide.delete(id); _gaShow(id, false); _gaSetDownDraw(id, x, y); _ga.list = null;
