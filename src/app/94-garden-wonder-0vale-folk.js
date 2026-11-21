@@ -294,7 +294,7 @@ function _vfrTellerTick(m) {
     const V = _vfr.V.get(row.id); if (!V || V.inside || V.x == null) continue;
     // a public spot near you that they can walk to (never on your own feet, never in land you have not opened)
     let at = null;
-    for (let k = 0; k < 10 && !at; k++) { const a = (k / 10) * Math.PI * 2, q = { x: _gw.px + Math.cos(a) * 2.2, y: _gw.py + Math.sin(a) * 1.4 }; if (_vfrOpenAt(q.x, q.y, m) && (typeof _gwFree !== 'function' || _gwFree(q.x, q.y))) at = q; }
+    for (let k = 0; k < 10 && !at; k++) { const a = (k / 10) * Math.PI * 2, q = { x: _gw.px + Math.cos(a) * 1.5, y: _gw.py + Math.sin(a) * 1 }; if (_vfrOpenAt(q.x, q.y, m) && (typeof _gwFree !== 'function' || _gwFree(q.x, q.y))) at = q; }
     if (!at) return;
     V.visit = { at, until: performance.now() + 8 * 60000 }; V.mark = true; V.path = null; V.pathFor = '';
     W.vtl = { d: today, id: row.id, went: 1 }; _wdSave();
@@ -316,7 +316,7 @@ function gardenFolkActRows(px, py) {
       continue;
     }
     if (!V.S) continue;
-    if (Math.hypot(V.x - px, (V.y - py) * 1.3) > 2) continue;
+    if (Math.hypot(V.x - px, (V.y - py) * 1.3) > 2.2) continue;
     out.push({ key: 'folk:' + V.id, act: 'talk', folk: V.id, words: 'Talk to ' + V.row.name.replace(/^The /, 'the '), name: V.row.name, x: V.x, y: V.y, promptY: V.y - ((typeof gardenCastTop === 'function' ? gardenCastTop(V.row.cast) : 50) * (typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 0.6) + (V.S ? V.S.lift || 0 : 0) + 10) / GARDEN_WORLD.cellH, pri: 0.9 });   // (the prompt over their head, not on it)
   }
   return out.filter(r => r.words);
