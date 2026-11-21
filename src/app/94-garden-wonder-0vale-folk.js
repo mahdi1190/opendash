@@ -252,6 +252,7 @@ function _vfrFrame(dt) {
     if (!near && !V.S) {
       // off screen: where the plan says, in a straight line along the leg (nothing walked frame by frame)
       if (!goal) { V.x = w.x; V.y = w.y; V.inside = w.inside || !!e.offmap; V.arrived = !w.walking; }
+      else { V.inside = false; const G = GARDEN_WORLD, dx = (goal.at.x - V.x) * G.cellW, dy = (goal.at.y - V.y) * G.cellH, d = Math.hypot(dx, dy), st = VALE_FOLK_SPEED * (V.row.speed || 1) * dt; if (d > st) { V.x += dx / d * st / G.cellW; V.y += dy / d * st / G.cellH; } }   // (on the way over to you, off screen: along a straight line until the view is near, then on the path)
       continue;
     }
     if (V.inside && !(e.inside && !goal)) { V.inside = false; V.x = to && V.entry.inside ? V.x : V.x; }   // out of the door (they were in; now their plan takes them out)

@@ -36,10 +36,10 @@ const VALE_FOLK_ART = Object.freeze({
     const r = _vfaR('burrow');
     let s = '<ellipse cx="2" cy="1.5" rx="58" ry="7.5" fill="#1a2010" opacity=".2"/>';
     // the bank: shade silhouette, then the lit turf laid over it toward the sun (upper left), then the light glaze
-    s += '<path d="M-56 2C-52 -10 -42 -30 -20 -40C-4 -47 16 -46 32 -36C46 -27 54 -12 58 2Z" fill="#4e6430"/>';
-    s += '<path d="M-53 1C-49 -10 -40 -28 -20 -38C-5 -44.5 14 -44 29 -35C42 -27 50 -13 53 1Z" fill="#6a8640"/>';
-    s += '<path d="M-46 -12C-38 -26 -26 -35 -12 -39C-24 -31 -33 -22 -38 -10Z" fill="#9ab45e" opacity=".55"/>';
-    s += _vfaStrokes(r, -2, -26, 40, 14, 70, 3.2, -0.3, '#8eaa52', 0.9, 0.55) + _vfaStrokes(r, 10, -18, 38, 12, 40, 2.6, 0.4, '#465a2a', 0.8, 0.45);
+    s += '<path d="M-56 2C-52 -10 -42 -30 -20 -40C-4 -47 16 -46 32 -36C46 -27 54 -12 58 2Z" fill="#55602e"/>';
+    s += '<path d="M-53 1C-49 -10 -40 -28 -20 -38C-5 -44.5 14 -44 29 -35C42 -27 50 -13 53 1Z" fill="#77843e"/>';
+    s += '<path d="M-46 -12C-38 -26 -26 -35 -12 -39C-24 -31 -33 -22 -38 -10Z" fill="#a8ae5a" opacity=".55"/>';
+    s += _vfaTufts(r, -40, 40, -38, 9, ['#5e6a2c', '#7a8a3a', '#8e9440']).replace(/<path /g, '<path opacity=".9" ') + _vfaStrokes(r, -2, -26, 40, 14, 70, 3.2, -0.3, '#98a050', 0.9, 0.55) + _vfaStrokes(r, 10, -18, 38, 12, 40, 2.6, 0.4, '#465a2a', 0.8, 0.45);
     // soil worn bare round the door, the roots that frame it
     s += '<path d="M-22 2C-24 -10 -20 -27 -2 -31C16 -33 24 -18 24 2Z" fill="#7a5a3a"/><path d="M-19 2C-21 -9 -17 -24 -2 -28C13 -29.6 20 -17 20.4 2Z" fill="#94704a"/>';
     s += _vfaStrokes(r, 0, -12, 18, 14, 26, 2, 1.2, '#6a4a2e', 0.7, 0.55);
