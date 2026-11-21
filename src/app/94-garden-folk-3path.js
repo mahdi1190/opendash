@@ -54,13 +54,16 @@ function _vfpBuildSlice() {
   _vfp.cost = B.cost; _vfp.tier = B.tier; _vfp.key = key; _vfp.build = null; _vfp.cache.clear(); _vfp.stats.ms += performance.now() - t0;
   return true;
 }
-/** A planted bed at a point (a flower bed, a herb bed, a veg bed: anything painted as soil and plants), from the presentation's own
- *  bed shapes where the layout keeps them. Folk walk round beds, never over them. */
+/** A planted bed at a point (a flower bed, a herb bed, a veg bed: anything painted as soil and plants), from the layout's own bed
+ *  shapes (anchors named *bed*, a plaza's lawn and what is planted in it). Folk walk round beds, never over them. */
 function _vfpBedAt(x, y) {
   try {
     const P = gardenIslandData().presentation || {};
     if (!_vfp.beds) { _vfp.beds = []; const D = gardenIslandData(), An = D.anchors || {}; for (const k of Object.keys(An)) { const b = An[k]; if (/bed/i.test(k) && b && Number.isFinite(b.x) && Number.isFinite(b.w)) _vfp.beds.push({ x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + (b.h || 1) }); } for (const k of ['beds', 'flowerBeds', 'plantings']) { const L = P[k]; for (const b of Array.isArray(L) ? L : L && typeof L === 'object' ? Object.values(L) : []) if (b && Number.isFinite(b.x) && Number.isFinite(b.y)) _vfp.beds.push({ x0: b.x, y0: b.y, x1: b.x + (b.w || 1), y1: b.y + (b.h || 1) }); } }
     for (const b of _vfp.beds) if (x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1) return true;
+    // a plaza's own lawn and the beds planted in it (the green's lawn round the oak, its flower ring): walked round on the setts
+    if (!_vfp.lawns) { _vfp.lawns = []; for (const pz of P.plazas || []) if (Array.isArray(pz.lawn) && pz.lawn.length > 2) _vfp.lawns.push(pz.lawn); }
+    for (const L of _vfp.lawns) { let inn = false; for (let i = 0, j = L.length - 1; i < L.length; j = i++) { const [xi, yi] = L[i], [xj, yj] = L[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inn = !inn; } if (inn) return true; }
   } catch (e) { /* none */ }
   return typeof gardenFolkBedHook === 'function' ? !!gardenFolkBedHook(x, y) : false;
 }

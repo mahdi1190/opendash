@@ -83,8 +83,8 @@ const VALE_FOLK_ART = Object.freeze({
     s += '<path d="M-54 3C-50 -6 -42 -18 -30 -26C-18 -33 -2 -36 12 -34C28 -31 42 -20 52 3Z" fill="#5f6a2e"/>';
     let tus = '';
     for (let i = 0; i < 16; i++) {
-      const a = Math.PI * (0.06 + 0.88 * i / 15), cx = -Math.cos(a) * 44, cy = -Math.sin(a) * 28 + 3, rx = 9 + r() * 6, ry = 6 + r() * 4, lit = cx < 8;
-      tus += `<ellipse cx="${_vfaN(cx)}" cy="${_vfaN(cy + 5)}" rx="${_vfaN(rx)}" ry="${_vfaN(ry)}" fill="${lit ? (i % 2 ? '#8e983e' : '#9aa246') : (i % 2 ? '#727c34' : '#7a8438')}"/>`;
+ const a = Math.PI * (0.1 + 0.8 * i / 15), cx = -Math.cos(a) * 42, ry = 6 + r() * 4, cy = Math.min(-ry + 2, -Math.sin(a) * 28 + 6), rx = 9 + r() * 6, lit = cx < 8;
+      tus += `<ellipse cx="${_vfaN(cx)}" cy="${_vfaN(cy)}" rx="${_vfaN(rx)}" ry="${_vfaN(ry)}" fill="${lit ? (i % 2 ? '#8e983e' : '#9aa246') : (i % 2 ? '#727c34' : '#7a8438')}"/>`;
     }
     s += tus + '<path d="M-26 -4C-24 -14 -12 -22 4 -22C18 -22 28 -14 30 -2C20 -8 -10 -10 -26 -4Z" fill="#848e3a"/>';
     s += '<path d="M-42 -4C-36 -16 -24 -26 -8 -30C-20 -22 -30 -13 -34 -2Z" fill="#b0b45a" opacity=".45"/><path d="M14 -28C28 -24 40 -14 46 0C38 -10 28 -20 14 -24Z" fill="#4e5826" opacity=".45"/>';
@@ -95,15 +95,20 @@ const VALE_FOLK_ART = Object.freeze({
     s += `<path d="${bl}" stroke="#7e8a36" stroke-width="1.1" fill="none" stroke-linecap="round"/><path d="${bl}" stroke="#b8bc62" stroke-width=".5" fill="none" opacity=".7" transform="translate(-.5 -.4)"/>`;
     // the old roots: from the tree's foot down over the bank and into the ground on both sides, bark-coloured with a lit edge and moss
     // on their backs; the root collar at the top is the trunk's own foot flaring into them
-    let rt = '', rl = '';
-    for (const [ex, ey] of [[-50, 2], [-36, -1], [-22, -5], [22, -5], [38, -1], [52, 2]]) {
-      const sx = tx + (ex > tx ? 3 : -3), mx = (tx + ex) / 2 + (r() - 0.5) * 8, my = ty + (ey - ty) * 0.3 - 4;
-      rt += `M${_vfaN(sx)} ${_vfaN(ty + 2)}Q${_vfaN(mx)} ${_vfaN(my)} ${_vfaN(ex)} ${_vfaN(ey)}`;
-      rl += `M${_vfaN(sx)} ${_vfaN(ty + 1)}Q${_vfaN(mx)} ${_vfaN(my - 1.4)} ${_vfaN(ex)} ${_vfaN(ey - 1.2)}`;
+    let roots = '';
+    for (const [ex, ey, k] of [[-52, 3, 1], [-24, -20, 0], [26, -18, 0], [54, 3, 1]]) {
+      // (each root hugs the bank: out along its crown first, then down its side into the ground; thick at the trunk, thinning, the short
+      // ones sinking into the turf; moss along their backs)
+      const sx = tx + (ex > tx ? 4 : -4), c1x = sx + (ex - sx) * 0.5, c1y = ty + 2 + (r() - 0.5) * 3, c2x = ex - (ex - sx) * 0.1, c2y = k ? ey - 14 - r() * 5 : ey - 4;
+      const d = `M${_vfaN(sx)} ${_vfaN(ty + 3)}C${_vfaN(c1x)} ${_vfaN(c1y)} ${_vfaN(c2x)} ${_vfaN(c2y)} ${_vfaN(ex)} ${_vfaN(ey)}`;
+      roots += `<path d="${d}" pathLength="100" stroke="#3e2c1a" stroke-width="7.4" stroke-dasharray="${k ? 40 : 30} 200" fill="none" stroke-linecap="round"/><path d="${d}" stroke="#3e2c1a" stroke-width="${k ? 4.4 : 3.6}" fill="none" stroke-linecap="round"/>`;
+      roots += `<path d="${d}" pathLength="100" stroke="#6a4c30" stroke-width="5.6" stroke-dasharray="${k ? 38 : 28} 200" fill="none" stroke-linecap="round"/><path d="${d}" stroke="#6a4c30" stroke-width="${k ? 2.8 : 2.2}" fill="none" stroke-linecap="round"/>`;
+      roots += `<path d="${d}" stroke="#9a7a56" stroke-width=".9" fill="none" transform="translate(-.6 -1.2)" opacity=".8"/><path d="${d}" pathLength="100" stroke="#7e8e3c" stroke-width="2" stroke-dasharray="4 11" stroke-dashoffset="-${Math.round(r() * 10)}" fill="none" opacity=".75" transform="translate(0 -1.4)"/>`;
+      if (!k) roots += _vfaTufts(r, ex - 6, ex + 6, ey + 2, 3, ['#7e8a36', '#9aa246', '#6e7a30']);
     }
-    s += `<path d="${rt}" stroke="#3e2c1a" stroke-width="6" fill="none" stroke-linecap="round"/><path d="${rt}" stroke="#6a4c30" stroke-width="4" fill="none" stroke-linecap="round"/><path d="${rl}" stroke="#987654" stroke-width="1.3" fill="none" stroke-linecap="round" opacity=".85"/><path d="${rl}" stroke="#7a8a3a" stroke-width="1.8" fill="none" stroke-dasharray="3 9" opacity=".7"/>`;
-    const top = tree ? 12 : 9;
-    s += `<path d="M${_vfaN(tx - 13)} ${_vfaN(ty + 6)}Q${_vfaN(tx - 8)} ${_vfaN(ty - 4)} ${_vfaN(tx - 6)} ${_vfaN(ty - top)}L${_vfaN(tx + 6)} ${_vfaN(ty - top)}Q${_vfaN(tx + 8)} ${_vfaN(ty - 4)} ${_vfaN(tx + 13)} ${_vfaN(ty + 6)}Z" fill="#5c4228"/><path d="M${_vfaN(tx - 9)} ${_vfaN(ty + 4)}Q${_vfaN(tx - 6)} ${_vfaN(ty - 4)} ${_vfaN(tx - 4.5)} ${_vfaN(ty - top)}" stroke="#8e6c4a" stroke-width="1.4" fill="none"/>`;
+    s += roots;
+    const top = tree ? 8 : 9;
+    s += `<path d="M${_vfaN(tx - 16)} ${_vfaN(ty + 6)}C${_vfaN(tx - 9)} ${_vfaN(ty + 2)} ${_vfaN(tx - 7)} ${_vfaN(ty - 3)} ${_vfaN(tx - 6)} ${_vfaN(ty - top)}L${_vfaN(tx + 6)} ${_vfaN(ty - top)}C${_vfaN(tx + 7)} ${_vfaN(ty - 3)} ${_vfaN(tx + 9)} ${_vfaN(ty + 2)} ${_vfaN(tx + 16)} ${_vfaN(ty + 6)}Z" fill="#5c4228"/><path d="M${_vfaN(tx - 9)} ${_vfaN(ty + 4)}Q${_vfaN(tx - 6)} ${_vfaN(ty - 4)} ${_vfaN(tx - 4.5)} ${_vfaN(ty - top)}" stroke="#8e6c4a" stroke-width="1.4" fill="none"/>`;
     if (!tree) s += `<ellipse cx="${_vfaN(tx)}" cy="${_vfaN(ty - 9)}" rx="6" ry="2.2" fill="#a88a62"/><ellipse cx="${_vfaN(tx)}" cy="${_vfaN(ty - 9)}" rx="3.6" ry="1.2" fill="#c8ac80"/>`;
     // the way in, dug at the foot between two roots: warm dark earth going back into shadow, not a black hole; a lip of bare soil
     s += '<path d="M-19 3C-20 -6 -15 -15 -3 -17C9 -18 16 -9 16 3Z" fill="#7a5a3a"/><path d="M-15 3C-16 -4 -12 -12 -3 -13.4C6 -14 12 -7 12 3Z" fill="#3a2816"/>';

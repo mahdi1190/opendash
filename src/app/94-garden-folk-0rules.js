@@ -181,7 +181,7 @@ function valeFolkFind(q, ctx, o) {
     // one villager to a thing at a time (two on a bench sat in each other's laps: the side-on figures are wider than its seats are apart)
     const key = 's:' + c.t.id;
     if (o.booked && o.booked(key)) continue;
-    return { x: c.s.stand.x, y: c.s.stand.y, deg: c.s.deg == null ? 90 : c.s.deg, src: c.t.id, kind: c.t.kind, act: c.s.act, seat: c.s.seat, edge: !!c.s.edge, key, at: c.s.look ? { x: c.s.look.x, y: c.s.look.y } : { x: c.t.x, y: c.t.y } };   // (look: the point the figure turns to, the thing's own drawn middle)
+    return { x: c.s.stand.x, y: c.s.stand.y, deg: c.s.deg == null ? 90 : c.s.deg, src: c.t.id, kind: c.t.kind, act: c.s.act, seat: c.s.seat, edge: !!c.s.edge, edgeSide: c.s.edgeSide || 0, mid: c.s.mid, key, at: c.s.look ? { x: c.s.look.x, y: c.s.look.y } : { x: c.t.x, y: c.t.y } };   // (look: the point the figure turns to, the thing's own drawn middle)
   }
   return null;
 }

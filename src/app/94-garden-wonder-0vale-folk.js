@@ -54,10 +54,17 @@ function _vfrCtx(m) {
       let B = { x: t.x, y: t.y, w: t.w }; try { if (typeof gardenAffordDrawnBase === 'function') B = gardenAffordDrawnBase(t); } catch (e) { /* the plan's */ }
       let s = []; try { s = gardenKindSpots({ kind: t.kind, x: B.x, y: B.y, w: B.w, front: t.front }); } catch (e) { s = []; }
       s = s.filter(q => !q.needs || gardenKindNeedsOk(q.needs, { season: m.season, night: m.tod === 'night', level: m.level && m.level.level }));
-      s = _vfrSideOn(s, C.base(t));
+      s = _vfrSideOn(s, C.base(t), t.kind);
       spotsMemo.set(t.id, s); return s;
     },
-    base(t) { if (!baseMemo.has(t.id)) { let B = { x: t.x, y: t.y, w: t.w || 1 }; try { if (typeof gardenAffordDrawnBase === 'function') B = gardenAffordDrawnBase(t); } catch (e) { /* the plan's */ } baseMemo.set(t.id, B); } return baseMemo.get(t.id); },
+    base(t) {
+      if (!baseMemo.has(t.id)) {
+        let B = { x: t.x, y: t.y, w: t.w || 1 }; try { if (typeof gardenAffordDrawnBase === 'function') B = gardenAffordDrawnBase(t); } catch (e) { /* the plan's */ }
+        let h = 1.2; try { const w = window.GardenNative && GardenNative.world(), rec = w && w.entities instanceof Map ? w.entities.get('prop:' + t.id) : null; if (rec && rec.bounds && rec.bounds.height) h = rec.bounds.height / GARDEN_WORLD.cellH; } catch (e) { /* not drawn yet */ }
+        baseMemo.set(t.id, Object.assign({}, B, { h: Math.min(8, h) }));   // (h: how tall it is drawn, in rows: someone standing just behind it seems to stand on it)
+      }
+      return baseMemo.get(t.id);
+    },
     door(t) { if (!doorMemo.has(t.id)) doorMemo.set(t.id, _vfrDoorOf(t)); return doorMemo.get(t.id); },
     ground(type, x, y, r, rng) {
       for (let k = 0; k < 24; k++) { const a = rng() * Math.PI * 2, d = 0.8 + rng() * r, px = x + Math.cos(a) * d, py = y + Math.sin(a) * d * 0.7; if (typeof gardenTerrainAt === 'function' && gardenTerrainAt(px, py) === type && free(px, py) && _vfrOpenAt(px, py, m)) return { x: Math.round(px * 4) / 4, y: Math.round(py * 4) / 4 }; }
@@ -81,19 +88,21 @@ function _vfrFlat(t) { const K = (t && GARDEN_KINDS[t.kind]) || {}; return !t.ki
  *  a little over a cell tall; a thing's drawn width is its own (a tree only its trunk). skip: the thing they are at. */
 function _vfrClearOfThings(C, x, y, skip) {
   for (const t of C.things) {
-    if (t.id === skip || Math.abs(t.x - x) > 8 || Math.abs(t.y - y) > 4 || _vfrFlat(t)) continue;
-    const B = C.base(t), hw = (/tree|oak|trunk/.test(t.kind) ? 0.5 : (B.w || 1) / 2) + 0.3;
-    if (Math.abs(x - B.x) < hw && y > B.y - 1.4 && y < B.y + 0.8) return false;
+    if (t.id === skip || Math.abs(t.x - x) > 8 || t.y - y > 9 || y - t.y > 1 || _vfrFlat(t)) continue;
+    const tree = /tree|oak|trunk/.test(t.kind), B = C.base(t), hw = (tree ? 0.5 : (B.w || 1) / 2) + 0.3, up = tree ? 1.4 : Math.max(1.4, (B.h || 1.2) + 0.6);
+    if (Math.abs(x - B.x) < hw && y > B.y - up && y < B.y + 0.8) return false;
   }
   return true;
 }
 /** Stand points for side-on figures: a stand right in front of a thing (a notice board read face on) covers its foot and shows the
  *  figure's back or side to it, so it is moved to stand beside the thing, at its foot, turned to it; one on each side (the booking
  *  takes one). Seats, banks and pier ends are kept. Every stand also says what the figure turns to (look: the thing's drawn middle). */
-function _vfrSideOn(spots, B) {
+function _vfrSideOn(spots, B, kind) {
   const out = [], hw = (B.w || 1) / 2;
   for (const q of spots) {
     const st = q.stand;
+    // fishing from a deck wider than a figure: at its edge, on either side, facing out over the water (never mid-deck, the line on the boards)
+    if (st && /^(dangle|fishsit|fishsitfront|fish)$/.test(q.act) && !q.edge && /pier|jetty|dock/.test(kind || '') && hw > 0.6) { for (const sd of [-1, 1]) out.push(Object.assign({}, q, { stand: { x: B.x + sd * (hw - 0.34), y: st.y }, look: { x: B.x + sd * (hw + 3), y: st.y }, edgeSide: sd, mid: B.x })); continue; }
     if (!st || q.seat || q.edge || q.pierEnd) { out.push(q); continue; }
     if (Math.abs(st.x - B.x) < hw + 0.2 && st.y > B.y - 1.4 && st.y < B.y + 1.0) { for (const sd of [-1, 1]) out.push(Object.assign({}, q, { stand: { x: B.x + sd * (hw + 0.5), y: B.y + 0.12 }, look: { x: B.x, y: B.y }, side: sd })); }
     else out.push(Object.assign({}, q, { look: q.look || { x: B.x, y: B.y } }));
@@ -135,6 +144,9 @@ function _vfrPlanOne(m) {
   let p = plan.get(row.id) || [];
   // travelling (home not open yet): the night's and the inside hours are off the map, by the road
   if (_vfr.away.has(row.id)) p = p.map(e => e.inside ? Object.assign({}, e, { offmap: true }) : e);
+  // the angler's tell: on a deck's edge he takes the side that puts his back to the moving water (the mirror of the planned side; one
+  // villager to a thing, so the other side is his too)
+  if (row.id === 'angler') p = p.map(e => { const sp = e.spot; if (e.act !== 'fish' || !sp || !sp.edgeSide || !Number.isFinite(sp.mid)) return e; const f = _vfrAwayFromRiver(sp.x, sp.y); if (!f || f === sp.edgeSide) return e; return Object.assign({}, e, { spot: Object.assign({}, sp, { x: 2 * sp.mid - sp.x, at: { x: 2 * sp.mid - sp.at.x, y: sp.at.y }, edgeSide: -sp.edgeSide }) }); });
   _vfr.plans.set(row.id, p);
   const ms = performance.now() - t0; _vfr.stats.plan += ms; if (ms > _vfr.stats.planMax) _vfr.stats.planMax = ms;
 }
