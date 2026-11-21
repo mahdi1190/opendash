@@ -35,7 +35,8 @@ function gardenGateNeedWords(n) {
   const gate = gardenGateOf(Number(n)), rule = gate && gardenGateRule(gate), item = rule && GARDEN_GATE_ITEMS[rule.key]; if (!item) return null;
   const z = GARDEN_ZONES[gate.n], have = typeof gardenGateHere === 'function' ? gardenGateHere(rule.key) : gardenGateHas(rule.key);
   const gn = rule.name || 'the gate', it = item.them ? 'them' : 'it';
-  return { tag: have ? 'Ready to open' : 'Needs ' + (item.tag || item.name.replace(/^(A|An|The) /, '').toLowerCase()), line: have ? (item.ready ? `${item.ready} Go and open the ${gn}.` : `You have ${item.name.toLowerCase()}: take ${it} to the ${gn}.`) : `The ${gn} opens with ${item.name.toLowerCase()}, or by itself at garden level ${gardenZoneOpenLv(z)}.` };
+  let host = ''; try { const v = typeof gardenVisitModel === 'function' ? gardenVisitModel() : null; host = v && v.visit ? v.visit.name || 'Your friend' : ''; } catch (e) { host = ''; }   // (2.74.1: on a visit it is the owner's find)
+  return { tag: have ? 'Ready to open' : 'Needs ' + (item.tag || item.name.replace(/^(A|An|The) /, '').toLowerCase()), line: have ? (host ? `${host} has ${item.name.toLowerCase()}: the ${gn} is ready to open.` : item.ready ? `${item.ready} Go and open the ${gn}.` : `You have ${item.name.toLowerCase()}: take ${it} to the ${gn}.`) : `The ${gn} opens with ${item.name.toLowerCase()}, or by itself at garden level ${gardenZoneOpenLv(z)}.` };
 }
 /* ---------- the finds ---------- */
 function _wgtGate(f) { return gardenGateOf(f.gate); }
@@ -107,7 +108,7 @@ function gardenGatePrompt(gate, at, m) {
   _wgt.hint.add(gate.id); if (typeof _wgt.note === 'function') { _wgt.note(); _wgt.note = null; }   // (the prompt says it all: the note from walking up goes, and does not come back this visit)
   const zone = gardenZone(gate.n), item = GARDEN_GATE_ITEMS[rule.key], who = _wgtWho(rule.who), isOpen = gardenGateIsOpen(gate, m.areas), title = rule.name || zone.name, into = `The way into ${_wgtInto(zone)}.`;
   if (isOpen) { gardenBubbleOpen(at, { title, sub: into + ' It is open.', items: [], cls: 'is-empty is-words gd-gate' }); return true; }
-  if (m.visit) { gardenBubbleOpen(at, { title, sub: into + ' ' + rule.block + ' This way is still shut in your friend’s garden.', items: [], cls: 'is-empty is-words gd-gate' }); return true; }
+  if (m.visit) { const theirs = gardenGateHere(rule.key), host = m.visit.name || 'Your friend'; gardenBubbleOpen(at, { title, sub: into + ' ' + (theirs ? `${host} has ${item.name.toLowerCase()}: it is ready to open.` : rule.block + ' This way is still shut in your friend’s garden.'), need: { svg: gardenGateItemSvg(rule.key, 44), name: item.name, have: theirs }, items: [], cls: 'is-empty is-words gd-gate' }); return true; }   // (2.74.1: the owner's find, the same words on every screen)
   const have = gardenGateHas(rule.key), lv = m.level.level, findLv = gardenGateFindLv(gate), openLv = gardenZoneOpenLv(zone);
   // what someone said, in their own words; then, in one plain line, when they can help and when it opens anyway
   const said = _wgtHint(gate, rule, m), name = said && said.name || (who ? who.name : 'Someone');

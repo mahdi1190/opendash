@@ -24,7 +24,7 @@ function _gllApi(path, body, opts) { return _gscApi(path, body, opts); }
  * A newer whole list takes the place of one still waiting. -> Promise: the answer, or null.
  */
 const _gllQ = { list: [], busy: false, coalesced: 0, highWater: 0, failed: 0 };
-const _GLL_WHOLE = Object.freeze(['fs', 'cr', 'sum', 'snap', 'go', 'pp']);
+const _GLL_WHOLE = Object.freeze(['fs', 'cr', 'sum', 'snap', 'go', 'pp', 'dg']);   // (dg: what someone is doing, whole: a newer one waiting replaces the older)
 function _gllStateKey(path, body) {
   const fx = body && body.k === 'fx' && body.body;
   if (!body || !(_GLL_WHOLE.includes(body.k) || fx && (fx.c === 'pose' || fx.e === 'state' && !fx.p && (fx.c === 'soap' || fx.c === 'leaf' || fx.c === 'marble')))) return '';

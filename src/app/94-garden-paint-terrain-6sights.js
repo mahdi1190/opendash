@@ -10,7 +10,7 @@
   const KIT = () => window.GardenPaintTerrainKit;
   const { ashlar, mossOn, ivy, windowLit, leaf, grass, sz, STONE, MOSSY, OAK, WOOD, IRON } = M.SIGHT_KIT;
   const A = M.ART;
-  const turning = () => { try { return typeof gardenGateHas === 'function' && !!gardenGateHas('mill'); } catch (e) { return false; } };
+  const turning = () => { try { return typeof gardenGateHere === 'function' ? !!gardenGateHere('mill') : typeof gardenGateHas === 'function' && !!gardenGateHas('mill'); } catch (e) { return false; } };
   /** Rubble courses between a bottom line and a top profile: every stone its own size and weather, dark mortar between,
    *  lit on the west and shading to the east. top(x) is the wall's top at x (a ruin breaks it). */
   function rubble(B, r, x0, x1, y0, top, tones, o) {

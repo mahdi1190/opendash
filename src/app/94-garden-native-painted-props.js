@@ -1058,7 +1058,7 @@ window.GardenPaintedProps = (function () {
       if (!o.standing) { im.destroy(); return; } im.setCrop(u, v, w, texH - v); h.standing(im, foot + 2);
     }
   }
-  function gateSignature(g, open, sc) { let have = ''; try { const rule = !open && typeof gardenGateRule === 'function' ? gardenGateRule(g) : null; if (rule && typeof gardenGateHas === 'function' && gardenGateHas(rule.key)) have = '|have'; } catch (e) { /* the sign as before */ } return 'painted-gate-5|' + g.id + '|' + gateKind(g) + '|' + (open ? 'open' : 'shut') + '|' + sc.season + '|' + (g.crossSpan || []).join(';') + have; }
+  function gateSignature(g, open, sc) { let have = ''; try { const rule = !open && typeof gardenGateRule === 'function' ? gardenGateRule(g) : null; if (rule && (typeof gardenGateHere === 'function' ? gardenGateHere(rule.key) : typeof gardenGateHas === 'function' && gardenGateHas(rule.key))) have = '|have'; } catch (e) { /* the sign as before */ } return 'painted-gate-5|' + g.id + '|' + gateKind(g) + '|' + (open ? 'open' : 'shut') + '|' + sc.season + '|' + (g.crossSpan || []).join(';') + have; }
   /** A gate as a handle. open: the region beyond is yours. */
   function gate(scene, g, sc, o, open) {
     open = !!open;
