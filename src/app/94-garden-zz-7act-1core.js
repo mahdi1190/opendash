@@ -797,7 +797,7 @@ function gartActRemote(A, id) {
   // the place they do it, found from where they are, by its kind: a seat (lifted to its height and drawn on it), a tree (its bark in front
   // of them when they hide), the same spot as on their own screen
   let near = null; try { const at = (r) => r.act === id && r.stand && Math.hypot(r.stand.x - A.x, r.stand.y - A.y) < 0.6; near = (_ga.list || _gaStaticRows()).filter(at)[0] || _gaTreeRows(A.x, A.y).filter(at).sort((a, b) => Math.hypot(a.stand.x - A.x, a.stand.y - A.y) - Math.hypot(b.stand.x - A.x, b.stand.y - A.y))[0] || null; } catch (e) { near = null; }
-  const H = gartActPlay(gpl, id, { motion: typeof _gllReduced === 'function' ? !_gllReduced() : true, tree: near && near.tree, at: near && near.tree ? { x: A.x, y: A.y } : null });
+  const H = gartActPlay(gpl, id, { motion: typeof _gllReduced === 'function' ? !_gllReduced() : true, tree: near && near.tree, at: null });   // (a friend behind a trunk is drawn in the tree's own row, so its real trunk is in front of them: no second, painted-on trunk)
   let lift = row.seat != null ? _gaSeatLift(row) : near ? near.lift || 0 : 0;
   // sat on a thing the world draws as its own picture: their figure is drawn on it, not behind its back rail (the sprite's z, in cells)
   const sd = row.hold && near && near.seated && near.src && !row.hideBehind ? _gaSeatDepthOf(near.src) : null;

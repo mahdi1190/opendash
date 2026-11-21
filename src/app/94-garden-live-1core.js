@@ -288,7 +288,7 @@ function _gllSprite(A, onClick) {
     update(dt, sp) {
       if (sp.dressed !== sp.node) { sp.dressed = sp.node; _gllDress(A, sp.node); }
       _gllStep(A, dt);
-      sp.x = A.x; sp.y = A.y; sp.z = A.seatZ != null && !A.moving ? Math.max(A.y, A.seatZ) : null;   // (sat on a bench: drawn on it, 94-garden-zz-7act-1core.js)
+      sp.x = A.x; sp.y = A.y; sp.z = A.seatZ != null && !A.moving ? Math.max(A.y, A.seatZ) : A.actHold && !A.moving ? A.y : null;   // (sat on a bench: drawn on it, 94-garden-zz-7act-1core.js; any held move at its exact row, not the row of a third of a cell it was last sorted in: a friend hiding behind a trunk was sorted in front of it, as the last step of their walk had left it)
       _gllPetStep(A, dt, _gw.svg);
       if (typeof _gllFxStep === 'function') _gllFxStep(A, dt);
     },
