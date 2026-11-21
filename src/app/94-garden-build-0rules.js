@@ -138,11 +138,13 @@ function gardenOpApply(g, op, who, world) {
       const id = gardenOpItem(op.i).id, def = (W.decor && W.decor(id)) || {};
       map('decor')[op.u] = op.rec ? _gbCopy(op.rec) : Object.assign({ d: id, x: op.x, y: op.y, r: def.rot ? ((Number(op.r) || 0) & 3) : 0, v: 0, at: now }, who ? { by: who, from: who } : {});
       touch('decor', op.u);
-      if (!op.rec && !map('disc')[id]) { g.disc[id] = today; touch('disc', id); }
-      return { inverse: { o: 'lift', u: op.u }, dirty };
+      const fresh = !op.rec && !map('disc')[id];
+      if (fresh) { g.disc[id] = today; touch('disc', id); }
+      return { inverse: { o: 'lift', u: op.u, ...(fresh ? { undisc: id } : {}) }, dirty };
     }
     case 'lift': {
       const rec = _gbCopy(map('decor')[op.u]); delete g.decor[op.u]; touch('decor', op.u);
+      if (op.undisc && _gbOwn(map('disc'), op.undisc)) { delete g.disc[op.undisc]; touch('disc', op.undisc); }   // (Undo of a first placing: the almanac forgets it again)
       return { inverse: { o: 'put', i: 'decor:' + (rec && rec.d), x: rec ? rec.x : 0, y: rec ? rec.y : 0, u: op.u, rec }, dirty };
     }
     case 'turn': {
