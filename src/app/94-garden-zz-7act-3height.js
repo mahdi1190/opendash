@@ -361,6 +361,21 @@ if (typeof gardenPlayWalk === 'function') {
   gardenPlayWalk = function () { return _ghtPace0() * (_ght.swim ? 0.55 : 1); };   // eslint-disable-line no-func-assign
 }
 /* ---------- the moves: the ladders' prompts, climbing, swimming ---------- */
+/* Deep water that is not straight ahead to the north (a beach with the sea to the south, a river bank to the east): a swim too. The
+   water's other moves (the ducks, a skim) stay where they were; only the swim is offered every way round, read from the ground. */
+if (typeof _gaWaterRows === 'function') {
+  const _ghtWater0 = _gaWaterRows;
+  _gaWaterRows = function (px, py) {   // eslint-disable-line no-func-assign
+    const rows = _ghtWater0(px, py); if (rows.length || _ghtWet(px, py)) return rows;
+    try { for (const t of gardenAffordThings()) { const K = GARDEN_KINDS[t.kind]; if (K && K.calmsWater && Math.hypot(px - t.x, (py - t.y) * 1.3) < Math.max(K.calmsWater, t.w || 1)) return rows; } } catch (e) { /* none */ }
+    for (const [dx, dy, deg] of [[0, 1, 90], [1, 0, 0], [-1, 0, 180]]) {
+      const wx = px + dx * 1.1, wy = py + dy * 1.0;
+      if (_ghtWet(wx, wy) && _ghtSwimFree(wx + dx * 0.8, wy + dy * 0.8) && _ghtSwimFree(wx + dx * 1.8, wy + dy * 1.8) && _ghtSwimFree(wx + dx * 2.8, wy + dy * 2.8))
+        return [{ key: 'water:swim', act: 'swim', name: 'the water', x: wx, y: wy, stand: null, deg, lift: 0, src: 'water' }];
+    }
+    return rows;
+  };
+}
 if (typeof _gaStaticRows === 'function') {
   const _ghtRows0 = _gaStaticRows;
   _gaStaticRows = function () { const rows = _ghtRows0(); if (_ght.lv) return rows; try { for (const r of _ghtRows()) rows.push(r); } catch (e) { /* no floors */ } return rows; };   // eslint-disable-line no-func-assign
