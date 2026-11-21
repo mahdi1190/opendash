@@ -222,7 +222,18 @@ function _ghtClimbEnd() {
 }
 /* ---------- swimming ---------- */
 function _ghtWet(x, y) { try { return typeof _gksWetDrawn === 'function' ? _gksWetDrawn(x, y) : _gksWet(x, y); } catch (e) { return false; } }
-function _ghtSwimFree(x, y) { return _ghtWet(x, y) && _ghtWet(x - 0.18, y) && _ghtWet(x + 0.18, y) && _ghtWet(x, y - 0.12) && _ghtWet(x, y + 0.14); }
+function _ghtSwimFree(x, y) { return _ghtWet(x, y) && _ghtWet(x - 0.18, y) && _ghtWet(x + 0.18, y) && _ghtWet(x, y - 0.12) && _ghtWet(x, y + 0.14) && !_ghtAfloat(x, y); }
+/** Is something standing in the water here (a moored boat, a pier's legs, a buoy: any thing found whose foot is in the water)? You
+ *  swim round it, not through it. The list is made again every few seconds. */
+function _ghtAfloat(x, y) {
+  const now = performance.now();
+  if (!_ght.afloat || now - _ght.afloatT > 4000) {
+    _ght.afloatT = now; _ght.afloat = [];
+    try { for (const t of gardenAffordThings()) { if (!t || !Number.isFinite(t.x) || !Number.isFinite(t.y)) continue; const w = Math.max(0.5, t.w || 1), h = Math.max(0.3, Math.min(t.h || 1, 3)); if (_ghtWet(t.x, t.y - h / 2) || _ghtWet(t.x, t.y - 0.1)) _ght.afloat.push([t.x - w / 2, t.y - h, t.x + w / 2, t.y + 0.1]); } } catch (e) { /* none */ }
+  }
+  for (const b of _ght.afloat) if (x > b[0] - 0.15 && x < b[2] + 0.15 && y > b[1] - 0.1 && y < b[3] + 0.15) return true;
+  return false;
+}
 /** Wade in from the bank to where the water holds you, then swim under your own control. */
 function gardenSwimStart() {
   if (typeof _gw === 'undefined' || !_gw.on || _ght.swim || _ght.lv || _ght.climb) return false;
