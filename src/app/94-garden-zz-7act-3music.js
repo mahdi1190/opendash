@@ -253,9 +253,14 @@ function gardenMusicHeard(A, ev) {
     if (ev.e === 'on') {
       const id = String(ev.i || ''), i = Number(ev.n) || 0, t = _gmThing(id); if (!t) return;
       const P = gmPlaces(t.kind).find(p => p.i === i); if (!P) return;
-      // one player a place: someone already on it here (you) keeps it; theirs is the later claim
-      if (_gmu.me && _gmu.me.id === id && _gmu.me.i === i) return;
-      for (const [w2, r] of _gmu.them) if (w2 !== w && r.id === id && r.i === i) _gmu.them.delete(w2);
+      // one player a place: two who took it at the same moment are told apart the same way on every screen, the lower place in the garden
+      // (the host is 0) keeps it; the other puts it down, with a word
+      if (_gmu.me && _gmu.me.id === id && _gmu.me.i === i) {
+        const mine = _gmVisitor() ? (typeof _glv !== 'undefined' && Number.isInteger(_glv.w) ? _glv.w : 99) : 0;
+        if (!(w < mine)) return;
+        try { gartActStop(); gardenToast(((A && A.n) || 'A friend') + ' took ' + ((GARDEN_KINDS[t.kind].acts.find(a => a.act === P.act) || {}).name || 'that place') + ' just before you.', { icon: 'music', timeout: 5000 }); } catch (e) { /* put down */ }
+      }
+      for (const [w2, r] of _gmu.them) if (w2 !== w && r.id === id && r.i === i) { if (w2 < w && performance.now() - r.at < GMU.staleMs) return; _gmu.them.delete(w2); }   // (the same rule on a third screen)
       const row = _gmSpotRow(id, i), was = _gmu.them.get(w);
       _gmu.them.set(w, { id, i, voice: P.voice, stand: row && row.stand ? { x: row.stand.x, y: row.stand.y } : null, at: performance.now(), since: was && was.id === id && was.i === i ? was.since : performance.now() });
       if (_gmVisitor() && !_gmu.synced) _gmPing();
