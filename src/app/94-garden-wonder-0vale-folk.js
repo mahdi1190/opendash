@@ -229,6 +229,22 @@ function _vfrCrossings(list) {
     if (V.aside) _vfrTellSeen('steps-aside', V);
   }
 }
+/** Narrow crossings (a bridge, anything of a kind marked narrow): one walker at a time. Someone about to step on while another is on it
+ *  waits at their end, at most a few seconds (they never wait in a doorway: the wait is only at a crossing). */
+const VFR_NARROW = Object.freeze(['bridge']);
+function _vfrCrossingWait(V, list, now) {
+  const C = _vfr.ctx; if (!C || !V.path || !V.path.length) return false;
+  if (!C.narrow) C.narrow = C.things.filter(t => VFR_NARROW.includes(t.kind));
+  for (const t of C.narrow) {
+    const r = Math.max(0.9, (t.w || 1) / 2 + 0.3), mine = Math.hypot(V.x - t.x, V.y - t.y + 0.3);
+    if (mine < r - 0.2 || mine > r + 0.9) continue;   // already on it, or not near it
+    const next = V.path[0]; if (Math.hypot(next.x - t.x, next.y - t.y + 0.3) > mine) continue;   // walking away from it
+    if (!list.some(O => O !== V && O.S && !O.inside && Math.hypot(O.x - t.x, O.y - t.y + 0.3) < r)) { V.waitAt = 0; continue; }
+    if (!V.waitAt) V.waitAt = now;
+    if (now - V.waitAt < 6000) return true;
+  }
+  return false;
+}
 /* ---------- the frame ---------- */
 function _vfrFrame(dt) {
   if (!_vfr.on) return;
@@ -271,9 +287,10 @@ function _vfrFrame(dt) {
       _vfrAsk(V, dest, _vfrNearView(V.x, V.y, v, 0) ? 2 : 1);
       // the plan says they should have arrived long ago (a path was slow, a talk held them): a little quicker, never a jump in view
       const late = !goal && !w.walking ? 1.35 : 1;
-      if (V.path) _vfrStep(V, dt, late);
+      const wait = !!V.path && _vfrCrossingWait(V, list, now);
+      if (V.path && !wait) _vfrStep(V, dt, late);
       V.arrived = false;   // (arriving is the next frame's: there, they take their pose)
-      _vfrDraw(V, !!(V.path && V.path.length));
+      _vfrDraw(V, !wait && !!(V.path && V.path.length));
     } else {
       V.x = dest.x; V.y = dest.y; V.path = null;
       if (!V.arrived) { V.arrived = true; V.face = goal ? (_gw.px > V.x ? 1 : -1) : _vfrFaceAt(V, e); if (V.id === 'bramble' && e.clip === 'sit') { V.rubbing = true; V.rubT = now; } }
