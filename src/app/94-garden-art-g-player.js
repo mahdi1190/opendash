@@ -165,6 +165,26 @@ function _gplBackHead(a, L) {
   const rim = a.hair === 'norwood7' && !scarfOn ? _pfP('M30.8 45 C31 55 38 63 50 63.6 C62 63 69 55 69.2 45 C66 51 58 54 50 54 C42 54 34 51 30.8 45 Z', hc[0]) : '';   // seen from behind: the band round the back
   return L.ears + _pfP(PF_HEAD_D, c[0]) + rim + (bald ? _pfE(41, 31, 6, 3.2, sk[2], 0.45) : _pfP('M63 28 C69.6 35 70.6 52 60.6 63.2 C65.6 53.6 66.8 40.6 63 28 Z', c[1], 0.45) + _pfE(41, 31, 6.6, 3.4, c[2], 0.4)) + L.hair + L.hat + L.phones;
 }
+/** (n-move) The head turned away past side on (yaw 112.5 and 135, facing east; the walker mirrors it west): the back of the head with the
+ * near ear coming round to the right and only the cheek and jaw behind it in skin. The face has gone round out of sight. */
+function _gplAwayHead(a, L, yaw, uid) {
+  const hc = pfTone(_pfHexOf('hair', a.hairCol, '#4a3324')), sk = pfTone(_pfHexOf('skin', a.skin, '#e2b08c'));
+  const scarfOn = a.hat === 'headscarf', bald = (a.hair === 'bald' || a.hair === 'norwood7') && !scarfOn;
+  const c = scarfOn ? pfTone(_pfHexOf('cloth', a.hatCol, '#b83a30')) : bald ? sk : hc, n = _gplN;
+  const k = Math.sin((yaw - 90) * Math.PI / 180), e = 50 + 17.6 * k, er = 3.6 * (1 - 0.2 * k);   // the near ear: 56.7 at 112.5, 62.4 at 135
+  // the hair (or the scarf) over the back of the head: a hairline down the temple, a sideburn in front of the ear, then round behind the ear
+  // and down the nape. In front of it the temple, cheek and jaw in skin. Everything is clipped to the head's egg.
+  const ty = 37 - 3 * k, hair = `M16 8 L84 8 L84 ${n(ty)} C${n(e + 9)} ${n(ty - 0.5)} ${n(e + 3.6)} ${n(ty + 1.5)} ${n(e + 2.6)} ${n(ty + 6)} L${n(e + 2.2)} 50 C${n(e + 1)} 53.6 ${n(e - 2.6)} 54 ${n(e - 3.4)} 57.6 C${n(e - 4)} 61.4 ${n(e - 6)} 64.6 ${n(e - 8.6)} 70 L16 70 Z`;
+  const clip = `<clipPath id="${uid}w"><path d="${PF_HEAD_D}"/></clipPath>`;
+  const shade = bald ? _pfE(41, 31, 6, 3.2, sk[2], 0.45) : _pfP('M33 30 C29.4 40 30.2 54 39.4 63.6 C34.4 53.6 33.2 40.6 37 30 Z', c[1], 0.45) + _pfE(43, 29.6, 7.4, 3.6, c[2], 0.4) + _pfS(`M${n(e - 3.6)} 57.4 C${n(e - 4.4)} 61 ${n(e - 6)} 63.6 ${n(e - 8)} 66`, c[1], 1, 0.5);
+  const jaw = _pfP(`M${n(e - 4)} 58 C${n(e + 2)} 63 ${n(e + 8)} 64.6 72 62 L72 70 L${n(e - 6)} 70 Z`, sk[1], 0.45);   // the jaw's underside in shade
+  const ear = _pfE(e, 47.4, er, 5.2, sk[0]) + _pfE(e + er * 0.15, 47.6, er * 0.55, 3.4, sk[1], 0.5) + _pfS(`M${n(e - er * 0.75)} 43.6 Q${n(e - er * 1.05)} 47.4 ${n(e - er * 0.6)} 51.4`, sk[2], 0.8, 0.5);
+  // a full head of hair's own shape still shows where it stands out beyond the head (a bun, curls, a quiff); its fringe and parting are on the far side
+  const out = L.hair && !bald && !scarfOn ? `<clipPath id="${uid}o"><path clip-rule="evenodd" d="M-20 -20 L120 -20 L120 140 L-20 140 Z ${PF_HEAD_D}"/></clipPath><g clip-path="url(#${uid}o)">${L.hair}</g>` : '';
+  // only just past side on, the far end of the brow and the lashes still catch the edge of the head
+  const brow = k < 0.5 ? _pfS('M66.2 39.6 Q68.4 38.8 70 40.2', hc[0], 1.3, 0.9) + _pfS('M68.2 46.4 L70.2 45.6', '#3a2a22', 0.9, 0.8) : '';
+  return _pfP(PF_HEAD_D, sk[0]) + clip + `<g clip-path="url(#${uid}w)">${jaw}${brow}${_pfP(hair, c[0])}${shade}</g>` + out + ear + L.hat + L.phones;
+}
 /** What shows on the back: a backpack, a cape. */
 function _gplBackPack(a, fo, T) {
   const c = pfTone(_pfHexOf('cloth', a.bagCol, '#9a6a40')), mt = pfTone(_pfHexOf('metal', a.metal, '#d9b04a'));
@@ -241,7 +261,7 @@ function _gplDraw(a, dir, pose, o) {
     const armNear = P ? _gplArm(near, j(F.shoulders.near), len, P.b[1] || '', P.b[0], P.tool || P.b[2]) : _gplArm(near, j(F.shoulders.near), len, 'gpl-as gpl-b', 0, held);
     // the head turned the way it walks: the face slides over the egg, the ears the other way; what hangs behind goes behind (a ponytail trails)
     const t = _GPL_TURN * (yaw < 50 ? 0.4 : yaw < 80 ? 0.7 : yaw > 125 ? 2.3 : yaw > 100 ? 1.8 : 1);   // (round 2: at 45 the face is mostly towards you, at 135 gone round)   // (at 112.5 the face has mostly gone round out of sight)   // (move360) at 67.5 the face is still partly towards you, at 112.5 turning away
-    const head = _gplG(`translate(${_gplN(-t * 0.7)} 0)`, L.ears) + L.skull + `<clipPath id="${uid}h"><path d="${PF_HEAD_D}"/><rect x="20" y="60" width="45" height="70"/></clipPath><g clip-path="url(#${uid}h)">${_gplG(`translate(${t} 0)`, L.face)}</g>` + _gplG(`translate(${_gplN(t * 0.22)} 0)`, L.hair) + _gplG(`translate(${t} 0)`, L.glasses) + _gplG(`translate(${_gplN(t * 0.22)} 0)`, L.hat) + L.phones + L.extra;
+    const head = yaw > 100 ? _gplAwayHead(a, L, yaw, uid) : _gplG(`translate(${_gplN(-t * 0.7)} 0)`, L.ears) + L.skull + `<clipPath id="${uid}h"><path d="${PF_HEAD_D}"/><rect x="20" y="60" width="45" height="70"/></clipPath><g clip-path="url(#${uid}h)">${_gplG(`translate(${t} 0)`, L.face)}</g>` + _gplG(`translate(${_gplN(t * 0.22)} 0)`, L.hair) + _gplG(`translate(${t} 0)`, L.glasses) + _gplG(`translate(${_gplN(t * 0.22)} 0)`, L.hat) + L.phones + L.extra;
     upper = `<g class="gpl-hd" style="${headO}">${_gplG(hs(_gplPort()), `<g transform="translate(100 0) scale(-1 1)">${L.hairback}</g>`)}</g>`
       + _gplG(fig, F.back) + armFar + _gplG(_gplPort(), L.neck) + _gplG(fig, F.mid) + _gplG(hs(_gplPort()), L.strands) + _gplG(_gplPort(), L.scarf) + armNear
       + `<g class="gpl-hd" style="${headO}">${_gplG(hs(_gplPort()), head)}</g>`;

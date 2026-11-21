@@ -845,7 +845,16 @@ function _gwLos(a, b, m) {
  */
 function _gwMoveBy(dx, dy) {
   // (vf-perf) the step each frame takes, kept for the next frame's give (_gwMoveByEdge): which way the feet really went
-  const x0 = _gw.px, y0 = _gw.py, moved = _gwMoveByEdge(dx, dy);
+  const x0 = _gw.px, y0 = _gw.py; let moved = _gwMoveByEdge(dx, dy);
+  // (n-move) wedged in a corner (between a bank and a trunk, say), the slides could nudge the feet a pixel back and forth for a few frames,
+  // the figure stepping on the spot and shimmering before it gave up. A step that gets almost nowhere is no step, and nor is a small one
+  // that backs off against the way you go: you stop, facing the way you press.
+  if (moved) {
+    const W = GARDEN_WORLD, mx = (_gw.px - x0) * W.cellW, my = (_gw.py - y0) * W.cellH, sx = dx * W.cellW, sy = dy * W.cellH, st = Math.hypot(sx, sy) || 1;
+    const along = (mx * sx + my * sy) / st, backs = (sx && mx * Math.sign(sx) < -.1) || (sy && my * Math.sign(sy) < -.1);
+    const got = Math.hypot(mx, my);
+    if ((backs && along < st * .3 && got < st * .5) || got < Math.min(.35, st * .12)) { _gw.px = x0; _gw.py = y0; moved = false; }
+  }
   if (_gw.giveFrom && (_gw.giveFrom.sx !== Math.sign(dx) || _gw.giveFrom.sy !== Math.sign(dy))) _gw.giveFrom = null;   /* (a new press forgets it) */
   _gw.lastStep = { sx: Math.sign(dx), sy: Math.sign(dy), mx: (_gw.px - x0) * GARDEN_WORLD.cellW, my: (_gw.py - y0) * GARDEN_WORLD.cellH };
   return moved;
