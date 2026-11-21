@@ -956,9 +956,12 @@ function _gwMoveByEdge(dx, dy) {
   const tiny = Math.hypot((mx - x0) * W.cellW, (my - y0) * W.cellH) < Math.hypot(dx * W.cellW, dy * W.cellH) * .15;
   if (dx && dy && (tiny || gain(mx, my) < .1)) {
     const vx = dx * W.cellW, vy = dy * W.cellH, sx = Math.sign(dx), sy = Math.sign(dy), open3 = (ax, ay) => _gwFree(x0 + ax / W.cellW, y0 + ay / W.cellH) && _gwFree(x0 + 2 * ax / W.cellW, y0 + 2 * ay / W.cellH) && _gwFree(x0 + 3 * ax / W.cellW, y0 + 3 * ay / W.cellH);
+    // (nf-walk) only a give the step rules then keep (_gwMoveBy): one they threw back was still remembered as tried (giveFrom), and at a
+    // walk's slower first steps the feet stood stuck there for good, where a give the other way slid on
+    const keeps = (px, py) => gain(px, py) > 0 || _gwRoundsOn(x0, y0, px, py, dx, dy);
     let g2 = null;
-    for (let g = .5; g <= 3.5 && !g2; g += .5) if (open3(vx, -sy * g)) g2 = { x: x0 + vx / W.cellW, y: y0 - sy * g / W.cellH, kind: 'y' };
-    for (let g = .25; g <= .75 && !g2; g += .25) if (open3(-sx * g, vy)) g2 = { x: x0 - sx * g / W.cellW, y: y0 + vy / W.cellH, kind: 'x' };
+    for (let g = .5; g <= 3.5 && !g2; g += .5) if (open3(vx, -sy * g) && keeps(x0 + vx / W.cellW, y0 - sy * g / W.cellH)) g2 = { x: x0 + vx / W.cellW, y: y0 - sy * g / W.cellH, kind: 'y' };
+    for (let g = .25; g <= .75 && !g2; g += .25) if (open3(-sx * g, vy) && keeps(x0 - sx * g / W.cellW, y0 + vy / W.cellH)) g2 = { x: x0 - sx * g / W.cellW, y: y0 + vy / W.cellH, kind: 'x' };
     // (vf-perf) not a give that turns straight back on the way the feet went the frame before under the same press, while this
     // frame's own slide still gets them on: at a bend of the east coast's bank the slide crept along it for three frames and the
     // give threw the feet back 3 px on the fourth, a shake on the spot (a probe of _gwMoveBy at 89.75,47.5; 26 turns in 90 frames)
