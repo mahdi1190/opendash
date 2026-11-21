@@ -71,6 +71,7 @@ function _vfrCtx(m) {
       return null;
     },
     public(x, y) { return _vfrOpenAt(x, y, m); },
+    reach(a, b) { return typeof gardenFolkReach !== 'function' || gardenFolkReach(a, b); },
     open(t) { return _vfrOpenAt(t.x, t.y - 0.2, m); },
     walkable(x, y, s, t) {
       if (s && (s.seat || s.pierEnd)) return true;
@@ -118,6 +119,7 @@ function _vfrRows(m) {
 }
 /* ---------- homes and the day's plans ---------- */
 function _vfrBegin(m) {
+  try { if (typeof gardenFolkFieldNow === 'function') gardenFolkFieldNow(); } catch (e) { /* planned without it: found as they go */ }
   const ctx = _vfrCtx(m), rows = _vfrRows(m), W = _wdG(), saved = {};
   for (const r of rows) if (W['vh.' + r.id]) saved[r.id] = W['vh.' + r.id];
   const homes = valeFolkSolveHomes(rows, ctx.things, saved, Object.assign({}, ctx, { open: null }));
@@ -139,7 +141,8 @@ function _vfrBegin(m) {
 /** (round 2) Where someone whose home is in closed land comes out by day and goes back at dusk: the open ground nearest their home, on
  *  the way to it (each their own, so nobody crowds the arrival road or the pier). Searched outwards in rings; null if nothing is open. */
 function _vfrGateFor(t, id, ctx) {
-  const free = (x, y) => (typeof _gwFree !== 'function' || _gwFree(x, y)) && ctx.open({ x, y });
+  const st = GARDEN_WORLD.start, inn = st ? { x: st.x + 0.5, y: st.y + 0.5 } : null;
+  const free = (x, y) => (typeof _gwFree !== 'function' || _gwFree(x, y)) && ctx.open({ x, y }) && (!inn || ctx.reach({ x, y }, inn));   // (and joined to the village: a pocket of open ground across the lake is no way in)
   for (let r = 1; r <= 48; r++) {
     let best = null, bd = Infinity;
     for (let k = 0; k < r * 8; k++) {
@@ -210,11 +213,21 @@ function _vfrV(id) {
   if (!V) { V = { id, row: VALE_FOLK_ROW.get(id), x: null, y: null, face: 1, path: null, pathFor: '', asking: '', S: null, entry: null, hold: null, pose: '', inside: false, aside: null, mark: false }; _vfr.V.set(id, V); }
   return V;
 }
-/** Where the plan puts them now: { x, y, e, walking, inside } (off screen: along the leg, in a straight line). */
+/** Where the plan puts them now: { x, y, e, walking, inside, ahead } (off screen: along the leg's own path, the one they would walk on
+ *  screen, round water, buildings and blocked ground; until that path is found, or where there is none, they wait where they were). */
 function _vfrWhere(id, minute) {
   const plan = _vfr.plans.get(id), at = valeFolkAt(plan, minute); if (!at || !at.e.spot) return null;
   const e = at.e, to = e.spot;
-  if (at.walking && at.prev && at.prev.spot) { const a = at.prev.spot, k = at.along; return { x: a.x + (to.x - a.x) * k, y: a.y + (to.y - a.y) * k, e, walking: true, inside: false, along: k }; }
+  // (the plan allows a straight walk's time and a little; the way round the lake is longer, so off screen they take the time that way
+  // really takes, at their own pace: a friend watching sees them walk, not dash)
+  if (at.prev && at.prev.spot && (at.walking || (e._rw && at.secs < e._rw))) {
+    const a = at.prev.spot, pts = typeof gardenFolkPathKept === 'function' ? gardenFolkPathKept(a, to) : null;
+    if (pts && pts.length) {
+      if (!e._rw) { const G = GARDEN_WORLD, row = VALE_FOLK_ROW.get(id) || {}; let len = 0, p = a; for (const q of pts) { len += Math.hypot((q.x - p.x) * G.cellW, (q.y - p.y) * G.cellH); p = q; } e._rw = len / (VALE_FOLK_SPEED * (row.speed || 1)); }
+      const k = Math.min(1, at.secs / Math.max(1, e.walk || 0, e._rw));
+      if (k < 1) { const q = gardenFolkAlong(a, pts, k); return { x: q.x, y: q.y, e, walking: true, inside: false, along: k, ahead: q.ahead, hx: q.hx }; }
+    } else if (at.walking) return { x: a.x, y: a.y, e, walking: true, inside: false, along: at.along, ahead: [], hx: 0, wait: true };
+  }
   return { x: to.x, y: to.y, e, walking: false, inside: !!e.inside };
 }
 function _vfrView() { try { const v = _glCamView(); return v; } catch (e) { return { x0: _gw.px - 12, x1: _gw.px + 12, y0: _gw.py - 9, y1: _gw.py + 9 }; } }
@@ -309,11 +322,12 @@ function _vfrDraw(V, walking) {
 function _vfrAsk(V, to, pri) {
   const key = to.x.toFixed(2) + ',' + to.y.toFixed(2);
   // (round 2) an empty path left from the last leg is no path: ask again (Bramble stood where she told you something for the rest of her block)
-  if (V.pathFor === key && ((V.path && V.path.length) || (V.asking === key && performance.now() - (V.askT || 0) < 4000))) return;
+  if (V.pathFor === key && ((V.path && V.path.length) || (V.asking === key && performance.now() - (V.askT || 0) < 4000) || (V.noWay && performance.now() - (V.noWayT || 0) < 5000))) return;
   V.askT = performance.now();
   V.asking = key; V.pathFor = key; V.path = null;
   const from = { x: V.x, y: V.y };
-  gardenFolkPathAsk(from, to, (pts) => { if (V.asking !== key) return; V.asking = ''; V.path = pts ? pts.slice() : [{ x: to.x, y: to.y }]; V.noWay = !pts; });
+  // (no way there at all: they stay where they are, never a straight line over the lake or through a wall; looked at again in a while)
+  gardenFolkPathAsk(from, to, (pts) => { if (V.asking !== key) return; V.asking = ''; V.path = pts ? pts.slice() : []; V.noWay = !pts; V.noWayT = pts ? 0 : performance.now(); });
   const last = _vfp.jobs[_vfp.jobs.length - 1]; if (last) last.pri = pri || 0;
 }
 /** One frame's step along their path; true when they are there. */
@@ -325,7 +339,8 @@ function _vfrStep(V, dt, speedMul) {
     const p = V.path[0], dx = (p.x - V.x) * G.cellW, dy = (p.y - V.y) * G.cellH, d = Math.hypot(dx, dy);
     if (d <= left) { V.x = p.x; V.y = p.y; V.path.shift(); left -= d; continue; }
     const nx = V.x + dx / d * left / G.cellW, ny = V.y + dy / d * left / G.cellH;
-    if (_vfrIntoYou(V, nx, ny)) { const now = performance.now(); if (!V.bumpT) V.bumpT = now; else if (now - V.bumpT > 900) { V.bumpT = 0; _vfrRoundYou(V); } V.waiting = true; return false; }
+    const who = _vfrIntoYou(V, nx, ny);
+    if (who) { const now = performance.now(); if (!V.bumpT) V.bumpT = now; else if (now - V.bumpT > 900) { V.bumpT = 0; if (!_vfrRoundYou(V, who)) { V.path = null; V.pathFor = ''; V.noWay = false; } } V.waiting = true; return false; }   // (no room either side: the way is looked for again, from here)
     V.bumpT = 0; V.waiting = false;
     V.x = nx; V.y = ny; _vfrHeadTo(V, dx, dy, dt); left = 0;
   }
@@ -363,17 +378,37 @@ function gardenFolkBlocks(x, y) {
   return false;
 }
 const VFR_BODY = Object.freeze({ x: 0.5, y: 0.3 });
-/** Would a villager stepping to x, y walk into you? Then they wait, and after a moment go round you. */
+/** How close a walking villager comes to a player before they stop and go round: wider than the feet's oval, so two standing figures
+ *  never cover each other (a figure is over a cell tall: one just behind you was drawn inside you). */
+const VFR_PASS = Object.freeze({ x: 0.75, y: 0.62 });
+/** Every player figure in the garden: yours and each visiting friend's (friends are treated exactly as you are). */
+function _vfrFigures() {
+  const out = []; if (typeof _gw !== 'undefined' && Number.isFinite(_gw.px)) out.push({ x: _gw.px, y: _gw.py });
+  try { if (typeof _gll !== 'undefined' && _gll.actors) for (const A of _gll.actors.values()) if (A && !A.me && Number.isFinite(A.x) && Number.isFinite(A.y)) out.push({ x: A.x, y: A.y }); } catch (e) { /* alone */ }
+  return out;
+}
+/** Would a villager stepping to x, y walk into a player (you or a friend)? Then they wait, and after a moment go round them. */
 function _vfrIntoYou(V, x, y) {
-  if (typeof _gw === 'undefined' || V.hold) return false;
-  const ex = (x - _gw.px) / VFR_BODY.x, ey = (y - _gw.py) / VFR_BODY.y, e = ex * ex + ey * ey; if (e >= 1) return false;
-  const ox = (V.x - _gw.px) / VFR_BODY.x, oy = (V.y - _gw.py) / VFR_BODY.y; return e < ox * ox + oy * oy;
+  if (V.hold) return null;
+  for (const P of _vfrFigures()) {
+    const ex = (x - P.x) / VFR_PASS.x, ey = (y - P.y) / VFR_PASS.y, e = ex * ex + ey * ey; if (e >= 1) continue;
+    const ox = (V.x - P.x) / VFR_PASS.x, oy = (V.y - P.y) / VFR_PASS.y; if (e < ox * ox + oy * oy) return P;
+  }
+  return null;
 }
-function _vfrRoundYou(V) {
-  const p = V.path && V.path[0]; if (!p) return;
-  const dx = p.x - V.x, dy = p.y - V.y, n = Math.hypot(dx, dy) || 1;
-  for (const s of [1, -1]) { const q = { x: _gw.px - dy / n * 0.9 * s, y: _gw.py + dx / n * 0.6 * s }; if (_vfrBodyOk(q.x, q.y, '') ) { V.path.unshift(q); return; } }
+function _vfrRoundYou(V, P) {
+  const p = V.path && V.path[0]; if (!p || !P) return false;
+  const dx = p.x - V.x, dy = p.y - V.y, n = Math.hypot(dx, dy) || 1, ux = dx / n, uy = dy / n;
+  // a step out to the side of them and a step past, on ground the feet can take (wider each try; either side), then on along the way
+  for (const w of [1.05, 1.4, 1.8]) for (const s of [1, -1]) {
+    const q1 = { x: P.x - uy * w * s * 1.0 - ux * 0.6, y: P.y + ux * w * s * 0.8 - uy * 0.5 }, q2 = { x: P.x - uy * w * s * 1.0 + ux * 1.0, y: P.y + ux * w * s * 0.8 + uy * 0.9 };
+    if (typeof _gwFree === 'function' && !(_gwFree(q1.x, q1.y) && _gwFree(q2.x, q2.y) && _vfrLineFree(V, q1) && _vfrLineFree(q1, q2) && _vfrLineFree(q2, p))) continue;
+    V.path.unshift(q1, q2); return true;
+  }
+  return false;
 }
+/** Is the straight step from a villager to q clear of blocked ground (a step round someone never cuts through a wall)? */
+function _vfrLineFree(a, q) { const n = Math.max(2, Math.ceil(Math.hypot(q.x - a.x, q.y - a.y) * 4)); for (let i = 1; i <= n; i++) { const t = i / n; if (!_gwFree(a.x + (q.x - a.x) * t, a.y + (q.y - a.y) * t)) return false; } return true; }
 /** Is another figure standing at x, y (the gnome, a traveller, a pet: any world sprite that is not one of the folk)? */
 function _vfrSpriteAt(x, y, own) {
   if (typeof _gwSprites === 'undefined') return false;
@@ -495,7 +530,7 @@ function _vfrFrame(dt) {
   for (const row of _vfr.rows || []) {
     if (!_vfr.plans.has(row.id)) continue;
     const V = _vfrV(row.id), w = _vfrWhere(row.id, minute); if (!w) continue;
-    list.push(V);
+    list.push(V); V.offWalk = false;
     if (V.x == null) { V.x = w.x; V.y = w.y; V.inside = w.inside || !!w.e.offmap; }
     if (V.entry !== w.e) { V.entry = w.e; V.arrived = false; V.rubbing = false; V.path = null; V.pathFor = ''; }
     const e = V.entry, to = e.spot, near = _vfrNearView(V.x, V.y, v, VFR_NEAR) || _vfrNearView(to.x, to.y, v, VFR_NEAR) && !e.inside;
@@ -513,13 +548,16 @@ function _vfrFrame(dt) {
       V.face = tx > V.x ? 1 : -1; if (V.S) _vfrDraw(V, false); continue; } }
     if (!near && !V.S) {
       // off screen: where the plan says, in a straight line along the leg (nothing walked frame by frame)
-      if (!goal) { V.x = w.x; V.y = w.y; V.inside = w.inside || !!e.offmap; V.arrived = !w.walking; if (V.arrived) V.face = _vfrFaceAt(V, e); else if (w.e && at_prevDir(w)) V.face = at_prevDir(w); }
-      else { V.inside = false; const G = GARDEN_WORLD, dx = (goal.at.x - V.x) * G.cellW, dy = (goal.at.y - V.y) * G.cellH, d = Math.hypot(dx, dy), st = VALE_FOLK_SPEED * (V.row.speed || 1) * dt; if (d > st) { V.x += dx / d * st / G.cellW; V.y += dy / d * st / G.cellH; } }   // (on the way over to you, off screen: along a straight line until the view is near, then on the path)
+      if (!goal) { V.x = w.x; V.y = w.y; V.inside = w.inside || !!e.offmap; V.arrived = !w.walking; V.offWalk = !!w.walking && !w.wait; V.ahead = w.ahead || null; if (V.arrived) V.face = _vfrFaceAt(V, e); else if (Math.abs(w.hx || 0) > 0.05) V.face = w.hx > 0 ? 1 : -1; }
+      else { V.inside = false; V.offWalk = true; V.ahead = null; _vfrAsk(V, goal.at, 1); if (V.path && V.path.length) _vfrStep(V, dt); }   // (on the way over to you, off screen: on the path, as on screen)
       continue;
     }
     if (V.inside && !(e.inside && !goal)) { V.inside = false; V.x = to && V.entry.inside ? V.x : V.x; }   // out of the door (they were in; now their plan takes them out)
     if (V.inside) { _vfrHide(V); continue; }
-    if (!near && V.S && !V.path) { _vfrHide(V); continue; }
+    V.offWalk = false; V.ahead = null;
+    if (!near && V.S && !(V.path && V.path.length)) { _vfrHide(V); continue; }
+    // (no way to where they are going: off the view they are simply there, on it they stand and wait)
+    if (V.noWay && !goal && !_vfrNearView(V.x, V.y, v, 0) && !_vfrNearView(dest.x, dest.y, v, 0)) { V.x = dest.x; V.y = dest.y; V.noWay = false; V.path = null; V.pathFor = ''; }
     _vfrShow(V);
     if (V.greet) { if (now > V.greet.until || V.hold) V.greet = null; else { const O = _vfr.V.get(V.greet.other); if (O) V.face = O.x > V.x ? 1 : -1; _vfrDraw(V, false); continue; } }   // (two who are close stop to pass the time of day)
     if (V.aside) { _vfrTellSeen('steps-aside', V); if (now > V.aside.until) { V.path = null; V.pathFor = ''; V.aside = null; } else { if (V.path && V.path.length) _vfrStep(V, dt, 0.8); _vfrDraw(V, !!(V.path && V.path.length)); continue; } }
@@ -620,11 +658,18 @@ function gardenFolkTalkTo(id) {
   try { if (typeof gardenLiveFolkTalk === 'function') gardenLiveFolkTalk(id); } catch (e) { /* alone */ }
   if (V.S) _vfrDraw(V, false);
   try {
-    if (id === 'angler') { if (!(typeof wdAnglerTalk === 'function' && wdAnglerTalk({ door: { x: V.x - 0.5, y: V.y - 0.5 } }))) gardenPopupOpen('catch', { sub: 'lake', title: 'The old angler' }); return true; }
-    if (WD_FOLK_ROW.get(id)) { const P = _vfrProxy(V); _wdFolkTalk(P); V.gave = P.gave; return true; }
-    if (typeof WD_TALE_RESIDENTS !== 'undefined' && WD_TALE_RESIDENTS.get(id)) { _wtResTalk(WD_TALE_RESIDENTS.get(id), { x: V.x, y: V.y }); return true; }
-    if (id === 'perpetua') { _vfrPerpetuaTalk(V, m); return true; }
+    if (_vfrTalkWith(id, V, m)) return true;
+    if (id === 'angler') { gardenPopupOpen('catch', { sub: 'lake', title: 'The old angler' }); return true; }
   } catch (e) { console.error('[folk talk]', e); }
+  return false;
+}
+/** What someone says and offers when you talk to them: their story, today's news, favours, Give something, friendship. The same for
+ *  the host and for a visiting friend (friends are trusted: full co-op), each kept in the talker's own vale. False: nothing to say. */
+function _vfrTalkWith(id, V, m) {
+  if (id === 'angler') return !!(typeof wdAnglerTalk === 'function' && wdAnglerTalk({ door: { x: V.x - 0.5, y: V.y - 0.5 } }));
+  if (WD_FOLK_ROW.get(id)) { const P = _vfrProxy(V); _wdFolkTalk(P); V.gave = P.gave; return true; }
+  if (typeof WD_TALE_RESIDENTS !== 'undefined' && WD_TALE_RESIDENTS.get(id)) { _wtResTalk(WD_TALE_RESIDENTS.get(id), { x: V.x, y: V.y }); return true; }
+  if (id === 'perpetua') { _vfrPerpetuaTalk(V, m); return true; }
   return false;
 }
 const VFR_PERPETUA_DAY = Object.freeze([
@@ -656,7 +701,7 @@ function gardenFolkAtHome(who) {
 }
 function gardenFolkFeet() { return (_vfr.on ? (_vfr.list || []) : [..._vfg.V.values()]).filter(V => V.S && !V.inside).map(V => ({ x: V.x, y: V.y, name: V.row.name })); }
 function gardenFolkState() {
-  return (_vfr.rows || []).map(r => { const V = _vfr.V.get(r.id) || {}; const e = V.entry || {}; return { id: r.id, x: V.x, y: V.y, act: e.act, t0: e.t0, t1: e.t1, spot: e.spot ? { x: e.spot.x, y: e.spot.y, src: e.spot.src, kind: e.spot.kind } : null, inside: !!V.inside, drawn: !!V.S, walking: !!(V.path && V.path.length), arrived: !!V.arrived, home: (_vfr.homes.get(r.id) || {}).id, away: _vfr.away ? _vfr.away.has(r.id) : false, visit: !!V.visit }; });
+  return (_vfr.rows || []).map(r => { const V = _vfr.V.get(r.id) || {}; const e = V.entry || {}; return { id: r.id, x: V.x, y: V.y, act: e.act, t0: e.t0, t1: e.t1, spot: e.spot ? { x: e.spot.x, y: e.spot.y, src: e.spot.src, kind: e.spot.kind } : null, inside: !!V.inside, drawn: !!V.S, walking: !!(V.path && V.path.length) || !!V.offWalk, arrived: !!V.arrived, home: (_vfr.homes.get(r.id) || {}).id, away: _vfr.away ? _vfr.away.has(r.id) : false, visit: !!V.visit }; });
 }
 function gardenFolkPlans() { const o = {}; for (const [k, v] of _vfr.plans) o[k] = v.map(e => ({ t0: e.t0, t1: e.t1, act: e.act, x: e.spot && e.spot.x, y: e.spot && e.spot.y, src: e.spot && e.spot.src, inside: !!e.inside, walk: e.walk })); return o; }
 function gardenFolkStats() { return Object.assign({ villagers: (_vfr.rows || []).length, planned: _vfr.plans.size, drawn: (_vfr.list || []).filter(V => V.S).length, path: typeof gardenFolkPathStats === 'function' ? gardenFolkPathStats() : null }, _vfr.stats); }
@@ -687,6 +732,7 @@ function gardenFolkSnap() {
 const _vfl = { at: 0, sig: '', sentAt: 0 };
 function _vfrPoseWord(V) {
   const e = V.entry; if (V.hold) return V.arrived && e && e.clip === 'sit' ? 'sittalk' : 'talk';
+  if (V.waiting) return 'idle';   // (stopped for someone in the way: stood, on every screen)
   if (!V.arrived || !e) return 'walk';
   if (V.visit) return 'idle';
   return e.clip === 'sit' ? (V.rubbing ? 'rub' : 'sit') : e.clip === 'fish' ? 'fish' : e.clip === 'read' ? 'read' : 'idle';
@@ -698,13 +744,18 @@ function _vfrHostSend(now) {
   const n10 = (v, hi) => Math.max(0, Math.min(hi * 10, Math.round(v * 10))), W = GARDEN_WORLD, l = [];
   for (const V of _vfr.list || []) {
     if (V.inside || V.x == null) continue;
-    const p = V.path && V.path.length ? V.path[V.path.length - 1] : { x: V.x, y: V.y };
-    const r = { i: V.id, x: n10(V.x, W.cols), y: n10(V.y, W.rows), tx: n10(p.x, W.cols), ty: n10(p.y, W.rows), a: _vfrPoseWord(V), f: V.face < 0 ? 1 : 0 };
+    // the way ahead (the next few points of their path, on screen or off), so a friend's copy walks the same way round things
+    const ahead = V.waiting ? null : V.path && V.path.length ? V.path : V.offWalk && V.ahead && V.ahead.length ? V.ahead : null;
+    const p = ahead ? ahead[ahead.length - 1] : { x: V.x, y: V.y };
+    const r = { i: V.id, x: n10(V.x, W.cols), y: n10(V.y, W.rows), tx: n10(p.x, W.cols), ty: n10(p.y, W.rows), a: V.offWalk ? 'walk' : _vfrPoseWord(V), f: V.face < 0 ? 1 : 0 };
+    if (ahead) { r.p = []; for (const q of ahead.slice(0, 6)) r.p.push(n10(q.x, W.cols), n10(q.y, W.rows)); }
     if (V.hold && V.hold.by != null) r.h = Math.max(0, Math.min(9, Number(V.hold.by) || 0));
     if (V.nod && performance.now() < V.nod.until) r.w = 1;   // (a wave in passing: friends see it too)
     l.push(r); if (l.length >= 16) break;
   }
-  const sig = JSON.stringify(l.map(r => [r.i, Math.round(r.x / 5), Math.round(r.y / 5), r.tx, r.ty, r.a, r.f, r.h, r.w]));   // (where they are, to half a cell: a walk is told every 0.8 s, a rest every 8 s)
+  // (a live message is at most 1400 bytes: the ways ahead are shortened, the farthest first, until it fits)
+  for (let guard = 0; guard < 40 && JSON.stringify({ l }).length > 1300; guard++) { let big = null; for (const r of l) if (r.p && (!big || r.p.length > big.p.length)) big = r; if (!big) break; big.p.length -= 2; if (!big.p.length) delete big.p; }
+  const sig = JSON.stringify(l.map(r => [r.i, Math.round(r.x / 5), Math.round(r.y / 5), r.tx, r.ty, r.a, r.f, r.h, r.w, r.p ? r.p.slice(0, 2) : 0]));   // (where they are, to half a cell: a walk is told every 0.8 s, a rest every 8 s)
   if (sig === _vfl.sig && now - _vfl.sentAt < 8000) return;
   _vfl.sig = sig; _vfl.sentAt = now;
   try { _glhSend('all', 'fk', { l }); } catch (e) { /* only a message */ }
@@ -726,21 +777,45 @@ function gardenFolkGuestIn(l) {
     seen.add(r.i);
     let V = _vfg.V.get(r.i);
     if (!V) { V = { id: r.i, row: VALE_FOLK_ROW.get(r.i), x: r.x / 10, y: r.y / 10, face: 1, S: null, drawn: '', path: null }; _vfg.V.set(r.i, V); }
-    V.to = { x: r.x / 10, y: r.y / 10 }; V.goal = { x: r.tx / 10, y: r.ty / 10 }; V.a = String(r.a || 'idle'); V.f = r.f ? -1 : 1; V.heldBy = r.h; V.wave = r.w ? performance.now() + 1600 : 0; V.at = performance.now();
-    if (Math.hypot(V.x - V.to.x, V.y - V.to.y) > 3) { V.x = V.to.x; V.y = V.to.y; }
+    const to = { x: r.x / 10, y: r.y / 10 }, ahead = [];
+    if (Array.isArray(r.p)) for (let k = 0; k + 1 < r.p.length && ahead.length < 8; k += 2) if (Number.isFinite(r.p[k]) && Number.isFinite(r.p[k + 1])) ahead.push({ x: r.p[k] / 10, y: r.p[k + 1] / 10 });
+    { const G = GARDEN_WORLD; V.need = Math.hypot((V.x - to.x) * G.cellW, (V.y - to.y) * G.cellH) + (r.a === 'walk' ? 0.8 * VALE_FOLK_SPEED * (VALE_FOLK_ROW.get(r.i).speed || 1) : 0); V.done = 0; }   // (0.8 s: about how old a message is when it comes, measured on a local relay: sent every 0.8 s, then carried)
+    V.goal = { x: r.tx / 10, y: r.ty / 10 }; V.a = String(r.a || 'idle'); V.f = r.f ? -1 : 1; V.heldBy = r.h; V.wave = r.w ? performance.now() + 1600 : 0; V.at = performance.now();
+    // the way the host's villager walks: first to where the host saw them (straight only where that is clear; else on along the way
+    // they were already going, which leads there), then on along the host's own path. Nothing is ever walked straight through a wall.
+    if (r.a !== 'walk') ahead.length = 0;   // (standing, or stopped for someone: only to where the host has them, no further)
+    if (Math.hypot(V.x - to.x, V.y - to.y) > 3) { V.x = to.x; V.y = to.y; V.route = ahead; V.need = 0; }
+    else if (r.a !== 'walk' || Math.hypot(V.x - to.x, V.y - to.y) < 0.15 || typeof _gwFree !== 'function' || _vfrLineFree(V, to)) V.route = [to].concat(ahead);
+    else V.route = (V.route || []).slice(0, 16).concat([to], ahead);
   }
   for (const [id, V] of _vfg.V) if (!seen.has(id)) { if (V.S) { try { V.S.remove(); } catch (e) { /* gone */ } } _vfg.V.delete(id); }   // gone in at a door, or off by the road
 }
 function _vfgFrame(dt) {
-  const G = GARDEN_WORLD;
+  const G = GARDEN_WORLD, v = _vfrView();
+  // (a talk of yours with one of them has closed: they are let go on every screen)
+  for (const V of _vfg.V.values()) if (V.mine && !(typeof _wd !== 'undefined' && _wd.talk)) { V.mine = false; try { gardenLiveFx('folk', 'bye', { i: V.id }); } catch (e) { /* alone */ } }
   for (const V of _vfg.V.values()) {
+    // along the host's own path, at their own pace (a little quicker while catching up)
+    // (the host's villager has walked on since that message came: how far behind theirs this copy is, in px; quicker in proportion, up to
+    // half as fast again, so the two screens stay within a cell)
+    const v0 = VALE_FOLK_SPEED * (V.row.speed || 1);
+    if (V.a === 'walk' && V.route && V.route.length) V.need = (V.need || 0) + v0 * dt;
+    const lag = Math.max(0, (V.need || 0) - (V.done || 0)) / G.cellW;
+    let st = v0 * dt * (1 + Math.min(0.5, lag * 0.4)), moved = false, hdx = 0, hdy = 0;
+    const st0 = st;
+    while (st > 0 && V.route && V.route.length) {
+      const p = V.route[0], dx = (p.x - V.x) * G.cellW, dy = (p.y - V.y) * G.cellH, d = Math.hypot(dx, dy);
+      if (d <= st) { V.x = p.x; V.y = p.y; V.route.shift(); st -= d; if (d > 0.01) { hdx = dx; hdy = dy; moved = true; } continue; }
+      V.x += dx / d * st / G.cellW; V.y += dy / d * st / G.cellH; hdx = dx; hdy = dy; moved = true; st = 0;
+    }
+    V.done = (V.done || 0) + (st0 - st);
+    if (moved) _vfrHeadTo(V, hdx, hdy, dt);
+    // (drawn only near your view, as the host draws theirs: someone thirty cells off is not drawn at all)
+    const nearV = _vfrNearView(V.x, V.y, v, VFR_NEAR);
+    if (!nearV) { if (V.S) { try { V.S.remove(); } catch (e) { /* gone */ } V.S = null; V.drawn = ''; } continue; }
     if (!V.S) { V.S = wdSprite({ id: 'vfg-' + V.id, x: V.x, y: V.y, hit: 0.75, hitUp: 16, label: V.row.name, cursor: 'hand', ground: true, svg: '', lift: 0, update() { }, onClick: () => gardenFolkGuestTalk(V.id) }); V.drawn = ''; }
-    // first to where the host last saw them, then on along to where they are going, at their own pace
-    if (V.to && Math.hypot(V.x - V.to.x, V.y - V.to.y) <= 0.15) V.to = null;   // (caught up with where the host saw them: from now on, along to where they are going)
-    const aim = V.to || V.goal, dx = (aim.x - V.x) * G.cellW, dy = (aim.y - V.y) * G.cellH, d = Math.hypot(dx, dy), st = VALE_FOLK_SPEED * (V.row.speed || 1) * dt * (aim === V.to ? 1.25 : 1);
-    const walking = d > 1.5 && V.a === 'walk';
-    if (d > 0.5) { const k = Math.min(1, st / d); V.x += dx / G.cellW * k; V.y += dy / G.cellH * k; _vfrHeadTo(V, dx, dy, dt); }
-    if (!walking) V.face = (V.a === 'talk' || V.a === 'sittalk') && V.mine && typeof _gw !== 'undefined' ? (_gw.px > V.x ? 1 : -1) : V.f;
+    const walking = moved && V.a === 'walk';
+    if (!walking) V.face = (V.a === 'talk' || V.a === 'sittalk' || V.mine) && V.mine && typeof _gw !== 'undefined' ? (_gw.px > V.x ? 1 : -1) : V.f;
     const pose = V.a === 'walk' ? 'idle' : V.a, view = _vfrView3(V, walking, pose), face = V.face < 0 ? -1 : 1, wave = V.wave && performance.now() < V.wave, k = pose + (walking ? 'w' : '') + face + view + (wave ? 'v' : '');
     if (V.drawn !== k) { V.drawn = k; wdArt(V.S, _vfrMarkup(V, pose, walking, face, wave ? 'wave' : false, view)); }
     V.S.x = V.x; V.S.y = V.y;
@@ -751,12 +826,15 @@ function _vfgFrame(dt) {
 function gardenFolkGuestTalk(id) {
   const V = _vfg.V.get(id); if (!V) return false;
   try { gardenLiveFx('folk', 'talk', { i: id }); } catch (e) { /* alone */ }
-  V.mine = true;
-  // the words are worked out here, from your own vale: their day line, as they would say it to a visitor
+  V.mine = true; V.drawn = '';
   let m = null; try { m = gardenModel(); } catch (e) { m = null; }
+  // a visiting friend is trusted: the same talk as the host gets (their story, news, favours, Give something, friendship), worked out
+  // from and kept in your own vale; only when they have nothing more to say today, their day line as they would say it to a visitor
+  let ok = false; try { ok = !!m && _vfrTalkWith(id, V, m) && !!_wd.talk; } catch (e) { console.error('[folk talk]', e); ok = false; }
+  if (ok) return true;
   const rows = (typeof WK_DAY !== 'undefined' && WK_DAY[id]) || (id === 'perpetua' ? VFR_PERPETUA_DAY : null);
   let line = ''; try { const F = typeof wdFacts === 'function' && m ? (typeof _wkFacts === 'function' ? _wkFacts(wdFacts(m, id), m) : wdFacts(m, id)) : {}; line = rows && typeof _wkDayPick === 'function' ? _wkDayPick(id, rows, F, m ? m.today : '') : ''; } catch (e) { line = ''; }
-  wdTalk({ name: V.row.name, art: typeof gardenCastSvg === 'function' ? gardenCastSvg(V.row.cast) : '', lines: ['Oh, a visitor! Any friend of theirs is a friend of the vale.', line].filter(Boolean), actions: [], at: { x: V.x, y: V.y }, bye: 'Goodbye', onClose: () => { V.mine = false; try { gardenLiveFx('folk', 'bye', { i: id }); } catch (e) { /* alone */ } } });
+  wdTalk({ name: V.row.name, art: typeof gardenCastSvg === 'function' ? gardenCastSvg(V.row.cast) : '', lines: [line || 'Oh, hello again. Any friend of theirs is a friend of the vale.'].filter(Boolean), actions: [], at: { x: V.x, y: V.y }, bye: 'Goodbye' });
   return true;
 }
 wdMod({

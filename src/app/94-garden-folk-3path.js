@@ -33,7 +33,8 @@ function _vfpBuildSlice() {
   const B = _vfp.build, t0 = performance.now(), y1 = Math.min(R, B.y + Math.ceil(R / 2));
   for (let y = B.y; y < y1; y++) for (let x = 0; x < C; x++) {
     const i = y * C + x;
-    if ((B.grid.hard || B.grid)[i] || B.grid[i] || !_vfpZoneOpen(x, y, B.areas)) { B.cost[i] = Infinity; B.tier[i] = 9; continue; }
+    // (and the feet's own test at the cell's middle: a prop's solid foot inside a grid-free cell is walked round, not through)
+    if ((B.grid.hard || B.grid)[i] || B.grid[i] || !_vfpZoneOpen(x, y, B.areas) || (typeof _gwFree === 'function' && !_gwFree(x + 0.5, y + 0.5))) { B.cost[i] = Infinity; B.tier[i] = 9; continue; }
     let c = null; try { c = gardenIslandBaseCell(x, y); } catch (e) { c = null; }
     // (a bed first: a planted bed laid over the plaza's setts is a bed, not paving; Hollin walked over the oak's flower bed as if it
     // were the plaza. Grass dear enough that a lane round is taken over a cut across the lawn up to two and a half times as long.)
@@ -67,12 +68,32 @@ function _vfpBedAt(x, y) {
   } catch (e) { /* none */ }
   return typeof gardenFolkBedHook === 'function' ? !!gardenFolkBedHook(x, y) : false;
 }
+/** Build the cost field now if it is not there (when the day is planned: entering the garden, never mid-walk). True when it is whole. */
+function gardenFolkFieldNow() { for (let k = 0; k < 3; k++) if (_vfpBuildSlice()) return true; return false; }
+/** Can anyone walk from a to b at all (the same piece of open ground, round water and walls)? From the cost field's pieces, labelled
+ *  once a field (a flood fill, a few ms). True when there is no field yet (nothing is ruled out on a guess). */
+function gardenFolkReach(a, b) {
+  if (!_vfp.cost || !a || !b) return true;
+  const W = GARDEN_WORLD, C = W.cols, R = W.rows, N = C * R;
+  if (_vfp.compKey !== _vfp.key) {
+    const comp = new Int32Array(N).fill(-1), st = new Int32Array(N); let n = 0;
+    for (let i0 = 0; i0 < N; i0++) {
+      if (comp[i0] >= 0 || _vfp.cost[i0] === Infinity) continue;
+      let top = 0; st[top++] = i0; comp[i0] = n;
+      while (top) { const i = st[--top], x = i % C, y = (i - x) / C; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= C || ny >= R) continue; const j = ny * C + nx; if (comp[j] >= 0 || _vfp.cost[j] === Infinity) continue; if (dx && dy && (_vfp.cost[y * C + nx] === Infinity || _vfp.cost[ny * C + x] === Infinity)) continue; comp[j] = n; st[top++] = j; } }
+      n++;
+    }
+    _vfp.comp = comp; _vfp.compKey = _vfp.key;
+  }
+  const i = _vfpNearOpen(a.x, a.y), j = _vfpNearOpen(b.x, b.y);
+  return i >= 0 && j >= 0 && _vfp.comp[i] === _vfp.comp[j];
+}
 function gardenFolkCost(x, y) { const W = GARDEN_WORLD, cx = Math.floor(x), cy = Math.floor(y); if (!_vfp.cost || cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) return Infinity; return _vfp.cost[cy * W.cols + cx]; }
 function gardenFolkTier(x, y) { const W = GARDEN_WORLD, cx = Math.floor(x), cy = Math.floor(y); if (!_vfp.tier || cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) return 9; return _vfp.tier[cy * W.cols + cx]; }
 /** The nearest cell anyone can walk to from a point (the start or end of a leg may be on a seat's edge or a door step). */
 function _vfpNearOpen(x, y) {
   const W = GARDEN_WORLD, cx = Math.floor(x), cy = Math.floor(y);
-  for (let r = 0; r <= 3; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+  for (let r = 0; r <= 6; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
     if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
     const nx = cx + dx, ny = cy + dy; if (nx < 0 || ny < 0 || nx >= W.cols || ny >= W.rows) continue;
     if (_vfp.cost[ny * W.cols + nx] !== Infinity) return ny * W.cols + nx;
@@ -90,6 +111,27 @@ function gardenFolkPathAsk(a, b, cb) {
   for (const j of _vfp.jobs) if (j.key === key) { j.cbs.push(cb); return; }
   _vfp.jobs.push({ key, a: { x: a.x, y: a.y }, b: { x: b.x, y: b.y }, cbs: [cb], pri: 0 });
   void W;
+}
+/** A path already found for a to b (cells), or undefined when it has not been found yet (asked for, if not yet asked). null: there is
+ *  no way. Off screen the folk are worked out along this, never in a straight line over water or through a wall. */
+function gardenFolkPathKept(a, b) {
+  if (!_vfp.cost || !a || !b) return undefined;
+  const key = Math.floor(a.x) + ',' + Math.floor(a.y) + '>' + Math.floor(b.x) + ',' + Math.floor(b.y), k = _vfp.key + '|' + key;
+  if (_vfp.cache.has(k)) { const hit = _vfp.cache.get(k); return hit ? _vfpEnds(hit, a, b) : null; }
+  if (!_vfp.jobs.some(j => j.key === key) && !(_vfp.cur && _vfp.cur.key === key)) { gardenFolkPathAsk(a, b, () => { }); const j = _vfp.jobs[_vfp.jobs.length - 1]; if (j) j.pri = 0.5; }
+  return undefined;
+}
+/** The point a fraction k of the way along a path that starts at a (by length walked), and the points still ahead of it. */
+function gardenFolkAlong(a, pts, k) {
+  const G = GARDEN_WORLD, all = [{ x: a.x, y: a.y }].concat(pts || []); let len = 0;
+  for (let i = 1; i < all.length; i++) len += Math.hypot((all[i].x - all[i - 1].x) * G.cellW, (all[i].y - all[i - 1].y) * G.cellH);
+  let want = Math.max(0, Math.min(1, k)) * len;
+  for (let i = 1; i < all.length; i++) {
+    const p = all[i - 1], q = all[i], d = Math.hypot((q.x - p.x) * G.cellW, (q.y - p.y) * G.cellH);
+    if (want <= d || i === all.length - 1) { const t = d > 0 ? Math.min(1, want / d) : 1; return { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t, ahead: all.slice(i), hx: q.x - p.x, hy: q.y - p.y }; }
+    want -= d;
+  }
+  return { x: a.x, y: a.y, ahead: [], hx: 0, hy: 0 };
 }
 /** A kept path's points with this leg's own ends (the cells are shared; the exact stand points are not). */
 function _vfpEnds(pts, a, b) { const out = pts.slice(); if (out.length) { out[out.length - 1] = { x: b.x, y: b.y }; } else out.push({ x: b.x, y: b.y }); return out; }
@@ -146,10 +188,14 @@ function _vfpPoints(job) {
   const sm = [];
   for (let k = 0; k < out.length; k++) {
     const p = out[k], a = out[k - 1], b = out[k + 1];
-    if (a && b) { const q1 = { x: p.x + (a.x - p.x) * 0.22, y: p.y + (a.y - p.y) * 0.22 }, q2 = { x: p.x + (b.x - p.x) * 0.22, y: p.y + (b.y - p.y) * 0.22 }; if ((typeof _gwFree !== 'function' || (_gwFree(q1.x, q1.y) && _gwFree(q2.x, q2.y)))) { sm.push(q1, q2); continue; } }
+    if (a && b) { const q1 = { x: p.x + (a.x - p.x) * 0.22, y: p.y + (a.y - p.y) * 0.22 }, q2 = { x: p.x + (b.x - p.x) * 0.22, y: p.y + (b.y - p.y) * 0.22 }; if (clear(q1, q2, 9)) { sm.push(q1, q2); continue; } }
     sm.push(p);
   }
-  if (sm.length) sm[sm.length - 1] = { x: job.b.x, y: job.b.y }; else sm.push({ x: job.b.x, y: job.b.y });
+  // (the last open cell is kept, then the stand point: a pier end's stand at the deck's edge was reached by a straight line along that
+  // edge from the pier's root, out over the water; now they walk the deck's middle and step to the edge at the end)
+  const gc = raw[raw.length - 1], end = { x: job.b.x, y: job.b.y };
+  if (sm.length && Math.hypot(sm[sm.length - 1].x - gc.x, sm[sm.length - 1].y - gc.y) > 0.05) sm.push({ x: gc.x, y: gc.y });
+  if (!sm.length || Math.hypot(gc.x - end.x, gc.y - end.y) > 0.05) sm.push(end); else sm[sm.length - 1] = end;
   return sm;
 }
 function gardenFolkPathPump(ms) {
