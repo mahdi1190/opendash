@@ -35,7 +35,7 @@ function _wdPt(id, dx, dy) { const p = GARDEN_PROPS.find(x => x.id === id), b = 
 function _wdKindPt(kinds, dx, dy, more) {
   const K = new Set(kinds), memo = { key: null, p: null };
   const find = () => {
-    let key = ''; try { key = typeof _gks !== 'undefined' ? String(_gks.key) : ''; } catch (e) { key = ''; }
+    let key = ''; try { key = typeof _gks !== 'undefined' ? String(_gks.key) + '|' + String(_gks.dkey) : ''; } catch (e) { key = ''; }
     if (memo.p && memo.key === key && key) return memo.p;
     let best = null;
     try {

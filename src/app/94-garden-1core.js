@@ -87,10 +87,14 @@ function _gdSaveQuiet() {
 }
 function gardenRepaintSoon() {
   if (_gd.paintQ) return;
+  // (build phase 1, speed) at the next frame, but in a task of its own after it: run inside the frame's own callback, the repaint and the
+  // frame's drawing made one task of 60-75 ms on every put-down (a CPU profile, 21 Nov); apart, each is well under 50 ms
   _gd.paintQ = requestAnimationFrame(() => {
-    _gd.paintQ = 0;
-    try { if (typeof _gdpRepaint === 'function') _gdpRepaint(); } catch (e) { console.error('[garden]', e); }
-    try { if (typeof _hgdRepaint === 'function') _hgdRepaint(); } catch (e) { console.error('[garden]', e); }
+    setTimeout(() => {
+      _gd.paintQ = 0;
+      try { if (typeof _gdpRepaint === 'function') _gdpRepaint(); } catch (e) { console.error('[garden]', e); }
+      try { if (typeof _hgdRepaint === 'function') _hgdRepaint(); } catch (e) { console.error('[garden]', e); }
+    }, 0);
   });
 }
 
