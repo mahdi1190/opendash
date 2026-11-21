@@ -132,7 +132,7 @@ function _vfrMarkup(V, pose, walk, face, mark) {
   if (face < 0) fig = fig.replace('<g class="wd-flip">', '<g class="wd-flip" transform="scale(-1 1)">');
   // a fishing line from the rod's tip into the water in front of them (the angler carries his rod; others are given one)
   let extra = '';
-  if (pose === 'fish') extra = cast === 'angler' ? `<path d="M${face * 30} -64Q${face * 40} -30 ${face * 42} 6" stroke="#f4f4ea" stroke-width=".5" fill="none" opacity=".8"/>` : `<path d="M${face * 6} -22L${face * 34} -52" stroke="#6e4c2a" stroke-width="1.6" stroke-linecap="round"/><path d="M${face * 34} -52Q${face * 42} -24 ${face * 44} 6" stroke="#f4f4ea" stroke-width=".5" fill="none" opacity=".8"/>`;
+  if (pose === 'fish') extra = cast === 'angler' ? `<path d="M${face * 30} -64Q${face * 62} -34 ${face * 88} 16" stroke="#f4f4ea" stroke-width=".5" fill="none" opacity=".8"/>` : `<path d="M${face * 6} -22L${face * 34} -52" stroke="#6e4c2a" stroke-width="1.6" stroke-linecap="round"/><path d="M${face * 34} -52Q${face * 64} -24 ${face * 88} 16" stroke="#f4f4ea" stroke-width=".5" fill="none" opacity=".8"/>`;
   const top = typeof gardenCastTop === 'function' ? gardenCastTop(cast) : 50;
   const m = mark ? `<g class="wd-mark" transform="translate(0 ${-top - 8})"><rect x="-9" y="-6" width="18" height="11" rx="5.5" fill="#fffdf4" stroke="#6a5a44" stroke-width="0.6"/><circle cx="-4" cy="-0.5" r="1.1" fill="#6a5a44"/><circle cy="-0.5" r="1.1" fill="#6a5a44"/><circle cx="4" cy="-0.5" r="1.1" fill="#6a5a44"/></g>` : '';
   s = gardenActorSized(fig + extra + m);
@@ -203,7 +203,7 @@ function _vfrTellSeen(id, V) {
 /** The way the angler faces on his spot: away from the nearest moving water (the layout's rivers), until the story turns him round. */
 function _vfrAwayFromRiver(x, y) {
   let best = null, bd = Infinity;
-  try { for (const r of (gardenIslandData().presentation || {}).rivers || []) { const pts = r.points || r.path || r.line || []; for (const p of pts) { const px = Array.isArray(p) ? p[0] : p.x, py = Array.isArray(p) ? p[1] : p.y; const d = Math.hypot(px - x, py - y); if (d < bd) { bd = d; best = { x: px, y: py }; } } } } catch (e) { best = null; }
+  try { const R = (gardenIslandData().presentation || {}).rivers || {}; for (const r of Array.isArray(R) ? R : Object.values(R)) { const pts = (r && (r.points || r.path || r.line)) || []; for (const p of pts) { const px = Array.isArray(p) ? p[0] : p.x, py = Array.isArray(p) ? p[1] : p.y; const d = Math.hypot(px - x, py - y); if (d < bd) { bd = d; best = { x: px, y: py }; } } } } catch (e) { best = null; }
   return best ? (best.x > x ? -1 : 1) : null;
 }
 function _vfrFaceAt(V, e) {
