@@ -650,7 +650,8 @@
     // deep contact shade under its foot, so a bench or a crate stands on the quay, not on the face of a wall)
     for (const t of gardenIslandHarbourThings(L.D)) { const p = atCell(t.x, t.y), k = L.kind(t.x, t.y); if (k !== 'path') continue; const hw = (t.foot[2] - t.foot[0]) * cw / 2 + 6;
       add([p.x - hw - 16, p.y - 22, p.x + hw + 20, p.y + 16], 38, (B) => { const rr = kit.rng(kit.hash(Math.round(p.x), Math.round(p.y), 109));
-        B.f(B.rr(p.x - hw - 4, p.y - 9, hw * 2 + 8, 13, 3), '#5a564e', .2).f(B.blob(rr, p.x + 2, p.y + 1, hw + 2, 4.2, 9, .3), '#2e2a26', .3).f(B.blob(rr, p.x + 1, p.y + .5, hw * .7, 2.4, 9, .3), '#1e1a16', .28);
+        B.f(B.rr(p.x - hw - 4, p.y - 9, hw * 2 + 8, 13, 3), '#5a564e', .3).f(`M${p.x - hw + 2} ${p.y - 1.5}L${p.x + hw - 2} ${p.y - 1.5}L${p.x + hw + 9} ${p.y + 5}L${p.x - hw + 13} ${p.y + 5}Z`, '#1e1a16', .24)
+          .f(B.blob(rr, p.x + 2, p.y + 1, hw + 2, 4.2, 9, .3), '#2e2a26', .42).f(B.blob(rr, p.x + 1, p.y + .5, hw * .7, 2.4, 9, .3), '#1e1a16', .4);
         B.s(`M${p.x - hw - 4} ${p.y + 4.5}H${p.x + hw + 4}`, '#e8e2d4', 1.1, .35).s(`M${p.x - hw - 4} ${p.y - 9}H${p.x + hw + 4}`, '#3a3630', .9, .3);
         for (let i = 0; i < 10; i++) { const ax = p.x + (rr() - .5) * (hw * 2 + 14), ay = p.y + (rr() - .3) * 8; B.f(B.ell(ax, ay, .8 + rr() * 1.1, .5 + rr() * .5), ['#8c8474', '#6e685e', '#c2b8a4'][Math.floor(rr() * 3)], .8); }
         B.tufts(rr, p.x - hw - 3, p.y + 3, 4, 2, ['#7a8a4e', '#9aa85e'], 3); B.tufts(rr, p.x + hw + 3, p.y + 2, 4, 2, ['#7a8a4e', '#9aa85e'], 3); }); }
