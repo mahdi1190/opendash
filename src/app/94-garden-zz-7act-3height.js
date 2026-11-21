@@ -222,7 +222,17 @@ function _ghtClimbEnd() {
 }
 /* ---------- swimming ---------- */
 function _ghtWet(x, y) { try { return typeof _gksWetDrawn === 'function' ? _gksWetDrawn(x, y) : _gksWet(x, y); } catch (e) { return false; } }
-function _ghtSwimFree(x, y) { return _ghtWet(x, y) && _ghtWet(x - 0.18, y) && _ghtWet(x + 0.18, y) && _ghtWet(x, y - 0.12) && _ghtWet(x, y + 0.14) && !_ghtAfloat(x, y); }
+function _ghtSwimFree(x, y) { return _ghtWet(x, y) && _ghtWet(x - 0.18, y) && _ghtWet(x + 0.18, y) && _ghtWet(x, y - 0.12) && _ghtWet(x, y + 0.14) && !_ghtAfloat(x, y) && !_ghtDeck(x, y); }
+/** Is (x, y) on or under a way across the water (a bridge's deck, a weir walk, stepping stones: any crossing the layout lays, as its
+ *  standing surface is drawn)? You swim round it, never up on to it or under it, and never climb out on to it from the water. */
+function _ghtDeck(x, y) {
+  let C = null; try { C = typeof gardenIslandCrossingGeometry === 'function' ? gardenIslandCrossingGeometry() : null; } catch (e) { C = null; }
+  if (!C || !C.length || typeof gardenIslandInPolygon !== 'function') return false;
+  for (const c of C) { const S = c.support; if (!S || S.length < 3) continue; for (const [dx, dy] of [[0, 0], [-0.3, 0], [0.3, 0], [0, -0.3], [0, 0.35]]) if (gardenIslandInPolygon(x + dx, y + dy, S)) return true; }
+  return false;
+}
+/** A straight wade from the bank to (to): through water, never across a deck. */
+function _ghtWadeClear(from, to) { for (let k = 0.15; k <= 1.001; k += 0.15) { const x = from.x + (to.x - from.x) * k, y = from.y + (to.y - from.y) * k; if (_ghtDeck(x, y)) return false; } return true; }
 /** Is something standing in the water here (a moored boat, a pier's legs, a buoy: any thing found whose foot is in the water)? You
  *  swim round it, not through it. The list is made again every few seconds. */
 function _ghtAfloat(x, y) {
@@ -239,7 +249,7 @@ function gardenSwimStart() {
   if (typeof _gw === 'undefined' || !_gw.on || _ght.swim || _ght.lv || _ght.climb) return false;
   if (typeof gartActStop === 'function') gartActStop();
   let to = null;
-  for (const [dx, dy] of [[0, -1], [0.7, -0.7], [-0.7, -0.7], [1, 0], [-1, 0], [0, 1]]) { for (let d = 0.6; d <= 2.6 && !to; d += 0.2) { const x = _gw.px + dx * d, y = _gw.py + dy * d; if (_ghtSwimFree(x, y) && _ghtSwimFree(x + dx * 0.6, y + dy * 0.6)) to = { x: x + dx * 0.25, y: y + dy * 0.25 }; } if (to) break; }
+  for (const [dx, dy] of [[0, -1], [0.7, -0.7], [-0.7, -0.7], [1, 0], [-1, 0], [0, 1]]) { for (let d = 0.6; d <= 2.6 && !to; d += 0.2) { const x = _gw.px + dx * d, y = _gw.py + dy * d; if (_ghtSwimFree(x, y) && _ghtSwimFree(x + dx * 0.6, y + dy * 0.6) && _ghtWadeClear({ x: _gw.px, y: _gw.py }, { x: x + dx * 0.25, y: y + dy * 0.25 })) to = { x: x + dx * 0.25, y: y + dy * 0.25 }; } if (to) break; }
   if (!to) { try { gardenToast('The water is too shallow here for a swim.'); } catch (e) { /* fine */ } return false; }
   _gw.path = []; _gw.then = null; _gw.spd = 0; _gw.moving = false;
   _ght.swim = { on: false, t0: performance.now(), from: { x: _gw.px, y: _gw.py }, to, ms: _gaMotion() ? 1500 : 300, ph: 0, fxT: 0 };
@@ -283,7 +293,12 @@ function _ghtSwimOut(x, y) {
 const _GHT_SWIM_PROP = '<g class="ght-water"><ellipse cx="0" cy="-25" rx="19" ry="6.4" fill="#4f98ae" opacity="0.62"/><ellipse cx="0" cy="-26" rx="17" ry="4.4" fill="#8ccbdc" opacity="0.4"/><ellipse class="ght-ring" cx="0" cy="-26" rx="22" ry="5.6" fill="none" stroke="#e8f6fa" stroke-width="1" opacity="0.5"/><path d="M-24 -23q4 2 8 0M16 -22q4 2 8 0" stroke="#e8f6fa" stroke-width="0.9" fill="none" opacity="0.75"/></g>';
 /** Called by the gait (94-garden-zz-6move.js) before the walk: true when this frame's pose is ours (a swimmer). */
 function gardenHeightBody(body, gw, motion) {
-  const S = _ght.swim; if (!S || !body) return false;
+  const S = _ght.swim; if (!body) return false;
+  if (!S) {
+    if (!body._ghtSeen) { body._ghtSeen = 1; try { if (body.querySelector && body.querySelector('.ght-wrap')) (_ght.wet || (_ght.wet = new Set())).add(body); } catch (e) { /* plain */ } }   // (a drawing made from a wet one)
+    if (body._ghtW || (_ght.wet && _ght.wet.size)) _ghtLimbsReset();
+    return false;
+  }   // (out of the water: no drawing keeps the water ring or the swim pose)
   const L = _gmvLimbs(body); if (!L.legA) return false;
   const now = performance.now(), nat = L.native, side = L.side;
   // (a drawing shown again, idle after a stroke, comes back with its limbs as drawn: our pose is written again each frame, not only on a change)
@@ -291,6 +306,7 @@ function gardenHeightBody(body, gw, motion) {
   const k = S.on ? 1 : Math.min(1, (now - S.t0) / S.ms), out = S.out ? Math.min(1, (now - S.out.t0) / S.out.ms) : 0, sink = Math.max(0, Math.min(1, k * 1.4 - 0.2)) * (1 - out);
   // the water round the chest: ours, on the body, under its arms
   if (!body._ghtW || !body._ghtW.parentNode) { try { const g = typeof gardenSceneElement === 'function' && nat ? gardenSceneElement('g') : document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'ght-wrap'); g.innerHTML = _GHT_SWIM_PROP; const R = body.querySelector('.gpl-root') || body; R.appendChild(g); body._ghtW = g; } catch (e) { body._ghtW = null; } }
+  (_ght.wet || (_ght.wet = new Set())).add(body);   // (every drawing posed in the water: each facing has its own, all cleared on the way out)
   if (body._ghtW) { const op = String(Math.round(sink * 100) / 100); if (body._ghtW.getAttribute('opacity') !== op) body._ghtW.setAttribute('opacity', op); }
   if (motion) S.ph = (S.ph + (gw.moving ? 0.03 + Math.min(0.05, (gw.spd || 0) / 4000) : 0.008)) % 1;
   const q = Math.sin(S.ph * Math.PI * 2), bobY = Math.sin(now / 520) * 0.9;
@@ -308,11 +324,16 @@ function gardenHeightBody(body, gw, motion) {
 }
 /** Out of the water: the legs back, the water off the body (the walk poses it from here). */
 function _ghtLimbsReset() {
-  try {
-    const inner = _gw.node && _gw.node.querySelector('.gd-pl-in'), body = inner && (inner._nativePlayerCurrent ? inner._nativePlayerCurrent.node : inner.firstChild); if (!body) return;
-    const L = _gmvLimbs(body); for (const p of [L.legA, L.legB, L.kneeA, L.kneeB, L.armA, L.armB, L.up, L.root]) _gmvSet(p, 0, null, 0, L.native);
-    if (body._ghtW) { try { body._ghtW.parentNode.removeChild(body._ghtW); if (body._ghtW.destroy) body._ghtW.destroy(); } catch (e) { /* gone */ } body._ghtW = null; }
-  } catch (e) { /* the next drawing is clean */ }
+  const bodies = new Set(_ght.wet || []);
+  try { const inner = _gw.node && _gw.node.querySelector('.gd-pl-in'), body = inner && (inner._nativePlayerCurrent ? inner._nativePlayerCurrent.node : inner.firstChild); if (body) bodies.add(body); } catch (e) { /* none on screen */ }
+  for (const body of bodies) {
+    try {
+      const L = _gmvLimbs(body); for (const p of [L.legA, L.legB, L.kneeA, L.kneeB, L.armA, L.armB, L.up, L.root]) _gmvSet(p, 0, null, 0, L.native);
+      if (body._ghtW) { try { if (body._ghtW.parentNode) body._ghtW.parentNode.removeChild(body._ghtW); if (body._ghtW.destroy) body._ghtW.destroy(); } catch (e) { /* gone */ } body._ghtW = null; }
+      try { for (const g of [...(body.querySelectorAll ? body.querySelectorAll('.ght-wrap') : [])]) { if (g.parentNode) g.parentNode.removeChild(g); if (g.destroy) g.destroy(); } } catch (e) { /* none left */ }
+    } catch (e) { /* the next drawing is clean */ }
+  }
+  if (_ght.wet) _ght.wet.clear();
 }
 /** The shadow at the feet: not under a swimmer or someone on a ladder (the floor's own shadow comes with you). */
 function gardenHeightShadowOn() { return !_ght.swim && !_ght.climb; }
@@ -337,7 +358,7 @@ if (typeof _gwMoveBy === 'function') {
       if (_gwFree(x0 + dx, y0 + dy)) { _gw.px += dx; _gw.py += dy; return true; }
       if (_ght.swim) {   // at the bank: climb out where the ground takes your feet
         const l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l;
-        for (let d = 0.2; d <= 1.0; d += 0.1) { const qx = x0 + ux * d, qy = y0 + uy * d; if (!_ghtWet(qx, qy) && _ght.free0(qx, qy)) { _ghtSwimOut(qx + ux * 0.15, qy + uy * 0.15); return false; } }
+        for (let d = 0.2; d <= 1.0; d += 0.1) { const qx = x0 + ux * d, qy = y0 + uy * d; if (_ghtDeck(qx, qy)) break; if (!_ghtWet(qx, qy) && _ght.free0(qx, qy)) { _ghtSwimOut(qx + ux * 0.15, qy + uy * 0.15); return false; } }
       }
       if (dx && Math.abs(dx * 48) > Math.abs(dy * 30) * 0.3 && _gwFree(x0 + dx, y0)) { _gw.px += dx; return true; }   // (a press nearly straight up or down does not creep along the bank)
       if (dy && Math.abs(dy * 30) > Math.abs(dx * 48) * 0.3 && _gwFree(x0, y0 + dy)) { _gw.py += dy; return true; }
@@ -358,13 +379,25 @@ if (typeof gardenWalkToPoint === 'function') {
       if (!pt || (_ght.swim && !_ght.swim.on)) return false;
       let tgt = { x: pt.x, y: pt.y };
       if (_ght.lv) { const sy = tgt.y + _ght.lv.h / GARDEN_WORLD.cellH; if (gardenLevelHas(_ght.lv, tgt.x, sy) || !gardenLevelHas(_ght.lv, tgt.x, tgt.y)) tgt.y = sy; }   // (a click on the floor as drawn: down to its ground plane)
-      if (!_gwFree(tgt.x, tgt.y)) { if (_ght.swim && !_ghtWet(tgt.x, tgt.y) && _ght.free0(tgt.x, tgt.y)) { /* a click on the bank: swim to it and climb out */ } else { const f = typeof _gwNearestFreePt === 'function' ? _gwNearestFreePt(tgt.x, tgt.y, 1.2) : null; if (!f) return _ght.lv ? _ghtDownThen(pt, then) : false; tgt = f; } }
+      if (!_gwFree(tgt.x, tgt.y)) { if (_ght.swim && !_ghtWet(tgt.x, tgt.y) && !_ghtDeck(tgt.x, tgt.y) && _ght.free0(tgt.x, tgt.y)) { /* a click on the bank: swim to it and climb out */ } else { const f = typeof _gwNearestFreePt === 'function' ? _gwNearestFreePt(tgt.x, tgt.y, 1.2) : null; if (!f) return _ght.lv ? _ghtDownThen(pt, then) : false; tgt = f; } }
       _gw.path = [tgt]; _gw.then = then || null; _gw.goal = tgt; _gw.repaths = 0; _gw.blockT = 0;
       if (typeof gardenLiveWalked === 'function') try { gardenLiveWalked(tgt); } catch (e) { /* alone */ }
       if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop();
       return true;
     }
     return _ghtWalk0(pt, then, o);
+  };
+}
+/* A click while you swim swims you there (or to the bank you clicked, and out on to it): never a cast, a pick or a walk to a door. While
+   wading in or climbing, a click waits. (Before the world's own steps: its third, a click on the water, would cast a line.) */
+if (typeof gardenWorldClick === 'function') {
+  const _ghtClick0 = gardenWorldClick;
+  gardenWorldClick = function (it, cell, ev, m) {   // eslint-disable-line no-func-assign
+    if (typeof _gw === 'undefined' || !_gw.on || !(_ght.swim || _ght.climb)) return _ghtClick0(it, cell, ev, m);
+    if (_ght.climb || !_ght.swim.on || _ght.swim.out) return true;
+    const pt = (typeof _gwPointAt === 'function' && _gwPointAt(ev)) || (cell ? { x: cell.x + 0.5, y: cell.y + 0.5 } : null);
+    if (!pt || !gardenWalkToPoint(pt, null, { radius: 8 })) { try { gameDeny(null, { at: ev && ev.clientX != null ? { x: ev.clientX, y: ev.clientY } : null, say: 'You cannot swim there.' }); } catch (e) { /* fine */ } }
+    return true;
   };
 }
 if (typeof gardenPlayWalk === 'function') {
@@ -396,8 +429,22 @@ if (typeof gartActNearby === 'function') {
   gartActNearby = function () {   // eslint-disable-line no-func-assign
     if (_ght.climb || _ght.swim) return [];
     if (_ght.lv) { const px = _gw.px, py = _gw.py; return _ghtRows().filter(r => Math.hypot(r.x - px, (r.y - py) * 1.3) <= 1.1).sort((a, b) => Math.hypot(a.x - px, a.y - py) - Math.hypot(b.x - px, b.y - py)); }
-    return _ghtNear0();
+    return _ghtRank(_ghtNear0());
   };
+}
+/** On the ground: a way up is offered from in front of its foot only (not from behind the thing it climbs), and before the moves of a
+ *  tree it is built in; deep water's swim comes before a nap or a tree's moves on the bank. Read from the rows, by kind, on any layout. */
+function _ghtRank(rows) {
+  const px = _gw.px, py = _gw.py;
+  rows = rows.filter(r => r.act !== 'climbup' || !r.way || (py >= r.way.foot.y - 0.55 && Math.hypot(r.way.foot.x - px, (r.way.foot.y - py) * 1.3) <= 1.8));
+  const up = rows.find(r => r.act === 'climbup');
+  if (up && rows[0] !== up && rows[0].src === 'tree' && Math.hypot((rows[0].x - up.way.foot.x), (rows[0].y - up.way.foot.y)) < 3.2) { rows.splice(rows.indexOf(up), 1); rows.unshift(up); }
+  if (!rows.length || rows[0].src === 'water' || up) return rows;
+  if (rows[0].src !== 'tree' && rows[0].act !== 'nap' && rows[0].act !== 'lie') return rows;   // (a thing of its own right here: a bench, a pier end)
+  let water = []; try { water = _gaWaterRows(px, py) || []; } catch (e) { water = []; }
+  const swim = water.find(r => r.act === 'swim');
+  if (swim) rows.unshift(swim);
+  return rows;
 }
 if (typeof gartActRun === 'function') {
   const _ghtRun0 = gartActRun;
@@ -469,15 +516,59 @@ if (typeof gardenLifePetGoal === 'function') {
   };
 }
 /* ---------- friends ---------- */
-/** Someone new here while you are up on a floor or in the water: they see you climb up, or swim, from where you went in. */
+/** Where you are, told again: someone new here (or back after a drop, or whose copy of you missed the climb) sees you up on your floor
+ *  or out in the water at once, not climbing again. A small message when the people here change (1.5 s and 5 s later: their world may
+ *  still be drawing the thing you are on) and every 6 s while you are up there; each is the same state, so one more changes nothing. */
 function _ghtRetell() {
   if (typeof _gll === 'undefined' || !_gll.actors) return;
-  const sig = [..._gll.actors.keys()].join(',');
-  if (sig === _ght.seen) return;
-  const added = sig.split(',').some(k => k && !_ght.seen.split(',').includes(k)); _ght.seen = sig;
-  if (!added) return;
-  if (_ght.lv && !_ght.climb) { const w = _ght.lv.ways[0]; if (w) setTimeout(() => { if (_ght.lv) _gaTell('climbup', w.foot.x, w.foot.y); }, 1500); }
-  else if (_ght.swim && _ght.swim.on) setTimeout(() => { if (_ght.swim && _ght.swim.on) _gaTell('swim', _gw.px, _gw.py); }, 1500);
+  const now = performance.now(), sig = [..._gll.actors.keys()].join(',');
+  if (sig !== _ght.seen) { const added = sig.split(',').some(k => k && !_ght.seen.split(',').includes(k)); _ght.seen = sig; if (added) _ght.tellAt = [now + 1500, now + 5000]; }
+  if (!_gll.actors.size) return;
+  const up = _ght.lv && !_ght.climb, wet = _ght.swim && _ght.swim.on && !_ght.swim.out;
+  if (!up && !wet) { _ght.tellAt = null; return; }
+  const due = (_ght.tellAt && _ght.tellAt.length && now >= _ght.tellAt[0]) || now - (_ght.toldT || 0) > 6000;
+  if (!due) return;
+  if (_ght.tellAt && _ght.tellAt.length && now >= _ght.tellAt[0]) _ght.tellAt.shift();
+  _ght.toldT = now;
+  if (up) { const w = _ght.lv.ways[0]; if (w) _gaTell('onlevel', w.foot.x, w.foot.y); }
+  else _gaTell('inwater', _gw.px, _gw.py);
+}
+/** Their copy of someone told where they are (onlevel, inwater): put there at once, no walk over first, no climb. A floor this world has
+ *  not drawn yet is tried again for a while (a visit just begun). */
+function _ghtRemoteState(A, ev) {
+  const id = String(ev.e).slice(4), now = performance.now();
+  if (id === 'onlevel') {
+    if (A.ghtClimb) return;   // (a climb already on its way up)
+    const w = _ghtWayNear(ev.x, ev.y, true, 1.6);
+    if (!w) { A.ghtPend = { ev: { e: ev.e, x: ev.x, y: ev.y }, until: (A.ghtPend && A.ghtPend.until) || now + 25000, t: now }; return; }
+    A.ghtPend = null;
+    if (A.hLv === w.lv.key) return;
+    if (A.ghtSwim || A.swimming) _ghtRemote(A, 'swimout');
+    if (A.ghtH) { try { A.ghtH.stop(); } catch (e) { /* gone */ } A.ghtH = null; }
+    if (!gardenLevelHas(w.lv, A.x, A.y)) { A.x = w.top.x; A.y = w.top.y; }
+    A.tx = null; A.ty = null; A.way = null; A.then = null;
+    A.hLv = w.lv.key; A.hLift = w.lv.h; A.actLift = 0; A.hZ = (gardenLevelDepth(w.lv, A.x, A.y) - GARDEN_WORLD.sky) / GARDEN_WORLD.cellH;
+    A.dir = 's'; A.pose = ''; A.key = ''; if (typeof _gllPaint === 'function') _gllPaint(A);
+    { const sh = A.root && A.root.querySelector('.gll-shadow'); if (sh) sh.setAttribute('opacity', '1'); }
+    if (w.lv.L.sit && typeof gartActRemote === 'function') setTimeout(() => { if (A.hLv === w.lv.key) gartActRemote(A, w.lv.L.sit); }, 60);
+    return;
+  }
+  if (id === 'inwater') {
+    if (A.swimming && A.ghtSwim) return;
+    if (!_ghtWet(ev.x, ev.y)) return;
+    if (A.hLv) { A.hLv = null; A.hLift = 0; A.hZ = null; }
+    A.x = ev.x; A.y = ev.y; A.tx = null; A.ty = null; A.then = null;
+    A.ghtSwim = { t0: now - 2000, from: { x: ev.x, y: ev.y }, to: { x: ev.x, y: ev.y }, on: true }; A.swimming = true; A.key = '';
+    if (typeof _gllPaint === 'function') _gllPaint(A);
+  }
+}
+if (typeof _gllEmoteAt === 'function') {
+  const _ghtEmAt0 = _gllEmoteAt;
+  _gllEmoteAt = function (A, ev) {   // eslint-disable-line no-func-assign
+    if (A && ev && (ev.e === GA_WIRE + 'onlevel' || ev.e === GA_WIRE + 'inwater')) { if (Number.isFinite(ev.x) && Number.isFinite(ev.y)) _ghtRemoteState(A, ev); return; }
+    if (A && ev && ev.e === GA_WIRE + 'climbup' && A.ghtPend) A.ghtPend = null;
+    return _ghtEmAt0(A, ev);
+  };
 }
 /** Their copy of someone: climb a way, swim, climb out. Returns true when it was one of these. */
 function _ghtRemote(A, id) {
@@ -500,7 +591,7 @@ function _ghtRemote(A, id) {
   void W; return false;
 }
 function _ghtSwimTo(x, y) {
-  for (const [dx, dy] of [[0, -1], [0.7, -0.7], [-0.7, -0.7], [1, 0], [-1, 0], [0, 1]]) for (let d = 0.6; d <= 2.6; d += 0.2) { const qx = x + dx * d, qy = y + dy * d; if (_ghtSwimFree(qx, qy) && _ghtSwimFree(qx + dx * 0.6, qy + dy * 0.6)) return { x: qx + dx * 0.25, y: qy + dy * 0.25 }; }
+  for (const [dx, dy] of [[0, -1], [0.7, -0.7], [-0.7, -0.7], [1, 0], [-1, 0], [0, 1]]) for (let d = 0.6; d <= 2.6; d += 0.2) { const qx = x + dx * d, qy = y + dy * d; if (_ghtSwimFree(qx, qy) && _ghtSwimFree(qx + dx * 0.6, qy + dy * 0.6) && _ghtWadeClear({ x, y }, { x: qx + dx * 0.25, y: qy + dy * 0.25 })) return { x: qx + dx * 0.25, y: qy + dy * 0.25 }; }
   return null;
 }
 /** Each step of their copy: the climb's rise, the floor's height and depth, the swim's wade in and its strokes. */
@@ -543,6 +634,7 @@ if (typeof gartActRemote === 'function') {
 if (typeof _gllStep === 'function') {
   const _ghtStep0 = _gllStep;
   _gllStep = function (A, dt, quiet) {   // eslint-disable-line no-func-assign
+    if (A && A.ghtPend) { const P = A.ghtPend, now = performance.now(); if (now > P.until) A.ghtPend = null; else if (now - P.t > 600) { P.t = now; _ght.list = null; _ghtRemoteState(A, P.ev); } }   // (their floor not drawn here yet: tried again)
     if (A && (A.ghtClimb || A.hLv || A.ghtSwim || A.hLift)) { try { _ghtRemoteStep(A); } catch (e) { A.ghtClimb = null; } }
     if (A && A.ghtClimb) { A.tx = null; A.ty = null; }
     return _ghtStep0(A, dt, quiet);
