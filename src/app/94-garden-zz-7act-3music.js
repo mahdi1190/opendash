@@ -352,7 +352,7 @@ function _gmTick() {
     // someone new in the garden while you play: tell them at once (twice, in case their garden was still opening), not at the next beat
     if (_gmu.me && typeof _gll !== 'undefined' && _gll.actors) {
       const seen = _gmu.seen || (_gmu.seen = new Set()), keys = [..._gll.actors.keys()];
-      for (const w of keys) if (!seen.has(w)) { seen.add(w); if (_gmu.seenOnce) for (const ms of GMU.newcomerMs) setTimeout(() => { if (_gmu.me) _gmTell('on'); }, ms); }
+      for (const w of keys) if (!seen.has(w)) { seen.add(w); if (_gmu.seenOnce) for (const ms of GMU.newcomerMs) setTimeout(() => { if (!_gmu.me) return; try { const c = typeof _ga !== 'undefined' && _ga.cur; if (c && c.doing && c.row && c.row.music && typeof _gaTell === 'function') _gaTell(c.id, _gw.px, _gw.py); } catch (e) { /* the tune alone */ } _gmTell('on'); }, ms); }   // (their move first, with exactly where you stand, then the tune)
       for (const w of [...seen]) if (!_gll.actors.has(w)) seen.delete(w);
       _gmu.seenOnce = true;
     }
