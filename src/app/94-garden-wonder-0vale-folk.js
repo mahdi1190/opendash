@@ -129,7 +129,7 @@ function _vfrMarkup(V, pose, walk, face, mark) {
   let fig = typeof gardenCastSvg === 'function' ? gardenCastSvg(cast, { walk }) : '';
   if (!fig) fig = typeof _wdFolkArt === 'function' && typeof WD_FOLK_ROW !== 'undefined' && WD_FOLK_ROW.get(V.id) ? _wdFolkArt(WD_FOLK_ROW.get(V.id)) : '';
   // (fishing is done standing at the edge with the rod out: a side-on figure sat with its legs out over a deck reads as floating over the boards)
-  const cls = { sit: 'gca-sit', read: 'gca-read', rub: 'gca-sit gca-rub', talk: 'gca-talk' }[pose] || '';
+  const cls = { sit: 'gca-sit', read: 'gca-read', rub: 'gca-sit gca-rub', talk: 'gca-talk', sittalk: 'gca-sit gca-talk' }[pose] || '';
   if (cls) fig = fig.replace(/class="gca gca-(walk|idle)/, 'class="gca gca-$1 ' + cls);
   if (face < 0) fig = fig.replace('<g class="wd-flip">', '<g class="wd-flip" transform="scale(-1 1)">');
   // a fishing line from the rod's tip into the water in front of them (the angler carries his rod; others are given one)
@@ -158,14 +158,14 @@ function _vfrDraw(V, walking) {
   const S = V.S; if (!S) return;
   const e = V.entry, at = !walking && e && V.arrived;
   let pose = 'idle';
-  if (V.hold) pose = 'talk';
+  if (V.hold) pose = at && e.clip === 'sit' ? 'sittalk' : 'talk';   // (sat down, they talk from the seat)
   else if (at && e.clip === 'sit') pose = V.id === 'bramble' && V.rubbing ? 'rub' : 'sit';
   else if (at && e.clip === 'fish') pose = 'fish';
   else if (at && e.clip === 'read') pose = 'read';
   const mark = !!V.mark && !V.hold, face = V.face < 0 ? -1 : 1, k = pose + (walking ? 'w' : '') + face + (mark ? 'm' : '');
   if (V.drawn !== k) { V.drawn = k; wdArt(S, _vfrMarkup(V, pose, walking && !V.hold, face, mark)); }
   S.x = V.x; S.y = V.y;
-  const sat = pose === 'sit' || pose === 'rub';
+  const sat = pose === 'sit' || pose === 'rub' || pose === 'sittalk';
   S.lift = sat ? _vfrSeatLift(V, e && e.spot) : 0;
   S.z = sat && e && e.spot && e.spot.at ? e.spot.at.y + 0.02 : null;   // (sat on a seat: drawn on it, in front of its back rail)
 }
@@ -429,7 +429,7 @@ function gardenFolkSnap() {
 }
 const _vfl = { at: 0, sig: '', sentAt: 0 };
 function _vfrPoseWord(V) {
-  const e = V.entry; if (V.hold) return 'talk';
+  const e = V.entry; if (V.hold) return V.arrived && e && e.clip === 'sit' ? 'sittalk' : 'talk';
   if (!V.arrived || !e) return 'walk';
   return e.clip === 'sit' ? (V.rubbing ? 'rub' : 'sit') : e.clip === 'fish' ? 'fish' : e.clip === 'read' ? 'read' : 'idle';
 }
@@ -481,11 +481,11 @@ function _vfgFrame(dt) {
     const aim = V.to || V.goal, dx = (aim.x - V.x) * G.cellW, dy = (aim.y - V.y) * G.cellH, d = Math.hypot(dx, dy), st = VALE_FOLK_SPEED * (V.row.speed || 1) * dt * (aim === V.to ? 1.25 : 1);
     const walking = d > 1.5 && V.a === 'walk';
     if (d > 0.5) { const k = Math.min(1, st / d); V.x += dx / G.cellW * k; V.y += dy / G.cellH * k; if (Math.abs(dx) > 0.5) V.face = dx > 0 ? 1 : -1; }
-    if (!walking) V.face = V.a === 'talk' && V.mine && typeof _gw !== 'undefined' ? (_gw.px > V.x ? 1 : -1) : V.f;
+    if (!walking) V.face = (V.a === 'talk' || V.a === 'sittalk') && V.mine && typeof _gw !== 'undefined' ? (_gw.px > V.x ? 1 : -1) : V.f;
     const pose = V.a === 'walk' ? 'idle' : V.a, face = V.face < 0 ? -1 : 1, k = pose + (walking ? 'w' : '') + face;
     if (V.drawn !== k) { V.drawn = k; wdArt(V.S, _vfrMarkup(V, pose, walking, face, false)); }
     V.S.x = V.x; V.S.y = V.y;
-    const sat = pose === 'sit' || pose === 'rub'; V.S.lift = sat ? _vfrSeatLift(V, null) : 0;
+    const sat = pose === 'sit' || pose === 'rub' || pose === 'sittalk'; V.S.lift = sat ? _vfrSeatLift(V, null) : 0;
   }
 }
 function gardenFolkGuestTalk(id) {
