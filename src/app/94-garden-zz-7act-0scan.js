@@ -26,7 +26,7 @@ function _gksKey() {
   let id = ''; try { id = gardenIslandData().id; } catch (e) { id = ''; }
   let wr = 0; try { const w = window.GardenNative && GardenNative.world(); wr = w && w.waterAt && w.waterAt(0, 0) !== null ? 1 : 0; } catch (e) { wr = 0; }   // (the water is painted: a bank is laid on it again)
   let sol = 0; try { sol = typeof _gw !== 'undefined' && _gw.solids ? _gw.solids.list.length : 0; } catch (e) { sol = 0; }   // (what blocks walking is known: a placed thing is checked against it again)
-  let lv = 0; try { lv = _gksLevel(); } catch (e) { lv = 0; }   // (a thing kept for a later level comes back when you reach it)
+  let lv = 0; try { lv = typeof gardenLevelLandSig === 'function' ? gardenLevelLandSig(_gksLevel()) : _gksLevel(); } catch (e) { lv = 0; }   // (a thing kept for a later level comes back when you reach it)
   let ar = ''; try { ar = typeof _GD_LAND !== 'undefined' && _GD_LAND ? _GD_LAND.size : ''; } catch (e) { ar = ''; }
   return [id, sol, wr, lv, ar, _gksGridRev(), m.visit ? m.visit.key : 'me', (m.decor || []).length, (m.decor || []).reduce((h, d) => (h * 31 + Math.round(d.x * 7 + d.y * 131)) | 0, 0), (m.areas || []).length, lp, feet, typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0, gardenThingsPlaced().length].join('|');
 }
@@ -84,7 +84,9 @@ function gardenAffordThings() {
   _gks.list = list; _gks.unknown = list.filter(t => !t.kind).map(t => t.src + ':' + t.id);
   // a placed thing moved aside once the walker knew what stops the feet: the world draws it again where it now lies
   const placedSig = list.filter(t => t.src === 'thing').map(t => t.id + '@' + t.x + ',' + t.y).join('|');
-  if (_gks.placedSig != null && _gks.placedSig !== placedSig) { _gks.rev = (_gks.rev || 0) + 1; setTimeout(() => { try { if (typeof GardenNative !== 'undefined' && GardenNative.sync) GardenNative.sync(); } catch (e) { /* drawn next time */ } }, 0); }
+  // (vf-perf) the world is drawn again once (several moves in a row make one redraw) and only when you are not walking: it is the
+  // whole world's redraw, and at a level-up it came straight after the level-up's own, a second long task while you walked on
+  if (_gks.placedSig != null && _gks.placedSig !== placedSig) { _gks.rev = (_gks.rev || 0) + 1; _gksResyncSoon(); }
   _gks.placedSig = placedSig;
   if (_gks.unknown.length && _gks.said !== _gks.unknown.join()) { _gks.said = _gks.unknown.join(); try { console.info('[garden] things of no known kind (they offer nothing; give them a kind in the layout or a word in GARDEN_KINDS): ' + _gks.unknown.join(', ')); } catch (e) { /* no console */ } }
   return list;
@@ -117,6 +119,11 @@ function _gksSolidAt(x, y, self) {
 function _gksPlaceNear(K, x, y, w, h, list, self) {
   for (let r = 0.35; r <= 3.01; r += 0.35) for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 + r, qx = Math.round((x + Math.cos(a) * r) * 100) / 100, qy = Math.round((y + Math.sin(a) * r * 0.75) * 100) / 100; if (!_gksPlaceFault(K, qx, qy, w, h, list, self)) return { x: qx, y: qy }; }
   return null;
+}
+function _gksResyncSoon() {
+  if (_gks.resyncT) return;
+  const go = () => { _gks.resyncT = 0; if (typeof _gw !== 'undefined' && _gw && _gw.moving) { _gks.resyncT = setTimeout(go, 400); return; } try { if (typeof GardenNative !== 'undefined' && GardenNative.sync) GardenNative.sync(); } catch (e) { /* drawn next time */ } };
+  _gks.resyncT = setTimeout(go, 0);
 }
 /** Bumped when a placed thing lies somewhere new (the stage's cache key: 94-garden-4page.js), so the world draws it there. */
 function gardenAffordRev() { return _gks.rev || 0; }

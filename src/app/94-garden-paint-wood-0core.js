@@ -737,7 +737,7 @@ window.GardenPaintWood = (function () {
     return im;
   }
   function liveTextures(scene) {
-    const make = (key, w, h, draw) => { const k = TEX + '-' + key; if (scene.textures.exists(k)) return k; const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); scene.textures.addCanvas(k, c); return k; };
+    const make = (key, w, h, draw) => { const k = TEX + '-' + key; if (scene.textures.exists(k)) return k; const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); scene.textures.addImage(k, c); return k; };
     return {
       dapple: make('dapple', 96, 48, (cx) => { const r = rng(5); for (let i = 0; i < 7; i++) { const x = 18 + r() * 60, y = 10 + r() * 28, rr = 6 + r() * 12; const g = cx.createRadialGradient(x, y, 0, x, y, rr); g.addColorStop(0, 'rgba(255,246,200,.9)'); g.addColorStop(1, 'rgba(255,246,200,0)'); cx.fillStyle = g; cx.save(); cx.translate(x, y); cx.scale(1, .55); cx.beginPath(); cx.arc(0, 0, rr, 0, Math.PI * 2); cx.restore(); cx.fill(); } }),
       shaft: make('shaft', 64, 256, (cx) => { const g = cx.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, 'rgba(255,248,214,0)'); g.addColorStop(.25, 'rgba(255,238,176,.8)'); g.addColorStop(.8, 'rgba(255,230,160,.5)'); g.addColorStop(1, 'rgba(255,244,200,0)'); cx.fillStyle = g; cx.filter = 'blur(5px)'; cx.beginPath(); cx.moveTo(25, 0); cx.lineTo(39, 0); cx.lineTo(54, 256); cx.lineTo(10, 256); cx.closePath(); cx.fill(); cx.filter = 'none'; cx.globalCompositeOperation = 'destination-in'; const s = cx.createLinearGradient(0, 0, 64, 0); s.addColorStop(0, 'rgba(0,0,0,0)'); s.addColorStop(.5, 'rgba(0,0,0,1)'); s.addColorStop(1, 'rgba(0,0,0,0)'); cx.fillStyle = s; cx.fillRect(0, 0, 64, 256); }),
@@ -787,7 +787,7 @@ window.GardenPaintWood = (function () {
     // One small texture of the canopy field, shown by each chunk's own crop between the shared ground and the wood's floor,
     // and hidden as soon as that chunk's picture is up: the wood is never lighter in squares while it bakes.
     if (S.M.canopy) ok(() => {
-      const CF = S.M.canopy, key = TEX + '-shade-' + hash(String(performance.now())); scene.textures.addCanvas(key, CF.canvas); S.shadeKey = key;
+      const CF = S.M.canopy, key = TEX + '-shade-' + hash(String(performance.now())); scene.textures.addImage(key, CF.canvas); S.shadeKey = key;   // (vf-perf: addImage, as the chunks do: a canvas texture read every pixel back as it was made, on every repaint)
       const ox = CF.x0 - CF.st / 2, oy = CF.y0 - CF.st / 2, tw = CF.canvas.width, th = CF.canvas.height;
       for (const ch of S.chunks.values()) {
         const B = ch.box, cx0 = Math.max(0, (B.x - ox) / CF.st), cy0 = Math.max(0, (B.y - oy) / CF.st), cx1 = Math.min(tw, (B.x + B.w - ox) / CF.st), cy1 = Math.min(th, (B.y + B.h - oy) / CF.st);
@@ -869,12 +869,13 @@ window.GardenPaintWood = (function () {
     if (S.stale.length && performance.now() - S.staleAt > 4000) { for (const o of S.stale) dropStale(S.scene, o); S.stale = []; }   // (any old picture left after four seconds goes)
     let resident = 0, budget = 1; const vx = view.x + view.w / 2, vy = view.y + view.h / 2, pick = () => { let best = null, bd = Infinity; for (const ch of S.chunks.values()) { const seen = hit(ch.box, view); if (ch.image && (ch.K >= wantK || !seen) || !hit(ch.box, near) || (S.job && S.job.ch === ch)) continue; const d = Math.hypot(ch.box.x + CH / 2 - vx, (ch.box.y + CH / 2 - vy) * 1.4) - (seen ? 1e6 : 0) + (ch.image ? 5e5 : 0); if (d < bd) { bd = d; best = ch; } } return best; };
     for (const ch of S.chunks.values()) if (ch.image) { resident++; if (hit(ch.box, view)) ch.used = S.frame; }
-    const j0 = performance.now();
-    for (let n = 0; n < 6 && performance.now() - j0 < 7; n++) {
+    const j0 = performance.now(), jRoom = typeof gardenBakeRoom === 'function' ? gardenBakeRoom(7) : 7;   // (the shared budget a frame, 94-garden-paint-0budget.js)
+    for (let n = 0; n < 6 && performance.now() - j0 < jRoom; n++) {
       if (!S.job) { const todo = pick(); if (!todo) break; S.job = { ch: todo, gen: bakeChunk(todo, hit(todo.box, view) ? wantK : Math.min(wantK, 1.5)) }; }
-      let done = false; try { while (performance.now() - j0 < 7) { const g0 = performance.now(); const st = S.job.gen.next(); const gd = performance.now() - g0; if (gd > slowStep.ms) { slowStep.ms = +gd.toFixed(1); slowStep.at = S.job.ch.key + ':' + (S.job.phase || ''); } if (st.done) { done = true; break; } } } catch (e) { lastError = String(e && e.stack || e); done = true; }
+      let done = false; try { while (performance.now() - j0 < jRoom) { const g0 = performance.now(); const st = S.job.gen.next(); const gd = performance.now() - g0; if (gd > slowStep.ms) { slowStep.ms = +gd.toFixed(1); slowStep.at = S.job.ch.key + ':' + (S.job.phase || ''); } if (st.done) { done = true; break; } } } catch (e) { lastError = String(e && e.stack || e); done = true; }
       budget = 0; if (!done) break; S.job.ch.used = S.frame; S.job = null; resident++;
     }
+    if (typeof gardenBakeSpent === 'function') gardenBakeSpent(performance.now() - j0);
     const tBake = performance.now() - t0; S.tw = S.tw || { bake: 0, trees: 0, sort: 0, light: 0 }; S.tw.bake = Math.max(S.tw.bake, tBake);
     { let bytes = 0; for (const c of S.chunks.values()) if (c.image) bytes += c.bytes || 0; if (resident > MAX_CHUNKS || bytes > CAP_MB * 1048576) { const far = [...S.chunks.values()].filter(c => c.image && !hit(c.box, near)).sort((a, b) => a.used - b.used); let over = bytes - CAP_MB * 1048576, n = resident - MAX_CHUNKS; for (const c of far) { if (over <= 0 && n <= 0) break; over -= c.bytes || 0; n--; dropChunk(c); } } }
     if (S.sortRoot && S.root.sort) { S.root.sort('depth'); S.sortRoot = false; }

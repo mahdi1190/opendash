@@ -75,7 +75,7 @@ window.GardenPaintGround = (function () {
   }
 
   /* ---------- 1. the zoom-following chunked layer ---------- */
-  const LEVELS = [.75, 1, 1.5, 2, 3, 4], SHARP = .76, PAD = 2, HEAVY_MS = 26, registry = new Set(), slow = { opMs: 0, op: '', uploadMs: 0, tickMs: 0 };
+  const LEVELS = [.75, 1, 1.5, 2, 3, 4], SHARP = .76, PAD = 2, HEAVY_MS = 14, registry = new Set(), COST = new Map(), opKey = o => o.tag || o.name || 's' + o.seed + '@' + (o.bb ? o.bb.map(Math.round).join(',') : ''), slow = { opMs: 0, op: '', uploadMs: 0, tickMs: 0 };
   /** The bake level the camera needs now: the smallest level within 20% of the screen's own pixel density. */
   function levelFor(zoom, lo, hi) { const need = (zoom || 1) * SHARP; let k = LEVELS[LEVELS.length - 1]; for (const l of LEVELS) if (l >= need) { k = l; break; } return clamp(k, lo == null ? LEVELS[0] : lo, hi == null ? 4 : hi); }
   // Chunk canvases are used again once their picture is let go. Every new canvas is memory the script engine is told
@@ -111,7 +111,7 @@ window.GardenPaintGround = (function () {
   function sweepGhosts() {
     const now = performance.now();
     for (let i = ghosts.length - 1; i >= 0; i--) {
-      const g = ghosts[i]; let gone = !g.im.active || now - g.t > 5000 || (g.tex && !g.scene.textures.exists(g.tex));
+      const g = ghosts[i]; let gone = !g.im.active || now - g.t > 20000 || (g.tex && !g.scene.textures.exists(g.tex));   // (vf-perf: the new layer bakes in the shared budget's slices, which can take longer than five seconds for a whole screen: the old picture stays until then)
       if (!gone) { let heir = null; for (const h of registry) if (h.scene === g.scene && Math.abs(h.depth - g.depth) < 1) { heir = h; if (h.readyIn(g.bb)) { gone = true; break; } } if (!heir && now - g.t > 1000) gone = true; }
       if (!gone) continue;
       ghosts.splice(i, 1); ok(() => g.im.destroy());
@@ -151,13 +151,21 @@ window.GardenPaintGround = (function () {
       if (!ch.job || ch.job.K !== K) { if (ch.job) giveCanvas(ch.job.c); const w = Math.ceil((ch.bb[2] - ch.bb[0]) * K), h = Math.ceil((ch.bb[3] - ch.bb[1]) * K), c = takeCanvas(w, h); const cx = c.getContext('2d'); cx.setTransform(K, 0, 0, K, -ch.bb[0] * K, -ch.bb[1] * K); ch.job = { c, cx, B: brushOf(cx), next: 0, ms: 0, K }; }
       const J = ch.job, cx = J.cx;
       while (J.next < ch.ops.length) {
+        // (vf-perf) an op timed before that would not fit in what is left of this slice waits for the next slice (one alone may)
+        // (a repaint makes its ops again: what the same op cost before is remembered by its tag, so a level-up's new ops are not
+        // run blind, a 56 ms slice after the land was drawn again)
+        { const o = ch.ops[J.next]; if (!(o.cost > 0)) { const c = COST.get(opts.key + '|' + opKey(o)); if (c) o.cost = c; } }
+        { const o = ch.ops[J.next]; if (ms && J.next > 0 && performance.now() > s + .5 && o.cost > 0 && o.cost * K * K > ms - (performance.now() - s)) break; }
         const o = ch.ops[J.next++], o0 = performance.now();
         ok(() => { cx.save(); if (o.clip) cx.clip(o.clip, 'evenodd'); o.draw(J.B, rng(o.seed || 1), ch.bb); cx.restore(); cx.globalAlpha = 1; cx.globalCompositeOperation = 'source-over'; cx.filter = 'none'; });
-        { const od = performance.now() - o0, per = od / (K * K); if (!(o.cost >= per)) o.cost = per; if (od > slow.opMs) { slow.opMs = +od.toFixed(1); slow.op = (o.tag || o.name || 'seed ' + o.seed) + ' @' + ch.id + ' x' + K; } }
+        { const od = performance.now() - o0, per = od / (K * K); if (!(o.cost >= per)) { o.cost = per; if (COST.size > 20000) COST.clear(); COST.set(opts.key + '|' + opKey(o), per); } if (od > slow.opMs) { slow.opMs = +od.toFixed(1); slow.op = (o.tag || o.name || 'seed ' + o.seed) + ' @' + ch.id + ' x' + K; } }
         if (ms && performance.now() - s > ms) break;
       }
       const took = performance.now() - s; J.ms += took; sliceWorst = Math.max(sliceWorst, took);
       if (J.next < ch.ops.length) return false;
+      // (vf-perf) the picture goes up to the graphics card on a tick of its own when this one has already painted: the upload of a
+      // chunk (1 to 4 MB) in the same task as its last op made one long task of the two
+      if (ms && !J.ready && took > 2) { J.ready = true; return false; }
       const key = opts.key + '|' + ch.id + '|' + K;
       if (ch.image && ch.tex === key) { ch.image.destroy(); ch.image = null; } dropTexture(scene, key);   /* (the picture showing this key goes first, so its canvas is free to be used again) */
       const u0 = performance.now();
@@ -201,6 +209,9 @@ window.GardenPaintGround = (function () {
         const s = (inView ? 0 : 1e7) + need * 1e6 + dist(ch, v) - (ch.job ? 5e5 : 0); if (s < bs) { bs = s; best = ch; }
       }
       if (!best && opts.prebake && bakedPx < budget * .9 && !(typeof _gw !== 'undefined' && _gw.moving)) for (const ch of list) if (!ch.image) { const d = dist(ch, v); if (d < bs) { bs = d; best = ch; } }
+      // (vf-perf) the slice comes out of the one budget every background painter shares a frame (94-garden-paint-0budget.js)
+      const room = typeof gardenBakeRoom === 'function' ? gardenBakeRoom(slice, !!best && !(!best.image && meets(best.bb, v))) : slice, b0 = performance.now();
+      if (room < 1.5) best = null;
       if (best) { let k = follow && (best.low || !meets(best.bb, near)) ? Math.min(K, minK) : K;
         /* (a bare chunk on the screen gets a quick picture at level 1 first and is made sharp on the next ticks: baked straight at
             level 3, a chunk took up to half a second, and after a jump the game's flat background showed through in straight-edged
@@ -209,9 +220,10 @@ window.GardenPaintGround = (function () {
         /* (while you walk, a bare or repainted chunk is painted no sharper than level 2 when one of its ops is costly there or has never been timed: one band of three kinds took 60 ms at level 3; it is made sharp when you stop) */
         if (moving && follow && (!best.image || best.dirty)) for (const l of [2, 1.5, 1]) if (k > l && l >= minK && (heavy(best, k) || (k > 2 && best.ops.some(o => !(o.cost > 0))))) k = l;
         const tStart = performance.now(), quick = follow && !best.image && k <= 1 && meets(best.bb, v);
-        bakeStep(best, k, slice);
+        bakeStep(best, k, room);
         // (and while the slice lasts, the next bare chunks on the screen get their quick pictures in the same tick)
-        if (quick) for (let n = 0; n < 4; n++) { const left = slice - (performance.now() - tStart); if (left < 1.5) break; let nx = null, nd = Infinity; for (const ch of list) { if (ch.image || !meets(ch.bb, v)) continue; const d = dist(ch, v); if (d < nd) { nd = d; nx = ch; } } if (!nx) break; bakeStep(nx, nx.job ? nx.job.K : Math.min(K, 1), left); } }
+        if (quick) for (let n = 0; n < 4; n++) { const left = room - (performance.now() - tStart); if (left < 1.5) break; let nx = null, nd = Infinity; for (const ch of list) { if (ch.image || !meets(ch.bb, v)) continue; const d = dist(ch, v); if (d < nd) { nd = d; nx = ch; } } if (!nx) break; bakeStep(nx, nx.job ? nx.job.K : Math.min(K, 1), left); } }
+      if (typeof gardenBakeSpent === 'function') gardenBakeSpent(performance.now() - b0);
       // over the budget: let go the farthest, sharpest chunk that is off the screen (one well away first); short of room for the margin: one well away
       if (bakedPx > budget || wantRoom) { const over = bakedPx > budget; let far = null, fd = -1; for (const ch of list) { if (!ch.image || meets(ch.bb, v)) continue; const away = !meets(ch.bb, keep); if (!away && !over) continue; const d = dist(ch, v) * ch.K * (away ? 1 : .001); if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
     };
@@ -532,9 +544,13 @@ window.GardenPaintGround = (function () {
       b.cx.putImageData(img, 0, 0); return { c: b.c, x: mx0 * S, y: my0 * S, w: mw * S, h: mh * S };
     };
     const through = (B, cb, kind, m) => {
-      const cx = B.cx, c = cx.canvas, s = scratch('kind', c.width, c.height); s.cx.setTransform(cx.getTransform()); paintKind(s.cx, kind, cb, season, env);
+      // (vf-perf) only the band's own rows of the chunk's canvas, a pixel or two over: laid through a whole-chunk scratch, each of
+      // a pass's three bands painted, masked and copied the whole chunk, three times the pixels for the same picture
+      const cx = B.cx, c = cx.canvas, T = cx.getTransform(), x0 = Math.max(0, Math.floor(T.a * cb[0] + T.e) - 2), x1 = Math.min(c.width, Math.ceil(T.a * cb[2] + T.e) + 2), y0 = Math.max(0, Math.floor(T.d * cb[1] + T.f) - 2), y1 = Math.min(c.height, Math.ceil(T.d * cb[3] + T.f) + 2);
+      if (x1 <= x0 || y1 <= y0) return;
+      const s = scratch('kind', Math.ceil((x1 - x0) / 64) * 64, Math.ceil((y1 - y0) / 64) * 64);   /* (sizes in steps of 64 px: the bands of a level share one canvas, never made again) */ s.cx.setTransform(T.a, T.b, T.c, T.d, T.e - x0, T.f - y0); paintKind(s.cx, kind, cb, season, env);
       s.cx.globalCompositeOperation = 'destination-in'; s.cx.imageSmoothingEnabled = true; s.cx.imageSmoothingQuality = 'high'; s.cx.drawImage(m.c, m.x, m.y, m.w, m.h); s.cx.globalCompositeOperation = 'source-over';
-      cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.drawImage(s.c, 0, 0); cx.restore();
+      cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.drawImage(s.c, 0, 0, x1 - x0, y1 - y0, x0, y0, x1 - x0, y1 - y0); cx.restore();
     };
     const bb = [env.box.x, env.box.y, env.box.x + env.box.w, env.box.y + env.box.h], ops = [];
     // A kind is laid over a chunk in three bands, each its own op: one op for the whole chunk took up to 56 ms at level 3,
@@ -662,7 +678,13 @@ window.GardenPaintGround = (function () {
       s.cx.putImageData(img, 0, 0); return s.c;
     };
     const lay = (cx, cov, pic) => { cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high'; cx.drawImage(pic, cov.x0 * SS, cov.y0 * SS, cov.w * SS, cov.h * SS); };
-    const fillThrough = (B, cov, pic, paint) => { const cx = B.cx, c = cx.canvas, s = scratch('kind', c.width, c.height); s.cx.setTransform(cx.getTransform()); paint(s.cx); s.cx.globalCompositeOperation = 'destination-in'; lay(s.cx, cov, pic); s.cx.globalCompositeOperation = 'source-over'; cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.drawImage(s.c, 0, 0); cx.restore(); };
+    // (vf-perf) only over the coverage's own box on the chunk's canvas (outside it the mask leaves nothing): through a whole-chunk
+    // scratch every piece of road painted, masked and copied the whole chunk, the largest share of a walk's long tasks
+    const fillThrough = (B, cov, pic, paint) => { const cx = B.cx, c = cx.canvas, T = cx.getTransform(), X0 = cov.x0 * SS, Y0 = cov.y0 * SS, X1 = (cov.x0 + cov.w) * SS, Y1 = (cov.y0 + cov.h) * SS;
+      const x0 = Math.max(0, Math.floor(Math.min(T.a * X0, T.a * X1) + T.e) - 2), x1 = Math.min(c.width, Math.ceil(Math.max(T.a * X0, T.a * X1) + T.e) + 2), y0 = Math.max(0, Math.floor(Math.min(T.d * Y0, T.d * Y1) + T.f) - 2), y1 = Math.min(c.height, Math.ceil(Math.max(T.d * Y0, T.d * Y1) + T.f) + 2);
+      if (x1 <= x0 || y1 <= y0) return;
+      const s = scratch('kind', Math.ceil((x1 - x0) / 64) * 64, Math.ceil((y1 - y0) / 64) * 64); s.cx.setTransform(T.a, T.b, T.c, T.d, T.e - x0, T.f - y0); paint(s.cx); s.cx.globalCompositeOperation = 'destination-in'; lay(s.cx, cov, pic); s.cx.globalCompositeOperation = 'source-over';
+      cx.save(); cx.setTransform(1, 0, 0, 1, 0, 0); cx.drawImage(s.c, 0, 0, x1 - x0, y1 - y0, x0, y0, x1 - x0, y1 - y0); cx.restore(); };
     const grassIn = (cx, cb, cov, lo, hi, salt) => {
       cx.lineCap = 'round';
       tiles(cb, 16, 6, salt, (tx, ty, r) => { for (let i = 0; i < 9; i++) { const x = tx + r() * 16, y = ty + r() * 16, v = cov.sample(x, y); if (v < lo || v > hi) continue; const k = env.kindAt ? env.kindAt(x, y) : 'lawn'; if (!k || SHORE.has(k) || k === 'soil') continue; const P = palette(k, season), q = rng(hash(Math.round(x * 8), Math.round(y * 8), salt) | 1), n = 2 + Math.floor(q() * 3); for (let b = 0; b < n; b++) blade(cx, x + b * .8, y + 1, (q() - .5) * 3.4, 2.6 + q() * 4.2, q() < .5 ? P.lo : P.mid, 1, .75); if (q() < .1) blob(cx, q, x, y, 3 + q() * 3, 1.5 + q(), 6, .5, P.lo, .5); } });
@@ -713,21 +735,24 @@ window.GardenPaintGround = (function () {
           } } }
       cx.globalAlpha = 1;
     } });
-    const soft = kind => ({ bb: bbAll, seed: 700 + PATH[kind].rank, name: kind, draw(B, r0, cb) {
+    // (vf-perf) three ops a kind, so the kit can slice between them: the trodden margin, the body, the paler middle (one op of all
+    // three, each with its own coverage pass, took up to 230 ms a chunk while walking: 'earth @7,5 x2'). The same picture, in order.
+    const soft = kind => [0, 1, 2].filter(part => part < 2 || !(kind === 'cobble' || kind === 'setts')).map(part => ({ bb: bbAll, seed: 700 + PATH[kind].rank, name: kind + (part ? ' ' + part : ''), draw(B, r0, cb) {
       const cov = coverage(cb, kind); if (!cov) return; const cx = B.cx, S0 = PATH[kind], winter = season === 'winter'; clips(cx);
       // the trodden margin: the ground thins and browns before the path begins (soft, and wider than the path)
-      cx.globalAlpha = S0.margin; { const s = scratch('tint', cov.w, cov.h), pic = alphaOf('alM', cov, (v, nz) => smooth(.04, .5, v + nz), .16, 30); s.cx.fillStyle = winter ? '#8f8a6a' : '#7d7244'; s.cx.fillRect(0, 0, cov.w, cov.h); s.cx.globalCompositeOperation = 'destination-in'; s.cx.drawImage(pic, 0, 0); lay(cx, cov, s.c); } cx.globalAlpha = 1;
-      const body = alphaOf('alB', cov, (v, nz) => smooth(.5 - .09, .5 + .09, v + nz), S0.edge, kind === 'earth' ? 34 : kind === 'gravel' ? 28 : 15);   // (the edge wanders a few px either way, so a straight route never has a ruled edge)
-      if (kind === 'cobble' || kind === 'setts') {
+      if (part === 0) { cx.globalAlpha = S0.margin; { const s = scratch('tint', cov.w, cov.h), pic = alphaOf('alM', cov, (v, nz) => smooth(.04, .5, v + nz), .16, 30); s.cx.fillStyle = winter ? '#8f8a6a' : '#7d7244'; s.cx.fillRect(0, 0, cov.w, cov.h); s.cx.globalCompositeOperation = 'destination-in'; s.cx.drawImage(pic, 0, 0); lay(cx, cov, s.c); } cx.globalAlpha = 1; return; }
+      const body = part !== 1 ? null : alphaOf('alB', cov, (v, nz) => smooth(.5 - .09, .5 + .09, v + nz), S0.edge, kind === 'earth' ? 34 : kind === 'gravel' ? 28 : 15);   // (the edge wanders a few px either way, so a straight route never has a ruled edge)
+      if (part === 1 && (kind === 'cobble' || kind === 'setts')) {
         fillThrough(B, cov, body, sx => wash(sx, cb, { base: S0.bed, lo: '#8c7c5c', hi: '#b8a680', warm: '#ae9a70', cool: '#9a927c' }, 131, .7));
         // (the stones are laid by their own ops below, a third of the courses each, so no slice is long)
-      } else {
+      } else if (part === 1) {
         const P = kind === 'gravel' ? { base: S0.bed, lo: '#b29a6b', hi: '#e5d5ab', warm: '#d9bf8a', cool: '#c9bd9c' } : { base: S0.bed, lo: '#9c855a', hi: '#d9c698', warm: '#c4a26c', cool: '#b0a682' };
         fillThrough(B, cov, body, sx => { wash(sx, cb, P, kind === 'gravel' ? 151 : 161, 1); const g = grains(sx, [P.lo, P.hi, '#a89068'], .5); tiles(cb, 32, 3, 153, (tx, ty, r) => { for (let i = 0; i < (kind === 'gravel' ? 46 : 20); i++) { const x = tx + r() * 32, y = ty + r() * 32, ci = r() < .5 ? 0 : r() < .6 ? 1 : 2, w = .9 + r() * 1.3; r(); g.add(x, y, w, ci); } }); g.flush(); sx.globalAlpha = 1; });
+      } else if (part === 2) {
         // beaten paler down the middle, where feet and wheels go
         cx.globalAlpha = kind === 'gravel' ? .5 : .42; { const s = scratch('tint', cov.w, cov.h), pic = alphaOf('alM', cov, (v, nz) => smooth(.86, 1, v + nz), .1, 26); s.cx.fillStyle = kind === 'gravel' ? '#ecdfb8' : '#d2bd8e'; s.cx.fillRect(0, 0, cov.w, cov.h); s.cx.globalCompositeOperation = 'destination-in'; s.cx.drawImage(pic, 0, 0); lay(cx, cov, s.c); } cx.globalAlpha = 1;
       }
-    } });
+    } }));
     // boardwalks and steps keep their own shape: planks or treads laid across the line, one every few px along it
     const planks = { bb: bbAll, seed: 790, draw(B, r0, cb) {
       const cx = B.cx; if (env.allow) cx.clip(env.allow, 'evenodd');
@@ -770,7 +795,7 @@ window.GardenPaintGround = (function () {
       }
       cx.globalAlpha = 1;
     } };
-    return ['earth', 'gravel', 'cobble', 'setts'].filter(k => kindsUsed.has(k)).flatMap(k => k === 'cobble' || k === 'setts' ? [soft(k), stones(k, 0), stones(k, 1), stones(k, 2), fringe(k)] : [soft(k), fringe(k)]).concat(kindsUsed.has('boardwalk') || kindsUsed.has('steps') ? [planks] : []);
+    return ['earth', 'gravel', 'cobble', 'setts'].filter(k => kindsUsed.has(k)).flatMap(k => k === 'cobble' || k === 'setts' ? [...soft(k), stones(k, 0), stones(k, 1), stones(k, 2), fringe(k)] : [...soft(k), fringe(k)]).concat(kindsUsed.has('boardwalk') || kindsUsed.has('steps') ? [planks] : []);
   }
 
   function status() { const layers = [...registry].map(h => ({ key: String(h.key).slice(0, 24), level: h.level, chunks: h.chunks, live: h.live, MB: h.MB, baked: h.baked, evicted: h.evicted, medianMs: h.median, p95Ms: h.p95, worstChunkMs: h.worstMs, worstSliceMs: h.sliceWorstMs })); return { layers, MB: +layers.reduce((a, l) => a + l.MB, 0).toFixed(1), slow: Object.assign({}, slow), canvases: { made, reused, spare: spareN }, lastError }; }

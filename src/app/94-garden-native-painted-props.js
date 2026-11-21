@@ -82,7 +82,7 @@ window.GardenPaintedProps = (function () {
     if (ok(() => draw(brush(cx), cx)) === false) return null;
     // (village fix round 2) addImage, not addCanvas: a CanvasTexture reads every pixel back from the graphics card as it is
     // made, and at a level-up, with the card busy, that read held the page up for many seconds (a gate's picture: 20 s+)
-    const tex = scene.textures.addCanvas(full, c);
+    const tex = scene.textures.addImage(full, c);
     tex.customData = Object.assign(tex.customData || {}, { gpp: { ox: -x0 / (x1 - x0), oy: -y0 / (y1 - y0) } });
     baked++; bakeMs += performance.now() - t0; return full;
   }

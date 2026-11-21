@@ -306,7 +306,7 @@
     (M.stones || []).forEach((s, i) => { const p = L.cpt(s[0], s[1]), hw = s[2] * L.cw; thing({ key: 'stone-foot-' + i, x: p.x, y: p.y - 2, box: [-2, -2, 2, 2], foot: [-hw, hw, 8], draw: () => {} }); });
   }
   const lvNow = () => { try { return (typeof gardenHere === 'function' ? gardenHere() : gardenModel()).level.level; } catch (e) { return 1; } };
-  const STAIR_LV = 18, LIP_LV = 6;   // shortcut C (the falls cave stair) and shortcut A (the lip stones: one has rolled out of the line)
+  const STAIR_LV = 18, LIP_LV = 6; window.__gardenLevelSteps = (window.__gardenLevelSteps || []).concat([STAIR_LV, LIP_LV]);   // (vf-perf: levels where the land changes, gardenLevelLandSig)     // shortcut C (the falls cave stair) and shortcut A (the lip stones: one has rolled out of the line)
   if (V && V.groundSigs) V.groundSigs.push(() => (lvNow() >= STAIR_LV ? 'cs1' : 'cs0') + (lvNow() >= LIP_LV ? 'la1' : 'la0'));
   window.gardenCloudbreakLipGap = () => lvNow() < LIP_LV;
   function ropeLine(B, r, a, b, snowy) {

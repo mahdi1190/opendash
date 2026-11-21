@@ -259,7 +259,9 @@ window.GardenPaintedTerrain = (function () {
     // (no slab on a path's drawn width: the pass's outcrops lay across its path, so as blocks they shut it, and walked over
     // they were rocks you stood in (the collision audit, 19 Nov 2026). The paths as drawn: the same band walking reads.)
     const ways = ok(() => (gardenIslandData().routes || []).filter(rt => rt.points && rt.points.length > 1).map(rt => ({ pts: gardenIslandRoutePath(rt).points, rad: gardenIslandRoadStyle(rt).radius * cw }))) || [];
-    const onWay = (X, Y, rx, ry) => ways.some(R => { const x = X / cw, y = (Y - W.sky) / ch; for (let i = 1; i < R.pts.length; i++) { const p = R.pts[i - 1], q = R.pts[i], ax = (q.x - p.x) * cw, ay = (q.y - p.y) * ch, bx = (x - p.x) * cw, by = (y - p.y) * ch, LL = ax * ax + ay * ay || 1, t = Math.max(0, Math.min(1, (ax * bx + ay * by) / LL)), dx = bx - ax * t, dy = by - ay * t, d = Math.hypot(dx, dy) || 1; if (d < R.rad + 4 + Math.hypot(rx * dx / d, ry * dy / d)) return true; } return false; });
+    // (vf-perf) each way's box first, then each stretch's: a slab far from a way never works out its distance to every stretch of it
+    for (const R of ways || []) { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const p of R.pts) { x0 = Math.min(x0, p.x * cw); x1 = Math.max(x1, p.x * cw); y0 = Math.min(y0, W.sky + p.y * ch); y1 = Math.max(y1, W.sky + p.y * ch); } R.box = [x0, y0, x1, y1]; }
+    const onWay = (X, Y, rx, ry) => ways.some(R => { const m = R.rad + 4 + Math.max(rx, ry); if (X < R.box[0] - m || X > R.box[2] + m || Y < R.box[1] - m || Y > R.box[3] + m) return false; const x = X / cw, y = (Y - W.sky) / ch, mx = m / cw, my = m / ch; for (let i = 1; i < R.pts.length; i++) { const p = R.pts[i - 1], q = R.pts[i]; if (x < Math.min(p.x, q.x) - mx || x > Math.max(p.x, q.x) + mx || y < Math.min(p.y, q.y) - my || y > Math.max(p.y, q.y) + my) continue; const ax = (q.x - p.x) * cw, ay = (q.y - p.y) * ch, bx = (x - p.x) * cw, by = (y - p.y) * ch, LL = ax * ax + ay * ay || 1, t = Math.max(0, Math.min(1, (ax * bx + ay * by) / LL)), dx = bx - ax * t, dy = by - ay * t, d = Math.hypot(dx, dy) || 1; if (d < R.rad + 4 + Math.hypot(rx * dx / d, ry * dy / d)) return true; } return false; });
     for (const c of crops) add([c.x - 70, c.y - 40, c.x + 70, c.y + 40], 170 + Math.round(c.x), (B, r) => {
       clipFell(B); const sn = snowAt(c.x, c.y) > .6;
       for (let k = 0; k < c.n; k++) { const x = c.x + (r() - .5) * 80 * c.s, y = c.y + (r() - .5) * 30 * c.s, rx = (8 + r() * 14) * c.s, ry = rx * (.34 + r() * .14);
@@ -1179,8 +1181,12 @@ window.GardenPaintedTerrain = (function () {
     const W = GARDEN_WORLD, L = readLayout(W); if (!L) return null;
     const season = sc.season || 'summer', sig = 'gpt-3|' + season + '|' + (GardenIslandLayout.fingerprint || '');
     const old = current; if (old) { if (old.fadeTick && old.scene && old.scene.events) old.scene.events.off('update', old.fadeTick); old.roomEntrances = null; old.handle.destroy(old.sig === sig); for (const s of sprites) s.destroy(); sprites = []; if (old.sig !== sig) for (const k of old.spriteKeys) if (scene.textures.exists(k)) scene.textures.remove(k); }
-    const ops = ok(() => compose(L, season)); if (!ops) return null;
-    standOps = ops.filter(o => /\.boulder\(|\.stand\(/.test(String(o.draw))); standMemo = null; standSigNow = sig;
+    // (vf-perf) the fells' painting depends on the layout and the season only: a repaint for a level or an opened field
+    // (the whole world is drawn again) takes the same ops, rocks and stands as last time instead of working them out again
+    const same = composed && composed.sig === sig;
+    const ops = same ? composed.ops : ok(() => compose(L, season)); if (!ops) return null;
+    if (!same) { composed = { sig, ops, occ: null, feet: null }; standOps = ops.filter(o => /\.boulder\(|\.stand\(/.test(String(o.draw))); standMemo = null; }
+    standSigNow = sig;
     const rb = kit.bboxOf(L.regionLoops.flat().concat(L.terraces.flatMap(t => t.pts)));
     const box = { x: 0, y: W.sky - 150, w: W.cols * W.cellW, h: Math.min(W.sky + W.rows * W.cellH, rb[3] + 80) - (W.sky - 150) };
     const handle = kit.chunked(scene, parent, ops, { key: sig, box, K, chunk: CHUNK, depth: DEPTH, budgetMB: 32 });
@@ -1189,7 +1195,7 @@ window.GardenPaintedTerrain = (function () {
     // landmarks and the trees (in the root they were drawn over every object: the Horn's foot hid the grotto under it
     // and anyone standing just in front of it)
     const standIn = objParent || parent;
-    const feetNew = []; const occ = occluders(L, ops, season, sig, feetNew); feet = feetNew.map(f => Object.freeze(f)); feetSigNow = feet.length + ':' + feet.reduce((h, f) => (Math.imul(h, 31) + Math.round(f.x0 * 64) * 7 + Math.round(f.y0 * 64)) | 0, 0);
+    let feetNew = []; const occ = composed.occ || occluders(L, ops, season, sig, feetNew); if (composed.occ) feetNew = composed.feet; else { composed.occ = occ; composed.feet = feetNew; } feet = feetNew.map(f => Object.freeze(f)); feetSigNow = feet.length + ':' + feet.reduce((h, f) => (Math.imul(h, 31) + Math.round(f.x0 * 64) * 7 + Math.round(f.y0 * 64)) | 0, 0);
     // (each lays its shadow on the ground through the shared kit, but not a peak: that is a hillside, painted with its own shade, and laying so large a picture over cost 55 ms)
     const fades = [];
     for (const o of occ) { const im = kit.sprite(scene, standIn, o.key, o.box, o.draw, o.x, o.y, o.K, !o.key.includes('|peak|')); if (im) { sprites.push(im); keys.push(o.key); spritePx += im._gptPx || 0; if (o.fade) fades.push({ im, f: o.fade, to: o.fadeTo }); } }
@@ -1217,7 +1223,7 @@ window.GardenPaintedTerrain = (function () {
    * same rocks); worked out once per painting, when walking first asks. Only rocks on the fells' own ground count (the
    * drawing is clipped to it); pebbles (the brush's stone) stay walked over.
    */
-  let standOps = null, standMemo = null, standSigNow = '';
+  let standOps = null, standMemo = null, standSigNow = '', composed = null;
   // px: smaller than this is a stone you step over (the brush's smallest boulders, 7 to 12 px, are smaller than your feet:
   // as blocks they were little walls with next to nothing drawn on them, the collision audit, 19 Nov 2026)
   const STAND_MIN = Object.freeze({ w: 13, h: 7 });

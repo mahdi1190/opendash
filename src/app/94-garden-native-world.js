@@ -157,7 +157,7 @@ window.GardenNativeWorld = (function () {
     const effectIds = new WeakMap(), creatureMotion = new WeakMap();
     const chunkWidth = W.cellW * 4, chunkHeight = W.cellH * 6;
     const route = scene.add.graphics(); route.setDepth(89000); root.add(route);
-    let model = null, modelKey = '', terrainKey = '', terrainVisit = '', terrainLater = false, terrainStillAt = 0, terrainLawnMemo = null, shorelineRevision = 0, sorted = false, dead = false, routeKey = '', fishZoom = 1, wasFishing = false, fishViewMode = '', playerViewKey = '', playerProfile = null, playerWardrobe = null, visibleStatic = 0, visibleTerrain = 0, cacheQuality = 0, terrainBaseQuality = 1, terrainBaseReady = 0;
+    let model = null, modelKey = '', terrainKey = '', terrainVisit = '', terrainLater = false, terrainFlush = false, terrainRest = '', terrainStillAt = 0, terrainLawnMemo = null, shorelineRevision = 0, sorted = false, dead = false, routeKey = '', fishZoom = 1, wasFishing = false, fishViewMode = '', playerViewKey = '', playerProfile = null, playerWardrobe = null, visibleStatic = 0, visibleTerrain = 0, cacheQuality = 0, terrainBaseQuality = 1, terrainBaseReady = 0;
     let camera = { x: 0, y: 0, w: 800, h: 600, scale: 1, left: 0, top: 0 }, zoomInputAt = 0, activityCamera = null, cameraUiMode = '', cameraUiZoomIn = null, cameraUiZoomOut = null, size = { w: options.width || scene.scale.width || 1000, h: options.height || scene.scale.height || 700 };
     const playerNode = element(scene, 'g', { class: 'gd-player', 'data-live': '1' });
     // The Painted village stands the figure in the scenes' soft contact shadow; the pale halo read as a sticker's edge (94-garden-art-g-paint.js).
@@ -1196,13 +1196,16 @@ window.GardenNativeWorld = (function () {
       // Precipitation changes the live atmosphere. Actual ice and shoreline
       // geometry already participate through the surface and lake revisions.
       const cultivated = typeof gardenIslandActive === 'function' && gardenIslandActive() ? cultivatedSections(m) : null;
-      const tk = [packOn() ? 'painted' : '', sc.season, sc.tod, m.level.level, (sc.areas || []).join(','), designRev, surfaceKey, lake && lake.revision, cultivated && [...cultivated].sort().join(','), deckKey].join('|');
+      const tk = [packOn() ? 'painted' : '', sc.season, sc.tod, typeof gardenLevelLandSig === 'function' ? gardenLevelLandSig(m.level.level) : m.level.level, (sc.areas || []).join(','), designRev, surfaceKey, lake && lake.revision, cultivated && [...cultivated].sort().join(','), deckKey].join('|');
       // (village fix round 3) a new level or a newly opened piece of land while you are walking (the garden earns a level
       // from what you find on a walk) waits to be drawn until you stop: drawing the whole ground again is far longer than a
       // frame, and walking must never stall. The walk itself already follows the new land; only the paint waits.
       const visitKey = m.visit ? m.visit.key : '', walkingNow = !!terrainKey && visitKey === terrainVisit && typeof _gw !== 'undefined' && !!(_gw.moving || (_gw.path && _gw.path.length) || (_gw.keys && _gw.keys.size));
-      if (terrainKey !== tk && walkingNow) terrainLater = true;
-      else if (terrainKey !== tk) { terrainKey = tk; terrainVisit = visitKey; terrainLater = false; drawTerrain(m, sc, lake, cultivated, decks); }
+      // (vf-perf) standing too, a change of land is drawn a moment later, in a task of its own: drawn in the same task as the new
+      // walking grid and the rest of this sync, a level-up held the picture for over half a second (a CPU profile, 21 Nov 2026)
+      const tkRest = [sc.season, sc.tod, designRev, surfaceKey, lake && lake.revision, deckKey].join('|');   /* (all but the level's land: a change there, a design or a new hour, is drawn at once) */
+      if (terrainKey !== tk && (walkingNow || (terrainKey && visitKey === terrainVisit && !terrainFlush && tkRest === terrainRest))) terrainLater = true;
+      else if (terrainKey !== tk) { terrainKey = tk; terrainRest = tkRest; terrainVisit = visitKey; terrainLater = false; drawTerrain(m, sc, lake, cultivated, decks); }
       shorelineRevision = lake && lake.revision || 0;
       const keep = new Set(), modelPlants = new Map(m.plants.map(p => [p.uid, p])), modelDecor = new Map(m.decor.map(p => [p.uid, p]));
       const add = (id, html, metadata, depth, parent) => { if (!html) return; keep.add(id); return nodeDrawing(id, html, metadata, depth, parent); };
@@ -1353,7 +1356,11 @@ window.GardenNativeWorld = (function () {
       { const d = typeof gardenIslandActive === 'function' && gardenIslandActive() && decks.find(p => p.side === 'south'); if (d) { const lx = (d.x + d.w) * W.cellW - 13, ly = W.sky + (d.y + d.h) * W.cellH; pointLights.push({ id: 'pier-lantern:halo', x: lx, y: ly - 50, radius: 96, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .7 }, { id: 'pier-lantern', x: lx, y: ly - 44, ground: ly + 10, radius: 100, height: 40, color: nightMaterials ? 0xffc17a : 0xffd88e, intensity: .8 }); } }
       // and Hollin's window: someone lives in the hut
       { const hut = typeof gardenIslandLogStack === 'function' && GardenIslandLayout.data && (GardenIslandLayout.data.static || []).find(p => p.id === 'ld-woodhut'); if (hut && window.GardenPaintVale && GardenPaintVale.wanted()) pointLights.push({ id: 'oldwood-hut:window', x: (hut.x + hut.w / 2) * W.cellW, y: W.sky + (hut.y + hut.h) * W.cellH - 22, radius: 78, height: 20, color: 0xffc47c, intensity: .5 }); }
-      _gw.grid = null; _gw.gq = null; _gw.solids = null; _gw.gridKey = ''; _gw.cam.dirty = true;
+      // (vf-perf) the land drawn a moment after a level-up: the model is the one the sync before built the walking grid for, so
+      // that grid stands unless its own key says otherwise (the painted trunks); built again here it doubled the level-up's work
+      // (vf-perf, 2) the grid is looked at again, not thrown away: the one there serves while a level's new grid is built in slices
+      // (_gwGridSliceable); thrown away, it was built whole in this task, 90 ms of a 401 ms level-up
+      if (!terrainFlush) { _gw.gq = null; _gw.gridKey = ''; _gw.frameGrid = null; } _gw.cam.dirty = true;
       if (typeof _gwGrid === 'function') _gwGrid(m);
       sortObjects();
     }
@@ -1780,6 +1787,9 @@ window.GardenNativeWorld = (function () {
       for (const record of dynamic.values()) { const b = bounds(record.id); if (b) record.root.setVisible(inCamera({ x: b.left, y: b.top, width: b.width, height: b.height }, 150, view)); }
       cullSpecialMainActors(view);
       if (renderOnly) return;
+      // (vf-perf) no new picture captured while the drawn frames are late (a level-up's new ground on a slow graphics card: each
+      // capture is drawn by the card, and they queued up behind each other while no frame reached the screen for most of a second)
+      if (!preparing && typeof _gbb !== 'undefined' && _gbb && _gbb.frame > 0) { const late = performance.now() - _gbb.at; if (late > 80 && late < 2000) return; }
       const started = performance.now(); let count = 0;
       const capture = (node, opts) => { cacheQueue.delete(node); const { viewBounds, visibleRoot, ...captureOptions } = opts || {}; GardenNativeArt.cache(node, { quality: 2, adaptive: true, ...captureOptions, preparing: !!preparing }); count++; return count >= 1 || performance.now() - started >= 3; };
       // Nearby ground gets its sharp native cache before decorative upgrades.
@@ -1902,12 +1912,15 @@ window.GardenNativeWorld = (function () {
       // Frame-rate independence: a slow frame (under ~18 fps) is simulated as
       // up to five equal sub-steps of at most 55 ms, so walking keeps real
       // speed instead of slowing down. At normal frame rates this is one step.
+      // (vf-perf, 2) the shared bake budget is told when this frame's step began: once the step has already run long (the land
+      // drawn again after a level-up), the painters wait for the next frame rather than add their slices to it
+      if (typeof _gbbState === 'function') { const B = _gbbState(); B.stepAt = performance.now(); if (!B.inStep) { B.inStep = true; queueMicrotask(() => { B.inStep = false; }); } }
       if (dead) return; const frameDt = Math.min(.25, Math.max(0, delta / 1000 || .016)), steps = Math.max(1, Math.ceil(frameDt / .055 - 1e-9)), dt = frameDt / steps;
       // Old-version lines can briefly preserve a shoreline cove without a
       // dashboard repaint. Ordinary swimming keeps this resident revision.
       if (model && typeof gardenLakeGeometry === 'function' && gardenLakeGeometry(model).revision !== shorelineRevision) sync(model);
       // (village fix round 3) the ground held back while walking is drawn once you have stood still for a moment
-      if (terrainLater && model && !(_gw.moving || (_gw.path && _gw.path.length) || (_gw.keys && _gw.keys.size))) { if (!terrainStillAt) terrainStillAt = time; else if (time - terrainStillAt > 350) { terrainStillAt = 0; modelKey = ''; sync(model); } } else terrainStillAt = 0;
+      if (terrainLater && model && !(_gw.moving || (_gw.path && _gw.path.length) || (_gw.keys && _gw.keys.size))) { if (!terrainStillAt) terrainStillAt = time; else if (time - terrainStillAt > 350) { terrainStillAt = 0; modelKey = ''; terrainFlush = true; try { sync(model); } finally { terrainFlush = false; } } } else terrainStillAt = 0;
       _gw.frameActive = true; _gw.frameGrid = null; _gw.framePrefs = _gdpPrefs();
       try {
         if (editorPaint) { const paint = editorPaint; editorPaint = null; paint(); }

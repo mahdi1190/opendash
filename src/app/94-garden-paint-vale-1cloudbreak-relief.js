@@ -97,14 +97,18 @@
   const hex3 = c => { const n = parseInt(c.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
   // one run of the range (cells a0..a1), drawn relative to (ox, oy): ox the run's left px, oy the px of its highest foot.
   // Every point comes from its world x, so neighbouring runs draw the same mountain across their seam.
-  function rangeRun(B, kit, L, R, a0, a1, ox, oy, season) {
+  // (vf-perf: the run is painted in steps, a few milliseconds a frame, so walking north never stops for it: the height field,
+  // then the picture column by column, then its soft copy; only the marks are drawn when the sprite is made. S keeps the
+  // result, so painting it again sharper or after a repaint never works the mountain out again.)
+  function* rangeBake(S, kit, L, R, a0, a1, ox, oy, season) {
+    const late = () => performance.now() > S.dl;
     const cw = L.cw, ch = L.ch, snowy = season === 'winter', capShare = { winter: 1, spring: .5, autumn: .26, summer: .1 }[season] || .1;
     const FY = x => (R.footAt(x) * ch + L.cpt(0, 0).y) - oy, X = x => (x - a0) * cw;
     const T0 = performance.now(), ST = 1, m0 = a0 - .45, m1 = a1 + .45, NX = Math.ceil((m1 - m0) * cw / ST) + 2, SD = .025;
     const E = new Float32Array(NX), DC = new Float32Array(NX); let dMax = 0;
-    for (let i = 0; i < NX; i++) { E[i] = ridgeH(kit, m0 + i * ST / cw, R.summits, R); DC[i] = crestD(E[i]); dMax = Math.max(dMax, DC[i]); }
+    for (let i = 0; i < NX; i++) { E[i] = ridgeH(kit, m0 + i * ST / cw, R.summits, R); DC[i] = crestD(E[i]); dMax = Math.max(dMax, DC[i]); if ((i & 31) === 31 && late()) yield; }
     const ND = Math.ceil(dMax / SD) + 3, Z = new Float32Array(NX * ND);
-    for (let i = 0; i < NX; i++) { const x = m0 + i * ST / cw; for (let j = 0; j < ND; j++) { const d = j * SD; Z[j * NX + i] = d > DC[i] + SD * 2 ? -1 : rangeZ(kit, R, x, Math.min(d, DC[i]), E[i]); } }
+    for (let i = 0; i < NX; i++) { const x = m0 + i * ST / cw; for (let j = 0; j < ND; j++) { const d = j * SD; Z[j * NX + i] = d > DC[i] + SD * 2 ? -1 : rangeZ(kit, R, x, Math.min(d, DC[i]), E[i]); } if (late()) yield; }
     const T1 = performance.now();
     // the picture's extent
     let yTop = 0, yBot = 0; for (let i = 0; i < NX; i++) { const x = m0 + i * ST / cw, fy = FY(x); yBot = Math.max(yBot, fy + 4); for (let j = 0; j < ND; j++) { const z = Z[j * NX + i]; if (z < 0) break; yTop = Math.min(yTop, fy - j * SD * ch - z); } }
@@ -142,11 +146,28 @@
         if (y1 > y0) { vis[j * NX + i] = 1; cls[j * NX + i] = sn ? 5 : steep > .5 ? 4 : rockMix > .4 ? 3 : heathy ? 2 : 1; }
         ymin = sy;
       }
-      sky[i] = ymin;
+      sky[i] = ymin; if (late()) yield;
     }
     sky[0] = sky[1]; sky[PW - 1] = sky[PW - 2];
-    for (let yy = 0; yy < PH; yy++) for (let i = 1; i < PW - 1; i++) { const o = (yy * PW + i) * 4; if (px[o + 3] === 0 && px[o - 1] === 255 && px[o + 7] === 255) for (let q = 0; q < 4; q++) px[o + q] = (px[o - 4 + q] + px[o + 4 + q]) >> 1; }
-    cx.putImageData(img, 0, 0); const T2 = performance.now();
+    for (let yy = 0; yy < PH; yy++) { for (let i = 1; i < PW - 1; i++) { const o = (yy * PW + i) * 4; if (px[o + 3] === 0 && px[o - 1] === 255 && px[o + 7] === 255) for (let q = 0; q < 4; q++) px[o + q] = (px[o - 4 + q] + px[o + 4 + q]) >> 1; } if ((yy & 15) === 15 && late()) yield; }
+    yield; cx.putImageData(img, 0, 0); const T2 = performance.now(); if (late()) yield;
+    // the picture, soft (made here, once: the blur is the dearest single step)
+    const c2 = document.createElement('canvas'); c2.width = PW; c2.height = PH; { const g2 = c2.getContext('2d'); g2.filter = 'blur(.8px)'; g2.drawImage(cv, 0, 0); g2.filter = 'none'; g2.globalAlpha = .45; g2.drawImage(cv, 0, 0); }
+    cv.width = cv.height = 1;
+    Object.assign(S, { done: true, NX, ND, SD, ST, m0, Z, PW, PH, yTop, sky, vis, cls, C, c2, T: [Math.round(T1 - T0), Math.round(T2 - T1), Math.round(performance.now() - T2)] });
+  }
+  /** Start (or go on with) a run's bake until the deadline: true when it is done. */
+  function rangeStep(S, kit, L, R, a0, a1, ox, oy, season, dl) {
+    if (S.done) return true; S.dl = dl;
+    if (!S.gen) S.gen = rangeBake(S, kit, L, R, a0, a1, ox, oy, season);
+    while (!S.done && !S.gen.next().done && performance.now() <= dl) { /* steps */ }
+    return !!S.done;
+  }
+  function rangeRun(B, kit, L, R, a0, a1, ox, oy, season, S) {
+    S = S || {}; if (!S.done) rangeStep(S, kit, L, R, a0, a1, ox, oy, season, Infinity);
+    const cw = L.cw, ch = L.ch, snowy = season === 'winter', capShare = { winter: 1, spring: .5, autumn: .26, summer: .1 }[season] || .1;
+    const FY = x => (R.footAt(x) * ch + L.cpt(0, 0).y) - oy, X = x => (x - a0) * cw;
+    const { NX, ND, SD, ST, m0, Z, PW, yTop, sky, vis, cls, C, c2 } = S, T2 = performance.now();
     const w = (a1 - a0) * cw, PX = i => (m0 - a0) * cw + i * ST, PY = y => yTop + y * ST;
     B.cx.save(); B.cx.beginPath(); B.cx.rect(-1, -2000, w + 2, 2600); B.cx.clip();   // each run paints its own columns, a pixel over each seam
     // the higher fells behind, in haze: their tops show over the saddles, so the range goes back
@@ -155,8 +176,7 @@
       B.f(bp, B.lin(0, yTop - 3.8 * H, 0, yTop + 4 * H, [[0, 'rgba(236,240,242,.1)'], [1, 'rgba(236,240,242,.55)']]));
       if (snowy) B.f(B.poly(bk.concat(bk.slice().reverse().map(([x, y]) => [x, y + 8]))), '#f2f6f8', .5); }
     // the picture, soft, then crisp work over it
-    { const c2 = document.createElement('canvas'); c2.width = PW; c2.height = PH; const g2 = c2.getContext('2d'); g2.filter = 'blur(.8px)'; g2.drawImage(cv, 0, 0); g2.filter = 'none'; g2.globalAlpha = .45; g2.drawImage(cv, 0, 0);
-      B.cx.save(); B.cx.imageSmoothingEnabled = true; B.cx.imageSmoothingQuality = 'high'; B.cx.drawImage(c2, PX(0), yTop, PW * ST, PH * ST); B.cx.restore(); }
+    { const PH = S.PH; B.cx.save(); B.cx.imageSmoothingEnabled = true; B.cx.imageSmoothingQuality = 'high'; B.cx.drawImage(c2, PX(0), yTop, PW * ST, PH * ST); B.cx.restore(); }
     const T3 = performance.now();
     // marks: courses on the crags, stones on the scree, tufts on the ledges, a snow ripple
     { const rr = kit.rng(kit.hash(Math.round(a0 * 10), 3, 541)), N = NX * ND, n = Math.min(900, Math.round(N / 30));
@@ -176,7 +196,7 @@
       for (let i = 4; i < PW; i += 3) { const a = { x: PX(i - 3), y: PY(sky[i - 3]) }, b = { x: PX(i), y: PY(sky[i]) }; const up = b.y < a.y - .15; if (up !== up0) { flush(); up0 = up; run.push(a); } run.push(b); } flush(); }
     // the foot, where turf and heather lap up onto the scree
     { const ft = []; for (let x = a0 - .25; x <= a1 + .25 + 1e-6; x += .125) ft.push({ x: X(x), y: FY(x) + (kit.noise(x * 4.1, 7.7, 337) - .5) * 3 - 1 }); B.s(B.line(ft), ROCK.deep, 2.2, .28); }
-    B.cx.restore(); try { (window.__rangeT = window.__rangeT || []).push([a0, Math.round(T1 - T0), Math.round(T2 - T1), Math.round(T3 - T2), Math.round(performance.now() - T3), NX, ND]); } catch (e) { /* timing only */ }
+    B.cx.restore(); try { (window.__rangeT = window.__rangeT || []).push([a0].concat(S.T, [Math.round(T3 - T2), Math.round(performance.now() - T3), NX, ND])); } catch (e) { /* timing only */ }
     return -yTop;
   }
   // the range's foot on the ground (not in its picture, so its picture ends where its feet stop): scree in fans and a grey
@@ -299,8 +319,8 @@
       for (let a0 = R.x0; a0 < R.x1; a0 += 3) {
         const a1 = Math.min(R.x1, a0 + 3); let fMin = 9, fMax = 0; for (let x = a0; x <= a1 + 1e-6; x += .25) { const f = R.footAt(x); fMin = Math.min(fMin, f); fMax = Math.max(fMax, f); }
         let hMax = 0; for (let x = a0 - .3; x <= a1 + .3; x += .25) { const e = ridgeH(kit, x, R.summits, R); hMax = Math.max(hMax, e * 1.2 + H * .3 + crestD(e) * L.ch + (R.footAt(Math.max(R.x0, Math.min(R.x1, x))) - fMin) * 0); }
-        const p = L.cpt(a0, fMin), wpx = (a1 - a0) * L.cw, down = (fMax - fMin) * L.ch;
-        thing({ key: 'fell-range-' + a0 + '|' + season, x: p.x, y: p.y, K: 1.5, box: [-2, -hMax - 3.6 * H - 24, wpx + 2, down + 6], draw: B => rangeRun(B, kit, L, R, a0, a1, p.x, p.y, season) });
+        const p = L.cpt(a0, fMin), wpx = (a1 - a0) * L.cw, down = (fMax - fMin) * L.ch, S = {};
+        thing({ key: 'fell-range-' + a0 + '|' + season, x: p.x, y: p.y, K: 1.5, box: [-2, -hMax - 3.6 * H - 24, wpx + 2, down + 6], prep: dl => rangeStep(S, kit, L, R, a0, a1, p.x, p.y, season, dl), draw: B => rangeRun(B, kit, L, R, a0, a1, p.x, p.y, season, S) });
         C.add([p.x - 40, p.y - 40, p.x + wpx + 40, p.y + down + 50], kit.hash(a0, 7, 487), B => rangeSkirt(B, kit, L, R, a0, a1, p.x, p.y, season));
       }
       // its feet: half-cell steps along the drawn foot, so walking stops at the rock where it is drawn

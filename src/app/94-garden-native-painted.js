@@ -108,7 +108,7 @@ window.GardenNativePainted = (function () {
   }
   function fanSetts(cx, bb, o) {
     o = o || {}; const P = o.P || PAL.summer, m = cx.getTransform(), k = Math.max(.25, Math.hypot(m.a, m.b)), T = fanTile(P, k);
-    const pat = cx.createPattern(T.c, 'repeat'); if (!pat) return; pat.setTransform(new DOMMatrix([T.TW / T.c.width, 0, 0, T.TH / T.c.height, 0, 0]));
+    let pat = T.pat; if (!pat) { pat = cx.createPattern(T.c, 'repeat'); if (!pat) return; pat.setTransform(new DOMMatrix([T.TW / T.c.width, 0, 0, T.TH / T.c.height, 0, 0])); T.pat = pat; }   // (vf-perf: one pattern a tile, kept: making it again for every piece of paving was 4 s of a walk's long tasks)
     cx.save(); cx.globalAlpha = 1; cx.fillStyle = pat; cx.fillRect(bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]);
     // the tone wanders in broad patches of older and newer stone, so the tile's repeat never shows; feet polish a paler way
     const r = rng((Math.round(bb[0] * 7 + bb[1] * 13) | 0) ^ 0x5bd1), area = (bb[2] - bb[0]) * (bb[3] - bb[1]);
@@ -261,7 +261,7 @@ window.GardenNativePainted = (function () {
     if (scene.textures.exists(key)) return { key, meta: scene.textures.get(key).customData && scene.textures.get(key).customData.gdpaint };
     const made = ok(() => objectCanvas(id, v, season, size, night)); if (!made) return null;
     // (addImage: no read back of every pixel from the graphics card as the texture is made; see the ground below)
-    const tex = scene.textures.addCanvas(key, made.c);
+    const tex = scene.textures.addImage(key, made.c);
     const meta = { ox: made.ox / made.c.width, oy: made.oy / made.c.height, crown: made.crown };
     tex.customData = Object.assign(tex.customData || {}, { gdpaint: meta }); return { key, meta };
   }
@@ -344,10 +344,14 @@ window.GardenNativePainted = (function () {
           const b = pz.bounds, rose = pz.rose, ccx = rose ? rose.x : pz.centre.x, ccy = rose ? rose.y : pz.centre.y;
           // The paved shape: the plaza's outline and, with it, the flagged walks that are part of it (2.74), as one path
           // (every piece wound the same way and filled once, so the pieces never show where they overlap).
-          const U = new Path2D(), ribs = pz.ribbons || [];
-          { let q = pz.points, area = 0; for (let i = 0; i < q.length; i++) { const u = q[i], v = q[(i + 1) % q.length]; area += u.x * v.y - v.x * u.y; } if (area < 0) q = q.slice().reverse(); U.moveTo(q[0].x, q[0].y); for (let i = 1; i < q.length; i++) U.lineTo(q[i].x, q[i].y); U.closePath(); }
-          for (const rt of ribs) U.addPath(ribbon(rt, 0));
-          for (let q of pz.extra || []) { let area = 0; for (let i = 0; i < q.length; i++) { const u = q[i], v = q[(i + 1) % q.length]; area += u.x * v.y - v.x * u.y; } if (area < 0) q = q.slice().reverse(); U.moveTo(q[0].x, q[0].y); for (let i = 1; i < q.length; i++) U.lineTo(q[i].x, q[i].y); U.closePath(); }   // (the terrace's crescent, fix round 1)
+          // (vf-perf) the paved shape and its mask are the same for every chunk of the plaza: made once per plaza and kept (each chunk
+          // made them again: a path of every ribbon and a mask read back, 30 ms a chunk of the village while you walked in)
+          const ribs = pz.ribbons || [], PM = window.__gpPlazaMemo || (window.__gpPlazaMemo = new WeakMap()), pm = PM.get(pz) || {}; let U = pm.U;
+          if (!U) { U = new Path2D();
+            { let q = pz.points, area = 0; for (let i = 0; i < q.length; i++) { const u = q[i], v = q[(i + 1) % q.length]; area += u.x * v.y - v.x * u.y; } if (area < 0) q = q.slice().reverse(); U.moveTo(q[0].x, q[0].y); for (let i = 1; i < q.length; i++) U.lineTo(q[i].x, q[i].y); U.closePath(); }
+            for (const rt of ribs) U.addPath(ribbon(rt, 0));
+            for (let q of pz.extra || []) { let area = 0; for (let i = 0; i < q.length; i++) { const u = q[i], v = q[(i + 1) % q.length]; area += u.x * v.y - v.x * u.y; } if (area < 0) q = q.slice().reverse(); U.moveTo(q[0].x, q[0].y); for (let i = 1; i < q.length; i++) U.lineTo(q[i].x, q[i].y); U.closePath(); }   // (the terrace's crescent, fix round 1)
+            pm.U = U; PM.set(pz, pm); }
           // (the lawn inside the walk is the lawn's: the end of the terrace road never lies on it)
           cx.save(); if (pz.lawn) { cx.beginPath(); cx.rect(B.x, B.y, B.w, B.h); loop(pz.lawn); cx.clip('evenodd'); }
           cx.save(); cx.fillStyle = '#3e4a2a'; cx.globalAlpha = .28; cx.filter = 'blur(' + Math.round(4 * K) + 'px)'; cx.translate(3, 5); cx.fill(U, 'nonzero'); cx.restore();
@@ -361,9 +365,9 @@ window.GardenNativePainted = (function () {
           }
           // the paved shape as a small mask, drawn once and read for every stone and every blade at the rim (asking the canvas
           // whether each point lies in the path took about two seconds whenever the village ground was painted again, at a level-up)
-          const MK = .5, mkw = Math.ceil((b.w + 48) * MK), mkh = Math.ceil((b.h + 48) * MK), mk = document.createElement('canvas'); mk.width = mkw; mk.height = mkh;
-          const mkx = mk.getContext('2d', { willReadFrequently: true }); mkx.setTransform(MK, 0, 0, MK, -(b.x - 24) * MK, -(b.y - 24) * MK); mkx.fill(U, 'nonzero');
-          const mkd = mkx.getImageData(0, 0, mkw, mkh).data, inU = (x, y) => { const i = Math.floor((x - b.x + 24) * MK), k = Math.floor((y - b.y + 24) * MK); return i >= 0 && k >= 0 && i < mkw && k < mkh && mkd[(k * mkw + i) * 4 + 3] > 127; };
+          const MK = .5, mkw = Math.ceil((b.w + 48) * MK), mkh = Math.ceil((b.h + 48) * MK);
+          if (!pm.mask) { const mk = document.createElement('canvas'); mk.width = mkw; mk.height = mkh; const mkx = mk.getContext('2d', { willReadFrequently: true }); mkx.setTransform(MK, 0, 0, MK, -(b.x - 24) * MK, -(b.y - 24) * MK); mkx.fill(U, 'nonzero'); pm.mask = mkx.getImageData(0, 0, mkw, mkh).data; }
+          const mkd = pm.mask, inU = (x, y) => { const i = Math.floor((x - b.x + 24) * MK), k = Math.floor((y - b.y + 24) * MK); return i >= 0 && k >= 0 && i < mkw && k < mkh && mkd[(k * mkw + i) * 4 + 3] > 127; };
           cx.save(); cx.fillStyle = '#ae9c78'; cx.fill(U, 'nonzero'); cx.clip(U, 'nonzero');
           const inRose = (x, y) => !!rose && Math.hypot((x - ccx) / 46, (y - ccy) / 25.3) < 1;
           // (fix round 2: the setts laid in fans, see fanSetts; in rows they ran straight across the curved streets and read as a
@@ -687,7 +691,7 @@ window.GardenNativePainted = (function () {
     }
     lastPlanting = made;
     // the village trees' trunks stand in the way like a planted tree's (94-garden-world-0walk.js _gwBuildSolids): you walked through them
-    const key = trunks.map(t => t.x.toFixed(2) + ',' + t.y.toFixed(2)).join('|'); if (key !== plantingTrunks.key) { plantingTrunks = { list: Object.freeze(trunks), key, rev: plantingTrunks.rev + 1 }; if (typeof _gw !== 'undefined' && _gw) _gw.grid = null; }
+    const key = trunks.map(t => t.x.toFixed(2) + ',' + t.y.toFixed(2)).join('|'); if (key !== plantingTrunks.key) { plantingTrunks = { list: Object.freeze(trunks), key, rev: plantingTrunks.rev + 1 }; if (typeof _gw !== 'undefined' && _gw) { _gw.gq = null; _gw.gridKey = ''; _gw.frameGrid = null; } }   /* (vf-perf: looked at again, built in slices when only the land or the trees changed: _gwGridSliceable) */
     return { destroy() { for (const im of made) im.destroy(); made.length = 0; if (plantingTall === tall) { plantingTall = []; plantingCoverage.length = 0; } }, count: made.length };
   }
   /* ---------- composition: the props painted into the one ground picture ----------
