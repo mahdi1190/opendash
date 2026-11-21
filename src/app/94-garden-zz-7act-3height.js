@@ -39,10 +39,10 @@ function gardenLevels() {
       const cx = fx + L.at[0] * H, cy = fy + L.at[1] * H, h = L.h * H;
       // (in front of the thing and of what the world draws on it, its ladder and loft door: up on a floor you are in front of them)
       const depth = Math.max(depth0, ...(L.ways || []).filter(w => w.art).map(w => fy + w.foot[1] * H + 1));
-      const lv = { key: t.id + ':' + L.id, id: t.id, kind: t.kind, li, name: L.name || K.name, cx, cy, h, depth, depth0: Math.min(depth0, fy), L, ways: [] };   // (depth0: the thing's own, never below its drawn foot)
+      const lv = { key: t.id + ':' + L.id, id: t.id, kind: t.kind, li, name: L.name || K.name, cx, cy, h, depth, depth0: Math.min(depth0, fy), fx, fy, py0: rec && rec.handle && rec.handle.foot && Number.isFinite(rec.handle.foot.y) ? rec.handle.foot.y : fy, L, ways: [] };   // (depth0: the thing's own, never below its drawn foot)
       (L.ways || []).forEach((w, wi) => {
         const foot = { x: (fx + w.foot[0] * H) / W.cellW, y: (fy + w.foot[1] * H - W.sky) / W.cellH }, top = { x: (cx + w.top[0] * H) / W.cellW, y: (cy + w.top[1] * H - W.sky) / W.cellH };
-        lv.ways.push({ i: wi, by: w.by || 'ladder', name: w.name || 'the ladder', art: w.art || '', loft: !!w.loft, foot, top, lv });
+        lv.ways.push({ i: wi, by: w.by || 'ladder', inside: !!w.inside, door: w.door || null, doorAt: { x: (fx + w.foot[0] * H) / W.cellW, y: B.y }, depth0: Math.min(depth0, fy), name: w.name || 'the ladder', art: w.art || '', loft: !!w.loft, foot, top, lv });
       });
       out.push(lv);
     });
@@ -71,11 +71,28 @@ function gardenHeightLevel() { return _ght.lv; }
 function gardenHeightSwimming() { return !!(_ght.swim && _ght.swim.on); }
 function gardenHeightBusy() { return !!_ght.climb || !!(_ght.swim && !_ght.swim.on); }
 /** How high the figure (and its shadow) is drawn: the floor you stand on. (While climbing the figure alone rises: gartActLift.) */
-function gardenHeightLift() { return _ght.lv && !_ght.climb ? _ght.lv.h : 0; }
+function gardenHeightLift() { return _ght.lv && !_ght.climb ? _ght.lv.h : _ght.climb && _ght.climb.inside ? _ght.climb.lift || 0 : 0; }
 /** How far up the view looks: the floor you are on, or how far up the ladder you are. */
-function gardenHeightView() { return gardenHeightLift() + (_ght.climb && _ga.cur && _ga.cur.id === 'climbing' ? _ga.cur.lift || 0 : 0); }
+function gardenHeightView() { const C = _ght.climb; if (C && C.inside) return C.view || 0; return gardenHeightLift() + (C && _ga.cur && _ga.cur.id === 'climbing' ? _ga.cur.lift || 0 : 0); }
 /** The depth to draw you at, or null when the ground decides. */
-function gardenHeightDepth() { return _ght.lv && !_ght.climb ? gardenLevelDepth(_ght.lv, _gw.px, _gw.py) : null; }
+/* (rising out of a stair head: drawn behind the thing, so its own wall hides your legs) */
+function gardenHeightDepth() { const C = _ght.climb; if (C && C.inside && C.atTop) return C.behind ? C.lv.depth0 - 1 : gardenLevelDepth(C.lv, _gw.px, _gw.py); return _ght.lv && !_ght.climb ? gardenLevelDepth(_ght.lv, _gw.px, _gw.py) : null; }
+/** A stair's door standing open while someone goes in or comes out (a way's `door`: { w, h, up } in H: its width, height, and how far
+ *  its sill is above the drawn foot), drawn just in front of the thing: the dark of the stair inside, the door swung back. */
+function _ghtDoor(w, on, who) {
+  const G = window.GardenNative && GardenNative.world && GardenNative.world(); if (!G || !w || !w.door) return;
+  const id = 'ght-door-' + w.lv.key + '-' + w.i + '-' + (who || 'me');
+  if (!on) { if (_ght.doors && _ght.doors[id]) { delete _ght.doors[id]; try { G.remove(id); } catch (e) { /* gone */ } } return; }
+  (_ght.doors || (_ght.doors = {}))[id] = 1;
+  const H = _ghtH(), dw = w.door.w * H, dh = w.door.h * H, up = (w.door.up || 0) * H, N = (k) => Math.round(k * 10) / 10, r = dw / 2;
+  const arch = `M${N(-r)} ${N(-up)}V${N(-up - dh + r * 1.24)}Q${N(-r)} ${N(-up - dh)} 0 ${N(-up - dh)}Q${N(r)} ${N(-up - dh)} ${N(r)} ${N(-up - dh + r * 1.24)}V${N(-up)}Z`;
+  const svg = `<path d="${arch}" fill="#1a1510"/><path d="M${N(-r + 2)} ${N(-up)}V${N(-up - dh * 0.6)}" stroke="#3a2c1e" stroke-width="2" opacity="0.6"/><path d="M${N(r)} ${N(-up)}l${N(r * 0.55)} 2V${N(-up - dh + r * 1.2)}l${N(-r * 0.55)} -3z" fill="#5a4228" stroke="#2e2a26" stroke-width="0.8"/><path d="M${N(r + 1)} ${N(-up - dh * 0.25)}l${N(r * 0.5)} 1.4M${N(r + 1)} ${N(-up - dh * 0.62)}l${N(r * 0.5)} 1.4" stroke="#2e2a26" stroke-width="1.4"/>`;
+  try { G.actor(id, svg, w.doorAt.x, w.doorAt.y, { depth: w.depth0 + 0.5 }); } catch (e) { /* no door drawn */ }
+}
+/** A stair inside a thing: how long the way up takes (ms), a little longer the higher it goes. */
+function _ghtStairMs(h) { return Math.max(2600, Math.round(h / _ghtH() * 420)); }
+/** Seen or not (going in at a door, coming up a stair head): the figure's own opacity. */
+function _ghtAlpha(node, a) { if (!node) return; const v = String(Math.round(a * 100) / 100); if (node._ghtA === v) return; node._ghtA = v; try { if (node.target && typeof node.target.setAlpha === 'function') node.target.setAlpha(a); else node.setAttribute('opacity', v); } catch (e) { /* drawn as it is */ } }
 function _ghtLevelByKey(key) { return gardenLevels().find(l => l.key === key) || null; }
 /** The nearest way whose foot (up) or top (down) is by (x, y), within R cells. */
 function _ghtWayNear(x, y, up, R) {
@@ -107,6 +124,15 @@ function gardenClimb(w, up) {
     _gw.px = from.x; _gw.py = from.y;
     if (!up) { _ght.lv = null; _gw.px = w.foot.x; _gw.py = w.foot.y; }   // (down: the feet go to the ladder's foot at once, the figure drawn at the top and coming down)
     if (typeof _GPL !== 'undefined') { _GPL.lastX = _gw.px; _GPL.lastY = _gw.py; }
+    if (w.inside) {   // a stair inside: in at the door and up out of sight, out at the top (or the other way); no ladder pose
+      _ght.climb = { w, up, inside: true, t0: performance.now(), ms: _gaMotion() ? _ghtStairMs(h) : 400, h, lv, lift: up ? 0 : h, view: up ? 0 : h, atTop: !up, stepT: 0 };
+      if (!up) { _gw.px = w.top.x; _gw.py = w.top.y; }
+      _gaFace(up ? -90 : 90); try { if (typeof _gwBody === 'function') _gwBody(); } catch (e) { /* fine */ }
+      try { gardenSfx('step'); } catch (e) { /* quiet */ }
+      _gaTell(up ? 'climbup' : 'climbdown', up ? w.foot.x : w.top.x, up ? w.foot.y : w.top.y);
+      if (_ga.el) _ga.el.hidden = true;
+      return;
+    }
     _ght.climb = { w, up, t0: performance.now(), ms: _gaMotion() ? ms : 400, step: _gaMotion() ? GHT_CLIMB.step : 1, h, lv };
     // the hand-over-hand pose on the figure, as any move is played (the move's own bookkeeping: prompts hidden, the pet waits)
     const row = GARDEN_ACTS.climbing;
@@ -132,6 +158,7 @@ function gardenClimb(w, up) {
 /** Each frame while climbing: the figure goes up (or down) the ladder rung by rung, then steps off. */
 function _ghtClimbTick(now) {
   const C = _ght.climb; if (!C) return;
+  if (C.inside) { _ghtStairTick(C, now); return; }
   const cur = _ga.cur, t = now - C.t0, k = Math.min(1, t / C.ms), e = k;   // (one rung after another, at an even pace)
   if (C.up) {
     if (cur && cur.id === 'climbing') cur.lift = C.h * e;
@@ -146,15 +173,42 @@ function _ghtClimbTick(now) {
     if (k >= 1) _ghtClimbEnd();
   }
 }
+/** Up a stair inside a thing: a few steps in at its door, fading into the dark; the footsteps going up; then up out of the stair head at
+ *  the top (rising the last few steps, the battlements in front), on to the floor. Down the other way. The feet are where the figure is. */
+function _ghtStairTick(C, now) {
+  const k = Math.min(1, (now - C.t0) / C.ms), H = _ghtH(), W = GARDEN_WORLD, w = C.w;
+  const door = { x: w.foot.x, y: w.foot.y - 0.42 * H / W.cellH };   // (just inside the door)
+  const ease = (q) => q * q * (3 - 2 * q), kIn = C.up ? k : 1 - k;   // (kIn: 0 at the foot, 1 at the top)
+  let a = 1;
+  if (kIn < 0.28) {   // at the door: walking in (or out), fading
+    const q = ease(Math.min(1, kIn / 0.24)); C.atTop = false; C.lift = 0;
+    if (!C.up && !C.out) { C.out = true; _gaFace(90); try { _gwBody(); } catch (e) { /* fine */ } }   // (out of the door: facing you)
+    _gw.px = w.foot.x + (door.x - w.foot.x) * q; _gw.py = w.foot.y + (door.y - w.foot.y) * q; a = 1 - q;
+    C.view = 0;
+  } else if (kIn < 0.72) {   // inside, out of sight: the view goes up with the footsteps
+    a = 0; C.atTop = false; C.lift = 0;
+    C.view = C.h * ease((kIn - 0.28) / 0.44);
+    if (_gaMotion() && now - C.stepT > 330) { C.stepT = now; try { gardenSfx('step'); } catch (e) { /* quiet */ } }
+  } else {   // the stair head: rising (or sinking) behind the battlements, then on to the floor
+    const q = ease(Math.min(1, (kIn - 0.72) / 0.22)); C.atTop = true; C.view = C.h;
+    _gw.px = w.top.x; _gw.py = w.top.y; C.lift = C.h - 1.15 * H * (1 - q); a = q > 0 ? 1 : 0; C.behind = q < 0.999;   // (wholly under the floor at first, drawn behind the thing: its own wall hides you)
+  }
+  _ghtAlpha(_gw.node, a);
+  _ghtDoor(w, kIn < 0.33 && k < 1);
+  if (typeof _GPL !== 'undefined') { _GPL.lastX = _gw.px; _GPL.lastY = _gw.py; }
+  _gw.cam.dirty = true;
+  if (k >= 1) _ghtClimbEnd();
+}
 function _ghtClimbEnd() {
   const C = _ght.climb; if (!C) return;
   _ght.climb = null;
+  if (C.inside) { _ghtAlpha(_gw.node, 1); _ghtDoor(C.w, false); }
   if (_ga.cur && _ga.cur.id === 'climbing') gartActStop(true);
   if (C.up) {
     _ght.lv = C.lv; _gw.px = C.w.top.x; _gw.py = C.w.top.y;
     _gaFace(90); try { _gwBody(); } catch (e) { /* fine */ }
     if (typeof _GPL !== 'undefined') { _GPL.lastX = _gw.px; _GPL.lastY = _gw.py; }
-    try { _gaFirst({ id: 'climbup', row: GARDEN_ACTS.climbup }); } catch (e) { /* fine */ }
+    try { const fid = C.w.by === 'stair' && GARDEN_ACTS.stairup ? 'stairup' : 'climbup'; _gaFirst({ id: fid, row: GARDEN_ACTS[fid] }); } catch (e) { /* fine */ }
     if (C.lv.L.sit && GARDEN_ACTS[C.lv.L.sit]) setTimeout(() => { if (_ght.lv === C.lv && !_ght.climb) gartActRun(C.lv.L.sit, { stand: { x: _gw.px, y: _gw.py }, seated: true, deg: 90, noProp: true, src: C.lv.id, lift: 0 }); }, 60);
   } else {
     _ght.lv = null; _gw.px = C.w.foot.x; _gw.py = C.w.foot.y + 0.06;
@@ -343,7 +397,7 @@ if (typeof gartActMoved === 'function') {
   gartActMoved = function () { if (_ght.climb) return; return _ghtMoved0(); };   // eslint-disable-line no-func-assign
 }
 /** Leaving the garden, a room or a reset: back on the ground, out of the water. */
-function gardenHeightReset() { _ght.lv = null; _ght.climb = null; _ght.swim = null; _ght.list = null; }
+function gardenHeightReset() { if (_ght.climb && _ght.climb.inside) { _ghtAlpha(_gw && _gw.node, 1); _ghtDoor(_ght.climb.w, false); } _ght.lv = null; _ght.climb = null; _ght.swim = null; _ght.list = null; }
 /* ---------- the pet waits at the ladder's foot ---------- */
 if (typeof gardenLifePetGoal === 'function') {
   const _ghtPet0 = gardenLifePetGoal;
@@ -372,8 +426,9 @@ function _ghtRemote(A, id) {
     if (up) { A.x = w.foot.x; A.y = w.foot.y; } else { A.x = w.foot.x; A.y = w.foot.y; A.hLv = null; A.hLift = 0; A.hZ = null; }
     A.tx = null; A.ty = null; A.way = null;
     A.dir = 'n'; A.pose = ''; A.key = ''; if (typeof _gllPaint === 'function') _gllPaint(A);
-    A.ghtClimb = { w, up, t0: performance.now(), ms: _ghtClimbMs(w.lv.h) };
-    const gpl = A.root && A.root.querySelector('.gpl'); if (gpl) A.ghtH = gartActPlay(gpl, 'climbing', { motion: typeof _gllReduced === 'function' ? !_gllReduced() : true });
+    A.ghtClimb = { w, up, t0: performance.now(), ms: w.inside ? _ghtStairMs(w.lv.h) : _ghtClimbMs(w.lv.h) };
+    const gpl = !w.inside && A.root && A.root.querySelector('.gpl'); if (gpl) A.ghtH = gartActPlay(gpl, 'climbing', { motion: typeof _gllReduced === 'function' ? !_gllReduced() : true });
+    if (w.inside) { A.dir = up ? 'n' : 's'; if (!up) { A.x = w.top.x; A.y = w.top.y; } }
     A.actLift = 0; A.hLift = up ? 0 : w.lv.h;   // (the whole figure rises, its name with it: the sprite's own lift)
     return true;
   }
@@ -388,6 +443,20 @@ function _ghtSwimTo(x, y) {
 /** Each step of their copy: the climb's rise, the floor's height and depth, the swim's wade in and its strokes. */
 function _ghtRemoteStep(A) {
   const now = performance.now(), C = A.ghtClimb;
+  if (C && C.w.inside) {   // their stair: in at the door, out of sight, up out of the stair head (as yours: _ghtStairTick)
+    const k = Math.min(1, (now - C.t0) / C.ms), kIn = C.up ? k : 1 - k, w = C.w, H = _ghtH(), W = GARDEN_WORLD, q0 = (q) => q * q * (3 - 2 * q);
+    let a = 1;
+    if (kIn < 0.28) { const q = q0(Math.min(1, kIn / 0.24)); A.x = w.foot.x; A.y = w.foot.y - 0.42 * H / W.cellH * q; A.hLift = 0; A.hZ = null; a = 1 - q; }
+    else if (kIn < 0.72) { a = 0; A.hLift = 0; }
+    else { const q = q0(Math.min(1, (kIn - 0.72) / 0.22)); A.x = w.top.x; A.y = w.top.y; A.hLift = w.lv.h - 1.15 * H * (1 - q); A.hZ = ((q < 0.999 ? w.lv.depth0 - 1 : gardenLevelDepth(w.lv, A.x, A.y)) - W.sky) / W.cellH; a = q > 0 ? 1 : 0; }
+    A.tx = null; A.ty = null; _ghtAlpha(A.root, a); _ghtDoor(w, kIn < 0.33 && k < 1, A.w);
+    if (k >= 1) {
+      A.ghtClimb = null; _ghtAlpha(A.root, 1); _ghtDoor(w, false, A.w);
+      if (C.up) { A.hLv = w.lv.key; A.x = w.top.x; A.y = w.top.y; A.hLift = w.lv.h; } else { A.hLv = null; A.hLift = 0; A.hZ = null; A.x = w.foot.x; A.y = w.foot.y + 0.06; }
+      A.dir = 's'; A.key = '';
+    }
+    return;
+  }
   if (C) {
     const k = Math.min(1, (now - C.t0) / C.ms);
     A.actLift = 0; A.hLift = C.w.lv.h * (C.up ? k : 1 - k);
@@ -449,8 +518,8 @@ if (typeof _glhWalk === 'function') {
 if (typeof _gaWords === 'function') {
   const _ghtWords0 = _gaWords;
   _gaWords = function (r) {   // eslint-disable-line no-func-assign
-    if (r && r.act === 'climbup' && r.way) return 'Climb up to ' + r.way.lv.name;
-    if (r && r.act === 'climbdown') return 'Climb down';
+    if (r && r.act === 'climbup' && r.way) return (r.way.by === 'stair' ? 'Go up to ' : 'Climb up to ') + r.way.lv.name;
+    if (r && r.act === 'climbdown') return r.way && r.way.by === 'stair' ? 'Go down the stair' : 'Climb down';
     return _ghtWords0(r);
   };
 }
@@ -472,20 +541,48 @@ if (typeof _gmvDrawing === 'function') {
 }
 /* The floor's front rail in front of your legs: the thing's picture has its rail, but you are drawn over the whole picture, so the piece
    of rail that passes in front of you is drawn again on you (a level's `rail`: { ring: [rx, ry] } or { line: [x0, x1, y] }, h, color, in H). */
-function _ghtRailFrame() { _ghtRailOn(_ght, _gw && _gw.node, _ght.climb ? null : _ght.lv, _gw.px, _gw.py); }
+function _ghtRailFrame() {
+  const C = _ght.climb, node = _gw && _gw.node;
+  if (C && C.inside && C.atTop && !C.behind) _ghtRailOn(_ght, node, C.lv, _gw.px, _gw.py, C.lift || 0);
+  else _ghtRailOn(_ght, node, C ? null : _ght.lv, _gw.px, _gw.py, _ght.lv ? _ght.lv.h : 0);
+}
 /** A friend's copy up on a floor: the same rail over its legs (called by its sprite each step, 94-garden-live-1core.js). */
-function gardenHeightRail(A, node) { if (!A || !node || (!A.hLv && !A.railG)) return; const lv = A.hLv && !A.ghtClimb ? _ghtLevelByKey(A.hLv) : null; _ghtRailOn(A, node, lv, A.x, A.y); }
-function _ghtRailOn(K, node, lv, px, py) {
-  const R = lv && lv.L.rail;
+function gardenHeightRail(A, node) {
+  if (!A || !node || (!A.hLv && !A.railG && !A.ghtClimb)) return;
+  const C = A.ghtClimb, up = C && C.w.inside && A.hLift >= C.w.lv.h - 0.5 ? C.w.lv : null, lv = up || (A.hLv && !C ? _ghtLevelByKey(A.hLv) : null);
+  _ghtRailOn(A, node, lv, A.x, A.y, up ? A.hLift : lv ? lv.h : 0);
+}
+/** A floor's `front`: the piece of the thing's own picture that stands in front of the floor (battlements, a parapet), in H from the
+ *  painter's foot, drawn again over the figure within win px either side of it (clipped to that strip, so nothing else is covered). */
+function _ghtFrontSvg(F, lv, px, py, win, lift) {
+  const W = GARDEN_WORLD, H = _ghtH(), N = (k) => Math.round(k * 10) / 10;
+  const X = (p) => lv.fx + p[0] * H - px * W.cellW, Y = (p) => lv.py0 + p[1] * H - (W.sky + py * W.cellH) + (Number.isFinite(lift) ? lift : lv.h);
+  let pts = F.poly.map(p => [X(p), Y(p)]);
+  const clip = (P, x, keepLeft) => { const out = []; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length], ia = keepLeft ? a[0] <= x : a[0] >= x, ib = keepLeft ? b[0] <= x : b[0] >= x; if (ia) out.push(a); if (ia !== ib) { const t = (x - a[0]) / (b[0] - a[0]); out.push([x, a[1] + (b[1] - a[1]) * t]); } } return out; };
+  pts = clip(clip(pts, -win, false), win, true);
+  if (pts.length < 3) return '';
+  let out = `<path d="M${pts.map(p => N(p[0]) + ' ' + N(p[1])).join('L')}Z" fill="${F.fill || '#a39d8b'}"/>`;
+
+  if (F.line) {   // its lit top edge, the poly's first lineTo points
+    const L = F.poly.slice(0, (F.lineTo || F.poly.length) + 1).map(p => [X(p), Y(p)]); let d = '';
+    for (let i = 0; i + 1 < L.length; i++) { let [a, b] = [L[i], L[i + 1]]; if (a[0] > b[0]) [a, b] = [b, a]; if (b[0] < -win || a[0] > win) continue; const cl = (q, x) => { const t = (x - q[0][0]) / ((q[1][0] - q[0][0]) || 1); return [x, q[0][1] + (q[1][1] - q[0][1]) * t]; }; const A2 = a[0] < -win ? cl([a, b], -win) : a, B2 = b[0] > win ? cl([a, b], win) : b; d += `M${N(A2[0])} ${N(A2[1])}L${N(B2[0])} ${N(B2[1])}`; }
+    if (d) out += `<path d="${d}" stroke="${F.line}" stroke-width="1.6" fill="none" opacity="0.8"/>`;
+  }
+  return out;
+}
+function _ghtRailOn(K, node, lv, px, py, lift) {
+  const R = lv && lv.L.rail, F = lv && lv.L.front;
   const W = GARDEN_WORLD, H = _ghtH(), C = lv && lv.L.core;
   const u = lv ? (px * W.cellW - lv.cx) / H : 0, v = lv ? (W.sky + py * W.cellH - lv.cy) / H : 0;
-  const show = !!(R && node && !(C && v < C[1] && Math.abs(u) < C[0]));
-  const key = show ? lv.key + '|' + Math.round(u * 400) + ',' + Math.round(v * 400) : '';
+  const show = !!((R || F) && node && !(C && v < C[1] && Math.abs(u) < C[0]));
+  if (!Number.isFinite(lift)) lift = lv ? lv.h : 0;
+  const key = show ? lv.key + '|' + Math.round(u * 400) + ',' + Math.round(v * 400) + '|' + Math.round(lift) : '';
   if (key === K.railKey && (!show || (K.railG && K.railG.parentNode === node))) return;
   K.railKey = key;
   if (!show) { if (K.railG) K.railG.setAttribute('opacity', '0'); return; }
   if (!K.railG || K.railG.parentNode !== node) { try { if (K.railG && K.railG.parentNode) K.railG.parentNode.removeChild(K.railG); } catch (e) { /* gone */ } const g = typeof gardenSceneElement === 'function' && typeof gardenVisualIsNative === 'function' && gardenVisualIsNative(node) ? gardenSceneElement('g') : document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'ght-rail'); node.appendChild(g); K.railG = g; }
-  const ox = -u * H, oy = -v * H, hh = (R.h || 0.36) * H, col = R.color || '#2a2e30', win = 13, N = (k) => Math.round(k * 10) / 10;
+  if (!R) { const svg = _ghtFrontSvg(F, lv, px, py, 13, lift); K.railG.innerHTML = svg; K.railG.setAttribute('opacity', svg ? '1' : '0'); return; }
+  const ox = -u * H, oy = -v * H + (lift - lv.h), hh = (R.h || 0.36) * H, col = R.color || '#2a2e30', win = 13, N = (k) => Math.round(k * 10) / 10;
   // the rail's front line in the node's own px (its origin at your feet), from win px left of you to win px right
   const at = (x) => { if (R.ring) { const rx = R.ring[0] * H, ry = R.ring[1] * H, k = Math.max(0, 1 - ((x - ox) / rx) ** 2); return oy + ry * Math.sqrt(k); } return oy + R.line[2] * H; };
   const lo = R.ring ? Math.max(-win, ox - R.ring[0] * H + 1) : Math.max(-win, ox + R.line[0] * H), hi = R.ring ? Math.min(win, ox + R.ring[0] * H - 1) : Math.min(win, ox + R.line[1] * H);

@@ -90,6 +90,13 @@ const GARDEN_KINDS = Object.freeze({
   treehouse: { name: 'the treehouse', arts: ['treehouse'], words: ['treehouse'], pet: 'treehouse',
     // the deck of planks round the trunk, up the painter's own rope ladder: along the rail, in front of the trunk, to the house's door
     levels: [{ id: 'deck', name: 'the treehouse deck', at: [-0.29, 0], h: 2.59, shape: { rect: [-1.3, -0.14, 1.26, 0.12] }, minus: [{ rect: [0.1, -0.3, 1.4, -0.03] }, { ell: [0, -0.08, 0.38, 0.09] }], rail: { line: [-1.45, 1.4, 0.17], h: 0.43, post: 0.29, post0: -1.4, gap: [-1.27, -0.8], color: '#9a7a54', postW: 2.6, railW: 2.6, mid: false }, ways: [{ by: 'ladder', name: 'the treehouse ladder', foot: [-1.34, 0.12], top: [-1.05, 0.06] }] }] },
+  // the old watchtower: up the stair inside it (in at the door, out at the top) to the walk behind its battlements, the west half (the
+  // east half is tumbled, a rowan in the gap). front: the battlements, drawn again over your legs as you pass behind them (its painter's
+  // own crest, in H from the drawn foot)
+  tower: { name: 'the old tower', arts: ['tower'], words: ['watchtower'], pet: 'wall',
+    levels: [{ id: 'top', name: 'the tower top', at: [-0.75, -0.1], h: 6.49, shape: { rect: [-0.68, -0.1, 0.62, 0.06] },
+      front: { poly: [[-1.545, -6.467], [-1.545, -7.0], [-1.159, -7.0], [-1.159, -6.71], [-0.869, -6.71], [-0.869, -7.046], [-0.483, -7.046], [-0.434, -6.66], [-0.145, -6.515], [0.05, -6.42], [0.05, -6.37], [-1.545, -6.37]], fill: '#a39d8b', line: '#cbc5b1', lineTo: 9 },
+      ways: [{ by: 'stair', inside: true, name: 'the tower stair', foot: [0, 0.4], top: [0.42, 0.0], door: { w: 0.63, h: 1.25, up: 0.385 } }] }] },
   hollow: { name: 'the hollow tree', arts: ['hollow'], words: ['hollow'], pet: 'tree' },   // (the pets treat it as a tree: the treehouse's peek needs a window it has not got)
   barn: { name: 'the barn', arts: ['barn'], words: ['barn'], pet: 'hay',
     // the hay-loft door up its side: you sit in the doorway, legs over the sill (a level of one spot: sit)
@@ -132,7 +139,7 @@ const GARDEN_KINDS = Object.freeze({
   lamp: { name: 'the lamp', arts: ['lamp', 'lampbox'], paint: 'lamp', w: 0.5, h: 0.3, decor: ['lantern'], words: ['lamp'], top: 33 },
   /* known, nothing to do yet: listed so the audit does not call them unknown */
   scenery: { name: 'the rock', words: ['stone', 'rock', 'boulder', 'block', 'bollard', 'buoy', 'shingle', 'haze', 'ruin', 'crutch', 'posternpier', 'gatepier', 'plinth', 'crate', 'crates', 'pots', 'net', 'anchor', 'face', 'hatch', 'fence', 'baskets', 'sacks', 'barrel', 'barrels', 'hurdle', 'gap', 'water', 'brick', 'hedge', 'oldman', 'wallend', 'foot', 'weir', 'haze'], noPerch: true },   // the land's own stones and the harbour's clutter: nothing to do
-  building: { name: 'the building', arts: ['hall', 'oldhouse', 'summer', 'boathouse', 'hide', 'tower', 'smoke', 'shepherd', 'ice', 'grotto', 'temple', 'folly', 'hull', 'lectern', 'smoker', 'bench', 'cross', 'statue', 'topiary', 'gate', 'cairn', 'barrels', 'boles', 'beacon', 'warren', 'ring', 'frogstone', 'drift', 'cart', 'office', 'thatched-cottage', 'arch', 'bandstand', 'barrel', 'boots', 'circle', 'dew', 'help', 'kettle', 'lookout', 'moon', 'oak', 'observatory', 'rack', 'rg-fields', 'rg-garden', 'rg-hill', 'rg-lake', 'rg-marsh', 'rg-orchards', 'scarecrow', 'shelf', 'skeps', 'stars', 'stone', 'worms', 'chest'],
+  building: { name: 'the building', arts: ['hall', 'oldhouse', 'summer', 'boathouse', 'hide', 'smoke', 'shepherd', 'ice', 'grotto', 'temple', 'folly', 'hull', 'lectern', 'smoker', 'bench', 'cross', 'statue', 'topiary', 'gate', 'cairn', 'barrels', 'boles', 'beacon', 'warren', 'ring', 'frogstone', 'drift', 'cart', 'office', 'thatched-cottage', 'arch', 'bandstand', 'barrel', 'boots', 'circle', 'dew', 'help', 'kettle', 'lookout', 'moon', 'oak', 'observatory', 'rack', 'rg-fields', 'rg-garden', 'rg-hill', 'rg-lake', 'rg-marsh', 'rg-orchards', 'scarecrow', 'shelf', 'skeps', 'stars', 'stone', 'worms', 'chest'],
     words: ['house', 'hut', 'cottage', 'hall', 'office', 'tower', 'shed', 'folly', 'temple', 'grotto', 'icehouse', 'hide', 'beacon', 'cairn', 'cross', 'statue', 'journal', 'barrels', 'boles', 'warren', 'ring', 'frog', 'driftwood', 'hull', 'smoker', 'craft', 'press', 'bothy', 'toposcope', 'gate', 'box', 'arch', 'lamp', 'clamp', 'smoke', 'woodshed', 'quince', 'pippin', 'woodhut', 'oldhouse', 'labyrinth', 'boathouse', 'chapel', 'sunk'] },
 });
 /** Ground, read from the layout's own cells: what each type offers you and your pet. */
