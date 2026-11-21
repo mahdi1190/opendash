@@ -296,6 +296,7 @@ function _gllSprite(A, onClick) {
       sp.x = A.x; sp.y = A.y;
       _gllPetStep(A, dt, _gw.svg);
       if (typeof _gllFxStep === 'function') _gllFxStep(A, dt);
+      if (typeof gartActFriendTick === 'function') gartActFriendTick(A);   // (2.74.2) the coin's glow, the splash: where theirs is
     },
     onClick,
   });

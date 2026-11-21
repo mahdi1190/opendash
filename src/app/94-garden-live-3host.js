@@ -42,13 +42,14 @@ function _glhClaim() {
   if (_glhIsLegacyWorld()) { clearTimeout(_glh.claimT); _glh.claimT = 0; return; }
   if (_glh.claiming || _glh.claimT) return;
   _glh.claiming = true;
-  const later = () => { _glh.claimT = setTimeout(() => { _glh.claimT = 0; _glhClaim(); }, 30000); };
+  const later = (ms) => { _glh.claimT = setTimeout(() => { _glh.claimT = 0; _glhClaim(); }, ms || 30000); };
   _gllApi('/api/garden-live/here', _glhHereBody(true)).then((d) => {
     _glh.claiming = false;
     if (_glh.on || typeof _gw === 'undefined' || !_gw.on || state.view !== 'garden') return;
+    _glh.claimFails = 0;
     if (d && d.lead === false) { _glhElsewhere(true); later(); return; }
     _glhStart();
-  }).catch(() => { _glh.claiming = false; later(); });
+  }).catch(() => { _glh.claiming = false; _glh.claimFails = (_glh.claimFails || 0) + 1; later(_glh.claimFails <= 10 ? 4000 : 30000); });   // (2.74.2: a garden just opened may not be saved with its world yet: ask again soon, so a friend's knock finds you home)
 }
 function _glhStart() {
   if (_glhIsLegacyWorld()) return;

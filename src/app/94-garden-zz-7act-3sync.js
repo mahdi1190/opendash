@@ -40,7 +40,7 @@ function _gadBody() {
   const b = {}, cur = _ga.cur;
   if (cur && cur.doing && typeof GL_EMOTES !== 'undefined' && GL_EMOTES.includes(GA_WIRE + cur.id)) {
     b.a = cur.id; b.x = _gadR2(Number.isFinite(cur.x) ? cur.x : _gw.px); b.y = _gadR2(Number.isFinite(cur.y) ? cur.y : _gw.py);
-    { const deg = typeof gartMoveFacingDeg === 'function' ? Math.round(_gmvWrap(gartMoveFacingDeg())) : null; if (Number.isFinite(deg)) b.d = deg; }   // (the way they face for it: the same on every screen)
+    { const deg = cur.spot && cur.spot.deg != null ? Math.round(_gmvWrap(cur.spot.deg)) : typeof gartMoveFacingDeg === 'function' ? Math.round(_gmvWrap(gartMoveFacingDeg())) : null; if (Number.isFinite(deg)) b.d = deg === -180 ? 180 : deg; }   // (2.74.2: the way the thing they use wants them to face, as _gaStart turns them, not the turn still under way)   // (the way they face for it: the same on every screen)
     b.t = Math.max(0, Math.min(6000, Math.round((performance.now() - (cur.t0 || performance.now())) / 100)));
   }
   else if (!_gw.moving && typeof gartMoveFacingDeg === 'function') { const deg = Math.round(_gmvWrap(gartMoveFacingDeg())); if (Number.isFinite(deg)) b.d = deg === -180 ? 180 : deg; }   // (standing: the way you face, to the degree, so their figure is drawn as yours is: to the nearest eighth, -64 became -45, a side view for a back view)
@@ -213,6 +213,23 @@ function gartActRubHold(A, P) {
   R.t = now;
   try { if (typeof P.clip === 'function') P.clip(clip); else petClipRun(P.root, clip); R.H = P.root && P.root._pcH; } catch (e) { /* it sits */ }
   return true;
+}
+/** (2.74.2) The world's part of what they do (a coin's glow in the well, a splash, the pump's spout), on my screen at the same place and
+ *  moment as on theirs: the same table row (fx), from the thing they use (its stand point near them, by kind) or their feet and the way
+ *  they face for it. Once a frame from their sprite (94-garden-live-1core.js _gllSprite). A wish's sparkle drifted into the grass. */
+function gartActFriendTick(A) {
+  const row = A && A.actId && GARDEN_ACTS[A.actId], fx = row && row.fx;
+  if (!fx || !window.GardenNativeActions || !_gaMotion() || !Number.isFinite(A.actT0)) return;
+  if (A.fxFor !== A.actT0) {
+    A.fxFor = A.actT0; A.fxI = 0; A.fxT = 0; A.fxSpot = null;
+    try { A.fxSpot = _gaStaticRows().concat(_gaDecorRows()).filter(q => q.act === A.actId && q.stand && Math.hypot(q.stand.x - A.x, q.stand.y - A.y) < 1.2).sort((p, q) => Math.hypot(p.stand.x - A.x, p.stand.y - A.y) - Math.hypot(q.stand.x - A.x, q.stand.y - A.y))[0] || null; } catch (e) { A.fxSpot = null; }
+  }
+  if (typeof _gllOffscreen === 'function' && _gllOffscreen(A)) return;
+  const t = performance.now() - A.actT0, W = GARDEN_WORLD, sp = fx.spot && A.fxSpot ? A.fxSpot : null;
+  const deg = (A.fxSpot && A.fxSpot.deg != null ? A.fxSpot.deg : A.actDeg != null ? A.actDeg : _gaDirDeg(row, A.fxSpot)) * Math.PI / 180;
+  const at = (k) => { try { if (sp) GardenNativeActions.effect(fx.kind, (sp.x + fx.spot[0]) * W.cellW, W.sky + (sp.y + fx.spot[1]) * W.cellH + k, { width: fx.width || 24 }); else GardenNativeActions.effect(fx.kind, (A.x + Math.cos(deg) * 0.7) * W.cellW, W.sky + (A.y + Math.sin(deg) * 0.5 + (fx.dy || 0)) * W.cellH + k, { width: fx.width || 24 }); } catch (e) { /* fine */ } };
+  if (fx.every) { if (row.hold || t < row.ms) { if (t - A.fxT > fx.every) { A.fxT = t; at(A.fxI++ % 3); } } }
+  else if (fx.at && A.fxI < fx.at.length && t > fx.at[A.fxI] * row.ms) { if (t < row.ms + 400) at(A.fxI); A.fxI++; }
 }
 /** How high a friend's figure is drawn now (world px): on a seat or a branch, its lift; on the way up to one (an act whose next move
  *  is a raised seat: up the trunk to the branch), most of that. For the crowns over them (94-garden-native-painted.js fadeUnder). */

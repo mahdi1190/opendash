@@ -151,6 +151,7 @@ function _gllFxPlay(A, ev) {
 }
 /** Something someone set going in the world: their figure does it, and everyone hears and sees it there. Nothing else changes: what it gives is theirs alone. */
 function _gllUseFx(A, e, ev) {
+  if (A.dg && GARDEN_ACTS[A.actId || A.actWant] && GARDEN_ACTS[A.actId || A.actWant].use === e) { if (e === 'bell') { const S = typeof _wdi !== 'undefined' && _wdi.S ? _wdi.S.bell : null; if (S && typeof _wdBellRing === 'function') _wdBellRing(S, true); } else if (typeof _fxSound === 'function' && !_gllOffscreen(A)) _fxSound('splash'); return; }   // (2.74.2) the move itself is drawn from what they are doing: a 'pick' pose here redrew their figure mid-throw; the glow is gartActFriendTick's
   _gllPose(A, 'pick', 760);
   if (e === 'bell') { const S = typeof _wdi !== 'undefined' && _wdi.S ? _wdi.S.bell : null; if (S && typeof _wdBellRing === 'function') _wdBellRing(S, true); return; }
   if (_gllOffscreen(A)) return;
