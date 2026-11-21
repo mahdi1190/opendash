@@ -513,6 +513,14 @@ function _glhApply(ev, key) {
       B.caught.add(f);
       return put([], { noUndo: true, bug: B.p });
     }
+    case 'gate': {   // (2.74.1) a friend opens one of your gates with the find you hold: as if you had (the same prize, the same words, everyone sees it open)
+      const gate = typeof gardenGateOf === 'function' ? gardenGateOf(ev.p) : null, rule = gate && gardenGateRule(gate);
+      if (!rule) return 'kind';
+      if (gardenGateIsOpen(gate, m.areas)) return 'done';
+      if (!gardenGateHas(rule.key)) return 'gone';
+      const r = gardenGateOpen(gate.id); if (!r.ok) return 'gone';
+      return put([], { noUndo: true });
+    }
     default: return 'kind';
   }
 }
@@ -734,6 +742,7 @@ function _glhDiaryWhat(e, n) {
     case 'water': return n > 1 ? `${who} watered ${n} of your ${_glhMany(what)}` : `${who} watered your ${what}`;
     case 'feed': return `${who} fed your ${what}`;
     case 'turn': return `${who} turned the ${what}`;
+    case 'gate': { const gate = typeof gardenGateOf === 'function' ? gardenGateOf(e.p) : null, rule = gate && gardenGateRule(gate); return `${who} opened ${rule && rule.name ? rule.name.replace(/^The /, 'the ') : 'a gate'}`; }
     case 'weed': return `${who} tidied your ${what}`;
     case 'harvest': return `${who} picked the ${what}`;
     case 'dig': return `${who} dug up the ${what}`;

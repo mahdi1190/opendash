@@ -613,7 +613,7 @@ function _gcaHelpInviteCheck() {
 }
 function gardenHelpHeard(A, e, ev) {
   if (e === 'help') {
-    if (ev.to === _gfsSlot() && _gw.reel) { const R = _gw.reel, first = !R.helpAt && !R.help; R.help = Math.min(2, (R.help || 0) + 1); R.helpAt = R.t; if (first) { R.note = (A && A.n ? A.n : 'Somebody') + ' has the second line.'; R.noteTo = R.t + 3; } if (R.el) R.el.classList.add('is-helped'); }   // (2.74.1) each pull on the second line helps for a few seconds
+    if ((ev.to === _gfsSlot() || (ev.to == null && _gll.role === 'host')) && _gw.reel) { const R = _gw.reel, first = !R.helpAt && !R.help; R.help = Math.min(2, (R.help || 0) + 1); R.helpAt = R.t; if (first) { R.note = (A && A.n ? A.n : 'Somebody') + ' has the second line.'; R.noteTo = R.t + 3; } if (R.el) R.el.classList.add('is-helped'); }   // (2.74.1) each pull on the second line helps for a few seconds
     return;
   }
   if (e !== 'big' || !A || !ev || !Number.isInteger(ev.x) || !Number.isInteger(ev.y)) return;

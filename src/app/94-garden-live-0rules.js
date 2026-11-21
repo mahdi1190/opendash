@@ -51,9 +51,10 @@ const GL_ACTS = Object.freeze({
   catch: Object.freeze({ lv: 'look' }),
   feed: Object.freeze({ lv: 'play', on: 'plant' }),
   turn: Object.freeze({ lv: 'play', on: 'decor', mine: true }),
+  gate: Object.freeze({ lv: 'help' }),   // (2.74.1) open a gate of the owner's with the find they hold (p: the gate's id). Friends can do all the owner can (the owner, 20 Nov)
 });
 const GL_ACT_IDS = Object.freeze(Object.keys(GL_ACTS));
-const GL_CAPS = Object.freeze({ plant: 40, place: 20, water: 40, weed: 40, harvest: 60, dig: 40, move: 60, take: 40, give: 10, drop: 6, pick: 12, catch: 3, feed: 30, turn: 40, postsPerFriend: 120 });
+const GL_CAPS = Object.freeze({ plant: 40, place: 20, water: 40, weed: 40, harvest: 60, dig: 40, move: 60, take: 40, give: 10, drop: 6, pick: 12, catch: 3, feed: 30, turn: 40, gate: 12, postsPerFriend: 120 });
 /** What can wait for an owner who is out: which acts (each still needs its level in GL_ACTS), how many from one friend at once and in a day, and how many days it keeps. */
 const GL_QUEUE = Object.freeze({ acts: Object.freeze(['plant', 'place', 'water']), perFriend: 20, perDay: 30, days: 14 });
 /** Room messages a host's rooms carry in a day, what it sends and what arrives from visitors: 80,000 is 4,000 of Cloudflare's 100,000 free requests (incoming socket messages count 20 to 1). Over thin, walking sends less. guestDay: one visitor's share (the relay holds them to it too: ROOM.guestDay). */

@@ -1189,7 +1189,8 @@ window.GardenPaintedTerrain = (function () {
     // you can always see yourself: a peak you walk behind (the grotto's ledge, the Horn's back) and a pine or rowan whose
     // crown you stand under fade while you are there (they were drawn over you, and you vanished behind the Horn)
     const fadeTick = () => { if (typeof _gw === 'undefined' || !fades.length) return; const x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH;
-      for (const q of fades) { const im = q.im; if (!im.active) continue; const a = q.f(x, y, im) ? q.to || (typeof GARDEN_CROWN_FADE === 'number' ? GARDEN_CROWN_FADE : .34) : 1; if (im.alpha !== a) im.setAlpha(Math.abs(a - im.alpha) < .03 ? a : im.alpha + (a - im.alpha) * .25); } };
+      const up = typeof gardenCrownFeet === 'function' ? gardenCrownFeet(W).filter(p => !p.me) : [];   // (2.74.1) and over a friend up a tree
+      for (const q of fades) { const im = q.im; if (!im.active) continue; const a = q.f(x, y, im) || up.some(p => q.f(p.x, p.y, im)) ? q.to || (typeof GARDEN_CROWN_FADE === 'number' ? GARDEN_CROWN_FADE : .34) : 1; if (im.alpha !== a) im.setAlpha(Math.abs(a - im.alpha) < .03 ? a : im.alpha + (a - im.alpha) * .25); } };
     if (scene.events) scene.events.on('update', fadeTick);
     // the pines and rowans' trunk feet, in cells ([x, y, width]), for the one trunk-collision list (94-garden-world-0walk.js _gwPaintedTrunks)
     // (round 3 layouts: a crag by the pass stands on open ground now, so its foot is solid too, at the

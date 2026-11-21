@@ -43,7 +43,7 @@ function _gadBody() {
     { const deg = typeof gartMoveFacingDeg === 'function' ? Math.round(_gmvWrap(gartMoveFacingDeg())) : null; if (Number.isFinite(deg)) b.d = deg; }   // (the way they face for it: the same on every screen)
     b.t = Math.max(0, Math.min(6000, Math.round((performance.now() - (cur.t0 || performance.now())) / 100)));
   }
-  else if (!_gw.moving && typeof gartMoveFacingDeg === 'function') { const deg = Math.round(_gmvWrap(gartMoveFacingDeg()) / 45) * 45; if (Number.isFinite(deg)) b.d = deg === -180 ? 180 : deg; }   // (standing: the way you face, to the nearest eighth, so their figure turns as yours does)
+  else if (!_gw.moving && typeof gartMoveFacingDeg === 'function') { const deg = Math.round(_gmvWrap(gartMoveFacingDeg())); if (Number.isFinite(deg)) b.d = deg === -180 ? 180 : deg; }   // (standing: the way you face, to the degree, so their figure is drawn as yours is: to the nearest eighth, -64 became -45, a side view for a back view)
   if (_ga.carry && _ga.carry.id) { b.i = String(_ga.carry.id).slice(0, 64); if (_ga.carry.art) b.h = String(_ga.carry.art).slice(0, 64); }
   const f = _ga.fetch;
   if (f && Number.isFinite(f.x)) { b.p = { wait: 0, out: 1, back: 2, home: 3 }[f.phase] || 0; b.fx = _gadR2(f.x); b.fy = _gadR2(f.y); }
@@ -208,9 +208,18 @@ function _gadStickSprite(A) {
       } });
   } catch (e) { A.stickSpr = null; }
 }
+/** Their hands empty again: the carried thing off every drawing of their figure. The walker keeps one drawing per pose and way round
+ *  and puts it back (94-garden-native-art.js swapPlayerBody), so a basket left on one came back in their arms during a later move
+ *  (the critic: a stick throw drawn with the basket they had set down). Once, when the carrying ends. */
+function _gadCarrySweep(A) {
+  A.carried = false;
+  const roots = new Set(); try { const inner = A.inner; if (inner) { roots.add(inner); const C = inner._nativePlayerBodies; if (C) for (const v of (C instanceof Map ? C.values() : Object.values(C))) { const n = v && (v.node || v); if (n && n.querySelectorAll) roots.add(n); } if (inner._nativePlayerCurrent && inner._nativePlayerCurrent.node) roots.add(inner._nativePlayerCurrent.node); } } catch (e) { /* what is there */ }
+  for (const r of roots) { let list = []; try { list = [...r.querySelectorAll('.ga-carried')]; } catch (e) { list = []; } for (const n of list) { try { if (n.parentNode) n.parentNode.removeChild(n); if (n.destroy) n.destroy(); } catch (e) { /* gone */ } } try { if (r._gaCarry) r._gaCarry = null; for (const b of r.querySelectorAll('.gpl')) if (b.parentNode && b.parentNode._gaCarry) b.parentNode._gaCarry = null; } catch (e) { /* fine */ } }
+}
 /** Their figure while carrying: the thing in both hands (from gartMoveActor, after the stride). */
 function gartActCarryActor(A, body, L) {
   if (!body) return;
-  if (!A || !A.carryId) { if (body._gaCarry) { try { if (body._gaCarry.parentNode) body._gaCarry.parentNode.removeChild(body._gaCarry); if (body._gaCarry.destroy) body._gaCarry.destroy(); } catch (e) { /* gone */ } body._gaCarry = null; } return; }
+  if (!A || !A.carryId) { if (body._gaCarry) { try { if (body._gaCarry.parentNode) body._gaCarry.parentNode.removeChild(body._gaCarry); if (body._gaCarry.destroy) body._gaCarry.destroy(); } catch (e) { /* gone */ } body._gaCarry = null; } if (A && A.carried) _gadCarrySweep(A); return; }
+  A.carried = true;
   gartActCarryFrame(body, L || _gmvLimbs(body), A.carryArt || 'basket');
 }

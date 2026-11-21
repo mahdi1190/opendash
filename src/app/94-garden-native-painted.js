@@ -9,6 +9,24 @@ function gardenCrownCovers(px, py, tx, ty, H, w, image) {
   // between them. Only their authored paint can extend this fade.
   return !!(image && window.GardenNativePainted && GardenNativePainted.crownCovers(image, px, py));
 }
+/** (2.74.1) The feet a crown fades for (world px): yours first, then every friend up a tree or a raised seat, or on the way up to one
+ *  (gartActFriendLift), so you see them climb and sit on the branch as they do. By kind: any painter's crown, any lifted figure. Every
+ *  painter's crown fade asks this (the woods, the vale kit, the fells, the village planting), once a frame. */
+const _gcf = { t: -1, list: [] };
+function gardenCrownFeet(W) {
+  const t = typeof performance !== 'undefined' ? Math.floor(performance.now() / 16) : 0;
+  if (_gcf.t === t && _gcf.W === W) return _gcf.list;
+  const out = [];
+  if (typeof _gw !== 'undefined' && W) {
+    out.push({ x: _gw.px * W.cellW, y: W.sky + _gw.py * W.cellH, me: true });
+    if (typeof _gll !== 'undefined' && _gll.actors) for (const F of _gll.actors.values()) {
+      if (F.me || !Number.isFinite(F.x) || !Number.isFinite(F.y)) continue;
+      const lift = typeof gartActFriendLift === 'function' ? gartActFriendLift(F) : F.actLift || 0;
+      if (lift > 6) out.push({ x: F.x * W.cellW, y: W.sky + F.y * W.cellH, me: false });
+    }
+  }
+  _gcf.t = t; _gcf.W = W; _gcf.list = out; return out;
+}
 /* The "Painted village" art style: the village and start area drawn with the
  * opening scenes' own kit (the scene library objects of 70-scene-lib-*.js
  * through sceneObjShapes, and sceneDraw for lobed natural shapes), in their
@@ -593,7 +611,7 @@ window.GardenNativePainted = (function () {
     const W = lastInfo.W, dt = fadeLast ? Math.min(.1, Math.max(0, (time - fadeLast) / 1000)) : .016; fadeLast = time;
     const x = _gw.px * W.cellW, y = W.sky + _gw.py * W.cellH;
     // (2.74.1) a friend up a tree or on a high seat: the crown over them fades on your screen too, as yours does over you (by kind: any lifted figure)
-    const up = []; if (typeof _gll !== 'undefined' && _gll.actors) for (const F of _gll.actors.values()) { const lift = typeof gartActFriendLift === 'function' ? gartActFriendLift(F) : F.actLift || 0; if (!F.me && lift > 6 && Number.isFinite(F.x)) up.push([F.x * W.cellW, W.sky + F.y * W.cellH - lift]); }
+    const up = gardenCrownFeet(W).filter(p => !p.me).map(p => [p.x, p.y]);
     for (const t of plantingTall) { if (!t.im.active) continue; const cw = Math.min(t.im.displayWidth, t.h * 1.05), under = gardenCrownCovers(x, y, t.x, t.y, t.h, cw, t.im) || up.some(p => gardenCrownCovers(p[0], p[1], t.x, t.y, t.h, cw, t.im)), a = under || fishingCrownCovers(t.im) ? GARDEN_CROWN_FADE : 1; if (under && t.im.visible) plantingCoverage.push(t.im); if (t.im.alpha !== a) t.im.setAlpha(Math.abs(a - t.im.alpha) < .02 ? a : t.im.alpha + (a - t.im.alpha) * Math.min(1, dt * 8)); }
   }
   function planting(scene, parent, info) {
