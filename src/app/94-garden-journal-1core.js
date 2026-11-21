@@ -294,6 +294,8 @@ function _gjPeople(left, right, m) {
     row.innerHTML = `<span class="gj-portrait">${art}</span><span><b>${esc(f.name)}</b><span class="gj-leaves">${_gjPips(heart, 5)}</span><small>${esc(f.title || f.role || '')}</small></span>`;
   }
   if (!any) list.appendChild(_gjEl('p', 'gj-hand gj-empty', 'Nobody yet. Say hello to whoever you meet on the green.'));
+  // what people do, noticed and written down without an explanation (the vale's folk's tells, 94-garden-folk-4run.js VALE_TELLS)
+  if (typeof VALE_TELLS !== 'undefined') { const W = typeof _wdG === 'function' ? _wdG() : {}, seen = Object.keys(VALE_TELLS).filter(k => W['vt.' + k]); if (seen.length) { const t = left.appendChild(_gjEl('div', 'gj-tells')); t.appendChild(_gjEl('h4', null, 'Things I noticed')); for (const k of seen) t.appendChild(_gjEl('p', 'gj-hand', VALE_TELLS[k])); } }
   const h2 = right.appendChild(_gjEl('div', 'gj-etitle')); h2.innerHTML = '<h3>Your pet</h3><small>its tricks, and where it has been</small>';
   const pet = right.appendChild(_gjEl('div', 'gj-petbox'));
   if (typeof petBookPage === 'function' && typeof petGet === 'function' && petGet()) { try { petBookPage(pet, { panel: true }); } catch (e) { pet.appendChild(_gjEl('p', 'muted', 'Your pet is busy.')); } }

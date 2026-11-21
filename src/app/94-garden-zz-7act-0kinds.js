@@ -148,6 +148,13 @@ const GARDEN_KINDS = Object.freeze({
   sunken: { name: 'the sunken garden', arts: ['sunk', 'sunken'], words: ['sunk'], noPerch: true },
   rope: { name: 'the rope', arts: ['rope'], words: ['rope'], noPerch: true },
   person: { name: 'someone', arts: ['angler'], words: ['angler'], noPerch: true },
+  // homes of the vale's folk (94-garden-folk-0rules.js): small homes are placed through layout data (assets/garden/vale-folk.json) and
+  // painted into their ground (94-garden-folk-2art.js): a door in a bank with a worn step, a mat and a pipe chimney; a holt in the roots
+  // at a water edge. Nobody's home offers you a move of its own: knocking is the folk's (94-garden-folk-4run.js)
+  burrow: { name: 'the burrow', art: 'burrow', place: true, w: 2.2, h: 0.5, solid: 'block', noPerch: true, home: true },
+  holt: { name: 'the holt', art: 'holt', place: true, w: 2.1, h: 0.45, solid: 'block', noPerch: true, home: true },
+  nest: { name: 'the nest', place: true, w: 1, h: 0.4, noPerch: true, home: true },
+  tent: { name: 'the tent', place: true, w: 1.6, h: 0.6, solid: 'block', noPerch: true, home: true },
   finds: { name: 'your finds', arts: ['finds', 'museum'], words: ['finds', 'museum'], noPerch: true },
   lamp: { name: 'the lamp', arts: ['lamp', 'lampbox'], paint: 'lamp', w: 0.5, h: 0.3, decor: ['lantern'], words: ['lamp'], top: 33 },
   /* known, nothing to do yet: listed so the audit does not call them unknown */
@@ -278,7 +285,7 @@ function gardenKindDrawable(kind, arts) {
   const K = GARDEN_KINDS[kind]; if (!K) return false;
   if (K.paint || K.ground) return true;
   if (!K.art) return false;
-  return arts ? !!arts[K.art] : true;
+  return arts ? !!(arts[K.art] || (typeof VALE_FOLK_ART !== 'undefined' && VALE_FOLK_ART[K.art])) : true;   // (the folk's small homes: 94-garden-folk-2art.js)
 }
 /** Do two things' boxes meet AS DRAWN? Each is { foot middle x, foot y, width w, height h } in cells; a drawing reaches a little past its
  *  footprint every way (a fire's ring of stones and its shadow below its foot, a log's ends), so a margin keeps them apart. Pure. */

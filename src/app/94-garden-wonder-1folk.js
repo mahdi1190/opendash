@@ -37,6 +37,7 @@ function _wdFolkArt(r, o) {
   void o;
   return `<g class="wd-flip">${s}</g>`;
 }
+// (the vale's folk, 94-garden-folk-0rules.js) each caller row is its VALE_FOLK row with the caller's words and look on top: one registry
 const WD_FOLK = Object.freeze([
   { id: 'tam', name: 'Tam', kind: 'mole', fur: '#54484a', coat: '#6e8a4e', snout: '#d9a8a0', hat: 'cap', hatc: '#8a6a44', prop: 'spade', spec: 1, chance: 55, gap: 3, likes: 'crop',
     when: (m) => !!(m.rain.now || (m.rain.last && m.now - m.rain.last < 12 * 3600000)) || ['dawn', 'dusk'].includes(m.tod),
@@ -56,7 +57,8 @@ const WD_FOLK = Object.freeze([
   { id: 'quince', name: 'Quince', kind: 'hare', fur: '#b8926a', coat: '#d8b84a', snout: '#f0e2cc', ear: '#e8b8a8', hat: 'wide', hatc: '#c8b890', prop: 'jar', chance: 50, gap: 3, likes: 'crop',
     when: (m) => ['dawn', 'day'].includes(m.tod) && !m.rain.snow,
     thanks: (n) => [`I gave the ${n} to the bees. They went over it twice, very slowly, the way they do with things they approve of. One of them is still on it.`, 'Honey money, my mother called this. Go on, take it.'], back: 'seed' },
-]);
+
+].map(r => Object.freeze(Object.assign({}, typeof VALE_FOLK_ROW !== 'undefined' ? VALE_FOLK_ROW.get(r.id) : null, r))));
 const WD_FOLK_ROW = new Map(WD_FOLK.map(r => [r.id, r]));
 /* ---------- what has really happened ---------- */
 function _wdAgeWords(days) {
@@ -176,29 +178,19 @@ function _wdFolkPick(m) {
   for (const r of rows) if (!ever || gardenHash('wd-folk|' + today + '|' + r.id) % 100 < r.chance) { _wdSet('fd', { d: today, id: r.id }); return r; }
   return null;
 }
-// Optional callers wait by public destinations instead of gathering around
-// whichever player happens to be fishing when the daily caller arrives.
-const WD_FOLK_MEET = Object.freeze({
-  tam: Object.freeze(['market-stall', 1.2, 1.1]),
-  bramble: Object.freeze(['notice-board', -1.6, 1.1]),
-  pip: Object.freeze(['lake-board', -1.4, 1.2]),   // (village fix round 2: by the Mere, not down at the quay's end, where Pip stood on the old angler)
-  thistle: Object.freeze(['post-box', 1.6, 1.1]),
-  wick: Object.freeze(['sundial', -1.6, 1.1]),
-  quince: Object.freeze(['sundial', 1.6, 1.1]),
-});
-const WD_FOLK_MEET_FALLBACKS = Object.freeze([Object.freeze(['notice-board', -1.6, 1.1]), Object.freeze(['post-box', 1.6, 1.1])]);
+// Optional callers (only when the folk are not living their days, VALE_FOLK_LIVE) wait by a public thing of a kind people meet at,
+// found on whatever layout is loaded (npcs-PLAN 3.2: no named meeting places), never on your own spot and always with a route.
+const WD_FOLK_MEET_KINDS = Object.freeze(['notice-board', 'postbox', 'sundial', 'well', 'signpost', 'bench']);
 function _wdFolkMeeting(row) {
   const home = typeof wdKinHome === 'function' ? wdKinHome(row) : null; if (home) return home;   // their own place in the vale, once you have met
-  const preferred = WD_FOLK_MEET[row.id], choices = preferred ? [preferred, ...WD_FOLK_MEET_FALLBACKS] : WD_FOLK_MEET_FALLBACKS;
-  for (let i = 0; i < choices.length; i++) {
-    const at = choices[i]; if (i && preferred && at[0] === preferred[0]) continue;
-    // A missing landmark is not the kit's generic fallback coordinate. Every
-    // meeting also needs public ground, today's foot clearance and a route.
-    const prop = GARDEN_PROPS.find(p => p.id === at[0]);
-    if (!prop || prop.needs && !gardenWorkOwned(prop.needs)) continue;
-    const want = _wdPt(at[0], at[1], at[2]), to = wdFreeNear(want.x, want.y, 1.25); if (!to || !gardenIslandPublicCell(Math.floor(to.x), Math.floor(to.y))) continue;
+  if (typeof valeFolkFind !== 'function' || typeof _vfrCtx !== 'function') return null;
+  const m = gardenHere(), ctx = _vfrCtx(m), rng = valeRng('meet|' + m.today + '|' + row.id), tried = new Set();
+  for (let k = 0; k < 6; k++) {
+    const sp = valeFolkFind({ kinds: WD_FOLK_MEET_KINDS.slice(), public: true }, ctx, { rng, from: { x: _gw.px, y: _gw.py }, booked: (key) => tried.has(key) });
+    if (!sp) return null; tried.add(sp.key);
+    const to = wdFreeNear(sp.x, sp.y, 1.25); if (!to || !gardenIslandPublicCell(Math.floor(to.x), Math.floor(to.y))) continue;
     if (Math.hypot(to.x - _gw.px, (to.y - _gw.py) * 1.4) < 1.3) continue;   // (vale final fix 1: never on the very spot you stand, as at the quay)
-    let route = null; try { route = _gwRoute({ x: _gw.px, y: _gw.py }, to); } catch (e) { /* try the next public meeting point */ }
+    let route = null; try { route = _gwRoute({ x: _gw.px, y: _gw.py }, to); } catch (e) { /* the next one */ }
     if (route) return to;
   }
   return null;
@@ -308,6 +300,7 @@ wdMod({
   id: 'folk', pref: 'folk',
   begin() { _wdf.S = null; },
   tick(m) {
+    if (typeof gardenFolkLive === 'function' && gardenFolkLive()) return;   // the folk live their days now: nobody is summoned (94-garden-folk-4run.js)
     if (_wdf.S || _wd.t < 22 || (_gw.fishing && _gw.fishing.state !== 'idle')) return;
     if (_wd.still || wdWalkingLately()) return;
     const r = _wdFolkPick(m); if (r) _wdFolkSpawn(r);

@@ -27,14 +27,8 @@
    ============================================================ */
 const WK_HEARTS = Object.freeze([0, 3, 8, 15, 26]);
 const WK_HEART_WORDS = Object.freeze(['', 'on nodding terms', 'friends', 'good friends', 'old friends']);
-const WK_HOMES = Object.freeze({
-  thistle: Object.freeze({ region: 'west-woods', near: Object.freeze(['great-oak-clearing', 'ld-bench-a', 'ld-hollow']), place: 'the Great Oak' }),
-  pip: Object.freeze({ region: 'east-mill', near: Object.freeze(['ld-churn', 'ld-mill', 'mill-yard']), place: 'the mill race' }),
-  tam: Object.freeze({ region: 'southwest-ruins', near: Object.freeze(['ld-chapel', 'ruin-court', 'ld-statue']), place: 'the old chapel' }),
-  bramble: Object.freeze({ region: 'east-mill', near: Object.freeze(['mill-yard', 'ld-mill', 'ld-barn']), place: 'the mill yard' }),
-  quince: Object.freeze({ region: 'orchard-headland', near: Object.freeze(['cider-square', 'ld-barrels', 'ld-ring']), place: 'the cider square' }),
-  wick: Object.freeze({ region: 'north-headland', near: Object.freeze(['ld-hut', 'summit-cairn', 'ld-cairn']), place: 'the mountain hut' }),
-});
+// (the vale's folk) built from VALE_FOLK (94-garden-folk-0rules.js): each caller's region, old landmark ids (tried in turn) and place words
+const WK_HOMES = Object.freeze(Object.fromEntries(VALE_FOLK.filter(r => r.caller).map(r => [r.id, Object.freeze({ region: r.region, near: Object.freeze((r.prefer || []).slice()), place: r.place })])));
 /** What each gives when you become good friends: something of theirs for your garden. */
 const WK_KEEPSAKE = Object.freeze({ tam: 'decor:boot-planter', bramble: 'decor:signpost', pip: 'decor:fish-flag', thistle: 'decor:hedgehog-house', wick: 'decor:stone-owl', quince: 'decor:bee-skep', angler: 'decor:bait-bucket' });
 /* ---------- today's line: one a day each, picked from what is true now ---------- */
@@ -239,7 +233,8 @@ function _wkAnchor(id) {
 }
 function _wkRegionZone(id) { try { const r = (gardenIslandData().regions || []).find(x => x.id === id); return r ? r.zone : null; } catch (e) { return null; } }
 /** Are you near this one’s home (heavy moments are told at home, never in the village square)? */
-function wdKinAtHome(who) { const H = WK_HOMES[who] || (typeof WD_TALE_RESIDENTS !== "undefined" && WD_TALE_RESIDENTS.get(who) || {}).home; if (!H || typeof _gw === "undefined") return false; for (const id of H.near) { const p = _wkAnchor(id); if (p && wdNear(p.x, p.y, 8)) return true; } return false; }
+function wdKinAtHome(who) { if (typeof gardenFolkAtHome === 'function') { const f = gardenFolkAtHome(who); if (f !== null) return f; }   // (the folk live their days: at their own home, at a calm hour)
+  const H = WK_HOMES[who] || (typeof WD_TALE_RESIDENTS !== "undefined" && WD_TALE_RESIDENTS.get(who) || {}).home; if (!H || typeof _gw === "undefined") return false; for (const id of H.near) { const p = _wkAnchor(id); if (p && wdNear(p.x, p.y, 8)) return true; } return false; }
 function wdKinHome(row) {
   const H = WK_HOMES[row.id]; if (!H || GARDEN_WORLD.v < 3) return null;
   const m = gardenModel(); if (m.visit) return null;

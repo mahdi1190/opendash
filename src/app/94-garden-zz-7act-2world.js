@@ -140,9 +140,10 @@ function gardenActWorldProps(sc, o) {
   const W = GARDEN_WORLD, out = [];
   for (const r of gardenActWorldRows()) {
     if (r.paint) { if (!(r.season && sc && sc.season !== r.season)) out.push({ z: r.y, x: Math.floor(r.x), html: `<g class="gd-it gd-prop" data-prop="${r.id}" data-z="${_gawN(r.y)}" pointer-events="none"></g>` }); continue; }   // (the native world paints it from gardenActThingProp)
-    if (!_GAW_ART[r.art] || (r.season && sc && sc.season !== r.season) || (typeof gartActCarried === 'function' && gartActCarried(r.id)) || (r.carry && typeof gartActMovedTo === 'function' && gartActMovedTo(r.id))) continue;   // (one set down elsewhere is drawn there as a sprite of its own)
+    const art = _GAW_ART[r.art] || (typeof VALE_FOLK_ART !== 'undefined' && VALE_FOLK_ART[r.art]) || null;   // (the folk's homes: 94-garden-folk-2art.js)
+    if (!art || (r.season && sc && sc.season !== r.season) || (typeof gartActCarried === 'function' && gartActCarried(r.id)) || (r.carry && typeof gartActMovedTo === 'function' && gartActMovedTo(r.id))) continue;   // (one set down elsewhere is drawn there as a sprite of its own)
     const x = r.x * W.cellW, y = W.sky + r.y * W.cellH;
-    out.push({ z: r.flat ? r.y - 1.2 : r.y, x: Math.floor(r.x), html: `<g class="gd-it gd-prop gd-prop-work" data-prop="${r.id}" data-z="${_gawN(r.y)}" pointer-events="none"><g transform="translate(${_gawN(x)} ${_gawN(y)})">${_GAW_ART[r.art](o, typeof gartActInUse === 'function' && gartActInUse(r.id), r.row, typeof gardenMusicHeld === 'function' ? gardenMusicHeld(r.id) : null)}</g></g>` });
+    out.push({ z: r.flat ? r.y - 1.2 : r.y, x: Math.floor(r.x), html: `<g class="gd-it gd-prop gd-prop-work" data-prop="${r.id}" data-z="${_gawN(r.y)}" pointer-events="none"><g transform="translate(${_gawN(x)} ${_gawN(y)})">${art(o, typeof gartActInUse === 'function' && gartActInUse(r.id), r.row, typeof gardenMusicHeld === 'function' ? gardenMusicHeld(r.id) : null)}</g></g>` });
   }
   return out;
 }

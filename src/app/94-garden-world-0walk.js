@@ -1927,7 +1927,8 @@ function _gwOpenProp(p) {
     photo: () => { if (typeof gardenPhotoOpen === 'function') gardenPhotoOpen(); }, timelapse: () => { if (typeof gardenTimelapseOpen === 'function') gardenTimelapseOpen(); },
     sail: () => { if (typeof gardenBoatAsk === 'function' && gardenBoatAsk()) return; gardenPopupOpen('sail'); },
     hall: () => gardenPopupOpen('catch', { sub: 'hall', title: 'The lake hall' }), lake: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The lake' }),
-    angler: () => { if (typeof wdAnglerTalk === 'function' && wdAnglerTalk(p)) return; gardenPopupOpen('catch', { sub: 'lake', title: 'The old angler' }); },   // he talks first, once a day (94-garden-wonder-1kin.js) smoker: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The smoker' }),
+    angler: () => { if (typeof gardenFolkLive === 'function' && gardenFolkLive()) return;   // (he walks his own day now: talk to him where he is, 94-garden-folk-4run.js)
+      if (typeof wdAnglerTalk === 'function' && wdAnglerTalk(p)) return; gardenPopupOpen('catch', { sub: 'lake', title: 'The old angler' }); },   // he talks first, once a day (94-garden-wonder-1kin.js) smoker: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The smoker' }),
     craft: () => gardenPopupOpen('craft'),
     lands: () => gardenPopupOpen('lands'),
     lf: () => gardenLandPropOpen(p),
@@ -2163,7 +2164,7 @@ function gardenWorldInteract() {
   if (typeof gartActInteract === 'function' && gartActInteract()) return;   // the prompt's action: sit, climb, ring... (94-garden-zz-7act-1core.js)
   const m = gardenHere(), W = GARDEN_WORLD;
   const px = Math.floor(_gw.px), py = Math.floor(_gw.py);
-  for (const p of gardenPropsNow()) if (p.act) { const door = _gwPropApproachPoint(p, false); if (door && Math.abs(door.x - .5 - px) <= 1 && Math.abs(door.y - .5 - py) <= 1) { _gwOpenProp(p); return; } }
+  for (const p of gardenPropsNow()) if (p.act && !(p.act === 'angler' && typeof gardenFolkLive === 'function' && gardenFolkLive())) { const door = _gwPropApproachPoint(p, false); if (door && Math.abs(door.x - .5 - px) <= 1 && Math.abs(door.y - .5 - py) <= 1) { _gwOpenProp(p); return; } }
   // a way in to a side place beside you (the boat loft's doorway, the hothouse, the den's doors): E went past them to
   // fishing off the quay, or to nothing at all (hunter, round 3). The way in stands where its sight paints its door.
   if (typeof GRM_ROOMS !== 'undefined' && typeof _grd !== 'undefined' && typeof gardenRoomGo === 'function') {

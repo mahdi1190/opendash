@@ -1,0 +1,22 @@
+{
+  "about": "The vale's folk (src/app/94-garden-folk-0rules.js): their small homes, placed through layout data like any thing of a kind (src/app/94-garden-zz-7act-0kinds.js burrow, holt), each painted into its ground (src/app/94-garden-folk-2art.js). Not part of the saved-world identity. Who lives where is worked out by kind (a burrow, a holt, any cottage), never by these ids: a layout without these rows still houses everyone. Check with: node tools/folk-audit.mjs and node tools/affordance-audit.mjs",
+  "things": [
+    {
+      "id": "fk-burrow-tam",
+      "kind": "burrow",
+      "on": "ld-chapel",
+      "at": [
+        -4,
+        -4
+      ],
+      "note": "Tam's burrow: a door in a grassy bank north-west of the old chapel, on open grass off the ruins lane"
+    },
+    {
+      "id": "fk-holt-pip",
+      "kind": "holt",
+      "note": "Pip's holt: in the roots of the bank above the water by the boathouse (the mill race banks are all path, plot and paving: no clear ground for it there)",
+      "x": 60,
+      "y": 76
+    }
+  ]
+}
