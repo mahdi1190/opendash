@@ -34,7 +34,9 @@ export const TOP_DIRS = ['src', 'server', 'lib', 'mcp', 'cloudflare', 'tools', '
 // tell the reader to open it, and the tool's own tests read it. The rest of .claude is per-machine and never ships.
 // assets/objects holds the raster library objects (docs/dev/OBJECT_IMPORT.md): build.mjs embeds them in the page.
 // assets/garden holds the authored canonical island layout loaded by build.mjs and the shared Garden rules.
-export const PARTIAL_DIRS = { assets: ['brand', 'brands', 'objects', 'garden'], '.claude': ['skills/animation-pack'] };
+// assets/music holds the garden's songs (made by the owner with Suno, not under the code's MIT licence: assets/music/README.md),
+// streamed by server/routes/garden-music.mjs.
+export const PARTIAL_DIRS = { assets: ['brand', 'brands', 'objects', 'garden', 'music'], '.claude': ['skills/animation-pack'] };
 
 // Why well-known top-level entries are left out (anything else: "not on the allowlist").
 const TOP_WHY = {

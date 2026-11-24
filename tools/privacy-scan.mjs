@@ -636,6 +636,12 @@ export function scanFile(rel, buf, opts = {}) {
       return out;
     }
   }
+  if (/\.mp3$/i.test(rel)) {
+    // a song (assets/music): an ID3 tag carries the maker's account name, links and comments (Suno writes all three). Ship the bare frames.
+    const id3 = buf.length > 10 && buf.toString('latin1', 0, 3) === 'ID3', v1 = buf.length > 128 && buf.toString('latin1', buf.length - 128, buf.length - 125) === 'TAG';
+    if (id3 || v1) out.push({ file: rel, line: 0, col: 0, rule: 'image-metadata', severity: 'error', message: `MP3 ${id3 ? 'ID3v2' : 'ID3v1'} tag (artist, links, comments): strip it (docs/dev/GARDEN_MUSIC.md)`, text: '' });
+    return out;
+  }
   if (/\.ico$/i.test(rel)) {
     const imgs = icoImages(buf);
     if (imgs) {
