@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.75.3] - 2026-11-24
+
+### Added
+
+- Twenty more garden songs, made by the owner with Suno, weighted to the hours the garden is played most: seven more for the afternoon, eight more for the evening, two more for the night and three more for the morning (27 songs in all). The garden shuffles through each hour’s songs without repeats.
+
 ## [2.75.2] - 2026-11-24
 
 ### Fixed
