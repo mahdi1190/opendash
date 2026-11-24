@@ -1,6 +1,7 @@
 /* ============================================================
-   GARDEN, its sound (2.68). The owner: make it feel like a real, polished cosy game. Everything is made on the spot with Web Audio:
-   no audio files, nothing downloaded, nothing to licence, and it works offline.
+   GARDEN, its sound (2.68). The owner: make it feel like a real, polished cosy game. The effects and the nature sounds are made on the
+   spot with Web Audio (no files, works offline). The music is the owner's own songs, made with Suno (assets/music, not under the code's
+   licence), streamed from the local server one at a time by the garden's clock: see "the music" below and docs/dev/GARDEN_MUSIC.md.
 
      gardenSfx(name, o)        one short sound: steps, panels, tools, fishing, the net, doors, the gate's mist, a level, a pet, a friend.
                                Falsy when it is not played (Sounds off, effects off, the tab hidden, nobody has clicked yet).
@@ -11,11 +12,13 @@
      gardenSoundOpen()         the Sound panel (Garden menu > View & help > Sound)
      gardenSoundRender(name, secs, o)   the same sound drawn into an OfflineAudioContext, for checking levels (no speakers needed)
      gardenSoundLog()          the last 200 sounds played: [{t, s}]
+     gardenMusicState()        the song playing now: {slot, hour, file, at, dur, gain, held, ...}
+     gardenMusicLoudness(file) a song's integrated loudness (LUFS) and the trim that levels it (for assets/music/levels.json)
 
    Preferences live with the game's own (state.game.prefs): sounds (the app's Sounds switch, off by default: nothing plays without it),
    gsVol 0..1 (0.7), gsAmb (music and nature sounds, on), gsFx (sound effects, on).
    Cost: one 160 ms timer while the garden shows (none otherwise), at most eight ambience chains made once and reused, short-lived
-   nodes for each one-shot, nothing per frame. The context is suspended while the tab is hidden and when you leave the garden.
+   nodes for each one-shot, nothing per frame; one streamed song at a time (two for the few seconds of a crossfade). The context is suspended while the tab is hidden and when you leave the garden.
    Browsers only allow sound after the first click or key press: nothing plays before it.
    ============================================================ */
 const _gsn = { ac: null, g: null, amb: null, armed: false, iv: 0, n: 0, log: [], last: Object.create(null), uiQuiet: 0, step: { at: 0, x: NaN, y: NaN, moving: false, side: 1 }, reel: 0, strain: 0, room: '', src: null, srcAt: 0, music: 0, petAt: 0, noise: new WeakMap(), fade: 0 };
@@ -44,7 +47,7 @@ function _gsnCtx() {
   return ac;
 }
 function _gsGraph(c) {
-  const G = { master: c.createGain(), lim: c.createDynamicsCompressor(), fx: c.createGain(), amb: c.createGain(), ambLP: c.createBiquadFilter(), music: c.createGain(), mIn: c.createGain(), dly: c.createDelay(1), fb: c.createGain(), wet: c.createGain(), dlyLP: c.createBiquadFilter() };
+  const G = { master: c.createGain(), lim: c.createDynamicsCompressor(), fx: c.createGain(), amb: c.createGain(), ambLP: c.createBiquadFilter(), music: c.createGain(), mIn: c.createGain(), mTr: c.createGain(), mLP: c.createBiquadFilter(), dly: c.createDelay(1), fb: c.createGain(), wet: c.createGain(), dlyLP: c.createBiquadFilter() };
   // a soft safety limiter: nothing in here is loud, but a pile-up never clips
   G.lim.threshold.value = -10; G.lim.knee.value = 10; G.lim.ratio.value = 6; G.lim.attack.value = 0.004; G.lim.release.value = 0.3;
   G.master.connect(G.lim); G.lim.connect(c.destination);
@@ -53,6 +56,8 @@ function _gsGraph(c) {
   // the music: a little echo, darkened, for space
   G.dly.delayTime.value = 0.36; G.fb.gain.value = 0.3; G.wet.gain.value = 0.26; G.dlyLP.type = 'lowpass'; G.dlyLP.frequency.value = 2600;
   G.mIn.connect(G.music); G.mIn.connect(G.dly); G.dly.connect(G.dlyLP); G.dlyLP.connect(G.fb); G.fb.connect(G.dly); G.dlyLP.connect(G.wet); G.wet.connect(G.music);
+  // the songs: their own bus, through a low-pass the rain and the rooms close down (no echo: they have their own space)
+  G.mLP.type = 'lowpass'; G.mLP.frequency.value = 20000; G.mLP.Q.value = 0.5; G.mTr.connect(G.mLP); G.mLP.connect(G.music);
   G.music.connect(G.master);
   return G;
 }
@@ -361,7 +366,7 @@ function _gsRoom() {
 }
 function _gsAmbience(c) {
   const p = _gsPrefs(), G = _gsn.g, t = c.currentTime;
-  if (!p.amb) { if (_gsn.amb) { for (const k of Object.keys(GS_AMB_GAIN)) _gsn.amb[k].gain.setTargetAtTime(0, t, 0.3); } return; }
+  if (!p.amb) { if (_gsn.amb) { for (const k of Object.keys(GS_AMB_GAIN)) _gsn.amb[k].gain.setTargetAtTime(0, t, 0.3); } _gsMusicHold(false); return; }
   if (!_gsn.amb || _gsn.amb.c !== c) _gsn.amb = _gsAmbBuild(c, G.amb);
   const A = _gsn.amb, R = Math.random;
   let m = null; try { m = gardenHere(); } catch (e) { m = null; }
@@ -397,22 +402,164 @@ function _gsAmbience(c) {
   _gsMusic(c, t, { tod, season, rain, snow, room });
 }
 
-/* ---------- the music: a few soft notes, now and then, in the key of the hour ---------- */
-const GS_SCALES = Object.freeze({ day: [261.6, 293.7, 329.6, 392, 440, 523.25, 587.3, 659.25, 784], dawn: [293.7, 329.6, 370, 440, 493.9, 587.3, 659.25, 740], dusk: [220, 246.9, 293.7, 329.6, 370, 440, 493.9, 587.3], night: [220, 261.6, 293.7, 329.6, 392, 440, 523.25] });
-function _gsMusic(c, t, s) {
-  if (s.room && s.room.music) return;   // the music room plays its own
-  if (!_gsn.music || _gsn.music < t - 30) _gsn.music = t + 4 + Math.random() * 6;
-  if (_gsn.music > t + 1.1) return;
-  const R = Math.random, sc = GS_SCALES[s.tod] || GS_SCALES.day, slow = s.tod === 'night' || s.tod === 'dusk' ? 1.5 : 1, out = _gsn.g.mIn, k = (s.room ? 0.6 : 1) * (s.rain ? 0.75 : 1);
-  let at = Math.max(t, _gsn.music), i = Math.floor(R() * (sc.length - 3));
-  const n = 3 + Math.floor(R() * 4);
-  if (R() < 0.5) _gsTone(c, out, at, { f: sc[0] / 2, a: 0.4, d: 3.2 * slow, peak: 0.015 * k });   // a low note under it
-  for (let j = 0; j < n; j++) {
-    const f = sc[Math.max(0, Math.min(sc.length - 1, i))];
-    if (s.season === 'winter' || s.snow) _gsBell(c, out, at, f * 2, 0.013 * k, 1.6); else _gsPluck(c, out, at, f * 2, 0.021 * k, 1.3, (R() - 0.5) * 0.5);
-    at += (0.32 + R() * 0.4) * slow; i += R() < 0.65 ? (R() < 0.5 ? 1 : -1) : (R() < 0.5 ? 2 : -2);
+/* ---------- the music: the owner's songs (assets/music), one at a time, chosen by the garden's own clock ----------
+   Files are <slot>[-<season>]-<n>.mp3 (docs/dev/GARDEN_MUSIC.md); the server lists the folder (server/routes/garden-music.mjs), so a file
+   dropped in plays on the next visit. A file for the current season wins, else the plain ones; a slot with none borrows (late -> night).
+   Each song streams through a media element into this graph (its gain -> the tracks bus -> their low-pass -> the music bus), so the
+   Volume, the Music and nature switch, the rain's muffle and a room's softening all reach it. Nothing is fetched until music would play. */
+const GS_SLOTS = Object.freeze([[0, 5, 'late'], [5, 8, 'dawn'], [8, 12, 'morning'], [12, 17, 'afternoon'], [17, 20, 'evening'], [20, 24, 'night']]);
+const GS_SLOT_BORROW = Object.freeze({ late: 'night' });
+/** fadeIn / fadeOut (a slot change) / endFade (a song's last seconds) / hold (before a pause): seconds; gap: the quiet between two songs;
+    level: the songs' gain at a trim of 0 dB; dbDefault: the trim of a file levels.json does not know yet (about the measured ones). */
+const GSM = Object.freeze({ fadeIn: 4, fadeOut: 4, endFade: 4, gap: [2.5, 5], hold: 1.2, level: 0.2, dbDefault: -2, retryS: 60 });
+function _gsMu() { return _gsn.mu || (_gsn.mu = { list: null, listAt: 0, loading: false, cur: null, old: [], bags: Object.create(null), last: '', gapUntil: 0, starts: 0 }); }
+/** The garden's hour, 0..24: a friend's garden by their clock, your own by the app's (Clock: the travel zone, and _setNow for checking). */
+function _gsHour() {
+  const now = typeof _gdNow === 'function' ? _gdNow() : Date.now();   // clock-ok: fallback
+  try { if (typeof _gdv !== 'undefined' && _gdv.on && typeof _gdvSnap === 'function') { const s = _gdvSnap(); if (s && Number.isFinite(s.tz)) { const d = new Date(now + s.tz * 60000); return d.getUTCHours() + d.getUTCMinutes() / 60; } } } catch (e) { /* your own */ }   // clock-ok: their offset
+  try { const p = Clock.parts(now); return p.h + p.mi / 60; } catch (e) { const d = new Date(now); return d.getHours() + d.getMinutes() / 60; }   // clock-ok: fallback
+}
+function gardenMusicSlot(h) { h = h == null ? _gsHour() : h; for (const [a, b, s] of GS_SLOTS) if (h >= a && h < b) return s; return 'night'; }
+/** The songs for a slot and season: {key, files} (the music changes when the key does). */
+function _gsPool(list, slot, season) {
+  for (const sl of [slot, GS_SLOT_BORROW[slot]]) {
+    if (!sl) continue;
+    const mine = list.filter(x => x.slot === sl), theirs = mine.filter(x => x.season && x.season === season), files = theirs.length ? theirs : mine.filter(x => !x.season);
+    if (files.length) return { key: sl + (theirs.length ? '-' + season : ''), files };
   }
-  _gsn.music = at + (6 + R() * 10) * slow;
+  return { key: slot, files: [] };
+}
+/** The next song: a shuffled round of the slot's songs, never the one just played. */
+function _gsPick(M, pool) {
+  const names = pool.files.map(x => x.file);
+  let bag = (M.bags[pool.key] || []).filter(f => names.includes(f));
+  if (!bag.length) { bag = names.slice(); for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; } }
+  if (bag.length > 1 && bag[0] === M.last) bag.push(bag.shift());
+  const f = bag.shift(); M.bags[pool.key] = bag;
+  return pool.files.find(x => x.file === f);
+}
+function _gsMusicList() {
+  const M = _gsMu();
+  if (M.loading || performance.now() < M.listAt) return;
+  M.loading = true;
+  fetch('/api/garden-music', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : null))
+    .then(j => { M.list = j && Array.isArray(j.tracks) ? j.tracks : []; if (!M.list.length) { M.list = null; M.listAt = performance.now() + GSM.retryS * 1000; } })
+    .catch(() => { M.listAt = performance.now() + GSM.retryS * 1000; }).finally(() => { M.loading = false; });
+}
+function _gsTrim(x) { const db = Number(x.db); return GSM.level * Math.pow(10, (x.db != null && Number.isFinite(db) ? db : GSM.dbDefault) / 20); }
+/** A gain moving to v over secs, from wherever it is now. */
+function _gsRamp(c, param, v, secs) {
+  const t = c.currentTime;
+  try { if (param.cancelAndHoldAtTime) param.cancelAndHoldAtTime(t); else { const now = param.value; param.cancelScheduledValues(t); param.setValueAtTime(now, t); } } catch (e) { /* fresh */ }
+  param.linearRampToValueAtTime(v, t + Math.max(0.02, secs));
+}
+function _gsTrackStart(c, x, key) {
+  const M = _gsMu(), G = _gsn.g;
+  const el = new Audio(); el.preload = 'auto'; el.loop = false; el.src = '/api/garden-music/' + encodeURIComponent(x.file);
+  const T = { file: x.file, key, el, node: null, g: c.createGain(), trim: _gsTrim(x), held: false, ending: false, c };
+  T.g.gain.value = 0;
+  try { T.node = c.createMediaElementSource(el); T.node.connect(T.g); T.g.connect(G.mTr); } catch (e) { _gsTrackDrop(T); return null; }
+  el.addEventListener('error', () => { if (M.cur === T) M.gapUntil = c.currentTime + 20; _gsTrackDrop(T); });   // (a file gone or broken: the next one in a while)
+  M.cur = T; M.last = x.file; M.starts++;
+  _gsTrackPlay(T, GSM.fadeIn);
+  _gsLog('music:' + x.file);
+  return T;
+}
+function _gsTrackPlay(T, fade) {
+  T.held = false; clearTimeout(T.pauseT);
+  const up = () => { if (!T.held && !T.ending) _gsRamp(T.c, T.g.gain, T.trim, fade); };
+  let p = null; try { p = T.el.play(); } catch (e) { p = null; }
+  if (p && p.then) p.then(up, () => { T.held = true; }); else up();   // (refused: tried again on the next tick)
+}
+/** Fade a song out and let it go (a new slot, its end). */
+function _gsTrackEnd(T, secs) {
+  if (!T || T.ending) return;
+  const M = _gsMu(); T.ending = true; if (M.cur === T) M.cur = null; M.old.push(T);
+  _gsRamp(T.c, T.g.gain, 0, secs);
+  clearTimeout(T.pauseT); T.pauseT = setTimeout(() => _gsTrackDrop(T), secs * 1000 + 300);
+}
+function _gsTrackDrop(T) {
+  const M = _gsMu(); clearTimeout(T.pauseT);
+  try { T.el.pause(); T.el.removeAttribute('src'); T.el.load(); } catch (e) { /* gone */ }
+  try { if (T.node) T.node.disconnect(); T.g.disconnect(); } catch (e) { /* gone */ }
+  M.old = M.old.filter(o => o !== T); if (M.cur === T) M.cur = null;
+}
+/** Pause the song where it is (a music room, the band, the tab hidden, the garden left, the Music switch off): a short fade, or at once. */
+function _gsMusicHold(now) {
+  const M = _gsn.mu; if (!M) return;
+  if (now) for (const o of M.old.slice()) _gsTrackDrop(o);
+  const T = M.cur; if (!T || T.held) return;
+  T.held = true; clearTimeout(T.pauseT);
+  if (now) { try { T.g.gain.cancelScheduledValues(0); T.g.gain.value = 0; T.el.pause(); } catch (e) { /* gone */ } return; }
+  _gsRamp(T.c, T.g.gain, 0, GSM.hold);
+  T.pauseT = setTimeout(() => { try { if (T.held) T.el.pause(); } catch (e) { /* gone */ } }, GSM.hold * 1000 + 150);
+}
+/** The band (people playing instruments together: 94-garden-zz-7act-3music.js) or the stage room behind the garden (its own song). */
+function _gsBandOn() { try { return (typeof _gmu !== 'undefined' && !!(_gmu.iv && _gmu.band)) || (typeof _ee !== 'undefined' && !!_ee.on); } catch (e) { return false; } }
+function _gsMusic(c, t, s) {
+  const G = _gsn.g, M = _gsMu();
+  // the mood: rain muffles it, a room softens it, snow a little
+  G.mLP.frequency.setTargetAtTime(s.room ? 1100 : s.rain ? 1400 : s.snow ? 3200 : 20000, t, 0.8);
+  G.mTr.gain.setTargetAtTime((s.room ? 0.6 : 1) * (s.rain ? 0.8 : 1), t, 0.8);
+  if ((s.room && s.room.music) || s.band || _gsBandOn()) { _gsMusicHold(false); return; }   // the music room and the band play their own
+  if (!M.list) { _gsMusicList(); return; }
+  if (M.cur && M.cur.c !== c) _gsTrackDrop(M.cur);   // (a new sound context: the song starts again on it)
+  const pool = _gsPool(M.list, gardenMusicSlot(), s.season), T = M.cur;
+  if (T && T.held) { if (T.key === pool.key && !T.el.ended && !T.el.error) { _gsTrackPlay(T, 2.5); return; } _gsTrackDrop(T); }
+  else if (T) {
+    if (T.key !== pool.key) { _gsTrackEnd(T, GSM.fadeOut); M.gapUntil = t + 1; }   // a new slot: the next one comes in under the fade
+    else {
+      const d = T.el.duration, left = Number.isFinite(d) ? d - T.el.currentTime : Infinity;
+      if (!(T.el.ended || left < GSM.endFade + 0.6)) return;
+      const fade = Math.max(0.3, Math.min(GSM.endFade, left));
+      _gsTrackEnd(T, fade); M.gapUntil = t + fade + GSM.gap[0] + Math.random() * (GSM.gap[1] - GSM.gap[0]);
+    }
+  }
+  if (!M.cur && t >= M.gapUntil && pool.files.length) { const x = _gsPick(M, pool); if (x) _gsTrackStart(c, x, pool.key); }
+}
+/** For checking: what plays now. */
+function gardenMusicState() {
+  const M = _gsn.mu, T = M && M.cur;
+  return { slot: gardenMusicSlot(), hour: Math.round(_gsHour() * 100) / 100, listed: M && M.list ? M.list.map(x => x.file) : null, file: T ? T.file : '', key: T ? T.key : '', held: T ? T.held : false, paused: T ? T.el.paused : true,
+    at: T ? Math.round(T.el.currentTime * 10) / 10 : 0, dur: T && Number.isFinite(T.el.duration) ? Math.round(T.el.duration) : 0, gain: T ? Math.round(T.g.gain.value * 1000) / 1000 : 0, trim: T ? Math.round(T.trim * 1000) / 1000 : 0,
+    fading: M ? M.old.length : 0, starts: M ? M.starts : 0, last: M ? M.last : '' };
+}
+
+/* ---------- loudness (ITU-R BS.1770: K-weighted, gated), for levelling the songs: no speakers needed ---------- */
+function _gsKBiquads(sr) {
+  const G = 3.999843853973347, Q1 = 0.7071752369554196, f1 = 1681.974450955533, A = Math.pow(10, G / 40), w1 = 2 * Math.PI * f1 / sr, c1 = Math.cos(w1), s1 = 2 * Math.sqrt(A) * Math.sin(w1) / (2 * Q1);
+  const shelf = [A * ((A + 1) + (A - 1) * c1 + s1), -2 * A * ((A - 1) + (A + 1) * c1), A * ((A + 1) + (A - 1) * c1 - s1), (A + 1) - (A - 1) * c1 + s1, 2 * ((A - 1) - (A + 1) * c1), (A + 1) - (A - 1) * c1 - s1];
+  const Q2 = 0.5003270373238773, f2 = 38.13547087602444, w2 = 2 * Math.PI * f2 / sr, c2 = Math.cos(w2), a2 = Math.sin(w2) / (2 * Q2);
+  return [shelf, [(1 + c2) / 2, -(1 + c2), (1 + c2) / 2, 1 + a2, -2 * c2, 1 - a2]];
+}
+/** chans: Float32Arrays at sr -> {lufs (integrated), peakDb} */
+function gardenLoudness(chans, sr) {
+  const K = _gsKBiquads(sr), n = chans[0].length, hop = Math.round(sr * 0.1), hopSq = new Float64Array(Math.ceil(n / hop) + 4);
+  let peak = 0;
+  for (const x of chans) {
+    let y = x;
+    for (const [b0, b1, b2, a0, a1, a2] of K) {
+      const o = new Float32Array(n); let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+      for (let i = 0; i < n; i++) { const v = y[i], r = (b0 * v + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2) / a0; o[i] = r; x2 = x1; x1 = v; y2 = y1; y1 = r; }
+      y = o;
+    }
+    for (let i = 0; i < n; i++) { hopSq[Math.floor(i / hop)] += y[i] * y[i]; const a = Math.abs(x[i]); if (a > peak) peak = a; }
+  }
+  const z = [], nb = Math.floor(n / hop) - 3;
+  for (let k = 0; k < nb; k++) z.push((hopSq[k] + hopSq[k + 1] + hopSq[k + 2] + hopSq[k + 3]) / (hop * 4));
+  const L = (v) => -0.691 + 10 * Math.log10(v), mean = (a) => a.reduce((p, q) => p + q, 0) / (a.length || 1);
+  const abs = z.filter(v => L(v) > -70), rel = L(mean(abs)) - 10, gated = abs.filter(v => L(v) > rel);
+  return { lufs: gated.length ? Math.round(L(mean(gated)) * 10) / 10 : -Infinity, peakDb: Math.round(20 * Math.log10(peak || 1e-9) * 10) / 10 };
+}
+/** The level every song is brought to by its trim (integrated LUFS of the file; GSM.level then sets where that sits in the garden). */
+const GS_MUSIC_TARGET_LUFS = -16;
+/** A song's loudness in the file, and the trim (dB) for levels.json that brings it to the target. */
+async function gardenMusicLoudness(file, target) {
+  const r = await fetch('/api/garden-music/' + encodeURIComponent(file)); if (!r.ok) throw new Error('no such song: ' + file);
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext, c = new OAC(2, 44100, 44100), b = await c.decodeAudioData(await r.arrayBuffer());
+  const chans = []; for (let i = 0; i < b.numberOfChannels; i++) chans.push(b.getChannelData(i));
+  const m = gardenLoudness(chans, b.sampleRate), tg = target == null ? GS_MUSIC_TARGET_LUFS : target;
+  return { file, secs: Math.round(b.duration), lufs: m.lufs, peakDb: m.peakDb, db: Math.round((tg - m.lufs) * 10) / 10 };
 }
 
 /* ---------- the loop: 160 ms, only while the garden shows ---------- */
@@ -427,6 +574,7 @@ function _gsSleep() {
   const c = _gsn.ac, A = _gsn.amb;
   if (A && c) { const t = c.currentTime; for (const k of Object.keys(GS_AMB_GAIN)) A[k].gain.setTargetAtTime(0, t, 0.15); _gsAmbStop(A, t + 0.8); _gsn.amb = null; }
   _gsn.step.moving = false; _gsn.music = 0;
+  _gsMusicHold(!!document.hidden || !_gsPrefs().on);   // (the song waits where it was; back in the garden it carries on, if its slot still holds)
   // and let the sound card rest once the last sounds have gone (it used to keep running on every other page)
   clearTimeout(_gsn.restT);
   _gsn.restT = setTimeout(() => { try { if (!_gsn.iv && c && c.state === 'running') c.suspend(); } catch (e) { /* fine */ } }, 1500);
@@ -543,7 +691,7 @@ function gardenSoundOpen() {
 }
 
 /* ---------- checking without speakers: the same sound, drawn offline ---------- */
-/** name: a sound above, 'step:<surface>', or 'amb:<layer>' (wind, sea, lap, falls, rain, crick, room, birds, music). Resolves to {sr, l, r} (Float32Arrays), at the full volume (before the volume control). */
+/** name: a sound above, 'step:<surface>', or 'amb:<layer>' (wind, sea, lap, falls, rain, crick, room, birds; the songs: gardenMusicLoudness). Resolves to {sr, l, r} (Float32Arrays), at the full volume (before the volume control). */
 function gardenSoundRender(name, secs, o) {
   o = o || {};
   const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!OAC) return Promise.reject(new Error('no offline audio'));
@@ -554,7 +702,6 @@ function gardenSoundRender(name, secs, o) {
   else if (s === 'amb:birds') { let at = 0.1; while (at < secs - 2) at += _gsBird(c, out, at, R, ['robin', 'tit', 'wren', 'dove', 'tweet'][Math.floor(R() * 5)], 0.035 * (0.45 + R() * 0.55), (R() - 0.5)) + 0.6 + R() * 1.5; }
   else if (s === 'amb:owl') _gsBird(c, out, 0.1, R, 'owl', 0.03);
   else if (s === 'amb:frog') _gsFrog(c, out, 0.1, R, 0.04);
-  else if (s === 'amb:music') { const G = _gsGraph(c); G.lim.disconnect(); G.music.disconnect(); G.music.connect(out); const save = { g: _gsn.g, m: _gsn.music }; _gsn.g = G; _gsn.music = 0.01; for (let t = 0; t < secs - 3; t += 1) if (_gsn.music <= t + 1.1) _gsMusic(c, t, { tod: o.tod || 'day', season: o.season || 'summer' }); _gsn.g = save.g; _gsn.music = save.m; }
   else if (s.startsWith('amb:')) {
     const k = s.slice(4), A = _gsAmbBuild(c, out);
     for (const key of Object.keys(GS_AMB_GAIN)) A[key].gain.value = key === k ? GS_AMB_GAIN[key] : 0;
@@ -570,7 +717,7 @@ function gardenSoundRender(name, secs, o) {
   else return Promise.reject(new Error('no such sound: ' + s));
   return c.startRendering().then(b => ({ sr, l: b.getChannelData(0), r: b.getChannelData(1) }));
 }
-function gardenSoundNames() { return Object.keys(_gsSfx).concat(Object.keys(_gsSteps).map(k => 'step:' + k), ['amb:wind', 'amb:sea', 'amb:lap', 'amb:brook', 'amb:falls', 'amb:rain', 'amb:crick', 'amb:room', 'amb:birds', 'amb:owl', 'amb:frog', 'amb:music']); }
+function gardenSoundNames() { return Object.keys(_gsSfx).concat(Object.keys(_gsSteps).map(k => 'step:' + k), ['amb:wind', 'amb:sea', 'amb:lap', 'amb:brook', 'amb:falls', 'amb:rain', 'amb:crick', 'amb:room', 'amb:birds', 'amb:owl', 'amb:frog']); }
 
 /* ---------- wiring (listeners only: nothing runs until the garden shows and someone clicks) ---------- */
 if (typeof document !== 'undefined' && document.addEventListener) {

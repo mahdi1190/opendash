@@ -401,10 +401,10 @@ function _gmNotes(players, n) {
   } catch (e) { /* no notes */ }
 }
 function _gmQuiet() { try { if (_gmu.bus && _gmu.ac) _gmu.bus.g.gain.setTargetAtTime(0, _gmu.ac.currentTime, 0.2); } catch (e) { /* fine */ } }
-// while the band plays, the garden's own soft notes wait (they are in another key)
+// while the band plays, the garden's own song pauses (it is in another key and time) and carries on after
 if (typeof _gsMusic === 'function') {
   const _gmGsMusic0 = _gsMusic;
-  _gsMusic = function (c, t, s) { if (_gmu.iv && _gmu.band) { if (typeof _gsn !== 'undefined') _gsn.music = t + 8; return; } return _gmGsMusic0(c, t, s); };   // eslint-disable-line no-func-assign
+  _gsMusic = function (c, t, s) { return _gmGsMusic0(c, t, _gmu.iv && _gmu.band ? Object.assign({}, s, { band: true }) : s); };   // eslint-disable-line no-func-assign   (a band playing: the garden's song pauses under it and carries on after)
 }
 // a place someone else is playing at is not offered; and with friends playing, the prompt says to join in
 if (typeof gartActNearby === 'function') {

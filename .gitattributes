@@ -21,6 +21,9 @@
 *.otf binary
 *.zip binary
 *.pdf binary
+*.mp3 binary
+*.ogg binary
+*.m4a binary
 
 # Third-party code: hidden from GitHub's language statistics and collapsed in diffs.
 vendor/** linguist-vendored
