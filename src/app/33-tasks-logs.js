@@ -18,7 +18,6 @@ function openDatePicker(anchor) {
     f.appendChild(b); el.appendChild(f);
   }, { width: 260, align: 'end' });
 }
-function closeDatePicker() { closePopovers(); }
 
 /* ---------- Review (stats for the current view) ---------- */
 function renderReviewView(container) {

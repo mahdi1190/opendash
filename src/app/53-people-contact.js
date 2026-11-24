@@ -10,10 +10,7 @@
      homeMeetingsBetween(from, to, o)   homeMeetings over the calendar store: the user's own day
                                         (calEventIsMine), deduped, attendees matched to People.
                                         from / to: ms, Date or ISO. o: {filter(ev)}
-     homeMeetingsOn(iso)                that day's meetings
      homeNextMeetingNow(o)              homeNextMeeting from now (o.horizonH, default 12)
-     homeMeetingsToWrap(o)              ended in the last o.sinceH hours (12), not wrapped up
-                                        (calIsWrapped, 43-calendar-meta.js), newest first
      peopleLastContact()                Map personId -> {date, kind, daysAgo}, memoised
      personLastContact(p | id)          {date, kind, daysAgo, label} | null, label like
                                         '3 days ago · meeting'
@@ -35,21 +32,11 @@ function homeMeetingsBetween(from, to, o) {
   const ms = (x) => (x instanceof Date ? x.getTime() : x);
   return homeMeetings(_pcEvents(), { from: ms(from), to: ms(to), myEmails: _pcMyEmails(), ix: homeMeetIndex(), filter: o.filter });
 }
-function homeMeetingsOn(iso) {
-  const day = String(iso || todayStr());
-  return homeMeetingsBetween(Clock.at(day, 0), Clock.at(Clock.addDays(day, 1), 0));
-}
 function homeNextMeetingNow(o) {
   o = o || {};
   const now = Date.now();
   const h = Number.isFinite(o.horizonH) ? o.horizonH : 12;
   return homeNextMeeting(homeMeetingsBetween(now - 12 * 3600000, now + h * 3600000), now, { horizonH: h });
-}
-function homeMeetingsToWrap(o) {
-  o = o || {};
-  const now = Date.now();
-  const h = Number.isFinite(o.sinceH) ? o.sinceH : 12;
-  return homeEndedMeetings(homeMeetingsBetween(now - h * 3600000 - 12 * 3600000, now), now, { sinceH: h, isWrapped: typeof calIsWrapped === 'function' ? calIsWrapped : null });
 }
 
 /* ---------- last contact ---------- */

@@ -8,11 +8,9 @@
      gartSeed(o, A, kind, col)     stage 0: a tilled mound, the seed or bulb peeking, a marker stake
                                    kind 'seed' | 'bulb' | 'striped' | 'acorn' | 'pip' | 'tuber' | 'cone' | 'spore' | 'cutting'
      gartSnowCap(A, x, y, w)       a soft cap of snow on a head or a crown (winter rest)
-     gartFrost(A, d)               a frosty edge stroke over shapes (winter)
      gartFallen(A, r, w, cols, n)  a few fallen leaves at the foot (autumn)
      gartDew(A, r, pts)            dew sparkles (spring mornings)
      gartSeasonLeaf(o, kind)       the leaf palette of a plant for the season ('deciduous' | 'evergreen' | 'silver' | 'succulent' | 'herb')
-     gartPick(list, o)             the main colour's tones [deep, base, light]: the catalogue's, else the list's by variant
      gartC2(o, fallback)           the second colour (centres, eyes, blossom)
      gartSway(o, r, inner)         the plant's sway about its foot (the engine's gda-sway, a seeded delay)
      gartHalo(o, r, x, y, R, col)  a glow behind lights and glowing plants at dusk and night (gda-glow)
@@ -62,11 +60,6 @@ function gartPerennialLeaf(o) {
   if (o.season === 'winter') return ['#3a4a36', '#56684a', '#7a8a64', '#aab696'];
   return GART_PAL.leaf[o.season] || GART_PAL.leaf.summer;
 }
-/** The main colour's tones: the catalogue's (look.v[variant] or look.c) when there is one, else the list's. */
-function gartPick(list, o) {
-  if (o && o.col) return o.col;
-  return list[(o ? o.variant : 0) % list.length];
-}
 /** The second colour (centres, eyes, blossom): the catalogue's look.c2, else the fallback hex. */
 function gartC2(o, fallback) { return o && o.col2 ? o.col2[1] : fallback; }
 
@@ -106,7 +99,6 @@ function gartSnowCap(A, x, y, w, k) {
   return A.P(GART_PAL.snow, `M${A.f1(x - w / 2)} ${A.f1(y + 1.2 * k)}Q${A.f1(x - w * 0.42)} ${A.f1(y - 2.6 * k)} ${A.f1(x)} ${A.f1(y - 3 * k)}Q${A.f1(x + w * 0.44)} ${A.f1(y - 2.4 * k)} ${A.f1(x + w / 2)} ${A.f1(y + 1.2 * k)}Q${A.f1(x + w * 0.2)} ${A.f1(y)} ${A.f1(x)} ${A.f1(y + 0.6 * k)}Q${A.f1(x - w * 0.2)} ${A.f1(y + 1.4 * k)} ${A.f1(x - w / 2)} ${A.f1(y + 1.2 * k)}z`)
     + A.P(GART_PAL.snowShade, `M${A.f1(x - w * 0.1)} ${A.f1(y + 0.6 * k)}Q${A.f1(x + w * 0.25)} ${A.f1(y - 0.6 * k)} ${A.f1(x + w / 2)} ${A.f1(y + 1.2 * k)}Q${A.f1(x + w * 0.2)} ${A.f1(y + 0.2 * k)} ${A.f1(x - w * 0.1)} ${A.f1(y + 0.6 * k)}z`, 0.8);
 }
-function gartFrost(A, d, w) { return A.S(GART_PAL.frost, w || 1.2, d, 0.75); }
 /** A few fallen leaves at the foot (autumn), in the given colours. */
 function gartFallen(A, r, w, cols, n) {
   let s = '';

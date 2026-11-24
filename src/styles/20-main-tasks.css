@@ -5,13 +5,7 @@
    rows with a priority-coloured checkbox, <=3 tag chips, avatars and due. */
 
 /* legacy dropdown (still used by a few feature menus) */
-.ctrl-btn {
-  display: inline-flex; align-items: center; gap: var(--space-1-5); height: var(--control-h); padding: 0 var(--space-3);
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-xs);
-  color: var(--fg); font-size: var(--text-sm); font-weight: var(--weight-medium); cursor: pointer; font-family: inherit; position: relative;
-}
-.ctrl-btn:hover { background: var(--bg-muted); }
-.ctrl-btn.active { background: var(--accent-soft); color: var(--accent-ink); border-color: transparent; }
+
 .menu {
   position: absolute; top: calc(100% + 4px); right: 0; z-index: var(--z-dropdown);
   background: var(--surface-raised); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
@@ -222,7 +216,6 @@ body.task-dragging .nav-item[data-task-drop].drag-over { background: var(--accen
 .task:active { transform: none; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes pulseDone { 0% { transform: scale(1); } 50% { transform: scale(1.35); } 100% { transform: scale(1); } }
-.checkbox.just-done { animation: pulseDone 0.3s ease; }
 
 .drag-handle {
   position: absolute; left: -22px; top: calc(var(--space-2) + 1px); width: 18px; height: 18px;

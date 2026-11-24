@@ -20,12 +20,10 @@
                                       one saveData step + an Undo toast; undefined = keep,
                                       null = clear (see planApplySlot). o: {toast:false,
                                       reason, render:false}. -> true when something changed
-     planSlotFor(idOrItem)            the slot (planSlotOf) of an open task, else null
      planSlotsOn(iso, {includeDone})  [{item, slot}] that day, by start
      planSlotLabel(item)              '10:00–11:30', or ''
      planTaskInfo(item)               {id, title, minutes, due, priority, plannedFor, plannedTime,
                                       doing, pinned}: the shape homeGapCandidates / homeAutoPlan take
-     homePlanInputs(iso)              {events, plans, load} for homeDayCapacity
 
    Calendar drag (40-calendar.js / 42-calendar-views.js call these):
      planDragNote(e, id)              at dragstart: what is being dragged (a planned block,
@@ -78,11 +76,6 @@ function setPlannedSlot(id, date, time, minutes, o) {
   }
   return true;
 }
-function planSlotFor(x) {
-  const it = typeof x === 'string' ? getItem(x) : x;
-  if (!it || (state.deleted && state.deleted[it.id]) || statusOf(it.id) === 'done') return null;
-  return planSlotOf(it);
-}
 function planSlotsOn(iso, o) {
   o = o || {};
   const out = [];
@@ -101,19 +94,6 @@ function planTaskInfo(item) {
     due: effDate(item) || null, priority: effPriority(item), plannedFor: item.plannedFor || null, plannedTime: item.plannedTime || null,
     doing: statusOf(item.id) === 'doing', pinned: typeof isPinned === 'function' ? !!isPinned(item.id) : false,
   };
-}
-/** What homeDayCapacity needs for one day: timed events, planned slots, and the open tasks wanting time without a slot. */
-function homePlanInputs(iso) {
-  iso = iso || todayStr();
-  const events = typeof homeCalEvents === 'function' ? homeCalEvents(iso).filter(e => !e.allDay && !e.bg).map(e => ({ start: e.start, end: e.end })) : [];
-  const plans = planSlotsOn(iso).map(p => ({ start: p.slot.start, end: p.slot.end, id: p.item.id }));
-  const load = [];
-  for (const item of getAllItems()) {
-    if (statusOf(item.id) === 'done' || (item.plannedFor === iso && item.plannedTime)) continue;
-    const due = effDate(item);
-    if ((due && due <= iso) || (item.plannedFor && item.plannedFor <= iso)) load.push({ id: item.id, minutes: Number(item.estimate) > 0 ? Number(item.estimate) : PLAN_DEFAULT_MINUTES });
-  }
-  return { events, plans, load, workHours: homeWorkHours(), date: iso };
 }
 
 /* ---------- calendar drag: plan a slot, never move the deadline by accident ---------- */

@@ -15,7 +15,6 @@
      animRegisterPack(pack)          -> {ok, errors[]}; same id replaces
      animUnregisterPack(id)          wave 6: drop a non-core pack (the user's "mine" pack)
      animSupersede(ref, by, o)       a world scene takes over a registered item's picture (keeps its ref and rules)
-     animSupersededOriginal(ref)     the item it took over, or null
      animPacks() / animPack(id)
      animItems({slot, pack, look})   items, in registration order (look: only enabled packs)
      animItem(ref)                   'pack/item' -> item (with .ref and .pack)
@@ -35,7 +34,7 @@
          county welcome, the gallery stage); o.tod dawn|day|dusk|night tints it; size 'fill'
          fills the parent box. item.rich (full scenes only): a dense local scene with its
          own budget, ANIM_RICH_ITEM_MAX_BYTES (about 1 MB full screen) and ANIM_RICH_TILE_MAX_BYTES
-         in small tiles; animItemMaxBytes(item, size) / animPackMaxBytes(items) give the
+         in small tiles; animItemMaxBytes(item, size) gives the
          budgets the quality gate enforces. A rich scene only moves at 'fill' / 'hero' (smaller
          sizes draw it still; hover still plays it); o.detail 'tile' draws the tile detail at 'fill'
          (a card). item.liveSky (true, or {lat, lon}: the scene's own
@@ -103,7 +102,6 @@ const ANIM_RICH_TILE_MAX_BYTES = 150000;   // the same rich scene drawn in a sma
 // "composed-kinds", holds the same numbers for the lint; tests/anim-quality.test.mjs checks they agree).
 const ANIM_PLACE_TILE_MAX_BYTES = 850000, ANIM_PLACE_ITEM_MAX_BYTES = 1800000;
 const ANIM_WORLD_TILE_MAX_BYTES = 1900000, ANIM_WORLD_ITEM_MAX_BYTES = 3100000;
-const ANIM_PACK_MAX_BYTES = 400000;    // every item of a pack, rendered as a tile, plus its css (plus 2 x its own tile budget per full or rich scene)
 /** The rendered-size budget of one item (either variant): full and rich scenes have their own. A rich
  *  scene has about 1 MB full screen ('fill', 'hero') and the smaller tile budget at any other size. */
 function animItemMaxBytes(it, size) {
@@ -114,9 +112,6 @@ function animItemMaxBytes(it, size) {
   if (it.composed && it.ukPlace) return tile ? ANIM_PLACE_TILE_MAX_BYTES : ANIM_PLACE_ITEM_MAX_BYTES;
   return tile ? ANIM_RICH_TILE_MAX_BYTES : ANIM_RICH_ITEM_MAX_BYTES;
 }
-/** A pack's total budget for its tiles: the shared allowance, plus each full or rich scene's own tile
- *  budget (both variants). Rich scenes full screen are held to their own per-item cap, not the pack's. */
-function animPackMaxBytes(items) { return ANIM_PACK_MAX_BYTES + (items || []).reduce((n, it) => n + (it.full ? 2 * animItemMaxBytes(it, 'lg') : 0), 0); }
 /** The viewBox of a full-viewport scene: drawn at 16:9, preserveAspectRatio slice fills any screen edge to edge. */
 const ANIM_FULL_W = 1600, ANIM_FULL_H = 900;
 const ANIM_PACK_CSS_MAX_BYTES = 24000;
@@ -242,8 +237,6 @@ function animSupersede(ref, by, o) {
   if (o && typeof o.from === 'string' && o.from.includes('/') && !_animRefs.has(o.from)) _animMoved.set(o.from, ref);
   return it;
 }
-/** The item a world scene took over (animSupersede), or null. */
-function animSupersededOriginal(ref) { return _animSuperseded.get(ref) || null; }
 /** Remove a pack (the user's own "mine" pack when its last item is deleted). The core pack stays. */
 function animUnregisterPack(id) {
   const old = _animPacks.get(id);

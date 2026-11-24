@@ -25,7 +25,6 @@
 
 const _SCBC_LIGHT = Object.freeze([-0.4, 0.62, -0.67]);   // the generator's soft sky light (upper left, toward the camera)
 const _scbcTau = Math.PI * 2;
-const _scbcQ = (v, n) => Math.round(v * n) / n;
 
 /* ---------- tone: the quantised light of a curved surface ---------- */
 /** The colour of a surface of base colour `col` at light level q (-6 .. 6, the normal against the sky light in sixths). */

@@ -55,39 +55,10 @@
     cap += `L${x} ${R(y + h * 0.32)}`; for (let k = 3; k >= 0; k--) cap += `L${Rt[k][0] - R(r() * 14)} ${Rt[k][1] + R(r() * 10 + (k % 2) * 14)}`;
     return `<path fill="${rock}" d="M${x} ${y}L${ptsL}L${ptsR.split('L').reverse().join('L')}z"/><path fill="${shade}" d="M${x} ${y}L${R(x + w * 0.06)} ${R(y + h * 0.5)}L${Rt[5][0]} ${Rt[5][1]}L${Rt[2][0]} ${Rt[2][1]}z" opacity=".55"/><path fill="${snow}" d="${cap}z"/>`;
   };
-  const lamp = (cx, cy, r, col) => `<circle class="us-lit" cx="${cx}" cy="${cy}" r="${r}" fill="${col || '#ffd27a'}"/>`;
 
   /* ---------- Dubai: the tapering tower and the creek at golden hour ---------- */
   asiaSceneAdd({ key: 'place:dubai', label: 'Dubai skyline at golden hour', site: 'Downtown Dubai and the Creek', colour: 'amber', mood: 'energetic', season: 'any', tags: ['skyline', 'tower', 'creek', 'dhow'],
-    svg: () => {
-      const s1 = U(), w1 = U(), g1 = U(), b1 = U();
-      const prof = [[640, 52], [520, 52], [492, 41], [400, 41], [372, 32], [300, 32], [274, 23], [215, 23], [190, 14], [140, 14], [118, 6], [60, 3]];
-      const lp = prof.map(([y, h]) => `${860 - h} ${y}`).join('L'), rp = prof.map(([y, h]) => `${860 + h} ${y}`).reverse().join('L');
-      const rh = prof.map(([y, h]) => `${860 + h} ${y}`).join('L');
-      const prism = (x, w, y, h, tilt) => `<path fill="#7e7aa6" d="M${x} 640V${y + tilt}L${x + w} ${y}V640z"/><path fill="#b8a8c4" opacity=".5" d="M${x + w * 0.55} 640V${y + tilt * 0.45}L${x + w} ${y}V640z"/>` + win(x + 6, y + tilt + 20, w - 12, 640 - y - tilt - 40, 10, 18);
-      let wind = '';
-      for (let i = 0; i < 6; i++) { const x = 70 + i * 66; wind += `<path fill="#a98568" d="M${x} 700V650h26V700z"/><path fill="#7a5a48" d="M${x - 3} 650h32l-4 -10h-24z"/>${lit(x + 7, 664, 5, 9)}`; }
-      let ref = '';
-      for (let i = 0; i < 14; i++) ref += `<rect class="x-usshim" style="--ad:${(2.4 + (i % 4) * 0.5).toFixed(1)}s;--d:-${(i * 0.37).toFixed(1)}s" x="${840 + (i % 5) * 9 - 22 + (i % 3) * 8}" y="${650 + i * 11}" width="${20 + i * 3}" height="3" rx="2" fill="#ffd9a0"/>`;
-      const dhow = (x, y, s, col, dur, del, dx) => mv('usmove', { ad: dur + 's', d: -del + 's', dx: dx + 'px' }, mv('usbob', { ad: '3.4s', dy: '3px' }, `<g transform="translate(${x} ${y}) scale(${s})"><path fill="${col}" d="M-90 -6l12 28h150l36 -40l-6 14l-16 4l-24 18z"/><path fill="#4a2f22" d="M-80 6h150l-6 10h-132z"/><rect x="-28" y="-30" width="54" height="26" fill="#d9c4a0"/><rect x="-18" y="-24" width="8" height="12" fill="#6a4a30"/>${lit(-6, -24, 8, 12)}${lit(8, -24, 8, 12)}<path d="M8 -30V-62M8 -62l44 40" stroke="#4a2f22" stroke-width="2" fill="none"/></g>`));
-      return `<defs>${lin(s1, [[0, '#3f5a8e'], [0.34, '#b894b4'], [0.62, '#ffb572'], [1, '#ffe2a2']])}${lin(w1, [[0, '#e5a37c'], [0.15, '#5f6a98'], [1, '#232c58']])}${lin(g1, [[0, '#ffd69a', 0.8], [1, '#ffd69a', 0]])}${lin(b1, [[0, '#d8b7a0'], [1, '#b99079']])}</defs>`
-        + full(`url(#${s1})`) + stars(5, 24, 200) + rays(1230, 560, 1000, '#ffe4b0', 0.1) + sun(1230, 570, 56, '#fff4d0', '#ffc070')
-        + streak(260, 170, 300, '#ffc4b4', 0.5) + streak(1280, 250, 240, '#ffa886', 0.5, 72) + cloud(480, 300, 0.9, '#c98aa6', 0.8, 58, 6, '#ffd2b2') + cloud(1360, 380, 0.7, '#c88ca4', 0.75, 50, 22, '#ffdabb')
-        + birds(4, 4, 1100, 300, '#4a3858', 1, 560)
-        + mv('uspar', { ad: '40s', dx: '8px' }, city(11, -160, 1760, 640, 50, 170, 28, 64, '#a091bd')) + haze(540, 120, '#ffd9b0', 0.55)
-        + mv('uspar', { ad: '32s', dx: '14px' }, city(23, -160, 580, 640, 80, 230, 30, 70, '#7f77a8', 0.3) + city(24, 1200, 1760, 640, 80, 220, 30, 66, '#7f77a8', 0.3)
-          + prism(1030, 60, 330, 40, 40) + prism(1104, 60, 380, 40, -34)
-          + `<path fill="#7c76a6" d="M590 640V420Q620 370 650 420V640z"/>${win(598, 430, 44, 190, 11, 20)}<path fill="#7c76a6" d="M690 640V340l22 -30l22 30V640z"/>${win(696, 350, 32, 270, 10, 20)}`
-          + `<path fill="#8c80ad" d="M${lp}L${rp}z"/><path fill="#d6bccf" opacity=".62" d="M860 60L${rh}V640H860z"/>` + win(842, 420, 28, 200, 9, 18) + `<path d="M860 60V20" stroke="#7a6fa0" stroke-width="3"/><path d="M-160 646H1760" stroke="#6c6494" stroke-width="2"/>`)
-        + mv('usflicker', { ad: '1.7s', to: '860px 22px' }, '<circle cx="860" cy="20" r="5" fill="#ff5a4a"/>')
-        + `<rect y="640" width="1600" height="260" fill="url(#${w1})"/><rect y="640" width="1600" height="50" fill="url(#${g1})"/>`
-        + ref + shimmer(7, 22, 300, 1500, 660, 780, '#ffe6b0', 70) + shimmer(8, 16, -100, 1700, 740, 890, '#e8a98a', 90)
-        + dots('M-40 646H1700', '#ffe0a0', 4, 36, 'us-lamps')
-        + dhow(500, 790, 1, '#6a4630', 110, 20, 1900) + dhow(1200, 850, 1.5, '#5a3a28', 150, 70, 1900)
-        + `<g>${wind}</g><path fill="url(#${b1})" d="M-160 700H540V720H-160z" opacity=".9"/><path fill="#a98568" d="M-160 700V690H520V700z"/>`
-        + palm(40, 706, 120, 14, '#6a4a36', '#3f5a34', 6, 1) + palm(1560, 900, 220, -30, '#4d362a', '#2f4a2a', 7, 2)
-        + finish(0.34);
-    } });
+    svg: () => '' });
 
   /* ---------- Abu Dhabi: the great white mosque, its domes in the reflecting pools ---------- */
   asiaSceneAdd({ key: 'place:abu-dhabi', label: 'The grand white mosque', site: 'The Grand Mosque, Abu Dhabi', colour: 'teal', mood: 'calm', season: 'any', tags: ['mosque', 'pools', 'palms'],

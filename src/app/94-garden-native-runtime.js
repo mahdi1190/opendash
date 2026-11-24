@@ -26,7 +26,6 @@ function gardenSceneElement(tag, attrs) {
   for (const key in attrs || {}) node.setAttribute(key, attrs[key]);
   return node;
 }
-function gardenSceneRoot() { return window.GardenNative && GardenNative.root() || (typeof _gw !== 'undefined' && _gw.svg) || document.querySelector('.gd-page .gd-svg') || document.querySelector('.gd-svg'); }
 window.GardenNative = (function () {
   'use strict';
   let live = null, serial = 0, lastError = null, stylesConfigured = false;

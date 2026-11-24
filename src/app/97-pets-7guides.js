@@ -276,9 +276,6 @@ function petGardenActionMenu(P, pat) {
   const el = gardenBubbleOpen({ x: P.x, y: P.y - up }, { title: _ptwGuideName(P), sub: guide ? PET_GUIDES[P.look.species].hint : puddle ? PET_PUDDLE_PLAY[P.look.species].hint : 'Play together', items });
   if (el && P.me) { el._petMenu = P; P.menuHold = performance.now() + 12000; P.tx = null; P.arrive = null; P.lifeNext = performance.now() + 12000; }
 }
-function petGardenGuideState() {
-  return _ptw.pets.map(P => ({ species: P.look.species, companion: !!P.me, slot: _ptwPlaySlot(P), invited: !!P.guideInvite, current: P.guide ? { id: P.guide.id, phase: P.guide.phase, age: +P.guide.age.toFixed(2), target: P.guide.target.id, name: P.guide.target.name, stand: P.guide.stand, perch: P.guide.target.perch || null, next: P.guide.next, path: P.guide.path } : null, returning: !!P.guideReturn, last: P.guideLast || null }));
-}
 if (window.GardenActivityCamera) GardenActivityCamera.define('pet-guide', () => {
   if (typeof _ptw === 'undefined' || !_ptw.on || _ptw.frozen || document.hidden || !_ptw.pets.length) return null;
   const P = _ptw.pets.find(p => p.guide && p.guide.live); if (!P) return null;

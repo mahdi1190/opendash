@@ -29,10 +29,8 @@
      sceneStoreGetMany(keys)              Promise<(record | null)[]> in one transaction (touches their use times)
      sceneStoreHas(keys)                  Promise<Set<key>>         which of these keys are kept (reads the small meta store only)
      sceneStorePut(record, bytes)         Promise<boolean>         record: { k, ... }; evicts afterwards
-     sceneStoreDelete(key)                Promise<boolean>
      sceneStoreEncode(canvases)           Promise<Blob[]>          PNG blobs of canvases (a worker where it can)
      sceneStoreDecode(blobs)              Promise<ImageBitmap[]>
-     sceneStoreClear()  sceneStoreStats() Promise
    window.__sceneStoreOff = true (tests, tools) turns it off for the page.
    ============================================================ */
 const SCENE_STORE_DB = 'opendash-scenes', SCENE_STORE_FORMAT = 1;
@@ -134,18 +132,6 @@ async function sceneStoreHas(keys) {
   } catch (e) { /* none */ }
   return out;
 }
-/** Forget one record. */
-async function sceneStoreDelete(key) {
-  if (!sceneStoreOn() || !key) return false;
-  try {
-    const db = await _scstDb();
-    if (!db) return false;
-    const tx = db.transaction(['data', 'meta'], 'readwrite');
-    tx.objectStore('data').delete(key); tx.objectStore('meta').delete(key);
-    await _scstDone(tx);
-    return true;
-  } catch (e) { return false; }
-}
 /** Store a record ({ k, ... }; bytes: its size on disk, for the eviction). */
 async function sceneStorePut(rec, bytes) {
   if (!sceneStoreOn() || !rec || !rec.k) return false;
@@ -177,14 +163,6 @@ async function _scstEvict() {
   for (const k of drop) { tx.objectStore('data').delete(k); tx.objectStore('meta').delete(k); }
   await _scstDone(tx);
   return drop.length;
-}
-async function sceneStoreClear() {
-  const db = await _scstDb();
-  if (!db) return false;
-  const tx = db.transaction(['data', 'meta'], 'readwrite');
-  tx.objectStore('data').clear(); tx.objectStore('meta').clear();
-  await _scstDone(tx);
-  return true;
 }
 async function sceneStoreStats() {
   const db = await _scstDb();

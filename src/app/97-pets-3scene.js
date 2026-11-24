@@ -22,7 +22,6 @@
 
      petSceneObj(look)              the scene object id of a pet (defined once), or null
      petFigureCompanion(fig, who, h, o)   put the pet beside a full figure element (o.walk: it walks)
-     petScenePets()                 the pets walking now [{friend, scene, d, mode}] (ids and numbers: debugging)
    Private names: _pts*.
    ============================================================ */
 const _pts = { objs: 0, ids: new Map(), info: new Map(), pets: new Map(), warm: new Set() };
@@ -214,11 +213,6 @@ if (typeof sceneRenderPassDefine === 'function') {
     // counts what the last frame drew (never poses a visit again at another time: that would end it)
     stats(env) { let n = 0; for (const [V, P] of _pts.pets) if (P && !V.done && P.now && P.now.env === env && P.now.a) n++; return n ? { pets: n } : {}; },
   });
-}
-function petScenePets() {
-  const out = [];
-  for (const [V, P] of _pts.pets) if (P && !V.done) out.push({ friend: V.friendId, scene: V.cid, d: P.now && P.now.a ? Math.round(P.now.a.d * 10) / 10 : null, mode: P.now && P.now.a ? (P.now.a.v ? 'sit' : 'walk') : 'waiting' });
-  return out;
 }
 // forget the pets of visits that ended
 if (typeof window !== 'undefined') setInterval(() => { for (const V of [..._pts.pets.keys()]) if (V.done) _pts.pets.delete(V); }, 15000);

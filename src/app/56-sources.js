@@ -5,7 +5,6 @@
    mailbox), each with its own accounts. API: /api/sources
    (server/routes/sources.mjs, lib/sources.mjs).
 
-   srcSection(all)          the "Data sources" block of the Connections page
    srcServersCard()         every MCP server `claude mcp list` shows, with health
    srcAddFlow({capability, server})  Add a source: what -> from where -> tools
                             (read-only ones pre-ticked, write ones locked) or an
@@ -71,91 +70,11 @@ function _srcPill(st) {
   const [kind, label] = SRC_STATE[st] || SRC_STATE.unknown;
   return _connEl('span', 'status ' + kind, label);
 }
-function _srcKindText(s) {
-  if (s.kind === 'microsoft') return (s.account ? s.label + ' · ' : '') + 'Microsoft sign-in · read-only';
-  if (s.kind === 'google') return (s.account ? s.label + ' · ' : '') + 'Google sign-in · read-only';
-  if (s.kind === 'csv') return 'Statement file · imported in Money';
-  if (s.kind === 'ical') return 'iCal link · ' + (s.urlHint || 'calendar feed') + ' · read-only';
-  return (s.server || 'MCP server') + ' · read-only';
-}
-function _srcAgo(iso) { return iso ? _connAgo(iso) : 'never'; }
 function _srcConnectionState(s) { return s.enabled === false ? 'off' : s.demo ? 'demo' : (s.health && (s.health.connectionState || s.health.state)) || 'unknown'; }
-function _srcSyncWarning(s) { const warning = s.health && s.health.syncWarning; return typeof warning === 'string' ? warning : warning && warning.message || ''; }
-function _srcToolsReady(s) {
-  const check = s.lastCheck;
-  return !!(check && check.ok && check.level === 'tools' && (!s.lastSync || Date.parse(check.at) > Date.parse(s.lastSync)));
-}
 function _srcNeedsReconnect(s) {
   const h = s.health || {}, st = _srcConnectionState(s);
   const code = h.code || (s.lastCheck && !s.lastCheck.ok && s.lastCheck.code) || (s.lastError && s.lastError.code);
   return (st === 'auth' || st === 'setup') && !['TOOL_MISSING', 'TIMEOUT', 'CLI_TIMEOUT', 'NETWORK', 'NETWORK_ERROR', 'RATE_LIMIT', 'RATE_LIMITED'].includes(code);
-}
-
-/* ---------- one source ---------- */
-function _srcRow(s) {
-  const h = Object.assign({}, s.health || { state: 'unknown' }, { state: _srcConnectionState(s) });
-  const row = _connEl('div', 'src-row st-' + h.state + (s.enabled ? '' : ' is-off'));
-  row.dataset.source = s.id;
-  const sw = _connEl('span', 'src-sw c-' + (SRC_SWATCHES.includes(s.colour) ? s.colour : 'slate'));
-  const t = _connEl('div', 'src-titles');
-  t.append(_connEl('div', 'src-name', s.label), _connEl('div', 'src-sub', _srcKindText(s)));
-  const right = _connEl('div', 'src-right');
-  const statusPill = _srcPill(h.state);
-  if (h.state === 'ok' && _srcToolsReady(s)) statusPill.textContent = 'Tools ready';
-  right.appendChild(statusPill);
-  const more = document.createElement('button'); more.type = 'button'; more.className = 'btn-icon btn-sm';
-  more.setAttribute('aria-label', 'Options for ' + s.label); more.innerHTML = icon('ellipsis');
-  more.onclick = (e) => { e.stopPropagation(); _srcMenu(more, s); };
-  right.appendChild(more);
-  const head = _connEl('div', 'src-head');
-  head.append(sw, t, right);
-  row.appendChild(head);
-
-  if (h.message && h.state !== 'ok' && h.state !== 'off' && h.state !== 'demo') {
-    const m = _connEl('div', 'callout ' + (h.state === 'error' ? 'danger' : 'warn') + ' conn-msg src-msg');
-    m.innerHTML = icon(h.state === 'error' ? 'circle-alert' : 'info');
-    // We are on Connections already: "…: open Connections." says nothing here.
-    m.appendChild(_connEl('span', null, String(h.message).replace(/:\s*open Connections( to connect it)?\.?$/i, '.')));
-    row.appendChild(m);
-    if (_srcNeedsReconnect(s)) row.appendChild(_srcFixHelp(s));
-  } else if (h.message && (h.state === 'ok' || h.state === 'demo')) {
-    row.appendChild(_connEl('div', 'src-note', h.message));
-  }
-  const syncWarning = _srcSyncWarning(s);
-  if (syncWarning && s.enabled !== false && !s.demo) row.appendChild(_connEl('div', 'src-note', 'The last update didn’t work: ' + netPlainError(syncWarning) + ' Try updating it again.'));
-
-  // Accounts / calendars / mailboxes, each with its own switch.
-  if (s.accounts && s.accounts.length) {
-    const acc = _connEl('div', 'src-accounts');
-    acc.appendChild(_connEl('span', 'src-acc-l', s.capability === 'calendar' ? 'Calendars' : s.capability === 'email' ? 'Mailboxes' : 'Accounts'));
-    for (const a of s.accounts.slice(0, 24)) {
-      const chip = document.createElement('button'); chip.type = 'button';
-      chip.className = 'src-acc' + (a.enabled === false ? ' off' : '');
-      chip.setAttribute('role', 'switch'); chip.setAttribute('aria-checked', a.enabled === false ? 'false' : 'true');
-      chip.setAttribute('data-tip', (a.enabled === false ? 'Switched off: not read. ' : 'Read on every update. ') + 'Click to switch ' + (a.enabled === false ? 'on' : 'off') + '.');
-      const dot = _connEl('span', 'dot c-' + (SRC_SWATCHES.includes(a.colour) ? a.colour : s.colour || 'slate'));
-      chip.append(dot, _connEl('span', null, a.name || a.id));
-      chip.onclick = () => _srcSetAccount(s, a, a.enabled === false);
-      acc.appendChild(chip);
-    }
-    if (s.accounts.length > 24) acc.appendChild(_connEl('span', 'src-note', `and ${s.accounts.length - 24} more`));
-    row.appendChild(acc);
-  }
-
-  const foot = _connEl('div', 'src-foot');
-  const when = s.kind === 'csv' ? 'Import a statement in Money any time' : s.demo ? 'Example data · never updated' : s.lastSync ? `Updated ${_srcAgo(s.lastSync)}` : 'Not updated yet';
-  foot.appendChild(_connEl('span', 'conn-when', when));
-  if (s.kind !== 'csv') {
-    const busy = !!SourcesStore.busy[s.id];
-    const b = uiButton({ label: busy ? 'Updating…' : syncWarning ? 'Try again' : 'Update now', icon: busy ? null : 'refresh-cw', kind: 'ghost', size: 'sm', run: () => _srcSync(s) });
-    if (busy) { b.disabled = true; b.insertAdjacentHTML('afterbegin', '<span class="spinner"></span>'); }
-    if (!s.enabled || h.state === 'off' || s.demo) b.disabled = true;
-    foot.appendChild(b);
-  } else {
-    foot.appendChild(uiButton({ label: 'Open Finances', icon: 'arrow-right', kind: 'ghost', size: 'sm', run: () => setView('finance') }));
-  }
-  row.appendChild(foot);
-  return row;
 }
 
 function _srcFixHelp(s) {
@@ -287,51 +206,6 @@ async function _srcTestExisting(s) {
   delete SourcesStore.busy[s.id];
   await SourcesStore.refresh({ cached: true });
   if (state.view === 'connections') renderMain();
-}
-
-/* ---------- the section ---------- */
-function srcSection(all) {
-  const d = SourcesStore.data;
-  const wrap = _connEl('section', 'src-section');
-  wrap.dataset.conn = 'sources';
-  const h = _connEl('div', 'src-section-h');
-  const ht = _connEl('div', 'src-section-t');
-  ht.append(_connEl('h2', null, 'Data sources'), _connEl('p', null, 'Banks, calendars and mailboxes the dashboard reads from. Add as many as you like; each one only reads.'));
-  const addSrc = uiButton({ label: 'Add a source', icon: 'plus', kind: 'primary', size: 'sm', run: () => srcAddFlow({}) });
-  addSrc.classList.remove('btn-sm'); // a page-level action: same size as "Add person" / "New task"
-  h.append(ht, addSrc);
-  wrap.appendChild(h);
-  if (!d) {
-    for (let i = 0; i < 3; i++) { const sk = document.createElement('div'); sk.className = 'skeleton skeleton-row'; wrap.appendChild(sk); }
-    if (!SourcesStore.loading) SourcesStore.load();
-    return wrap;
-  }
-  const grid = _connEl('div', 'src-groups');
-  for (const cap of SRC_CAPS) {
-    const list = SourcesStore.byCap(cap.id);
-    const capInfo = (d.capabilities || {})[cap.id] || {};
-    const g = _connEl('div', 'card src-group');
-    g.dataset.cap = cap.id;
-    const gh = _connEl('div', 'src-group-h');
-    const ic = _connEl('span', 'conn-ic' + (capInfo.available ? ' on' : '')); ic.innerHTML = icon(cap.icon);
-    const gt = _connEl('div', 'conn-titles');
-    gt.append(_connEl('div', 'conn-name', cap.name), _connEl('div', 'conn-sub', capInfo.available ? `Working · ${cap.unlocks}` : cap.unlocks));
-    const add = uiButton({ label: 'Add', icon: 'plus', kind: 'ghost', size: 'sm', run: () => srcAddFlow({ capability: cap.id }) });
-    add.setAttribute('aria-label', 'Add a ' + cap.one);
-    gh.append(ic, gt, add);
-    g.appendChild(gh);
-    const rows = list.filter(s => s.kind !== 'csv' || cap.id === 'bank');
-    if (!rows.length) {
-      const e = _connEl('div', 'src-empty');
-      e.appendChild(_connEl('span', null, cap.hint));
-      e.appendChild(uiButton({ label: 'Add a ' + cap.one, icon: 'plus', kind: 'secondary', size: 'sm', run: () => srcAddFlow({ capability: cap.id }) }));
-      g.appendChild(e);
-    } else for (const s of rows) g.appendChild(_srcRow(s));
-    grid.appendChild(g);
-  }
-  wrap.appendChild(grid);
-  wrap.appendChild(srcServersCard());
-  return wrap;
 }
 
 /** Every MCP server Claude Code can reach, with its health (from `claude mcp list`). */

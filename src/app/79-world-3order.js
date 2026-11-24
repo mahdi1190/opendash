@@ -59,7 +59,6 @@ function _worldOrderMemo(e) {
 }
 function worldOrderZKey(e) { return _worldOrderMemo(e).zk; }
 function worldOrderZMax(e) { return _worldOrderMemo(e).zm; }
-function worldOrderXRange(e) { return _worldOrderMemo(e).xr; }
 
 function worldOrderChunkZMax(ch) {
   if (ch._zm == null) { var m = -Infinity; for (var i = 0; i < ch.ents.length; i++) { var z = worldOrderZMax(ch.ents[i]); if (z > m) m = z; } ch._zm = m; }

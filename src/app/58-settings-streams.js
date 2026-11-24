@@ -33,24 +33,6 @@ function _ssOpenCount(id) {
 function _ssSlug(label) {
   return String(label || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'stream';
 }
-function _ssColorPop(anchor, cur, onPick) {
-  openPopover(anchor, (pop, close) => {
-    pop.classList.add('set-swatch-pop');
-    const grid = document.createElement('div'); grid.className = 'set-swatches';
-    for (const c of STREAM_SWATCHES) {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'set-swatch' + (String(cur).toLowerCase() === c ? ' on' : '');
-      b.style.setProperty('--c', c); b.setAttribute('aria-label', 'Colour ' + c);
-      b.onclick = () => { close(); onPick(c); };
-      grid.appendChild(b);
-    }
-    pop.appendChild(grid);
-    const row = document.createElement('label'); row.className = 'set-swatch-custom';
-    const inp = document.createElement('input'); inp.type = 'color'; inp.value = /^#[0-9a-f]{6}$/i.test(cur) ? cur : '#64748b';
-    inp.onchange = () => { close(); onPick(inp.value.toLowerCase()); };
-    row.append(inp, document.createTextNode('Custom colour'));
-    pop.appendChild(row);
-  }, { align: 'start', width: 216 });
-}
 
 registerSettingsGroup({
   id: 'streams', title: 'Streams', icon: 'layers', order: 30,

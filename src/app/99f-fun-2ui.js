@@ -63,36 +63,6 @@ function _funNotYet(f) {
   return _funEl('p', 'muted', `Fun with ${_funFirst(f)} starts in a moment: their Freeflo and yours are still saying hello.`);
 }
 
-/* ---------- the actions popover (the friend card's 👋) ---------- */
-function funActionsMenu(anchor, f) {
-  const x = funFor(f.id) || {};
-  const used = x.used || {};
-  const ev = funEventNow();
-  const h5 = funItem('high5', (_fun.data && _fun.data.prefs && _fun.data.prefs.high5) || 'classic') || FUN_HIGH5[0];
-  openPopover(anchor, (el, close) => {
-    el.classList.add('fun-pop');
-    el.appendChild(_funEl('div', 'pop-label', `Fun with ${_funFirst(f)}`));
-    const row = (e, label, sub, run, disabled) => {
-      const b = _funBtn('', { raw: true, cls: 'fun-pop-i', disabled, run: () => { close(); run(); } });
-      b.appendChild(_funEl('span', 'fun-e', e));
-      const t = _funEl('span', 'fun-pop-t');
-      t.appendChild(_funEl('b', null, label));
-      if (sub) t.appendChild(_funEl('span', 'muted', sub));
-      b.appendChild(t);
-      el.appendChild(b);
-    };
-    row('👋', 'Wave', 'Say hi', () => funWave(f, 'wave', { anchor }));
-    row(h5.e, 'High five', h5.id !== 'classic' ? h5.label : 'If they high-five back within ten minutes: a double', () => funWave(f, 'high5', { anchor }));
-    row('💭', 'Thinking of you', used.nudge >= 1 ? 'Sent today' : 'Once a day', () => funWave(f, 'nudge', { anchor }), used.nudge >= 1);
-    row('🎁', 'Send a gift', 'A sticker, an emote or an avatar item', () => funGiftDialog(f));
-    if (ev) {
-      const k = (x.knock || []).find(y => y.dir === 'in' && !y.ans);
-      if (k) row(ev.def.treat.e, 'Answer their knock', `${_funFirst(f)} knocked: treat or trick?`, () => funAnswerDialog(f));
-      row(ev.def.knock.e, ev.def.knock.label, used.knock >= 1 ? 'Knocked today' : `${ev.def.label}: once a day`, () => funKnock(f, 'knock', { anchor }), used.knock >= 1);
-    }
-  }, { align: 'end' });
-}
-
 /* ---------- reactions on the feed ---------- */
 function funReactBar(e, f) {
   const bar = _funEl('div', 'fun-react');

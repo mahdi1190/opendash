@@ -34,7 +34,6 @@ function _gaSeatDepthOf(src) {
   try { const t = typeof gardenAffordThings === 'function' ? gardenAffordThings().find(q => q.id === src) : null; if (t && Number.isFinite(t.y) && /^painted:/.test(src)) { const W = GARDEN_WORLD; return W.sky + (t.y + 0.04) * W.cellH; } } catch (e) { /* none */ }
   return null;
 }
-function gartActRow(id) { return GARDEN_ACTS[id] || null; }
 /* ---------- what is in reach: every thing found where it stands, by its KIND (94-garden-zz-7act-0kinds.js, 0scan.js) ---------- */
 function _gaCtx() {
   let m = null; try { m = gardenModel(); } catch (e) { m = null; }

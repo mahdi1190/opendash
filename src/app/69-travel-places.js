@@ -18,7 +18,6 @@
      trPlaceKind({cityId, cc})     'towers' | 'oldtown' | 'coastal' | 'mountain' | 'desert' | 'tropical' | 'nordic' | 'lowlands'
      trCityFind(name, o)           the city a name means; o.cc / o.near {lat, lon} break ties, else the biggest
      trNearestCity(lat, lon, o)    {city, km} within o.maxKm (50) | null. Geo fixes: reduce, never store.
-     trNearestCountry(lat, lon)    the country of the nearest known point within 400 km | ''
      trAirportCity(iata)           the city an IATA code (or a metro code: LON, NYC) serves | null
      trKm(a, b)                    great-circle kilometres between two {lat, lon}
      trCurrencyInfo(ccOrCcy)       {code, name, symbol} | null
@@ -149,15 +148,6 @@ function trNearestCity(lat, lon, o) {
     if (k < bestKm) { best = c; bestKm = k; }
   }
   return best && bestKm <= max ? { city: best, km: Math.round(bestKm * 10) / 10 } : null;
-}
-function trNearestCountry(lat, lon) {
-  const p = { lat: Number(lat), lon: Number(lon) };
-  if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) return '';
-  const T = trPlaceTables();
-  let cc = '', bestKm = Infinity;
-  for (const c of T.cities) { const k = trKm(p, c); if (k < bestKm) { bestKm = k; cc = c.cc; } }
-  for (const z in T.zones) { const e = T.zones[z]; const k = trKm(p, e); if (k < bestKm) { bestKm = k; cc = e.cc; } }
-  return bestKm <= 400 ? cc : '';
 }
 function trAirportCity(iata) {
   const id = trPlaceTables().airports[String(iata || '').toUpperCase()];

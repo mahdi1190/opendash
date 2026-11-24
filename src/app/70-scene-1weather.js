@@ -201,7 +201,6 @@ function _scwxInputOf(C) { const w = C && C.weather; return w && typeof w === 'o
 /* ---------- puddles (8.2) ---------- */
 const _SCWX_PUDDLE_KINDS = ['road', 'pavement', 'path', 'towpath', 'track', 'plaza', 'parking', 'driveway', 'cycleway'];
 function _scwxInPoly(x, y, poly) { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; }
-function _scwxArea(poly) { let a = 0; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) a += (poly[j][0] + poly[i][0]) * (poly[j][1] - poly[i][1]); return Math.abs(a / 2); }
 /** The surface kind at a ground point: A's sceneSurfaceAt, else the last surface whose polygon holds it. */
 function _scwxSurfaceAt(C, x, d) {
   if (typeof sceneSurfaceAt === 'function') { try { const s = sceneSurfaceAt(C, x, d); if (s !== undefined) return s; } catch (e) { /* the fallback */ } }

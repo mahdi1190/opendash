@@ -17,7 +17,6 @@
    names, first valid wins], mode?: 'kanban'|..., sel?: [CSS selectors], present?() }
      The element found is the first match of [data-whats-new~="<id>"] (a feature
      can mark its own control with that attribute), then each of sel.
-     registerWhatsNew(entry) adds or replaces one (by id) from a feature module.
 
    Shown once, automatically, after updating to 2.18 (not to a brand-new user):
    state.seen.once['whatsNew:2.18'] (synced, 06-core-seen.js), so a computer that
@@ -295,7 +294,7 @@ const WHATS_NEW = [
   { id: 'new-keys', group: 'tidy', icon: 'keyboard', title: 'Keys for the new places',
     text: 'G then L opens Life, G then G All pages, and G then F is Money. The Logbook moved to G then O.' },
   // UI_CLEANUP_PLAN.md C3 (the calm rows) and SIMPLIFY_PLAN.md (the cards): added here, because WHATS_NEW is a
-  // const that earlier files cannot reach at load time (registerWhatsNew is for later modules).
+  // const that earlier files cannot reach at load time.
   { id: 'calm-rows', group: 'tidy', icon: 'list', title: 'Calmer task rows',
     text: 'Rows show the title, due date, priority and stream; Display › Show on rows brings anything back.',
     view: ['today'], sel: ['#rf-head', '#display-btn'] },
@@ -467,13 +466,6 @@ const WHATS_NEW = [
     text: '25 widgets to arrange as you like, ready-made presets, spending by country, a travel passport, a payday countdown, no-spend days, and “What if I cut…?” to see what a change would save you. (Since 2.18 the switcher calls it Money.)',
     view: ['finance'], sel: ['.fvb-layout', '.fvb-cust', '#main-body'] },
 ];
-
-/** A feature module adds (or replaces, by id) its own entry. */
-function registerWhatsNew(entry) {
-  if (!entry || typeof entry.id !== 'string' || !entry.title) return;
-  const i = WHATS_NEW.findIndex(e => e.id === entry.id);
-  if (i >= 0) WHATS_NEW[i] = Object.assign({}, WHATS_NEW[i], entry); else WHATS_NEW.push(entry);
-}
 
 /* ---------- what an entry can show here ---------- */
 function _wnReduced() { return !!(window.Motion && Motion.prefersReduced && Motion.prefersReduced()); }

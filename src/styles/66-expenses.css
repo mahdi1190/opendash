@@ -18,27 +18,18 @@
 .xp-in { height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--fg); font: inherit; font-size: var(--text-sm); width: 100%; box-sizing: border-box; }
 .xp-in:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-2); }
 .xp-payer-sel { width: auto; }
-.xp-sec { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden; }
-.xp-sec + .xp-sec { margin-top: 2px; }
-.xp-sec-h { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); }
-.xp-sec-h h3 { margin: 0; font-size: var(--text-md); }
-.xp-sec-h .n { color: var(--fg-subtle); font-size: var(--text-xs); }
-.xp-sec-t { color: var(--fg-muted); font-size: var(--text-sm); }
+
 .xp-hint { padding: 6px 14px 0; }
-.xp-claim { padding: 8px 14px 2px; font-size: var(--text-xs); color: var(--fg-subtle); display: flex; align-items: center; gap: 5px; text-transform: uppercase; letter-spacing: .04em; }
-.xp-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; }
-.xp-row:last-child { border-bottom: 0; }
-.xp-row:hover, .xp-row:focus-visible { background: var(--bg-subtle); outline: none; }
+
 .md-row.xp-drop, .xp-dz.xp-drop { background: var(--accent-soft); outline: 2px dashed var(--accent); outline-offset: -4px; }
-.xp-cb { width: 16px; height: 16px; flex: none; accent-color: var(--accent); }
+
 .xp-st { width: 16px; display: grid; place-items: center; flex: none; color: var(--fg-subtle); }
 .xp-st.st-paid { color: var(--success); }
-.xp-main { flex: 1; min-width: 0; }
+
 .xp-t { font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .xp-m { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; color: var(--fg-muted); font-size: var(--text-xs); margin-top: 2px; }
 .xp-warn { color: var(--warning); }
-.xp-am { font-weight: 600; text-align: right; white-space: nowrap; }
-.xp-am small { display: block; color: var(--fg-subtle); font-weight: 400; font-size: var(--text-xs); }
+
 .xp-tag { display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px; border-radius: 999px; background: var(--bg-muted); color: var(--fg-muted); font-size: var(--text-xs); }
 .xp-tag.ok, .xp-tag.st-paid { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
 .xp-tag.warn, .xp-tag.st-to-claim { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
@@ -82,8 +73,6 @@
 .xp-hintx { border-style: solid; border-color: transparent; padding: 0 3px; }
 .xp-hintb:hover { color: var(--accent); border-color: var(--accent); }
 @media (max-width: 640px) { .xp-two { grid-template-columns: 1fr; } .xp-band { flex-direction: column; align-items: flex-start; } }
-@media (prefers-reduced-motion: no-preference) { .xp-row { transition: background .12s; } }
-
 /* 2.19: the list beside the picked expense */
 .xp-md > .md-list { padding: var(--space-2); }
 .xp-md .xp-search { max-width: none; min-width: 0; margin-bottom: var(--space-1); }

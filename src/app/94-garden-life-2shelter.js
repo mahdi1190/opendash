@@ -201,9 +201,3 @@ GARDEN_LIFE_BEHAVIOURS['rain-refuge'] = {
     _glClip(c, c.medium === 'air' && !c.perched ? 'fly' : 'rest');
   },
 };
-
-/** Read-only scene diagnostics; no forced creature, route or brain state. */
-function gardenLifeRefugeStatus() {
-  const W = typeof _gl !== 'undefined' && _gl.W, cache = W && _glRainWorlds.get(W), habitat = W && _glHabitatWorlds.get(W);
-  return { trees: cache ? cache.trees.length : 0, builds: cache ? cache.builds : 0, habitat: habitat ? { plants: habitat.rows.length, builds: habitat.builds, factors: habitat.view ? [...habitat.view.factors] : [] } : null, creatures: typeof _gl === 'undefined' ? [] : [..._gl.list].filter(c => c.rainRefuge).map(c => ({ id: c.id, species: c.def.id, behaviour: c.cur && c.cur.name || '', phase: c.rainRefuge.phase, tree: c.rainRefuge.tree || null, x: c.S.x, y: c.S.y, lift: c.S.lift, clip: c.clip, point: c.rainRefuge.point || null })) };
-}

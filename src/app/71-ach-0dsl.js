@@ -43,7 +43,7 @@
      achEval(cond, F) -> {n, of, done}      F: {n(fact), s(series), m(kind), ctx: {today, weekStart, birthday},
                                             unlocked, hist} (71-ach-1facts.js achFactsView builds one)
      achDayMatches(iso, filter, ctx), achFullMoonDay(iso), achDayAdd, achWeekOf
-     registerAchievementPack({id, label, defs}) / achPack(id, defs)   add achievements (any file, any time;
+     registerAchievementPack({id, label, defs})   add achievements (any file, any time;
                                             before 71-achievements.js they wait for the core 78)
      achPacksAll(), achLintReport(), achLintSummary()   what loaded and what was skipped (and why)
      achCanonical(cond)                     sorted-key JSON (the duplicate check)
@@ -412,7 +412,6 @@ function registerAchievementPack(pack) {
   if (typeof _achOnPack === 'function') { try { _achOnPack(p.id); } catch (e) { /* the page's hook */ } }
   return r;
 }
-function achPack(id, defs, label) { return registerAchievementPack({ id, defs, label }); }
 /** The core list (71-achievements.js), then every pack that was waiting. Returns the live list (ACH_DEFS). */
 function _achBindCore(list) {
   if (_ACH.core) return _ACH.defs;

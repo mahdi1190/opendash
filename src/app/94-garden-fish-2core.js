@@ -132,8 +132,6 @@ function gardenCastsInfo() {
   // (contests) in a fishing contest a cast uses no bait and keeps no fish (94-garden-live-7contest.js). There is no daily count of casts since 2.34: what limits you is the fish you can see
   return { free: typeof gardenContestLive === 'function' && !!gardenContestLive('fish') };
 }
-/** Can you cast at this water cell from where you stand? A walk is the page's job; this says how far the rod reaches. */
-function gardenCastReach(rod) { return (rod || gardenRod()).st.range; }
 
 /**
  * Cast: nothing is spent and nothing is decided; what bites is whichever fish in the water comes to the float (94-garden-fish-6school.js, gardenFishBite).
@@ -519,10 +517,3 @@ function _gcFacts() {
   };
 }
 function gardenCatchFacts() { return _gcFacts(); }
-/** Your fish log and bug book as rows (the book pages): every species with what you have of it. */
-function gardenCatchLog() {
-  const g = _gdG(), items = gardenWallet().items;
-  const fish = GARDEN_FISH.map(d => ({ def: d, rec: g.fl[d.id] || null, held: [0, 1, 2, 3].reduce((a, q) => a + Math.floor(items[gardenFishKey(d.id, q)] || 0), 0) }));
-  const bugs = GARDEN_BUGS.map(d => ({ def: d, rec: g.bl[d.id] || null, held: Math.floor(items[gardenBugKey(d.id)] || 0) }));
-  return { fish, bugs };
-}

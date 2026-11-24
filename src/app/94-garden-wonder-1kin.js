@@ -142,8 +142,6 @@ const _wkOpen = (m, n) => !!m && Array.isArray(m.areas) && m.areas.includes('zn-
 const _wkMill = (m) => { try { return (typeof gardenGateHere === 'function' ? gardenGateHere('mill') : typeof gardenGateHas === 'function' && gardenGateHas('mill')) || (typeof _gpMillStage === 'function' && _gpMillStage() >= 1) || _wkOpen(m, 4); } catch (e) { return _wkOpen(m, 4); } };
 /* The story setting: on (the default) is the full story, with its dark turns; off is the gentle telling (Settings > Garden). STORY_BIBLE: C:/tmp/folk/STORY_BIBLE.md. */
 function _wkDeep() { try { return typeof _wdOn !== 'function' || _wdOn('story'); } catch (e) { return true; } }
-/** A line in the right telling: {t, soft} (soft '' means the gentle telling leaves it out), or a plain string. */
-function _wkSay(l) { if (l == null) return ''; if (typeof l === 'string') return l; return _wkDeep() || l.soft === undefined ? l.t : l.soft; }
 const WK_CARE = Object.freeze({
   note: '(A note before this part: it touches on abuse and loss. You can choose a gentler story in Settings, under Garden world: turn off “Darker turns in the story”.)',
   title: 'You’re not alone',

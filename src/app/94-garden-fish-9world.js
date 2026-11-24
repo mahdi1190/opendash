@@ -4,7 +4,7 @@
 
      gardenCatchWorldArt(sc, o)   spots, today's hot spot, what is on at the lake, the rack
      gardenCatchPropArt(sc, o)    the lake hall (it grows), the lake board, the old angler (he changes as your story goes on), the smoker
-     the boat                     buy it, click the boat by the mooring post: the water becomes your ground (gardenBoatGrid)
+     the boat                     buy it, click the boat by the mooring post: the water becomes your ground
      the thing in the lake        a huge shadow on foggy nights, from the clock, so everyone there sees the same one
      decorations                  gartDefine: what bugs come to, what the lake gives you
    Calm: o.still, or reduced motion: nothing moves. Things only move while they are on (an event), or with the same gda- classes as the rest of the garden.
@@ -177,16 +177,6 @@ function _gcwSmoker(p, sc, o, ca) {
 function gardenCatchPropArt(sc, o) {
   let ca = {}; try { ca = sc.ca || gardenCatchHere() || {}; } catch (e) { ca = {}; }
   return { hall: (p) => _gcwHall(p, sc, o, ca), lakeboard: (p) => _gcwBoard(p, sc, o, ca), angler: (p) => _gcwAngler(p, sc, o, ca), smoker: (p) => _gcwSmoker(p, sc, o, ca) };
-}
-
-/* ---------- the boat: in it, the water is the ground ---------- */
-const _gcb = { key: -1, g: null, hud: null };
-function gardenBoatGrid() {
-  const W = GARDEN_WORLD, to = gardenLakeOpenTo(), key = gardenPierMore() + '|' + to; if (_gcb.g && _gcb.key === key) return _gcb.g;
-  const g = new Uint8Array(W.cols * W.rows);
-  for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) { const z = gardenIsWater(x, y) ? gardenWaterZone(x, y) : ''; g[y * W.cols + x] = z && z !== 'pond' && y < to && !gardenPropWalk(x, y) ? 0 : 1; }
-  _gcb.g = g; _gcb.key = key;
-  return g;
 }
 /** The boat by the mooring post was clicked. False: you have no boat of your own, so it goes where it always went. */
 function gardenBoatAsk() {

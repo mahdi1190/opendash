@@ -200,38 +200,7 @@
 
   /* ---------- Vladivostok: the Golden Horn Bridge at dusk, ships in the bay ---------- */
   asiaSceneAdd({ key: 'place:vladivostok', label: 'The Golden Horn bridge and the harbour at dusk', site: 'Golden Horn Bay', colour: 'blue', mood: 'focused', season: 'any', tags: ['bridge', 'harbour', 'hills'],
-    svg: () => {
-      const s1 = U(), w1 = U();
-      let cab = '';
-      for (const px of [560, 1040]) for (let k = 1; k <= 9; k++) { cab += `M${px} ${250 + k * 14}L${px - k * 52} 520M${px} ${250 + k * 14}L${px + k * 52} 520`; }
-      let hs = '';
-      const r = rnd(77);
-      for (let x = -120; x < 1760; x += 22) { const h = 14 + r() * 28; hs += `<rect x="${x}" y="${R(600 - h)}" width="${R(14 + r() * 10)}" height="${R(h)}"/>`; }
-      return `<defs>${lin(s1, [[0, '#2c3d7c'], [0.45, '#8672ae'], [0.75, '#f2a08c'], [1, '#ffd49a']])}${lin(w1, [[0, '#e0a090'], [0.2, '#566a9c'], [1, '#1f2c58']])}</defs>`
-        + full(`url(#${s1})`) + stars(22, 40, 280) + sun(1250, 590, 42, '#fff0cc', '#ffb080') + streak(300, 170, 300, '#ffb0ac', 0.5) + streak(1150, 280, 240, '#ffa090', 0.5, 70)
-        + cloud(500, 330, 1.0, '#bb82ac', 0.8, 60, 6, '#ffcab0') + cloud(1400, 220, 0.7, '#b07eaa', 0.75, 50, 24, '#ffd0b4')
-        + birds(23, 5, 800, 330, '#3a3158', 1.1, 700)
-        + mv('uspar', { ad: '50s', dx: '8px' }, ridge('#7a70a8', 520, 70, 10, 5) + haze(480, 100, '#ffd0b0', 0.45))
-        // hillside with houses
-        + mv('uspar', { ad: '36s', dx: '12px' }, ridge('#5e5890', 570, 60, 12, 9) + `<g fill="#4a4678">${hs}</g>` + win(-100, 560, 1860, 30, 18, 14) + `<rect x="-160" y="598" width="1920" height="10" fill="#4a4678"/>`)
-        + `<rect y="600" width="1600" height="300" fill="url(#${w1})"/>`
-        + shimmer(5, 28, 200, 1500, 610, 880, '#ffd8a8', 80)
-        // far ships
-        + mv('usmove', { ad: '110s', dx: '1900px' }, `<g transform="translate(740 598)"><path fill="#3a3560" d="M0 0h120l-14 -24H20z"/><rect x="40" y="-44" width="30" height="20" fill="#4c4676"/><rect x="50" y="-62" width="8" height="18" fill="#c04a3a"/>${lit(46, -38, 6, 6)}</g>`)
-        // bridge: deck, pylons, cables
-        + `<path fill="none" stroke="#e9e1ea" stroke-width="1.8" opacity=".85" d="${cab}"/>`
-        + `<path fill="#d7cfd9" d="M-160 516H1760V532H-160z"/><path fill="#8e86a4" d="M-160 532H1760V540H-160z"/>`
-        + [560, 1040].map((px) => `<path fill="#e8e0e8" d="M${px - 16} 580L${px - 10} 232H${px + 10}L${px + 16} 580z"/><path fill="#a59cb8" opacity=".6" d="M${px} 232H${px + 10}L${px + 16} 580H${px}z"/><rect x="${px - 20}" y="515" width="40" height="22" fill="#cfc6d4"/>`).join('')
-        + [560, 1040].map((px) => `<path fill="#d8d0dc" d="M${px - 14} 580H${px + 14}L${px + 20} 660H${px - 20}z" opacity=".0"/>`).join('')
-        + `<path fill="#8e86a4" d="M-100 540H1700V556H-100z" opacity=".5"/>` + dots('M-160 512H1760', '#ffe4a8', 6, 46, 'us-lamps')
-        + mv('usmove', { ad: '26s', dx: '1900px' }, '<g transform="translate(800 504)"><rect width="46" height="12" rx="4" fill="#d44a3c"/>' + lit(34, 3, 6, 4) + '</g>')
-        + mv('usmove', { ad: '34s', d: '-12s', dx: '-1900px' }, '<g transform="translate(800 504)"><rect width="38" height="12" rx="4" fill="#e8e4f0"/>' + lit(4, 3, 6, 4) + '</g>')
-        // near ferry and pier
-        + mv('usbob', { ad: '5s', to: '700px 820px' }, `<g><path fill="#232a52" d="M520 790H900l-30 40H560z"/><rect x="580" y="750" width="240" height="40" fill="#e6e2ef"/><rect x="640" y="720" width="120" height="30" fill="#d0cbe0"/><rect x="690" y="690" width="14" height="30" fill="#c8483a"/>${win(596, 762, 210, 14, 22, 12, '#2c3a55')}${lit(660, 728, 14, 12)}${lit(710, 728, 14, 12)}</g>`)
-        + puffs(697, 686, 4, '#e9e4f2', 12, -90, 4, -40, 2.4)
-        + `<path d="M-160 840H1760V900H-160z" fill="#1c2750" opacity=".4"/>`
-        + finish(0.36);
-    } });
+    svg: () => '' });
 
   /* ---------- Yekaterinburg: gold-domed church, the Iset river and a glass tower in autumn ---------- */
   asiaSceneAdd({ key: 'place:yekaterinburg', label: 'Autumn on the Iset below the Urals', site: 'The Iset embankment', colour: 'amber', mood: 'cosy', season: ['autumn'], tags: ['river', 'church', 'autumn'],

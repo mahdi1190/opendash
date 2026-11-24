@@ -28,7 +28,6 @@ function _rwIsIso(s) { return typeof s === 'string' && _RW_ISO.test(s); }
 function _rwDayNo(iso) { const [y, m, d] = String(iso).split('-').map(Number); return Math.round(Date.UTC(y, (m || 1) - 1, d || 1) / 86400000); }
 function _rwIso(n) { const d = new Date(n * 86400000); return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0'); }
 function _rwAdd(iso, n) { return _rwIso(_rwDayNo(iso) + n); }
-function _rwDow(iso) { return ((_rwDayNo(iso) % 7) + 7 + 4) % 7; }            // 1970-01-01 was a Thursday
 /** The local day of a timestamp (ms or an ISO string), or null. */
 function _rwLocalDay(ts) {
   const ms = typeof ts === 'number' ? ts : typeof ts === 'string' && ts ? Date.parse(ts) : NaN;

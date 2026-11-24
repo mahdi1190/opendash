@@ -53,7 +53,7 @@ html .anim-scene.anim-hover-only:hover [class*="x-"] {
 
 /* ---------- the gallery (Settings > Animations) ---------- */
 .apg { display: flex; flex-direction: column; gap: var(--space-4); }
-.apg .anim-gallery-h { margin-bottom: 0; }
+
 .apg-sub { font-size: var(--text-sm); font-weight: var(--weight-medium); margin-bottom: var(--space-2); }
 .apg-today-row, .apg-theme-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .apg-today-tile, .apg-theme { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 84px; padding: var(--space-2); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); background: var(--surface); color: var(--fg-muted); font-size: var(--text-2xs); cursor: pointer; transition: border-color var(--m-fast, 120ms) ease, transform var(--m-fast, 120ms) ease; }
@@ -61,8 +61,7 @@ html .anim-scene.anim-hover-only:hover [class*="x-"] {
 .apg-today-tile[aria-current="true"], .apg-theme[aria-checked="true"] { border-color: var(--accent); color: var(--fg); box-shadow: 0 0 0 1px var(--accent) inset; }
 .apg-none { display: grid; place-items: center; width: var(--scene-md, 40px); height: var(--scene-md, 40px); color: var(--fg-subtle); }
 .apg-theme-art { display: contents; }
-.apg-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-.apg-bar input.control { width: 180px; }
+
 .apg-stage { display: flex; gap: var(--space-4); align-items: center; padding: var(--space-3); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); background: var(--surface-2, var(--surface)); }
 .apg-stage[hidden] { display: none; }
 .apg-stage-meta { display: flex; flex-direction: column; gap: 4px; min-width: 0; }

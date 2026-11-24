@@ -26,7 +26,6 @@
                                                  the rows above it); -Infinity for a low bank
      worldWaterContactBase(region, c, X)      -> the row the owner's art stands on there (its waterline; a bank owner's ground),
                                                  laid on the contact row by the mirror so a bank thing's image has no gap
-     worldWaterOwners(world, cam, region, ents) -> [{ id, z, contact }] the owner table for the entities that can reflect here
      worldWaterComposite(region, draws, o)    -> { comp, owner: { idx, list, layers } }: the composite above the water, its
                                                  per-pixel owner (the last drawn there at half cover or more) and every owner's OWN
                                                  layer (the union of its pieces), which the mirror reads first, so what a nearer
@@ -49,7 +48,7 @@
      worldWaterReflectOf(world, cam, ent, regions) -> { surface, rowY } | null (the frame record's reflect field)
      worldWaterFalls(world, cam, regions)     -> weirs, falls and lock steps as falling water: [{ id, kind, crest, drop, upper, lower,
                                                  top: [[X, Y]], foot: [[X, Y]] }] (H4)
-     worldWaterInit(world), worldWaterTick(world, dt, ctx), worldWaterEvent(world, kind, e), worldWaterBob(world, ent)
+     worldWaterInit(world), worldWaterTick(world, dt, ctx), worldWaterEvent(world, kind, e)
                                               the 'water' system (phase fx): ripples' clock, wakes from 'wake' events (and from moving
                                                  boats) spreading and fading, rings from paddling birds and rain, buoyancy bob and
                                                  rocking in passing wakes, the flow advecting floating leaves in autumn; spray at
@@ -390,16 +389,6 @@ function _wwaLineAt(P, X) {
   if (best > -Infinity) return best;
   return X < x0 ? y0 : y1;
 }
-/** The owner table of a region: every entity (statics and movers) that can reflect in it, with its depth and contact. */
-function worldWaterOwners(world, cam, R, ents) {
-  cam = cam || R.cam;
-  const out = [];
-  for (const e of ents || ((world && world.entities) || [])) {
-    if (!e || !e.obj || !(e.z > 0.05)) continue;
-    out.push({ id: e.id, z: e.z, contact: worldWaterContact(R, e, cam), ent: e });
-  }
-  return out;
-}
 
 /* ---------- the composite and its owners ---------- */
 /**
@@ -453,12 +442,6 @@ function* worldWaterCompositeSteps(R, draws, o) {
   }
   return { comp, owner: { idx, list, layers: yield* _wwaLayersSteps(byOwner, x0, y0, x1, y1) } };
 }
-/**
- * Each owner's own image (the union of its pieces, drawn in order), cut to the composite's box: [{ k, x0, y0, w, h, data }].
- * The mirror reads these first, so a far thing keeps the parts a nearer thing hides on the screen (one flattened composite of
- * the view left holes in the water there; SCENE_LESSONS C), and the nearer image wins wherever two land on one water pixel.
- */
-function _wwaLayers(byOwner, X0, Y0, X1, Y1) { return _wwaRun(_wwaLayersSteps(byOwner, X0, Y0, X1, Y1)); }
 function* _wwaLayersSteps(byOwner, X0, Y0, X1, Y1) {
   const out = [];
   for (let k = 0; k < byOwner.length; k++) {
@@ -1018,12 +1001,6 @@ function worldWaterTick(world, dt, ctx) {
     }
   }
   return W;
-}
-/** The bob and roll of a floater now ({ dy metres, roll degrees }), { dy: 0, roll: 0 } when it has none. */
-function worldWaterBob(world, e) {
-  const W = world && world.water;
-  if (!W || !e) return { dy: 0, roll: 0 };
-  return W.bob.get(e.id == null ? e.obj + '@' + e.x + ',' + e.z : e.id) || { dy: 0, roll: 0 };
 }
 try {
   if (typeof worldSystem === 'function') {

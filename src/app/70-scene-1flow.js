@@ -28,7 +28,7 @@
    Agents      sceneFlowAgents(C, t, L, opt) -> every visible agent at time t, far to near: { flow, lane, k, o, v, base, cls, kind,
                x, d, h, X, Y, s, k3, view, viewMissing, flip, alpha, layer, speed, moving, night, bus, water, len, phase }
                (a pure function of (C, t, L): no state, any frame; t = 0 is half a period into the schedule, so a still shows a
-               street already in motion). sceneFlowAt(flow, k, t, cam, mult): one agent; sceneFlowCount(C, t, L)
+               street already in motion).
    Views       sceneObjViews(id) -> { side?, 'q-front', front, 'q-back', back } | null (rear = back, q = q-front);
                sceneHeadingView(id, tx, td, x, d, prev) -> { view, o, v, flip, rel, off, fs, lat, want, missing }; sceneViewAt(id,
                rel, prev); sceneTurnLean(...) -> radians; sceneFlowViewOf(id, across, toward, prev) (compatibility); SCENE_FACING
@@ -785,22 +785,3 @@ function sceneFlowAgents(C, t, L, opt) {
   });
   return out.sort((a, b) => (a.d !== b.d ? b.d - a.d : a.flow - b.flow || a.k - b.k));
 }
-/** The k-th agent (schedule order over the flow's lanes, in the period) at time t, or null when it is not on screen. */
-function sceneFlowAt(flow, k, t, cam, mult) {
-  if (!flow || !cam) return null;
-  const m = mult == null ? (flow.timetable ? 1 : flow.peak || 1) : mult, P = SCENE_FLOW_PERIOD, tau = (t || 0) + P / 2;
-  let rest = k | 0;
-  for (let li = 0; li < flow.lanes.length; li++) {
-    const S = sceneFlowSchedule(flow, li, m);
-    if (rest >= S.list.length) { rest -= S.list.length; continue; }
-    const a = S.list[rest], p = Math.floor(tau / P);
-    for (let q = p; q >= p - Math.ceil(S.durMax / P); q--) {
-      const ag = _scflPlace(cam, flow, 0, li, a, q * P + a.t0, tau, { night: false, rain: false });
-      if (ag) return ag;
-    }
-    return null;
-  }
-  return null;
-}
-/** How many agents are on screen at t. */
-function sceneFlowCount(C, t, L, opt) { return sceneFlowAgents(C, t, L, opt).length; }

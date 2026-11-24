@@ -482,11 +482,6 @@ function _ppBird(pet, pose, mood, X, S) {
     top: topY, bird: true, flap: S.flap || null,
   };
 }
-
-/* ---------- the species ---------- */
-const _ppT = (c) => _ptTone(c);
-const _ppDark = (X) => X.c;
-const _ppFixed = (c) => () => _ptTone(c);
 /** Shared extras. */
 function _ppWings(c, o) {
   // folded or half-raised feathered (or leathery) wings on the back, in wingB/wingN for the flap clips
@@ -654,9 +649,6 @@ const _PP_BIRDS = {
       if (c.pose !== 'sleep') { w(3, 0.85, parts.wingB, [X.c[1], X.c[3]]); w(0, 1, parts.wingN, X.c); }
       if (c.m !== 'nofang' && c.pose !== 'sleep') parts.head.push(_pF(_pP`M${hx + hr * 0.75} ${hy + hr * 0.35}l0.4 1.4l0.5 -1.4z`, '#ffffff')); } },
 };
-
-/* ---------- the ones of their own ---------- */
-function _ppOwn(fn) { return fn; }
 /** A result with the rig's pivots (no legs to swing: the body bobs, the head tilts). */
 function _ppPack(parts, o) {
   return { parts, order: _PP_ORDER.slice(), piv: Object.assign({ head: [o.hx, o.hy + 3], eyes: [o.ex, o.ey], paw: [o.hx, 88], legsN: [45, 84], legsF: [48, 84], legsG: null, tail: [30, 80], ears: [o.hx, o.hy - 4], wingB: o.wing || [45, 70], wingN: o.wing || [45, 70], body: [50, 90] }, o.piv || {}),

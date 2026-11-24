@@ -52,34 +52,7 @@
 
   /* ---------- Baku: the Flame Towers at dusk over the Caspian ---------- */
   asiaSceneAdd({ key: 'place:baku', label: 'The Flame Towers at dusk', site: 'The Flame Towers over the Caspian', colour: 'violet', mood: 'energetic', season: 'any', tags: ['skyline', 'caspian', 'towers', 'dusk'],
-    svg: () => {
-      const s1 = U(), w1 = U(), t1 = U(), f1 = U(), g1 = U();
-      const flame = (x, by, h, w, lean) => `M${x - w} ${by}C${x - w - 6} ${by - h * 0.45} ${x - w * 0.5 + lean} ${by - h * 0.82} ${x + lean} ${by - h}C${x + w * 0.9 + lean} ${by - h * 0.62} ${x + w + 14} ${by - h * 0.3} ${x + w} ${by}z`;
-      let tw = '';
-      for (const [x, h, w, l, d] of [[1010, 380, 66, -16, 0], [1140, 330, 60, 14, 1], [1262, 280, 54, -10, 2]]) {
-        tw += `<path fill="url(#${t1})" d="${flame(x, 590, h, w, l)}"/><path fill="#fff" opacity=".12" d="M${x + 6} 590C${x + 14} ${590 - h * 0.5} ${x + 20 + l} ${590 - h * 0.8} ${x + l * 1.2 + 10} ${590 - h * 0.97}C${x + w * 0.9 + l} ${590 - h * 0.62} ${x + w + 14} ${590 - h * 0.3} ${x + w} 590z"/>`
-          + mv('usglow', { ad: (3 + d) + 's', d: -d + 's', to: `${x}px 590px` }, `<path class="us-lit" d="${flame(x + 4, 586, h * 0.72, w * 0.5, l * 0.6)}"/>`)
-          + mv('usflicker', { ad: (1.4 + d * 0.3) + 's', to: `${x + l}px ${590 - h}px` }, `<path fill="#ff9a4a" opacity=".85" d="M${x + l - 10} ${590 - h + 26}Q${x + l} ${590 - h - 30} ${x + l + 10} ${590 - h + 26}z"/>`);
-      }
-      return `<defs>${lin(s1, [[0, '#2a2766'], [0.38, '#7d4b92'], [0.66, '#ee876c'], [1, '#ffcf88']])}${lin(w1, [[0, '#c77a8c'], [0.15, '#4c4f8c'], [1, '#1f2658']])}${lin(t1, [[0, '#d6a6c0'], [0.4, '#6a5a9c'], [1, '#2e3468']])}${radU(f1, [[0, '#ffc47a', 0.7], [1, '#ffc47a', 0]], 260, 600, 520)}${lin(g1, [[0, '#7b5c78'], [1, '#34304e']])}</defs>`
-        + full(`url(#${s1})`) + stars(3, 46, 250) + sun(250, 600, 38, '#fff0c4', '#ffa768', true) + `<rect width="1600" height="900" fill="url(#${f1})"/>`
-        + streak(420, 170, 320, '#ffb0b8', 0.5) + streak(1250, 150, 300, '#d890c8', 0.5, 70) + cloud(700, 330, 1.1, '#c8789e', 0.8, 62, 6, '#ffc0a8') + cloud(1400, 380, 0.9, '#b8689a', 0.75, 54, 22, '#f7b0a8') + birds(6, 5, 560, 300, '#4a3060', 1, 560)
-        + mv('uspar', { ad: '44s', dx: '8px' }, ridge('#80598f', 580, 70, 9, 17) + city(81, -160, 780, 600, 30, 100, 24, 52, '#7a5c8c', 0.3)) + haze(540, 100, '#ffbfa0', 0.5)
-        + mv('uspar', { ad: '34s', dx: '14px' }, ridge('#5a477f', 600, 90, 8, 23, 660) + city(82, 1280, 1760, 640, 40, 140, 28, 56, '#54497e', 0.35) + city(83, 780, 980, 640, 30, 100, 26, 50, '#54497e', 0.3))
-        + tw + win(1000, 330, 30, 240, 12, 24) + win(1130, 380, 28, 190, 12, 24) + win(1252, 420, 26, 150, 12, 24)
-        // old city walls and the Maiden Tower
-        + `<g fill="#9c7e6a"><rect x="-160" y="610" width="840" height="60"/>${Array.from({ length: 28 }, (_, i) => `<rect x="${-150 + i * 30}" y="598" width="16" height="14"/>`).join('')}<rect x="120" y="552" width="50" height="118"/><rect x="480" y="560" width="50" height="110"/></g>`
-        + `<path fill="#000" opacity=".14" d="M-160 640H680v30H-160z"/><g fill="#8f705f"><path d="M262 670V500h104v170z"/><path d="M256 500h116l-8 -16H264z"/><path d="M280 484h80v-30l-40 -26 -40 26z" fill="#a98b76"/><rect x="332" y="530" width="34" height="140" fill="#000" opacity=".12"/><rect x="368" y="560" width="14" height="110" fill="#8f705f"/></g>`
-        + lit(300, 560, 10, 22) + lit(326, 560, 10, 22) + lit(142, 580, 8, 18) + lit(500, 585, 8, 18)
-        + `<rect y="640" width="1600" height="260" fill="url(#${w1})"/>` + shimmer(9, 26, 700, 1500, 650, 790, '#ffd8a0', 70) + shimmer(10, 22, -100, 900, 690, 880, '#e8a0a0', 80)
-        + mv('usmove', { ad: '80s', dx: '1900px' }, '<g transform="translate(700 718)"><path fill="#1c2250" d="M-60 0l12 -16h80l16 10 20 6z"/><rect x="-24" y="-30" width="34" height="16" fill="#e8d9c4"/><class/></g>'.replace('<class/>', '<rect class="us-lit" x="-16" y="-24" width="6" height="6"/>'))
-        + mv('usbob', { ad: '4s', dy: '3px' }, '<g transform="translate(1180 760)"><path fill="#2a2450" d="M-90 0l16 -20h120l20 14 22 6z"/><rect x="-40" y="-40" width="70" height="22" fill="#d6c8d8"/><rect class="us-lit" x="-30" y="-34" width="10" height="8"/><rect class="us-lit" x="-10" y="-34" width="10" height="8"/></g>')
-        // promenade
-        + `<path fill="url(#${g1})" d="M-160 820H1760V900H-160z"/><path fill="#9a7f8a" d="M-160 810H1760v14H-160z"/>` + dots('M-160 806H1760', '#ffe3a8', 5, 38, 'us-lamps')
-        + lamp(300, 830, 0.6) + lamp(700, 830, 0.6) + lamp(1100, 830, 0.6) + lamp(1420, 830, 0.6)
-        + palm(80, 830, 190, 1.2, '#22243e', 16) + palm(1500, 830, 220, 1.3, '#22243e', -20) + palm(780, 836, 150, 1, '#2a2c48', 10)
-        + finish(0.36);
-    } });
+    svg: () => '' });
 
   /* ---------- Beirut: the Pigeon Rocks at sunset ---------- */
   asiaSceneAdd({ key: 'place:beirut', label: 'The Pigeon Rocks at sunset', site: 'The Pigeon Rocks at Raouche', colour: 'orange', mood: 'dreamy', season: 'any', tags: ['sea stacks', 'sunset', 'mediterranean', 'cliff'],
@@ -285,30 +258,7 @@
 
   /* ---------- Riyadh: the tower with the sky bridge in the desert haze ---------- */
   asiaSceneAdd({ key: 'place:riyadh', label: 'The tower with the sky bridge in the desert haze', site: 'The skyline across the Najd desert', colour: 'orange', mood: 'proud', season: 'any', tags: ['skyline', 'desert', 'tower', 'dust'],
-    svg: () => {
-      const s1 = U(), g1 = U(), t1 = U(), f1 = U(), d1 = U();
-      let batt = '';
-      for (let i = 0; i < 18; i++) batt += `<rect x="${346 + i * 24}" y="${i % 2 ? 600 : 596}" width="12" height="12"/>`;
-      return `<defs>${lin(s1, [[0, '#d6a878'], [0.4, '#eec58c'], [0.75, '#f7dba0'], [1, '#fbe7b8']])}${lin(g1, [[0, '#d9a868'], [1, '#a8723e']])}${lin(t1, [[0, '#9fb6c4'], [0.5, '#6c88a0'], [1, '#3e5a76']])}${radU(f1, [[0, '#fff0c0', 0.85], [1, '#fff0c0', 0]], 1260, 300, 600)}${lin(d1, [[0, '#c98e54'], [1, '#8a5a34']])}</defs>`
-        + full(`url(#${s1})`) + sun(1260, 300, 70, '#fff6d8', '#ffe0a0') + `<rect width="1600" height="900" fill="url(#${f1})"/>` + streak(400, 200, 380, '#f9e6bc', 0.5) + streak(900, 130, 340, '#f9e6bc', 0.45, 80) + cloud(200, 320, 0.9, '#d4b490', 0.6, 58, 12, '#f4d8a8') + cloud(1000, 400, 1.1, '#d4b490', 0.55, 66, 30, '#f4d8a8')
-        + mv('uspar', { ad: '50s', dx: '8px' }, `<path fill="#c9945c" d="M-160 560L80 510 330 540 600 500 860 540 1160 500 1400 540 1760 510V700H-160z"/><path fill="#9a6a40" opacity=".35" d="M-160 580L300 560 700 590 1100 560 1760 590V700H-160z"/>`) + haze(480, 140, '#f4d8a8', 0.7)
-        + mv('uspar', { ad: '38s', dx: '12px' }, city(71, -160, 1760, 650, 30, 130, 30, 60, '#a8a4a0', 0.3) + city(72, 300, 1000, 650, 30, 90, 30, 56, '#b5b0a8', 0.3)) + haze(560, 100, '#f0d4a0', 0.5)
-        // the tower: slab with a parabolic opening and the sky bridge
-        + `<path fill="url(#${t1})" d="M980 700V200Q980 150 1015 130L1075 100 1135 130Q1170 150 1170 200V700z"/>`
-        + `<path fill="#f0cf94" d="M1026 372V250Q1026 196 1075 160Q1124 196 1124 250V372z"/><path fill="#fff" opacity=".18" d="M1026 372V250Q1026 196 1075 160Q1040 200 1040 250V372z"/><path fill="#000" opacity=".12" d="M1075 700V372h95V700z"/>`
-        + `<path fill="#fff" opacity=".18" d="M984 700V210Q990 160 1015 140L1030 134V700z"/>` + win(992, 220, 28, 460, 10, 22, '#1e3652') + win(1130, 220, 30, 460, 10, 22, '#1e3652') + win(1030, 390, 90, 290, 16, 22, '#2a4560')
-        + rc(1020, 366, 110, 12, '#3e5a76') + `<path d="M1075 100V50" stroke="#6c88a0" stroke-width="4"/>` + mv('usflicker', { ad: '1.8s', to: '1075px 52px' }, '<circle cx="1075" cy="52" r="5" fill="#ff5a4a"/>')
-        + `<g>${rc(840, 560, 72, 140, '#a5b4bf')}<path fill="#c8b890" d="M840 560L876 500 912 560z"/>${win(848, 580, 56, 110, 12, 18, '#2d4560')}</g>` + `<g>${rc(1210, 520, 62, 180, '#9eb0bc')}<circle cx="1241" cy="504" r="26" fill="#c7d3d9"/>${win(1218, 540, 46, 150, 12, 18, '#2d4560')}</g>` + lit(1060, 280, 10, 14) + lit(1085, 280, 10, 14)
-        // a mud-brick fort on the left
-        + `<path fill="url(#${d1})" d="M320 740V610H760V740z"/><path fill="#e0b684" d="M320 610H760V622H320z"/><g fill="#d3a470">${batt}</g>` + `<path fill="url(#${d1})" d="M300 740V540h80V740z M700 740V560h80V740z"/><g fill="#e0b684"><rect x="294" y="528" width="92" height="14"/><rect x="694" y="548" width="92" height="14"/></g>`
-        + `<path fill="#6a4026" d="M510 740V670a22 22 0 0 1 44 0v70z"/>` + lit(336, 580, 8, 18) + lit(730, 590, 8, 18) + lit(420, 650, 10, 20) + lit(650, 650, 10, 20)
-        + `<path fill="url(#${g1})" d="M-160 740Q300 720 800 746T1760 730V900H-160z"/><path fill="#8f5e34" opacity=".45" d="M-160 800Q400 770 900 810T1760 790V900H-160z"/>`
-        + `<path fill="#6a5a46" d="M-160 800H1760V830H-160z" opacity=".5"/>` + dots('M-160 815H1760', '#ffe3a8', 5, 44, 'us-lamps')
-        + mv('usmove', { ad: '24s', dx: '1900px' }, '<g transform="translate(800 790)"><rect x="-26" y="-12" width="52" height="14" rx="4" fill="#e8e0d0"/><rect x="-10" y="-22" width="26" height="12" rx="3" fill="#f6efe0"/><rect class="us-lit" x="22" y="-8" width="6" height="4"/></g>')
-        + mv('uspar', { ad: '26s', dx: '10px' }, palm(110, 880, 260, 1.4, '#3b4a28', 18) + palm(260, 890, 190, 1.2, '#3b4a28', -14) + palm(1450, 880, 270, 1.5, '#3b4a28', -20) + palm(1560, 890, 190, 1.1, '#445530', 12))
-        + mv('usdrift', { ad: '30s', dx: '120px' }, `<ellipse cx="800" cy="760" rx="520" ry="24" fill="#f4d8a8" opacity=".35"/>`) + birds(73, 5, 700, 330, '#6a4a30', 1, 600)
-        + finish(0.3);
-    } });
+    svg: () => '' });
 
   /* ---------- Jeddah: the floating mosque and the great fountain at night ---------- */
   asiaSceneAdd({ key: 'place:jeddah', label: 'The floating mosque and the fountain at night', site: 'The Corniche on the Red Sea', colour: 'indigo', mood: 'dreamy', season: 'any', tags: ['red sea', 'mosque', 'fountain', 'night'],

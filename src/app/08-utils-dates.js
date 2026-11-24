@@ -47,7 +47,6 @@ const advanceByRecurrence = (dateStr, recurrence) => {
 /* ============================================================
    DATE / PROGRESS / TOPBAR
    ============================================================ */
-function dueClass(s) { if (!s) return ''; const d = daysUntil(s); if (d<0)return'overdue'; if(d===0)return'today'; if(d<=7)return'soon'; return ''; }
 // A new Intl formatter costs far more than formatting with one, and these labels are drawn hundreds of times per render.
 const _dueFmts = new Map(), _dueLabels = new Map();
 function _dueFmt(loc, o) {

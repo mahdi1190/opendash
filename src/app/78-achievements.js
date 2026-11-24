@@ -22,13 +22,11 @@
                           earned these"), never a flood of toasts; the level it brings is taken quietly.
      achRewardLabel(unlock)   'title:Oracle' -> 'the title Oracle' (an owner can name its own:
                           registerAchRewardLabel(kind, fn))
-     achRewardOpen(kind, id)  true / false (earned or not) / null (no achievement locks it)
-     achRewardsEarned(kind?)  [{kind, id, ach, day}]: what the 2.18 modules (you, wardrobe, garden, pets) read
                           On an unlock: document event 'opendash:ach-reward' {kind, id, ach, hist} and the
                           owner's guarded hook (typeof fn === 'function'): profileAchReward, wardrobeAchReward,
                           gardenAchReward, petAchReward (kind, id, achId, {hist})
      achFeatureOn(name)   is a feature an achievement needs on (finance, locations, travel, calendar,
-                          friends, claude, sync, garden, pets, wardrobe, you)? registerAchFeature(name, fn)
+                          friends, claude, sync, garden, pets, wardrobe, you)?
      achHistoryPending()  the history unlocks not yet seen in the summary (the wall shows them once)
      achPanelRender(el)   Settings > Animations > Achievements, with the recaps
    Gentle: nothing is lost once earned, nothing counts down, nothing nags.
@@ -86,9 +84,6 @@ function _achIsMeta(d) {
   if (v == null) { v = JSON.stringify(d.when).indexOf('"meta"') >= 0; _achMetaMemo.set(d, v); }
   return v;
 }
-
-/* ---------- features an achievement needs ---------- */
-function registerAchFeature(name, fn) { if (name && typeof fn === 'function') _ach.features.set(String(name), fn); }
 function achFeatureOn(name) {
   const own = _ach.features.get(name);
   if (own) { try { return !!own(); } catch (e) { return false; } }
@@ -138,16 +133,6 @@ function achRewardLabel(unlock) {
 }
 /** Is the owner of a reward here? (When not, the card says "with the Garden" and the id waits.) */
 function achRewardOwnerOn(unlock) { const r = achRewardParse(unlock); const k = r ? ACH_REWARD_KINDS[r.kind] : null; return !k || !k.needs || achFeatureOn(k.needs); }
-function achRewardOpen(kind, id) { const a = achUnlockOf(kind, id); if (!a) return null; return !!achState().unlocked[a]; }
-function achRewardsEarned(kind) {
-  const un = achState().unlocked, out = [];
-  for (const d of ACH_DEFS) {
-    if (!d.unlock || !un[d.id]) continue;
-    const r = achRewardParse(d.unlock);
-    if (r && (!kind || r.kind === kind)) out.push({ kind: r.kind, id: r.id, ach: d.id, day: un[d.id] });
-  }
-  return out;
-}
 function _achRewardEmit(d, hist) {
   const r = achRewardParse(d && d.unlock);
   if (!r) return;

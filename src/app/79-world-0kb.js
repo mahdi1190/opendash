@@ -6,7 +6,6 @@
    does not matter and a missing module removes a detail, never the answer. No function here throws.
 
    Every object class knows itself; the ENGINE reads this, scenes never repeat it.
-     WORLD_KB_TAGS                    the habitat tag vocabulary (K1)
      WORLD_KB_CLASSES                 one descriptor per world class (every class of the core's _wcClass, plus bough, frond, lead,
                                       mooring-line, smoke, washing-line, window-light, flower, insect, lily, fish-ring, market-stall,
                                       cafe-table, umbrella, picnic, car, van, bus, signage)
@@ -59,9 +58,6 @@ const _wkbLerp = (r, t) => r[0] + (r[1] - r[0]) * t;
 /* ---------- habitat tags (K1) ---------- */
 /** The habitat tag vocabulary. Surface tags come from worldKbSurfaceTags(kind); the probe adds the distance tags
     (water-margin, bank, grass-edge, walkline, wet) and 'pit' / 'perch' / 'roof' / 'deck' come from hosts. */
-const WORLD_KB_TAGS = Object.freeze(['water', 'water-margin', 'bank', 'wet', 'walk', 'path', 'paving', 'deck', 'crossing', 'cycle', 'grass', 'soil', 'heath',
-  'field', 'wood', 'sand', 'stone', 'grass-edge', 'walkline', 'road', 'road-lane', 'rail', 'tram', 'hedge', 'weir', 'roof', 'perch', 'wall', 'air', 'ground',
-  'reeds', 'attached']);
 const _WKB_SURFACE_TAGS = Object.freeze({
   water: ['water'], puddle: ['water'], weir: ['weir', 'water'], reeds: ['water-margin', 'wet', 'reeds', 'soil'], reedbed: ['water-margin', 'wet', 'reeds', 'soil'],
   bed: ['water-margin', 'wet', 'soil'], mud: ['wet', 'soil', 'water-margin'],
@@ -276,7 +272,6 @@ const WORLD_KB_OBJECTS = _wkbFreeze({
   'vehicle.bus-double-decker': { liveries: { default: [0, 2], london: [0, 1, 2], names: ['red modern double-decker', 'red heritage half-cab', 'red modern double-decker (glazed)'] } },
   'vehicle.bus': { liveries: { default: [0, 1], london: [0], names: ['red double-deck', 'blue double-deck'] } },
   'vehicle.shp-bus': { region: { not: ['london'] }, swap: { london: 'vehicle.bus-double-decker' }, liveries: { default: [0, 1], names: ['deep purple with a lilac band', 'white with a blue skirt and an orange swoosh'] } },
-  'vehicle.bus-ai': { region: { not: ['london'] } },
   'rail.train': { liveries: { default: [0, 1, 2], names: ['blue and grey', 'white and green', 'dark grey and yellow'] } },
   // a suburban or main-line electric unit seen across a pond is a pale one: the light bodies of the 12 line colours (0, 3, 6, 9),
   // never a dark unit with a green band that reads as a hole in the trees
@@ -300,7 +295,7 @@ const WORLD_KB_OBJECTS = _wkbFreeze({
   'ground.yc-heath-drift': { bloom: [[7, 25], [9, 20]] }, 'plant.wyv-heath-bank': { bloom: [[7, 25], [9, 20]] },
   'plant.gorse': { bloom: [[2, 15], [6, 10]] }, 'plant.yc-gorse-spray': { bloom: [[2, 15], [6, 10]] }, 'plant.mqn-buddleia': { bloom: [[7, 1], [9, 30]] },
   'tree.hawthorn': { bloom: [[5, 1], [5, 31]] }, 'tree.horse-chestnut': { bloom: [[4, 25], [5, 25]] }, 'tree.green-chestnut': { bloom: [[4, 25], [5, 25]] },
-  'tree.cherry': { bloom: [[3, 25], [4, 25]] }, 'tree.cherry-blossom': { bloom: [[3, 25], [4, 25]] }, 'tree.cherry-ai': { bloom: [[3, 25], [4, 25]] },
+  'tree.cherry': { bloom: [[3, 25], [4, 25]] }, 'tree.cherry-blossom': { bloom: [[3, 25], [4, 25]] },
   'water.lily': { bloom: [[6, 10], [8, 25]] },
   // seasonal props and life (K6, S4)
   'ground.leaf-litter': { when: { months: [10, 11, 12, 1, 2] } }, 'ground.leaves': { when: { months: [10, 11, 12, 1, 2] } },
@@ -339,7 +334,7 @@ const WORLD_KB_OBJECTS = _wkbFreeze({
   'boat.narrowboat': { size: { lRange: [15, 21], wRange: [2.05, 2.15], h: [1.7, 2.1] } }, 'boat.mcf-narrowboat': { size: { lRange: [15, 21], wRange: [2.05, 2.15], h: [1.7, 2.1] } },
   // a fishing boat is one of three model kinds (79-world-4models-vessels.js): a trawler to its masthead 6 m, a potter about 4 m, a coble about 3 m
   'boat.fishing-boat': { size: { h: [2.9, 7] } },
-  'boat.narrowboat-ai': { size: { lRange: [15, 21], wRange: [2.05, 2.15] } }, 'boat.canal-view-boat': { size: { lRange: [15, 21], wRange: [2.05, 2.15] } },
+  'boat.canal-view-boat': { size: { lRange: [15, 21], wRange: [2.05, 2.15] } },
   // K1 special habitats
   'tree.wyv-snag': { cls: 'tree', leaf: 'none', habitat: { on: ['soil', 'grass', 'wet', 'water-margin', 'water', 'bank'] }, perch: 'tree' },
   'tree.us-redwood-snag': { leaf: 'none' },

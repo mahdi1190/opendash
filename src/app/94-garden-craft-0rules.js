@@ -24,12 +24,10 @@
 
    Rules only (no DOM at load): Node's page engine runs these for the assistant (lib/agent-engine.mjs).
      gardenRecipes()            every recipe with {known, can, missing, have, seen}
-     gardenRecipeKnown(id)      is it yours?
      gardenCraft(id)            make one -> {ok, msg?, why?, make}
      gardenCraftSellPrice(id)   what the market pays for craft:<id>
      gardenCraftSell(item, n)   gardenSell comes here for craft: items
      gardenCraftOwned(id)       how many you hold       gardenCraftedSet()   the recipe ids you have made and still hold (the wardrobe asks)
-     gardenCraftFresh()         recipes learnt since you last looked at the bench       gardenCraftSeen()
      gardenBottleNow(m)         a bottle on the shore today? {x, y, recipe} | null      gardenBottleOpen() -> {ok, recipe}
    ============================================================ */
 const GARDEN_CRAFT = Object.freeze({ dayTreats: 3, daySell: 40, sellMargin: 1.1, xp: 3 });
@@ -130,11 +128,6 @@ function _grMet(r, m, F, items) {
   if (L.visitor) return !!g.disc[L.visitor];
   return false;
 }
-function gardenRecipeKnown(id, mArg) {
-  const r = gardenRecipe(id); if (!r) return false;
-  const m = mArg || gardenModel();
-  return _grMet(r, m, _grFacts(m), m.wallet.items);
-}
 /** A note found: picking things in the recipe's season. It stays yours (a ledger line). Called from the tick. */
 function gardenCraftTick(mArg) {
   try {
@@ -158,7 +151,6 @@ function gardenRecipes(mArg) {
     return { def: r, id: r.id, known, can, need, missing: need.filter(x => x.have < x.n), seen: !!seen[r.id], owned: Math.floor(items['craft:' + r.id] || 0), everMade: !!(_gdG().prefs.rcm || {})[r.id] };
   });
 }
-function gardenCraftFresh(mArg) { return gardenRecipes(mArg).filter(r => r.known && !r.seen).length; }
 function gardenCraftSeen() { const g = _gdG(), cur = g.prefs.rcs || {}, next = Object.assign({}, cur); let ch = false; for (const r of gardenRecipes()) if (r.known && !cur[r.id]) { next[r.id] = 1; ch = true; } if (ch) { g.prefs.rcs = next; _gdSave(); } }
 function gardenCraftOwned(id) { return Math.max(0, Math.floor(gardenWallet().items['craft:' + id] || 0)); }
 function gardenCraftedSet() { const out = new Set(), items = gardenWallet().items; for (const k of Object.keys(items)) if (k.startsWith('craft:') && items[k] > 0) out.add(k.slice(6)); return out; }

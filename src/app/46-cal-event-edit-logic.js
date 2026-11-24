@@ -205,15 +205,6 @@ function evcWhenEdit(w, field, value) {
 function evcGuestEmails(attendees) {
   return [...new Set((attendees || []).filter(a => a && !a.self && a.email).map(a => String(a.email).toLowerCase()))];
 }
-/** What the editor edits, read from an event. */
-function evcFieldsOf(ev) {
-  ev = ev || {};
-  return {
-    title: String(ev.summary || ''), location: String(ev.location || ''), description: String(ev.description || ''),
-    calendarId: String(ev.calendarId || (Array.isArray(ev.calendars) && ev.calendars[0]) || ''), colorId: String(ev.colorId || ''),
-    when: evcWhenOf(ev), guests: evcGuestEmails(ev.attendees),
-  };
-}
 /**
  * The patch for CalWrite.update: only the fields that changed. A change to any
  * date or time sends the whole {start, end, allDay} (the connector moves the

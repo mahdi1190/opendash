@@ -8,7 +8,6 @@ const _gsF = (c, d, more) => `<path d="${d}" fill="${c}"${more || ''}/>`;
 const _gsC = (x, y, r, c, more) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"${more || ''}/>`;
 const _gsE = (x, y, rx, ry, c, more) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${c}"${more || ''}/>`;
 const _gsDk = (c, k) => _gdaShade(c, k == null ? -0.35 : k);
-const _GS_INK = '#2a2018';
 
 function _gsShaft(R) {
   const c = R.c, c2 = R.c2 || c, line = 'M0 0H64', edge = _gsDk(c);

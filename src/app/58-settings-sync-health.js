@@ -27,8 +27,6 @@ function syncFeedHead(e, nowMs) {
   const from = (e && e.from && e.from.length) ? e.from.join(', ') : 'your other computer';
   return n + ' change' + (n === 1 ? '' : 's') + ' from ' + from + ' · ' + syncAgo(e.until || e.at, nowMs);
 }
-/** A whole line: "3 changes from Mac · 2 min ago: renamed a task, changed a budget and hid a calendar". */
-function syncFeedLine(e, nowMs) { return syncFeedHead(e, nowMs) + (e && e.text ? ': ' + e.text : ''); }
 
 /** fetch with a way out: {signal} from an AbortController the page keeps (Cancel), and a fallback timeout. */
 async function _shFetch(url, body, key, timeoutMs) {
@@ -262,16 +260,6 @@ function syncChangesPage(el) {
   else card.body.appendChild(_shFeedList(_shChanges, 100));
   el.appendChild(card.card);
   _shKeepFresh(card.card, 'changes');
-}
-/** The newest few lines for the Sync tab (from the status: st.changes). */
-function syncChangesRow(card, st) {
-  const entries = (st && st.changes) || [];
-  if (!entries.length) return;
-  const box = _syncEl('div');
-  box.appendChild(_shFeedList(entries, 3));
-  const more = _syncEl('button', 'btn btn-ghost btn-sm', 'See all'); more.type = 'button'; more.onclick = () => syncOpenChanges();
-  box.appendChild(more);
-  card.body.appendChild(_settingsRow('What changed', 'The latest changes from your other computers.', box));
 }
 
 /* ---------- Review (clashes) ---------- */

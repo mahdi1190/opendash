@@ -19,7 +19,6 @@
      sceneBuildingTier(storeyPx) -> 0..3    the detail tier of a storey that tall on screen (19.3)
      sceneBuildingResolve(b)                the seeded spec of one building (colours, choices): what makes no two alike
      sceneBuildingObject(params) -> id      ELEVATION mode: registers building.gen-<style>-<hash8> lazily (memoised)
-     sceneBuildingObjectSigns(params, place, signage) -> [sign]   the fascia sign of a shop object placed at {x, y, s, layer}
      sceneBuildingProject(b, cam, ctx) -> direct | null   PROJECTED mode: { shapes, lit, snow, glow, box, foot, h, eave, src,
                                             n, dz, dc, anchor, smoke, signs, tier }
      sceneBuildingShadow(b, sunG, sunTan, cam) -> [[X, Y], ...] | null   the screen polygon of the prism's shadow (6.2)
@@ -64,7 +63,6 @@ const _scbgPath = pts => 'M' + pts.map(p => _scbgR1(p[0]) + ' ' + _scbgR1(p[1]))
 const _scbgAdd = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 const _scbgMul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
 const _scbgDot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-const _scbgCross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const _scbgNorm = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
 /** The unit normal of a planar 3D polygon (Newell), pointing up for a roof (n[1] >= 0) unless `keep`. */
 function _scbgNormal(poly, keep) {
@@ -1237,19 +1235,6 @@ function _scbgPartsOf(sink, p, season) {
   const lit = sink.lit.map(s => ({ f: s.f, d: s.d, op: s.op }));
   const snow = p.snow && season === 'winter' ? sink.snow.map(s => ({ f: s.f, d: s.d, op: s.op })) : [];
   return { body, win, roof, front, lit, snow };
-}
-/** The fascia sign of a shop object placed at { x, y, s, layer } (8.3): only with signage, generic words only, never a brand. */
-function sceneBuildingObjectSigns(params, place, signage) {
-  const p = _scbgParams(params);
-  if (!signage || !p.shop || p.shop.brand) return [];
-  const text = _scbgSignText(p.shop);
-  if (!text) return [];
-  const el = _scbgElevation(p, (place && place.variant) | 0, 'summer');
-  const sh = el.res.shops[0];
-  if (!sh || !sh.e.fasciaBox) return [];
-  const [fs, fz, fw, fh] = sh.e.fasciaBox, s = (place && place.s) || 1, W = el.W;
-  const x = place.x + (fs - W / 2 + fw / 2) * SCENE_GEN_UPM * s, y = place.y - (fz + fh / 2) * SCENE_GEN_UPM * s;
-  return [{ layer: place.layer, x: Math.round(x), y: Math.round(y), w: Math.round(fw * SCENE_GEN_UPM * s * 0.92), h: Math.round(fh * SCENE_GEN_UPM * s * 0.8), text, style: 'fascia', ink: '#f4f1e8', board: '#1d2226' }];
 }
 /** The generic word for a shop (never its name or brand): the table's word for its kind; a given sign only if it IS one of them. */
 function _scbgSignText(shop) {

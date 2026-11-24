@@ -73,26 +73,7 @@
 
   /* ---------- Xi'an: the Big Wild Goose Pagoda among golden ginkgo ---------- */
   asiaSceneAdd({ key: 'place:xian', label: 'Big Wild Goose Pagoda', site: 'Big Wild Goose Pagoda', colour: 'amber', mood: 'calm', season: ['autumn'], tags: ['pagoda', 'landmark', 'autumn'],
-    svg: () => {
-      const s1 = U(), g1 = U(), tiers = [[196, 100], [176, 78], [158, 68], [142, 60], [128, 54], [116, 50], [104, 46]];
-      let leaves = '';
-      const tree = (x, y, s, seed) => { const r = rnd(seed); let c = `<path fill="#5a4030" d="M${x - 9 * s} ${y}l${5 * s} ${-150 * s}h${8 * s}l${5 * s} ${150 * s}z"/>`; for (let i = 0; i < 16; i++) c += `<circle cx="${R(x + (r() - 0.5) * 210 * s)}" cy="${R(y - 170 * s - r() * 120 * s)}" r="${R((46 + r() * 40) * s)}" fill="${['#f0b830', '#e8a21c', '#f7cf4a', '#d98d14'][i % 4]}"/>`; return c; };
-      for (let i = 0; i < 30; i++) { const r = rnd(i * 7 + 3); leaves += `<path class="x-usfall" style="--ad:${R(9 + r() * 8)}s;--d:-${R(r() * 14)}s;--dx:${R(-100 + r() * 200)}px" fill="#f2b92c" d="M${R(r() * 1600)} ${R(r() * 220)}l7 -4l7 4l-7 9z"/>`; }
-      return `<defs>${lin(s1, [[0, '#5da4d8'], [0.55, '#a9d3ec'], [1, '#fbe6b8']])}${lin(g1, [[0, '#c9a455'], [1, '#8a7035']])}</defs>`
-        + full(`url(#${s1})`) + sun(300, 210, 40, '#fff4cc', '#ffe08a') + stars(5, 20, 200)
-        + cloud(420, 190, 0.9, '#cfe0ee', 0.85, 62, 6) + cloud(1230, 150, 0.8, '#d8e6f0', 0.8, 70, 28) + streak(1000, 90, 260, '#fff', 0.45, 80)
-        + mv('uspar', { ad: '44s', dx: '10px' }, ridge('#9dbbcf', 560, 70, 7, 4) + ridge('#86a9b8', 600, 50, 8, 9))
-        + mv('uspar', { ad: '34s', dx: '12px' }, city(31, -160, 1760, 650, 20, 60, 40, 80, '#b59c76', 0.0))
-        + `<rect x="-160" y="640" width="1920" height="260" fill="url(#${g1})"/>`
-        + `<path fill="#b79a68" d="M520 700H1080V664H520z"/><path fill="#c9ad77" d="M560 664H1040V630H560z"/><path d="M600 700V664M700 700V664M800 700V664M900 700V664M1000 700V664" stroke="#8f7648" stroke-width="3"/>`
-        + `<path d="M770 700V630M830 700V630" stroke="#d8bf8c" stroke-width="6"/>`
-        + `<g>${pagoda(800, 632, tiers, '#d1ad72', '#a98c5c', '#4d3a22', '#6d5a3a')}</g>`
-        + mv('uspar', { ad: '40s', dx: '14px' }, tree(250, 760, 1.15, 12) + tree(1360, 770, 1.3, 21) + tree(120, 800, 0.8, 8) + tree(1500, 800, 0.8, 18))
-        + `<path fill="#c79d2c" d="M-160 860Q300 800 800 850T1760 840V900H-160z" opacity=".95"/>`
-        + `<path fill="#e5b43c" d="M-160 880Q400 840 900 880T1760 870V900H-160z"/>`
-        + birds(8, 5, 1000, 260, '#5b4a3a', 1.2, 700) + leaves + petals(5, 10, '#f6c94a', 10, 18)
-        + haze(560, 110, '#fff1c8', 0.4) + finish(0.3);
-    } });
+    svg: () => '' });
 
   /* ---------- Hangzhou: West Lake in morning mist, pagoda, willows ---------- */
   asiaSceneAdd({ key: 'place:hangzhou', label: 'West Lake in morning mist', site: 'West Lake', colour: 'green', mood: 'dreamy', season: 'any', tags: ['lake', 'pagoda', 'willow', 'mist'],
@@ -192,35 +173,7 @@
 
   /* ---------- Tokyo: Tokyo Tower and the Skytree over the city at dusk ---------- */
   asiaSceneAdd({ key: 'place:tokyo', label: 'Tokyo Tower and Skytree at dusk', site: 'Tokyo Tower', colour: 'red', mood: 'energetic', season: 'any', tags: ['tower', 'skyline', 'dusk'],
-    svg: () => {
-      const s1 = U(), g1 = U(), sk = U(), tx = 560;
-      const tower = lattice(tx, 760, 320, 150, 18, ['#ee5a2e', '#f7f2ea'], 8, '#a63a1c')
-        + `<path fill="#ee5a2e" d="M${tx - 8} 320L${tx - 5} 170H${tx + 5}L${tx + 8} 320z"/><path d="M${tx} 170V110" stroke="#e24a28" stroke-width="3"/>`
-        + `<rect fill="#d9d4cc" x="${tx - 96}" y="560" width="192" height="26" rx="4"/><rect fill="#f1ede4" x="${tx - 96}" y="560" width="192" height="8"/><rect fill="#d9d4cc" x="${tx - 50}" y="418" width="100" height="18" rx="3"/>`
-        + `<rect class="us-lit" x="${tx - 90}" y="572" width="180" height="8" rx="3"/><rect class="us-lit" x="${tx - 44}" y="424" width="88" height="6" rx="2"/>`
-        + `<path d="M${tx - 150} 760V740H${tx + 150}V760" fill="none" stroke="#a63a1c" stroke-width="6"/>`;
-      let skyl = '';
-      const sx = 1220;
-      skyl += `<path fill="url(#${sk})" d="M${sx - 70} 770L${sx - 18} 330L${sx - 6} 160H${sx + 6}L${sx + 18} 330L${sx + 70} 770z"/><path stroke="#6e86a8" stroke-width="2" fill="none" opacity=".7" d="M${sx - 66} 770L${sx + 14} 330M${sx + 66} 770L${sx - 14} 330M${sx - 40} 620H${sx + 40}M${sx - 28} 480H${sx + 28}"/>`;
-      skyl += `<ellipse cx="${sx}" cy="330" rx="46" ry="12" fill="#c8d6ea"/><ellipse cx="${sx}" cy="296" rx="32" ry="10" fill="#dce6f4"/><path d="M${sx} 160V80" stroke="#aab9d0" stroke-width="4"/>`;
-      skyl += `<rect class="us-lit" x="${sx - 40}" y="326" width="80" height="5" rx="2"/><rect class="us-lit" x="${sx - 28}" y="293" width="56" height="4" rx="2"/>`;
-      let flick = `<circle class="x-usflicker" style="--ad:1.4s;transform-box:fill-box;transform-origin:center" cx="${tx}" cy="108" r="6" fill="#ff5a4a"/><circle class="x-usflicker" style="--ad:1.7s;transform-box:fill-box;transform-origin:center" cx="${sx}" cy="78" r="6" fill="#ff5a4a"/>`;
-      return `<defs>${lin(s1, [[0, '#4a4f9c'], [0.35, '#9f7fb8'], [0.65, '#f49a78'], [1, '#ffd49a']])}${lin(sk, [[0, '#dfe8f5'], [1, '#8fa6c6']])}${lin(g1, [[0, '#4a4668'], [1, '#2a2745']])}</defs>`
-        + full(`url(#${s1})`) + stars(14, 36, 280) + rays(300, 600, 1100, '#ffd9a0', 0.1) + sun(300, 640, 44, '#fff0c4', '#ffae6e')
-        + cloud(900, 200, 1.1, '#b87aa6', 0.85, 66, 5, '#ffc2a6') + cloud(300, 330, 0.8, '#c585a6', 0.8, 54, 20, '#ffcdb0')
-        + mv('uspar', { ad: '44s', dx: '8px' }, city(3, -160, 1760, 700, 70, 240, 24, 56, '#8e75ad', 0.1))
-        + haze(560, 120, '#ffc9a0', 0.4)
-        + skyl + tower + flick
-        + mv('uspar', { ad: '34s', dx: '14px' }, city(8, -160, 1760, 820, 60, 200, 36, 80, '#5b4f82', 0.25))
-        // elevated railway with a train
-        + `<rect x="-160" y="790" width="1920" height="16" fill="#3a3558"/><path d="M0 806V900M240 806V900M480 806V900M720 806V900M960 806V900M1200 806V900M1440 806V900M1680 806V900" stroke="#3a3558" stroke-width="12"/>`
-        + `<rect x="-160" y="806" width="1920" height="94" fill="url(#${g1})"/>` + dots('M-160 782H1760', '#ffd9a0', 5, 38, 'us-lamps')
-        + mv('usmove', { ad: '18s', dx: '2300px' }, `<g><rect x="400" y="752" width="360" height="38" rx="9" fill="#e7e9ee"/><rect x="400" y="772" width="360" height="7" fill="#2ba37c"/>${[0, 1, 2, 3, 4, 5, 6, 7].map(i => lit(414 + i * 44, 758, 30, 12)).join('')}</g>`)
-        // cherry blossom bough
-        + `<g class="x-ussway2" style="--ad:8s;transform-box:view-box;transform-origin:1760px 0px">${bough(6, 1760, 60, 1220, 190, '#3a2a2c', ['#ffc4d6', '#ffdbe6', '#f59fbb'], 60, 15)}</g>`
-        + `<g class="x-ussway2" style="--ad:9s;--d:-2s;transform-box:view-box;transform-origin:-160px 0px">${bough(2, -160, 40, 260, 120, '#3a2a2c', ['#ffc4d6', '#ffdbe6', '#f59fbb'], 40, 14)}</g>`
-        + petals(7, 18, '#ffd0dd', 9, 16) + birds(9, 4, 820, 260, '#3d3560', 1.1, 600) + finish(0.36);
-    } });
+    svg: () => '' });
 
   /* ---------- Osaka: the castle keep in cherry blossom ---------- */
   asiaSceneAdd({ key: 'place:osaka', label: 'Osaka Castle in cherry blossom', site: 'Osaka Castle', colour: 'pink', mood: 'proud', season: ['spring'], tags: ['castle', 'cherry blossom', 'moat'],

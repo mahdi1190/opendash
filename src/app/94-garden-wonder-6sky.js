@@ -17,7 +17,6 @@ const WD_STARS = Object.freeze([
   { id: 'bear', name: 'The Sleeping Bear', season: 'winter', s: [[22, 42], [30, 30], [48, 26], [66, 30], [76, 40], [64, 46], [38, 46]], e: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 0]], tale: 'Don’t wake her. Nobody knows what happens if you do, and that’s because nobody has.' },
   { id: 'sisters', name: 'The Three Sisters', season: 'winter', s: [[36, 22], [50, 30], [64, 38], [20, 16], [80, 44]], e: [[3, 0], [0, 1], [1, 2], [2, 4]], tale: 'A bean, a squash and a stalk of corn, who grow better together and argue about it constantly. On a clear night you can almost hear them.' },
 ]);
-const WD_STAR_ROW = new Map(WD_STARS.map(r => [r.id, r]));
 const _wdk = { el: null, rug: null, cur: null, done: new Set(), from: -1, keys: null, m: null };
 function _wdSkyKnown(id) { return !!_wdGet('sk.' + id); }
 function _wdSkyTonight(m) { return WD_STARS.filter(r => r.season === m.season); }

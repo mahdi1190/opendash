@@ -35,7 +35,7 @@
    letters; the existing one still asks "Approve <name>?".
    Changes from the other computer arrive through live sync (86-live-sync.js
    shows "Updated by Work laptop"). The helpers syncAgo / syncStatusLine /
-   syncDeviceLines / syncScreen / syncPairView / syncKindLabel /
+   syncDeviceLines / syncScreen / syncPairView /
    syncCodeLines / syncSummary / syncPathLine / syncComputerRows /
    syncNeedsYou / syncRelayState / syncLiveLines / syncMainLines are pure.
    ============================================================ */
@@ -265,7 +265,6 @@ function syncScreen(st, flow) {
   if (e.reason === 'not-joined') return 'joining';
   return 'locked';
 }
-function syncKindLabel(k) { return k === 'phone' ? 'Phone' : k === 'tablet' ? 'Tablet' : 'Computer'; }
 /** "482 913" */
 function syncFormatPairCode(c) { return typeof c === 'string' && /^\d{6}$/.test(c) ? c.slice(0, 3) + ' ' + c.slice(3) : ''; }
 /** A 4-letter code as it is shown: "KQ MX". */

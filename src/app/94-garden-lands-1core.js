@@ -21,7 +21,6 @@ function _gldPay(label, msg, body, seen, icon) {
   return _gdDone(msg, label, mark, { icon: icon || 'sparkles' });
 }
 function _gldInt(seed, a, b) { return a + gardenHash(seed) % (b - a + 1); }
-function _gldOwnedSections() { return GARDEN_LAND_SECTIONS.filter(s => s.buy && gardenHas('land:' + s.id) > 0); }
 
 /* ---------- the land you have, as a snapshot says it ---------- */
 /** What shows of your finds, whether you are at home or it came in a snapshot: {c: curio ids and the key, z: stars logged, r: garden stars}. For the drawings. */
@@ -76,13 +75,6 @@ function gardenBuildFeature(id) {
   const done = _gdDone(`${d.name}: done`, `building ${d.name.toLowerCase()}`, mark, { icon: d.icon });
   gardenModel();   // (it stands in the world from this moment)
   return done;
-}
-
-/* ---------- helpers that just work ---------- */
-function gardenLandWaterExtra(g, today) {
-  let n = 0;
-  for (const f of GARDEN_LAND_FEATURES) { if (f.water && gardenLandOwnsFeature(f.id)) n += f.water; if (f.dew && g.seen[_gldKey(f.id)] === today) n += f.dew; }
-  return n;
 }
 /** When the spring rill last watered this plant: this morning at 06:00, or yesterday's. 0 when it does not reach. */
 function gardenLandRillAt(pl, fp, now) {

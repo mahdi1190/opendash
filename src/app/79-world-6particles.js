@@ -9,23 +9,17 @@
      seed    May to October, in wind, not in rain
      snow    only while it snows (worldTimeCtx(...).snowing); rain only while it rains
      spray, smoke, steam, splash, ring   always (spray at weirs, smoke and steam drift DOWNWIND with the one wind)
-   A refused request returns null and is logged once per reason (worldParticles(world).log). Live particles of a kind that is no
+   A refused request returns null and is logged once per reason. Live particles of a kind that is no
    longer allowed (the snow stopped) finish their fall; no new ones start. Nothing pops: a falling particle lives until it lands,
    and every particle fades in over 0.3 s and out over its last 0.6 s (p.alpha; draw with it).
 
      WORLD_PARTICLE_KINDS          per kind: cap, life, drag, fall, wind share, size, growth, rest time
-     WORLD_PARTICLE_CAP = 600      all kinds together; WORLD_BODY_CAP = 24 bodies. At a cap the OLDEST is recycled.
+     WORLD_PARTICLE_CAP = 600      all kinds together. At a cap the OLDEST is recycled.
      worldEmit(world, kind, o) -> emitter | null
         o: { x, y, z | at: [x, z] | from: entity (follows it through worldResolve), dy, spread (m), rate (per second: a running
              emitter) | n (a burst, the default 1), vy (or up: the upward speed), life, id (a stable id: its random stream),
              area: { x0, x1, z0, z1, y } }
         emitter: { id, kind, active, stop() }; a burst returns a stopped emitter after emitting
-     worldParticles(world) -> { list (live particles: { kind, x, y, z, px, py, pz, size, alpha, age, life, rot, rest, water }),
-                                bodies, counts: { kind: n }, total, caps, emitters, log }
-     worldBody(world, o) -> body | null   a cheap ballistic body: o { x, y, z, vx, vy, vz, r, bounce, friction, floats, life,
-                                id, onLand(body), onWater(body), onRest(body) }; gravity, air drag, ground contact with
-                                bounce and rolling friction, water contact with a splash and rings, then it floats (drifting
-                                downwind) or sinks. A ball thrown for a dog, a heron's strike.
      the 'particles' system (phase fx, after wind, 30 Hz, 0.5 ms): auto emitters at init (leaves from trees, smoke and steam
      from their entities, spray at weirs; rain and snow over the view only with worldRun(world, { particles: { weather: true }})
      because the v2 weather overlay draws falling rain and snow today), then emits, moves and lands everything each tick.
@@ -44,7 +38,6 @@ const WORLD_PARTICLE_KINDS = Object.freeze({
   ring: Object.freeze({ cap: 40, life: [1.2, 2.2], drag: 0, fall: 0, wind: 0, size: [0.05, 0.1], grow: 0.6, rest: 0 }),
 });
 const WORLD_PARTICLE_CAP = 600;
-const WORLD_BODY_CAP = 24;
 const _wptNum = v => typeof v === 'number' && Number.isFinite(v);
 const _WPT_EVERGREEN = /pine|fir|yew|spruce|holly|conifer|cedar|palm|cypress|laurel|leylandii|juniper|ivy/;
 
@@ -181,31 +174,6 @@ function worldEmit(world, kind, o) {
   em.rnd = rnd;
   S.emitters.push(em);
   return em;
-}
-/** The live particles and bodies (for the renderer, the frame record and the tools). */
-function worldParticles(world) {
-  const S = world && typeof world === 'object' ? _wptState(world) : null;
-  if (!S) return { list: [], bodies: [], counts: {}, total: 0, caps: {}, emitters: 0, log: [] };
-  const caps = {};
-  for (const k of Object.keys(WORLD_PARTICLE_KINDS)) caps[k] = _wptCap(S, k);
-  return { list: S.live, bodies: S.bodies, counts: Object.assign({}, S.counts), total: S.live.length, caps, cap: Math.floor(WORLD_PARTICLE_CAP * S.capMul),
-    emitters: S.emitters.filter(e => e.active).length, log: S.log.slice() };
-}
-/** A cheap ballistic body (Y6). */
-function worldBody(world, o) {
-  if (!world || typeof world !== 'object') return null;
-  o = o || {};
-  const S = _wptState(world);
-  if (!_wptNum(o.x) || !_wptNum(o.z)) return null;
-  if (S.bodies.length >= WORLD_BODY_CAP) S.bodies.shift();   // the oldest goes
-  const r = _wptNum(o.r) && o.r > 0 ? o.r : 0.035, g = _wptContact(world, S, o.x, o.z);
-  const b = { id: o.id != null ? String(o.id) : 'body:' + (S.seq++), x: o.x, y: _wptNum(o.y) ? o.y : g.y + r, z: o.z, vx: +o.vx || 0, vy: +o.vy || 0, vz: +o.vz || 0, r,
-    bounce: _wptNum(o.bounce) ? Math.max(0, Math.min(0.95, o.bounce)) : 0.55, friction: _wptNum(o.friction) ? Math.max(0, o.friction) : 1.2, floats: o.floats !== false,
-    life: _wptNum(o.life) && o.life > 0 ? o.life : 30, age: 0, landed: false, wet: false, rest: false, bounces: 0,
-    onLand: typeof o.onLand === 'function' ? o.onLand : null, onWater: typeof o.onWater === 'function' ? o.onWater : null, onRest: typeof o.onRest === 'function' ? o.onRest : null };
-  b.px = b.x; b.py = b.y; b.pz = b.z;
-  S.bodies.push(b);
-  return b;
 }
 function _wptBodyStep(world, S, b, dt, t) {
   b.px = b.x; b.py = b.y; b.pz = b.z;

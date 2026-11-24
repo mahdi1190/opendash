@@ -10,7 +10,6 @@
    SMOOTHING. String-pulled only along cells no dearer than the dearer end (a lane route keeps to the lane, a grass route may cross grass).
    gardenFolkPathAsk(a, b, cb)  -> asks for a way from a to b (cells); cb(points | null) runs when it is found (maybe this frame)
    gardenFolkPathPump(ms)       -> works on the waiting searches for at most ms (the runner calls it each frame)
-   gardenFolkCost(x, y)         -> the field's cost at a point (Infinity: nobody walks there)
    ============================================================ */
 const VFP_SLICE = 1500, VFP_CACHE = 2000;
 const _vfp = { key: '', cost: null, tier: null, build: null, jobs: [], cache: new Map(), cur: null, pool: null, stats: { found: 0, cells: 0, ms: 0, slices: 0, maxSlice: 0 } };
@@ -88,7 +87,6 @@ function gardenFolkReach(a, b) {
   const i = _vfpNearOpen(a.x, a.y), j = _vfpNearOpen(b.x, b.y);
   return i >= 0 && j >= 0 && _vfp.comp[i] === _vfp.comp[j];
 }
-function gardenFolkCost(x, y) { const W = GARDEN_WORLD, cx = Math.floor(x), cy = Math.floor(y); if (!_vfp.cost || cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) return Infinity; return _vfp.cost[cy * W.cols + cx]; }
 function gardenFolkTier(x, y) { const W = GARDEN_WORLD, cx = Math.floor(x), cy = Math.floor(y); if (!_vfp.tier || cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) return 9; return _vfp.tier[cy * W.cols + cx]; }
 /** The nearest cell anyone can walk to from a point (the start or end of a leg may be on a seat's edge or a door step). */
 function _vfpNearOpen(x, y) {

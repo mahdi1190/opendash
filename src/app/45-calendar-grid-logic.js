@@ -167,8 +167,6 @@ const CGL_KEYS = [
   { key: 'z', action: 'undo', label: 'Undo the last change', by: 'grid' },
   { key: 'Escape', action: 'escape', label: 'Close / cancel a drag', by: 'grid' },
 ];
-/** Keys the rest of the app owns everywhere (90-wiring.js): the calendar must not take them. */
-const CGL_RESERVED = ['q', 'Q', '/', '?', 'g'];
 /**
  * The calendar action for a key event, or null.
  * e: {key, altKey, shiftKey, ctrlKey, metaKey}; ctx: {hasEvent, taskOpen, by}.

@@ -153,11 +153,6 @@ function alSelectList(list, key, o) {
     extra: o.extra, bar: o.bar,
   });
 }
-function alAcceptAbove(min, taskId) {
-  const ids = alPending({ taskId, all: true }).filter(sg => alConf(sg) >= min).map(sg => sg.id);
-  if (!ids.length) { toast(`Nothing at ${alPct(min)} or more`); return; }
-  return alActions([{ op: 'links.apply', suggestionIds: ids.slice(0, 200) }], { done: `Linked ${ids.length}`, confirmTitle: `Link all ${ids.length} at ${alPct(min)} or more?` });
-}
 
 function alStatus(force) {
   if (!_serverAvailable) return Promise.resolve(null);

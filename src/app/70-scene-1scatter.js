@@ -13,7 +13,6 @@
                                    petals in spring, long grass and wild flowers in summer, winter tufts; screen-even, cut beyond 60 m
                                    or under 3 units tall, at most 1,500 placements, all static (baked).
      scenePoissonDisk(r, box, minD, accept, o)   Bridson's Poisson-disk sampling (seeded; multiple seeds for disconnected regions)
-     sceneScatterNN(points)        the Clark-Evans nearest-neighbour index (1: random, < 1: clustered, > 1: even)
    Candidates are even but never a grid (Poisson disk), clumped when asked (a Thomas process: seeded centres, Gaussian spread,
    20 % unclustered), kept off avoided surfaces and on what the class may stand on (4.4: no shrubs on roads, ever), and their
    footprints never overlap the hand placements' or each other's (gap: 'foot'; cover is exempt).
@@ -72,21 +71,6 @@ function scenePoissonDisk(r, box, minD, accept, o) {
     }
   }
   return pts;
-}
-/** The Clark-Evans index of a point set: the mean nearest-neighbour distance over 0.5 / sqrt(density) (box area). */
-function sceneScatterNN(points) {
-  const n = points.length;
-  if (n < 3) return 1;
-  const p = points.map(q => [q[0], q[1]]).sort((a, b) => a[0] - b[0]);
-  let sum = 0;
-  for (let i = 0; i < n; i++) {
-    let best = Infinity;
-    for (let j = i + 1; j < n && p[j][0] - p[i][0] < best; j++) best = Math.min(best, Math.hypot(p[j][0] - p[i][0], p[j][1] - p[i][1]));
-    for (let j = i - 1; j >= 0 && p[i][0] - p[j][0] < best; j--) best = Math.min(best, Math.hypot(p[j][0] - p[i][0], p[j][1] - p[i][1]));
-    sum += best;
-  }
-  const xs = p.map(q => q[0]), ys = p.map(q => q[1]), area = Math.max(1e-9, (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys)));
-  return (sum / n) / (0.5 / Math.sqrt(n / area));
 }
 
 /* ---------- the shared helpers ---------- */

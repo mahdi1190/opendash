@@ -17,7 +17,6 @@
      glAtLeast(lv, min)   glMayDo(lv, t) -> '' | why     glIntentOk(b) -> '' | why     glPostOk(p) -> '' | why
    ============================================================ */
 const GL_V=6; // Expanded island sessions use the exact authored world and layout.
-const GL_WORLD_PREDECESSOR='94f5b2dbe4dce765cafb2b40',GL_WORLD_MECHANICS1='c34545b986e497d5d9df5d51';
 function glWorldFields(source){
  if(source===undefined){
   if(typeof _gdv!=='undefined'&&_gdv.on&&_gdv.clean)source=_gdv.clean;

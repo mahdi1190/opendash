@@ -34,10 +34,7 @@
                         ctx {level, event (an event id or ''), book: {stickerId: day}, owned: {cosmeticId: true}}
      funTierOf(def, n)  {at, label, next, nextLabel} for an amount of the event's currency
    ============================================================ */
-var FUN_V = 1;
-var FUN_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 var FUN_MSG_RE = /^[0-9a-f]{32}$/;
-var FUN_FID_RE = /^[0-9a-f]{16}$/;
 var FUN_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 var _funF = Object.freeze;
 var _funRows = function (rows) { return _funF(rows.map(function (r) { return _funF(r); })); };

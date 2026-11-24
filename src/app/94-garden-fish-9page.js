@@ -8,7 +8,6 @@
    ============================================================ */
 function _gcpSay(r) { if (r && r.ok && r.msg && typeof toast === 'function') gardenToast(r.msg, { icon: 'fish', timeout: 4500 }); return _gdpSay(r); }   // (_gdpSay only speaks up for a no)
 function _gcpCard(title, ic) { const c = _gdpEl('section', 'card gca-card'); const h = _gdpEl('div', 'gdc-market-h'); h.innerHTML = `${icon(ic)}<b>${esc(title)}</b>`; c.appendChild(h); return c; }
-function _gcpClose() { try { if (typeof _gdp !== 'undefined' && _gdp.pop && typeof _dialogClose === 'function' && _dialogClose) { _gdp.pop = null; _dialogClose(); } } catch (e) { /* closed already */ } }
 
 /* ---------- tackle ---------- */
 function gardenSetupPanel(el) {
@@ -32,13 +31,6 @@ function gardenSetupPanel(el) {
   }
   c.appendChild(slots); el.appendChild(c);
 }
-/** On the garden's side card: your saved setups, one tap each. */
-function gardenSetupQuick(card) {
-  const saved = (Array.isArray(_gca().setups) ? _gca().setups : []).map((s, i) => [s, i]).filter(x => x[0]); if (!saved.length) return;
-  const row = _gdpEl('div', 'gca-quick');
-  for (const [s, i] of saved) row.appendChild(_gdpBtn(String(i + 1), { kind: 'btn-ghost', tip: `Put on setup ${i + 1}`, aria: `Put on setup ${i + 1}`, run: () => _gcpSay(gardenSetupUse(i)) }));
-  card.appendChild(row);
-}
 function _gcpTackleCard(d, m) {
   const pack = !!d.pack, owned = pack ? gardenHas('kit:' + d.id) > 0 : gardenGearOwned(d.id), worn = GARDEN_TACKLE_KINDS[d.kind] ? _gcaWorn(d.kind).id === d.id : false, c = _gdpEl('div', 'gd-card gdc-gear' + (worn ? ' is-equipped' : '') + (owned ? '' : ' is-locked'));
   const art = _gdpEl('div', 'gd-card-art'); art.innerHTML = gardenTackleSvg(d, 64); c.appendChild(art);
@@ -59,36 +51,6 @@ function gardenBagExtras(f, kind, r) {
   const hall = _gca().hall || {}, given = (kind === 'bug' ? hall.b : hall.f) || {};
   if (!given[r.id]) f.appendChild(_gdpBtn('', { icon: 'landmark', kind: 'btn-ghost', aria: 'Give it to the lake hall', tip: 'Give it to the lake hall', run: () => _gcpSay(gardenHallGive(kind === 'bug' ? 'bug' : 'fish', r.id)) }));
   if (kind === 'fish') f.appendChild(_gdpBtn('', { icon: 'waves', kind: 'btn-ghost', aria: 'Let it go', tip: 'Let it go: there will be more of them in your lake this week', run: () => _gcpSay(gardenFishRelease(r.key)) }));
-}
-/** In the fish book: what it needs, put it all on, take me there. */
-function gardenReadyButton(def) {
-  const b = _gdpBtn('Get ready', { icon: 'target', kind: 'btn-ghost', tip: 'What this fish needs, and where to find it' });
-  b.onclick = (e) => {
-    e.stopPropagation();
-    openPopover(b, (el, close) => {
-      el.classList.add('gca-ready');
-      const known = !!_gdG().fl[def.id], R = gardenReadyFor(def);
-      el.appendChild(_gdpEl('b', null, known ? def.name : 'This fish'));
-      const list = _gdpEl('ul', 'gca-ready-l');
-      for (const r of R.rows) { const li = _gdpEl('li', r.ok ? 'is-ok' : 'is-no'); li.innerHTML = icon(r.ok ? 'check' : 'shopping-bag', 'i-xs'); li.appendChild(_gdpEl('span', null, r.ok ? r.what : `${r.what}: not yours yet`)); list.appendChild(li); }
-      if (!R.rows.length) list.appendChild(_gdpEl('li', 'is-ok', 'Anything will do.'));
-      el.appendChild(list);
-      if (R.where) el.appendChild(_gdpEl('p', 'gca-p', `Look at ${R.where.words}${R.when ? ', ' + R.when : ''}.`));
-      else if (R.reach) el.appendChild(_gdpEl('p', 'gca-p', R.reach));
-      else if (R.when) el.appendChild(_gdpEl('p', 'gca-p', `Look ${R.when}.`));
-      const f = _gdpEl('div', 'gd-card-f');
-      if (R.rows.length) f.appendChild(_gdpBtn('Put it on', { icon: 'check', run: () => { const r = gardenReadyEquip(def); _gcpSay(r); close(); } }));
-      if (R.where && typeof _gw !== 'undefined' && _gw.on) f.appendChild(_gdpBtn('Take me there', { icon: 'footprints', kind: 'btn-primary', run: () => {
-        const where = gardenReadyFor(def).where; if (!where) return; close(); _gcpClose();
-        if (where.room) { const room = GRM_ROOMS.find(row => row.id === where.room); if (room) gardenRoomGo(room); }
-        else gardenFishClickPt({ x: where.x, y: where.y }, gardenHere());
-      } }));
-      const pinned = (_gca().pins || []).includes(def.id);
-      f.appendChild(_gdpBtn(pinned ? 'Pinned' : 'Tell me when', { icon: 'bell', kind: 'btn-ghost', tip: 'A quiet word in the garden when it is about', run: () => { gardenPinToggle(def.id); close(); } }));
-      el.appendChild(f);
-    }, { align: 'end', width: 300 });
-  };
-  return b;
 }
 
 /* ---------- the lake ---------- */

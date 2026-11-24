@@ -19,8 +19,6 @@
      trHolidayOn(cc, iso, o)          the holiday on that date (a substitute counts) | null
      trHolidayCountries()             the country codes with rules
      trHolidayRegions(cc)             [{id, label}] (GB only)
-     trHolidayCoverage(cc, year)      'full' | 'partial' (lunar dates not in the table) | 'none'
-     trEasterIso(year, orthodox)      'YYYY-MM-DD'
      trJpEquinox(year, 'spring'|'autumn')   the day of March / September
    ============================================================ */
 
@@ -52,7 +50,6 @@ function _trhEaster(y, orthodox) {
   const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
   return _trhDn(y, Math.floor((h + l - 7 * m + 114) / 31), ((h + l - 7 * m + 114) % 31) + 1);
 }
-function trEasterIso(year, orthodox) { return _trhIso(_trhEaster(Number(year), !!orthodox)); }
 /** The National Astronomical Observatory's formula, valid 1980-2099. */
 function trJpEquinox(year, which) {
   const y = Number(year) - 1980;
@@ -300,10 +297,3 @@ function trHolidayOn(cc, iso, o) {
 }
 function trHolidayCountries() { return Object.keys(TRH_RULES); }
 function trHolidayRegions(cc) { return (_TRH_REGIONS[String(cc || '').toUpperCase()] || []).map(r => ({ id: r.id, label: r.label })); }
-function trHolidayCoverage(cc, year) {
-  const R = _trhRules(String(cc || '').toUpperCase());
-  if (!R) return 'none';
-  const y = Number(year), i = y - TRH_TABLE_FROM;
-  const lunar = R.rules.some(r => /^[LT]:/.test(r.when));
-  return lunar && (i < 0 || i >= TRH_TABLE.cny.split(' ').length) ? 'partial' : 'full';
-}

@@ -25,17 +25,12 @@
                                             entities: placed and scaled by the camera, never extruded).
      worldExtrudeHull(ent, cam, o) -> prim | null   a long hull in perspective: its side art laid along its real length in
                                             depth slices (each slice an affine map of the art: nothing is a flat slab), the end the
-                                            eye sees (bow or stern art), the roof when the eye is above it.
-     worldExtrudeBoatModel(ent, cam, o) -> prim   a canal boat as the registered 'narrowboat' model (79-world-4model-narrowboat.js)
-                                            built by the shared kit of 79-world-4models.js (docs/dev/WORLD_MODELS.md); worldExtrudeHull asks
-                                            the model registry first, for any object that has a model
+                                            eye sees (bow or stern art), the roof when the eye is above it. It asks the model registry first
+                                            (79-world-4models.js, docs/dev/WORLD_MODELS.md), for any object that has a model.
      worldExtrudeDraw(ctx, prim, o) -> draws   draws a prim on a 2D context. o: { vs, ox, oy (device = vs * scene + o), litGlow (a hull's
                                             lit windows at night), sprite
                                             (the renderer's env.sprite: hull art), colour(mat, hex, { z, role }) (materials,
                                             look's worldMaterialColour by default), night, windowShare, alpha, season, haze }
-     worldForeshorten(cam, z, w) -> { across, along, row }   Q5: the screen size of w metres at depth z across the view
-                                            (f w / z) and along it on the ground (f eye w / (z (z + w))), and the ground row at z:
-                                            what any texture, course, stripe or ripple at that depth must scale by.
    ============================================================ */
 const WORLD_EXTRUDE_KINDS = Object.freeze({
   wall: Object.freeze({ w: 0.45, h: 1.4, solid: true, mat: 'stone', hex: '#9a9184', top: '#b4ab9c', detail: 'courses' }),
@@ -83,12 +78,6 @@ function _wexBox(pts, b) {
 }
 /** Is a face with outward normal n (x, y, z) at point p seen by the eye (0, eye, 0)? */
 const _wexSees = (cam, n, p) => n[0] * -p[0] + n[1] * (cam.eye - p[1]) + n[2] * -p[2] > 1e-6;
-/** Q5: the screen size of w metres at depth z (see the header). */
-function worldForeshorten(cam, z, w) {
-  w = _wexNum(w) ? w : 1;
-  if (!cam || !_wexNum(cam.f) || !(z > 0)) return { across: 0, along: 0, row: null };
-  return { across: cam.f * w / z, along: cam.f * cam.eye * w / (z * (z + w)), row: cam.horizon + cam.f * cam.eye / z };
-}
 
 /* ---------- linear features (Q2) ---------- */
 function _wexLen(path) { let L = 0; for (let i = 1; i < path.length; i++) L += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]); return L; }
@@ -559,11 +548,8 @@ function _wexInPolyM(P, x, z) { let c = false; for (let i = 0, j = P.length - 1;
 /** The soft sky light every boat face is shaded by (from above and the eye's left): 0.78 .. 1.08. */
 const _wexLit = n => 0.78 + 0.3 * Math.max(0, -0.45 * n[0] + 0.8 * n[1] - 0.4 * n[2]);
 /* ---------- the canal boat model lives in the model registry (15-16 Oct; moved 16 Oct) ----------
-   worldExtrudeBoatModel is kept by name: the narrowboat is the registered model 'narrowboat' (79-world-4model-narrowboat.js)
+   The narrowboat is the registered model 'narrowboat' (79-world-4model-narrowboat.js),
    built by the shared kit (79-world-4models.js). The helpers above (_wexShade, _wexNewell, _wexLit) are the kit's. */
-function worldExtrudeBoatModel(ent, cam, o) {
-  return typeof worldModelBuildWith === 'function' ? worldModelBuildWith('narrowboat', ent, cam, o) : null;
-}
 function worldExtrudeHull(ent, cam, o) {
   o = o || {};
   if (!ent || !cam || !_wexNum(cam.f) || typeof ent.obj !== 'string') return null;

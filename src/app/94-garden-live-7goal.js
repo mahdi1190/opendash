@@ -276,16 +276,6 @@ function gardenLiveGoalSummaryKey() {
   const me = _gll.role === 'host' ? 0 : _glv.w;
   return [v.g, v.c, v.n, v.of, v.st, _gll.role, me, v.by[me] || 0].join('|');
 }
-/** Explicit access from the existing Goals panel, even when the world card is quiet. */
-function gardenLiveGoalSummary(el) {
-  const v = _glg.view, def = v && glGoalDef(v.c); if (!v || !def || !_glgShown()) return;
-  const me = _gll.role === 'host' ? 0 : _glv.w, section = _gdpEl('section', 'gd-goals');
-  section.appendChild(_gdpEl('h3', null, 'Shared goal'));
-  section.appendChild(_gdpEl('p', null, _glgText(def, v, v.st === 1)));
-  section.appendChild(_gdpEl('p', 'muted', `${v.n} of ${v.of} together · Your part: ${v.by[me] || 0}.`));
-  if (_gll.role === 'host' && v.st === 0) section.appendChild(_gdpBtn('Skip this shared goal', { kind: 'btn-ghost', run: () => { gardenLiveGoalSkip(); if (typeof gardenPopupRefresh === 'function') gardenPopupRefresh(); } }));
-  el.appendChild(section);
-}
 /** A quiet progress chip; contributions and actions open only on request.
  * Expansion is local to the currently visible goal and never changes its state. */
 function gardenLiveGoalPaint(boxArg) {

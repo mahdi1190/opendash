@@ -86,7 +86,6 @@ function gardenVariantFor(kind, def, id) {
   if (V.for !== 'both' && V.for !== kind) return null;
   return kind === 'fish' ? (def.cat === 'fish' ? V : null) : V;
 }
-function gardenVariantList(kind) { return GARDEN_VARIANTS.filter(V => !kind || V.for === 'both' || V.for === kind); }
 
 /* ---------- the odds ---------- */
 function _gvIs(want, have) { return Array.isArray(want) ? want.includes(have) : want === have; }

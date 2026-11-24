@@ -69,7 +69,6 @@ function assistantStatus(id, all) {
   }
   return { tone: 'off', word: 'Not set up', detail: 'Browser only' };
 }
-function assistantConnectionState(id, all) { const s = assistantStatus(id, all); return s.detail ? `${s.word} · ${s.detail}` : s.word; }
 
 async function assistantConnect(id, repaint, action = 'link') {
   if (_assistantBusy) return;

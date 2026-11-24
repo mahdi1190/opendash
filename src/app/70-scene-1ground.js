@@ -14,10 +14,9 @@
    Camera (2.1, 2.2)   SCENE_BANDS_DEFAULT, sceneIsV2(data), sceneCamera(data) -> Cam (memoised per data),
                        sceneProject(cam, x, d, h) -> { X, Y, k }, sceneUnproject(cam, X, Y) -> { x, d } | null,
                        sceneGroundHeight(cam, x, d), sceneDepthBand(cam, d) -> the layer index
-   Surfaces (3)        SCENE_SURFACE_KINDS, sceneSurfaceKinds(), sceneSurfacesCompile(data, cam, G),
+   Surfaces (3)        SCENE_SURFACE_KINDS, sceneSurfacesCompile(data, cam, G),
                        sceneSurfaceAt(C, x, d) -> { id, kind, flags } | null (water counts, kind 'water'),
                        sceneSurfaceNearest(C, x, d, kinds, maxM) -> { id, kind, x, d, m } | null,
-                       sceneSurfaceSpan(C, id, d) -> [[x0, x1], ...] (the slices of a surface at a depth)
    Water (5.1, 5.2)    sceneWaterCompile(data, cam, G): the regions' geometry (canals from a centreline, banks, rowAt, edges)
    Placements (4)      SCENE_PLACE_RULES, SCENE_DRIVE_LEFT, sceneObjClass(id), scenePlaceAllowed(cls, surf, p),
                        scenePlaceResolve(G, p, i) -> the placement in pixel form + its ground record, sceneGroundSnap(G, cls, x, d, o),
@@ -457,9 +456,6 @@ function _scgrColAt(G, cols, d) {
   const c = _scgrMix(cols[1], cols[0], t);
   return _scgrMix(c, _SCGR_HAZE, _scgrHaze(G, d));
 }
-
-/* ---------- surfaces (3.2, 3.3) ---------- */
-function sceneSurfaceKinds() { return SCENE_SURFACE_KINDS; }
 const _SCGR_ID_RE = /^[a-z0-9-]{1,30}$/;
 /** The strips' smoothed centrelines and widths, the beside chain resolved (a parent may be a water channel). id -> { path, width } */
 function _scgrStrips(data) {
@@ -933,8 +929,6 @@ function sceneSurfaceAt(C, x, d) {
 }
 /** The look-up entry of an id (a surface or water region). */
 function _scgrEntry(C, id) { return _scgrLook(C).find(e => e.id === id) || null; }
-/** The horizontal slices [x0, x1] of a surface (or water region) at depth d, from its own polygon. */
-function sceneSurfaceSpan(C, id, d) { const e = _scgrEntry(C, id); return e ? _scgrSpans(e.poly, d) : []; }
 /**
  * The nearest point of an allowed surface (3.3): kinds (kind names or ids; a function (surf, x, d) -> bool also works),
  * within maxM metres. The point must be on top there (nothing later covers it). -> { id, kind, x, d, m } | null
@@ -1035,12 +1029,6 @@ function _scgrNearBank(G, w, x, d) {
     m = Math.min(m, Math.hypot(x - a[0] - vx * u, d - a[1] - vd * u));
   }
   return m;
-}
-/** The views of an object (4.3): its def's `views`, else D's table (SCENE_OBJ_VIEWS). */
-function _scgrViews(id) {
-  if (typeof sceneObjViews === 'function') { try { return sceneObjViews(id); } catch (e) { /* none */ } }
-  const def = typeof sceneObj === 'function' ? sceneObj(id) : null;
-  return (def && def.views) || null;
 }
 /**
  * Which view to draw (4.3): from the ground heading (tx, td) against the line of sight to (x, d), D's sceneHeadingView (5 views:

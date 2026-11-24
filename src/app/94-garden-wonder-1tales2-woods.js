@@ -92,64 +92,6 @@ const WK_DAY_HOLLIN = [
   { if: F => _hTold() && F.season === 'winter', deep: 1, t: 'I’ve been looking at the hills. Over them. I’ve said that to nobody. Don’t make it a thing.', soft: '' },
 ];
 
-const _qf = (k) => typeof wdTaleFlag === 'function' ? wdTaleFlag(k) : null;
-const WK_DAY_QUINCE_MORE = [
-  /* weather */
-  { if: F => F.rain, t: 'Rain. Buckets under the press. Free cider water. Don’t drink it.' },
-  { if: F => F.rain && F.season === 'spring', t: 'Rain on the blossom. Knocks it off. I go out with an umbrella and hold it over the best tree like a fool. Every year.' },
-  { if: F => F.rain && F.season === 'autumn', t: 'Rain in pressing week. Windfalls go to mush. Mush makes cider too. Everything does, if you’re stubborn.' },
-  { if: F => F.snow, t: 'Snow! I’ve wrapped the hives in sacking. They look like little old men. Grumpy little old men.' },
-  { if: F => F.snow, t: 'I counted the stair in the snow and lost count at nine. Best morning I’ve had all month.' },
-  /* spring */
-  { if: F => F.season === 'spring', t: 'Grafting today. You cut one tree and tie it to another and tell them to get on. They mostly do.' },
-  { if: F => F.season === 'spring', t: 'First swarm went up the oak. I said please. They said no. I got a ladder.' },
-  { if: F => F.season === 'spring' && F.tod === 'dawn', t: 'Blackbird on the press roof at four, singing like he’s been paid. I should charge him rent.' },
-  /* summer */
-  { if: F => F.season === 'summer', t: 'Honey flow. The whole square smells of it. Stung four times and I’m in a wonderful mood.' },
-  { if: F => F.season === 'summer', t: 'Wasps in the orchard. They think they’re bees. I don’t correct them. Let them have a dream.' },
-  { if: F => F.season === 'summer', t: 'Pip came up and told me a joke about a heron. I had to sit on the steps. I still don’t know the end. Neither did Pip.' },
-  /* autumn */
-  { if: F => F.season === 'autumn', t: 'Pressing week. My arms will fall off by Friday. I’ll stick them back on with honey.' },
-  { if: F => F.season === 'autumn', t: 'New cider. Medlar. Mother Thistle says it’ll taste of socks. Mother Thistle is going to be wrong in public.' },
-  { if: F => F.season === 'autumn', deep: 1, t: 'Fair posters in the square. I’ve turned that one round. It can face the wall till October’s done.', soft: 'Fair posters in the square. Somebody’s spelt cider with a y. I’ve corrected it in pen.' },
-  /* winter */
-  { if: F => F.season === 'winter', t: 'Wassail soon. You bang a pot at the trees and pour cider on the roots and sing at them. They like it. I like it more.' },
-  { if: F => F.season === 'winter', t: 'Winter. I do the books. The bees cost more than they make. Don’t tell them. They’d be unbearable.' },
-  { if: F => F.season === 'winter' && F.tod === 'night', t: 'Cat, stove, a cup of last year’s and a book I’ve read nine times. I’m fine. I’m better than fine. Go home, you’ll freeze.' },
-  /* the hour */
-  { if: F => F.tod === 'dawn', t: 'I say good morning to every hive. Twelve good mornings. I mean all of them.' },
-  { if: F => F.tod === 'day', t: 'Busy day. If I stop talking it means I’ve been stung. Carry on without me.' },
-  { if: F => F.tod === 'dusk', t: 'Bats round the barrels. They want the moths. The moths want the cider. Everybody wants something up here.' },
-  { if: F => F.tod === 'dusk', t: 'Sun’s going down over the Mere. The whole river goes gold from up here. I’ve seen it a thousand times. I still stop.' },
-  { if: F => F.tod === 'night', t: 'You’re up late. So’s the cat. Don’t encourage her.' },
-  /* what you did */
-  { if: F => F.bugRecent, t: F => `A ${F.bugRecent.toLowerCase()}! Did it sting? No? Then you were polite to it. They can tell.` },
-  { if: F => F.fishRecent, t: F => `You smell of ${F.fishRecent.toLowerCase()}. Stand downwind of the hives. They’re very particular.` },
-  { if: F => F.ripe >= 2, t: 'Something of yours wants picking. I can see it from here. I can see everything from here. It’s a hill.' },
-  { if: F => F.away >= 3, t: 'There you are! The bees asked. Well. They didn’t. I did.' },
-  /* plain days */
-  { t: 'May the wind be dry and your boots be wet. That’s backwards. I made it up. It still counts.' },
-  { t: 'Red sky at night, the hare’s delight. Red sky in the morning, the hare had a lie-in. They all work if you believe them.' },
-  { t: 'I’ve beaten Pip at the apple race in my head eleven times this week. I don’t enter. I’d win.' },
-  { t: 'The cat’s called Marmalade. She’s grey. I named her when I was cross.' },
-  { t: 'Thistle sent soup up the stair with Tam. Tam counted the stair on the way. Two hundred and seven. Even Tam gets a different number.' },
-  { t: 'Wick brought me the weather. “Rain Thursday.” He’s never once been right. I plan round him anyway. It’s nice to be told.' },
-  { t: 'I keep the orchard by myself. People say “all by yourself?” as if the trees weren’t here.' },
-  { t: 'Honey on toast is a meal. I’ve decided. Don’t argue with a woman who owns twelve hives.' },
-  { t: 'I sing to the trees when I prune. Badly. They fruit anyway. Says a lot about trees.' },
-  { if: F => !_qf('quince.bell'), t: 'I polish the orchard bell every year and never ring it. It’s the shiniest bell nobody’s heard.' },
-  /* after her own telling (deep) */
-  { if: F => _qf('quince.told'), deep: 1, t: 'I told you a big thing and the sky stayed up. I keep checking. Still up.', soft: '' },
-  { if: F => _qf('quince.told'), deep: 1, t: 'Some days I’m only counting. Today I’m not. Today it’s just a stair, and it’s a nice stair.', soft: '' },
-  { if: F => _qf('quince.told'), deep: 1, t: 'Thistle came up. We didn’t talk. We shelled beans. Forty years of shelling beans. Best friend I have.', soft: '' },
-  { if: F => _qf('quince.bell'), deep: 1, t: 'I rang the bell. You heard. Don’t look at me like that, I’ll cry, and the bees will think it’s rain.', soft: '' },
-  /* after his (deep): she sets the terms, every time */
-  { if: F => _qf('hollin.told'), deep: 1, t: 'Don’t tell me about the woods. Not today, not as a kindness. Tell me about your garden.', soft: '' },
-  { if: F => _qf('hollin.told'), deep: 1, t: 'You can be friends with whoever you like down there. I mean that. I’m not lending you my side of it, that’s all.', soft: '' },
-  { if: F => _qf('quince-woods.brook'), deep: 1, t: 'Quince by the brook’s got two leaves. Two. I counted. Of course I counted.', soft: '' },
-  { if: F => _qf('quince-woods.bees'), deep: 1, t: 'There’s a bee past the arch. I saw it go. I didn’t follow. Next time I might.', soft: '' },
-];
-
 /* Replaces hollin.meet, hollin.wren, hollin.beetles (ids move from 'hollin' to 'woods'; the branch is unreleased, so no saves to migrate). */
 wdTaleAdd({ id: 'woods', kind: 'small', title: 'The woodcutter', journal: 'Hollin, who lives by the yews and mends things.', gentle: 'keep', steps: [
   { id: 'meet', who: 'hollin', when: { open: [3], home: 1 }, lines: [

@@ -7,7 +7,6 @@
 .bin-info { flex: 1; min-width: 0; }
 .bin-title { font-size: var(--text-sm); color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bin-meta { font-size: var(--text-xs); color: var(--fg-subtle); margin-top: var(--space-0-5); }
-.bin-actions { padding: var(--space-4) 0 0; display: flex; justify-content: space-between; align-items: center; color: var(--fg-subtle); font-size: var(--text-xs); }
 
 /* Legacy toast element (kept for code that still writes to it; showToast routes to toast()) */
 .save-toast {

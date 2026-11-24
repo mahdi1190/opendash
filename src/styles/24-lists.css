@@ -60,7 +60,7 @@
 .sbc-lbl { flex: 1 1 auto; min-width: 0; font-size: var(--text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sbc-pin { color: var(--fg-subtle); }
 .sbc-pin.on { color: var(--accent); }
-.sbc-empty { font-size: var(--text-sm); margin: 0; padding: var(--space-1) 0; }
+
 .sbc-add { align-self: flex-start; }
 .sbc-row .kbd { font-size: var(--text-2xs); }
 

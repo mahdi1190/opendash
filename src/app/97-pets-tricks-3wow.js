@@ -100,7 +100,6 @@ const PET_WOW = {
     [0, 'pet', { clip: 'hiccup' }], [0, 'sound', { s: 'pop' }], [0.1, 'emit', { from: 'pet', y: 0.7, spread: 34, spr: 'bubble', c: '#bfe8ff', add: false, dir: -90, arc: 54, speed: [40, 130], g: -30, sway: 1, rate: 30, dur: 2.2, life: [1.2, 2.4], size: [16, 46], fi: 0.1 }],
   ] },
 };
-function petWowIds() { return Object.keys(PET_WOW); }
 
 /* ---------- your pet's own shape, in points ---------- */
 /** The silhouette as one closed chain of points (and the eyes as two more stars), window pixels. The drawing's own paths are filled on a tiny canvas, and the edge traced. */

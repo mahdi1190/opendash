@@ -75,7 +75,6 @@ const _WMT_SNOW_COL = '#f3f6f9', _WMT_FROST_COL = '#e4ecf2', _WMT_WET_TINT = '#2
 const _WMT_GRASS = ['#848a5c', '#83895a', '#7d9850', '#7eac48', '#6ea844', null, '#86a448', '#9aa252', '#8c9a50', '#7f8a4a', '#7c8452', '#828a5c'];
 const _WMT_GRASS_K = [0.65, 0.6, 0.35, 0.35, 0.25, 0, 0.2, 0.35, 0.3, 0.42, 0.55, 0.62];
 const _WMT_TURN = ['#c9a227', '#d9822b', '#b9552a', '#8f5f2c', '#c48a2a'];
-const _WMT_D = Math.PI / 180;
 
 /* ---------- colour maths ---------- */
 function _wmtRgb(hex) {

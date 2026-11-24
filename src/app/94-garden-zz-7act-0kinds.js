@@ -173,8 +173,6 @@ const GARDEN_TERRAIN = Object.freeze({
   puddle: { acts: [], pets: ['puddle'], after: 'rain' },   // open soil or grass after rain
   path: { acts: [], pets: [] },
 });
-/** Anywhere on open ground (the moves wheel). */
-const GARDEN_ACT_GROUND = Object.freeze(['lie', 'nap', 'laugh', 'throwstick', 'rub']);
 /** Every kind's pets word -> the kinds that count as it (built once). */
 const GARDEN_KIND_BY_PET = Object.freeze(Object.entries(GARDEN_KINDS).reduce((o, [k, v]) => { if (v.pet) (o[v.pet] || (o[v.pet] = [])).push(k); return o; }, {}));
 const _GK_ART = new Map(), _GK_DECOR = new Map(), _GK_EFFECT = new Map(), _GK_SPECIES = [], _GK_WORDS = [];

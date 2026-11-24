@@ -47,15 +47,15 @@ function _gsnCtx() {
   return ac;
 }
 function _gsGraph(c) {
-  const G = { master: c.createGain(), lim: c.createDynamicsCompressor(), fx: c.createGain(), amb: c.createGain(), ambLP: c.createBiquadFilter(), music: c.createGain(), mIn: c.createGain(), mTr: c.createGain(), mLP: c.createBiquadFilter(), dly: c.createDelay(1), fb: c.createGain(), wet: c.createGain(), dlyLP: c.createBiquadFilter() };
+  const G = { master: c.createGain(), lim: c.createDynamicsCompressor(), fx: c.createGain(), amb: c.createGain(), ambLP: c.createBiquadFilter(), music: c.createGain(), mTr: c.createGain(), mLP: c.createBiquadFilter(), dly: c.createDelay(1), fb: c.createGain(), wet: c.createGain(), dlyLP: c.createBiquadFilter() };
   // a soft safety limiter: nothing in here is loud, but a pile-up never clips
   G.lim.threshold.value = -10; G.lim.knee.value = 10; G.lim.ratio.value = 6; G.lim.attack.value = 0.004; G.lim.release.value = 0.3;
   G.master.connect(G.lim); G.lim.connect(c.destination);
   G.fx.connect(G.master);
   G.ambLP.type = 'lowpass'; G.ambLP.frequency.value = 16000; G.ambLP.Q.value = 0.5; G.amb.connect(G.ambLP); G.ambLP.connect(G.master);
-  // the music: a little echo, darkened, for space
+  // the band's echo (the band in 94-garden-zz-7act-3music.js sends into dly), darkened, for space
   G.dly.delayTime.value = 0.36; G.fb.gain.value = 0.3; G.wet.gain.value = 0.26; G.dlyLP.type = 'lowpass'; G.dlyLP.frequency.value = 2600;
-  G.mIn.connect(G.music); G.mIn.connect(G.dly); G.dly.connect(G.dlyLP); G.dlyLP.connect(G.fb); G.fb.connect(G.dly); G.dlyLP.connect(G.wet); G.wet.connect(G.music);
+  G.wet.connect(G.music); G.dly.connect(G.dlyLP); G.dlyLP.connect(G.fb); G.fb.connect(G.dly); G.dlyLP.connect(G.wet);
   // the songs: their own bus, through a low-pass the rain and the rooms close down (no echo: they have their own space)
   G.mLP.type = 'lowpass'; G.mLP.frequency.value = 20000; G.mLP.Q.value = 0.5; G.mTr.connect(G.mLP); G.mLP.connect(G.music);
   G.music.connect(G.master);

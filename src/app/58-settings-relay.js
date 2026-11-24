@@ -42,9 +42,6 @@ function relayUsageRows(relay) {
     { label: 'Storage', used: relay.used || 0, max: store, text: `${mb(relay.used || 0)} of ${mb(store)}` },
   ];
 }
-function _rlHost(origin) { return String(origin || '').replace(/^https?:\/\//, ''); }
-/* The relay shown here is THE relay: the home relay in friends/relays.json (GET /api/relay
-   reads it; the Friends tab and Settings > Sync read the same file). */
 function _rlRender() { if (state.view === 'settings:relay' && typeof renderMain === 'function') renderMain(); }
 function _rlLoad() {
   return fetch('/api/relay', { cache: 'no-store' }).then(r => r.json()).then((j) => {

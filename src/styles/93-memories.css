@@ -279,16 +279,13 @@ html.anim-paused .mem-mood *, html.anim-paused .mg-svg *, html.anim-paused .hse-
 
 /* ---------- the Memories page ---------- */
 .mem-page { display: flex; flex-direction: column; gap: var(--space-4); padding-bottom: var(--space-12); }
-.mem-tabs { display: flex; gap: var(--space-0-5); flex-wrap: wrap; border-bottom: 1px solid var(--border-subtle); position: sticky; top: 0; z-index: 2; background: var(--bg); padding-top: var(--space-1); }
-.mem-tab { display: inline-flex; align-items: center; gap: var(--space-1-5); height: 34px; padding: 0 var(--space-3); border: 0; background: transparent; color: var(--fg-muted); font: inherit; font-size: var(--text-sm); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
-.mem-tab:hover { color: var(--fg); }
+
 .mem-tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); cursor: default; font-weight: var(--weight-medium); }
-.mem-tab .badge { margin-left: var(--space-0-5); }
+
 .mem-body { display: flex; flex-direction: column; gap: var(--space-4); }
 .mem-page.is-enter .mem-body > * { animation: mem-rise .45s cubic-bezier(.2, .9, .3, 1) both; }
 .mem-page.is-enter .mem-body > *:nth-child(2) { animation-delay: 50ms; } .mem-page.is-enter .mem-body > *:nth-child(3) { animation-delay: 100ms; } .mem-page.is-enter .mem-body > *:nth-child(n+4) { animation-delay: 150ms; }
-.mem-intro { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
-.mem-intro p { margin: 0; flex: 1; min-width: 240px; color: var(--fg-muted); font-size: var(--text-sm); }
+
 .mem-pad { padding: 0 var(--space-1); margin: 0; font-size: var(--text-sm); }
 .mem-sec { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface); }
 /* section headers: the kit's .sec-h (secHead) */
@@ -310,7 +307,7 @@ html.anim-paused .mem-mood *, html.anim-paused .mg-svg *, html.anim-paused .hse-
 .mem-entry-a { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; margin-top: var(--space-2); }
 .mem-entry-a .mem-moods { margin-top: 0; }
 .mem-entry.is-preview .mem-entry-t { color: var(--fg-muted); }
-.mem-more { align-self: center; }
+
 .mem-years { display: flex; gap: var(--space-1-5); align-items: center; flex-wrap: wrap; }
 .mem-year-sel { width: auto; }
 .mem-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3); }
@@ -450,10 +447,7 @@ html[data-motion="reduced"] .mwr-bars i.is-now b { width: 100%; }
 .mem-layout > .pg-main, .mem-layout > .pg-side { display: flex; flex-direction: column; gap: var(--space-4); }
 .mem-layout > .pg-side .mem-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .mem-jmain, .mem-ymain, .mem-pmain, .mem-mmain, .mem-yside, .mem-pside, .mem-mside { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
-.mem-side-card { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
-.mem-side-card p { margin: 0; font-size: var(--text-sm); }
-.mem-side-n b { font-size: var(--text-xl); font-weight: var(--weight-semibold); }
-.mem-side-a { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
 .mem-entries > .pg-list-b { display: flex; flex-direction: column; gap: var(--space-2); }
 .mem-entries .pg-list-more, .mpc-album-list .pg-list-more, .mem-tl-pg .pg-list-more { display: flex; justify-content: center; padding-top: var(--space-3); }
 .mpc-album-list > .pg-list-b { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--space-4); }

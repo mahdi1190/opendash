@@ -29,7 +29,7 @@
 //                                                      born, leaving, alpha, clip, phase, kind, lead }  (heading in radians,
 //                                                      atan2(dx, dz); facing the same in degrees: 0 = away from the camera,
 //                                                      90 = right, like entity facings; alpha < 1 while fading in or out)
-//   worldLifeOk(life, layer, x, z) -> bool;  worldLifeIsSpawn(life, layer, x, z) -> bool;  worldLifeLeads(life) -> leads
+//   worldLifeOk(life, layer, x, z) -> bool;  worldLifeIsSpawn(life, layer, x, z) -> bool
 //   worldLifeOf(world) -> the Life the systems runtime drives for a world (or null)
 // Life also keeps `events` ([{ t, kind, id, x, z, layer }], capped), `problems` ([{ pop, rule, msg }]) and `bus`.
 
@@ -204,7 +204,6 @@ function _wlfHullCells(life, layer, cells, len) {
   var nz = _wlfHullNear(life, layer, len);
   return nz == null ? cells : cells.filter(function (c) { return c.z >= nz; });
 }
-function worldLifeXZ(p) { if (!p) return null; if (Array.isArray(p)) return [p[0], p[1]]; return [p.x, p.z]; }
 function _wlfFlowR(a) {
   var d = (typeof WORLD_NAV_RADIUS !== 'undefined' && WORLD_NAV_RADIUS[String(a.layer).split('@')[0]]) || 0.25;
   var r = a.r <= d + 0.05 ? d : Math.ceil(a.r * 10) / 10;
@@ -3118,8 +3117,6 @@ function _wlfNarrowAt(life, layer, x, z) {
   if (i < 0 || j < 0 || i >= R.w || j >= R.h) return 0;
   return R.m[j * R.w + i] * 0.05;
 }
-/** For the tools: is (x, z) on a narrow way of a life's walk layer? 0 if not, else the way's half width there (m). */
-function worldLifeNarrowAt(life, layer, x, z) { return life ? _wlfNarrowAt(life, layer || 'walk', x, z) : 0; }
 function _wlfNarrowPerson(a) {
   if (a.kind !== 'walker' || a.dead || a.host || a.step || a.layer === 'air') return false;
   if (a._npObj !== a.obj) { a._npObj = a.obj; a._np = /^person\./.test(String(a.obj || '')); }   // (the test once per object, not per tick)
@@ -3885,60 +3882,6 @@ function worldAgents(life) {
   }
   return out;
 }
-/**
- * The crowd check (Y4, A2, A11) over one frame of agent records (worldAgents), for the motion tool, the invariants and tests.
- * mem: an object kept between frames by the caller (the streaks); t: the scene time. Returns [{ rule, a, b, t, msg }]:
- *   overlap   two bodies on the walk layer closer than 0.85 x their radii (people 0.28 m, others 0.15 m), group mates too;
- *   standoff  two walkers that both want to move stand still within 1.2 m of each other for over 6 s (nose to nose; the
- *             stuck handler re-plans at 3 s);
- *   clone     two people with the same object and variant within 3 m, going the same way (or both still), for over 8 s.
- * Movers fading in or out, seated, aboard a host, lanes and rails are left out. Each streak is reported once. A ghost pass
- * (worldLifeGhostLinked: both ghosted over 0.15 and linked to each other) is no overlap; a ghost and anyone else, or two solid
- * people, are judged as ever.
- */
-function worldLifeCrowdCheck(agents, mem, t) {
-  mem = mem || {}; t = +t || 0;
-  var out = [], live = {}, P = [];
-  for (var i = 0; i < (agents || []).length; i++) {
-    var a = agents[i];
-    if (!a || !a.layer || String(a.layer).split('@')[0] !== 'walk' || a.host || a.kind === 'lane' || a.kind === 'rail') continue;
-    if (worldLifeFading(a)) continue;
-    if (a.pose === 'sit' || a.state === 'sit') continue;
-    P.push(a);
-  }
-  var person = function (a) { return /^person./.test(a.obj || '') || a.kind === 'walker' && a.cls !== 'dog' && a.cls !== 'pigeon'; };
-  var body = function (a) { return person(a) ? 0.28 : 0.15; };                     // a dog at heel may brush a leg
-  var streak = function (k, limit, rule, a, b, msg) {
-    live[k] = 1;
-    if (mem[k] == null) mem[k] = { t0: t, done: false };
-    if (!mem[k].done && t - mem[k].t0 > limit) { mem[k].done = true; out.push({ rule: rule, a: a.id, b: b.id, t: t, msg: msg + ' for ' + (t - mem[k].t0).toFixed(1) + ' s' }); }
-  };
-  for (i = 0; i < P.length; i++) for (var j = i + 1; j < P.length; j++) {
-    var p = P[i], q = P[j], d = Math.hypot(p.x - q.x, p.z - q.z);
-    if (d > 3.2 || p.layer !== q.layer) continue;
-    // a dog at heel on its own walker's lead walks by the walker's legs: through it only nearer than life's group floor (0.6 x their
-    // radii; merge of 15 Oct: main's leash keeps a dog at heel, uk-rebuild's kept it 0.65 m off); a dog snapped onto its walker still is one
-    var heel = (p.lead && q.id === p.leader) || (q.lead && p.id === q.leader);
-    var floor = heel && Number.isFinite(p.r) && Number.isFinite(q.r) ? 0.57 * (p.r + q.r) : 0.85 * (body(p) + body(q));   // (5 % under the floor: its rounding)
-    if (worldLifeGhostLinked(p, q)) continue;                                         // a ghost pass: through each other by design
-    if (d < floor) out.push({ rule: 'overlap', a: p.id, b: q.id, t: t, msg: p.id + ' and ' + q.id + ' are ' + d.toFixed(2) + ' m apart (bodies through each other)' });
-    var key = p.id < q.id ? p.id + '|' + q.id : q.id + '|' + p.id;
-    if (p.wants && q.wants && (p.speed || 0) < 0.05 && (q.speed || 0) < 0.05 && d < 1.2) streak('s:' + key, 6, 'standoff', p, q, p.id + ' and ' + q.id + ' both want to move and stand ' + d.toFixed(2) + ' m apart');
-    if (person(p) && p.obj === q.obj && p.variant != null && p.variant === q.variant && (p.outfit == null || q.outfit == null || p.outfit === q.outfit) && d < 3) {
-      var vp = Math.hypot(p.vx || 0, p.vz || 0), vq = Math.hypot(q.vx || 0, q.vz || 0);
-      var same = (vp < 0.2 && vq < 0.2) || (vp >= 0.2 && vq >= 0.2 && ((p.vx || 0) * (q.vx || 0) + (p.vz || 0) * (q.vz || 0)) > 0.5 * vp * vq);
-      if (same) streak('c:' + key, 8, 'clone', p, q, p.id + ' and ' + q.id + ' look the same (' + p.obj + ' #' + p.variant + ') side by side');
-    }
-  }
-  for (var k in mem) if (!live[k]) delete mem[k];
-  return out;
-}
-/** A record (worldAgents) whose alpha is below 1 for a fade in or out, not only for a ghost pass (alpha = min(fade, 1 - 0.55 x ghost)). */
-function worldLifeFading(a) {
-  if (!a || a.alpha == null || !(a.alpha < 1)) return false;
-  var g = +a.ghost > 0 ? +a.ghost : 0;
-  return a.alpha < 1 - WORLD_LIFE_GHOST.fade * g - 0.01;
-}
 /** Two records in a ghost pass with each other (the checkers' one test: both ghosted over 0.15 and linked to each other). */
 function worldLifeGhostLinked(a, b) {
   if (!a || !b || !(+a.ghost > 0.15) || !(+b.ghost > 0.15)) return false;
@@ -3958,15 +3901,6 @@ function _wlfIntent(a) {
   var g = a.goals ? a.goals[a.gi] || null : null;
   if (!g) return a.kind === 'boat' ? 'travel' : 'stay';
   return g.go != null || g.leave != null || g.follow != null || g.meet != null ? 'travel' : 'stay';
-}
-/** The dog leads: [{ id, a: walker id, b: dog id, len, ax, ay, az, bx, by, bz }] (the hand to the collar). */
-function worldLifeLeads(life) {
-  var out = [];
-  for (var i = 0; i < life.leads.length; i++) {
-    var l = life.leads[i], A = life.byId.get(l.a), B = life.byId.get(l.b); if (!A || !B) continue;
-    out.push({ id: l.id, a: l.a, b: l.b, len: l.len, ax: A.x, ay: A.y + A.hStand * 0.48, az: A.z, bx: B.x, by: B.y + B.hStand * 0.75, bz: B.z });
-  }
-  return out;
 }
 
 /* ---------- the systems runtime (Y1, Y2): life registers its brain, nav and move systems ---------- */

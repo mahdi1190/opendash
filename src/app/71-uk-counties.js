@@ -15,7 +15,6 @@
    the neighbour. Nothing here is personal or fetched.
      ukCountyNearest(lat, lon, maxKm=40)  {id, name, welcome, nation, region, town, km} | null
      ukCounty(id)                         the area record or null
-     ukCountiesIn(region)                 the areas of a pack region
      UK_REGIONS                           the 12 pack regions, in batch order
    ============================================================ */
 const UK_REGIONS = [
@@ -163,7 +162,6 @@ for (const [id, name, nation, region, towns, welcome] of _UK_ROWS) {
   }
 }
 function ukCounty(id) { return Object.prototype.hasOwnProperty.call(UK_COUNTIES, id) ? UK_COUNTIES[id] : null; }
-function ukCountiesIn(region) { return Object.values(UK_COUNTIES).filter(c => c.region === region); }
 function ukTowns() { return _UK_TOWNS.slice(); }
 /** The area of the nearest main town (within maxKm, default 40; the UK's box only), or null. */
 function ukCountyNearest(lat, lon, maxKm) {

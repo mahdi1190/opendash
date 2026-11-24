@@ -82,7 +82,6 @@
    get_home_layout, set_home_widget (server/actions/ops-home.mjs, queries-home.mjs); the server's
    copy of the rules is lib/home-topbar.mjs.
    ============================================================ */
-const _HOME_PO = { p1: 0, p2: 1, p3: 2, p0: 3 };
 const HOME_FOCUS_DEFAULTS = Object.freeze({ count: 5, pinned: true, p1: true, overdue: true, doing: true, planned: true, dueSoonDays: 3, streams: [] });
 const HOME_SIZES = Object.freeze(['s', 'm', 'l', 'full']);
 const HOME_SIZE_COLS = Object.freeze({ s: 4, m: 6, l: 8, full: 12 });
@@ -231,17 +230,6 @@ function _homeFmtMoney(n, cur) {
   try { return new Intl.NumberFormat(APP_CONFIG.locale || undefined, { style: 'currency', currency: cur || APP_CONFIG.currency || 'GBP', maximumFractionDigits: 0 }).format(n); }
   catch (e) { return String(Math.round(n)); }
 }
-function _homeDoneToday() {
-  const today = todayStr(); let n = 0;
-  for (const arr of Object.values(state.completionLog || {})) for (const ts of (arr || [])) if (Number(ts) && Clock.parts(Number(ts)).iso === today) n++;
-  return n;
-}
-
-/* ============================================================
-   WIDGET REGISTRY
-   The list hangs off a function declaration (hoisted with its body), so the
-   widget files, which load before this one, can register at load time.
-   ============================================================ */
 function homeWidgetDefs() { return homeWidgetDefs.list || (homeWidgetDefs.list = []); }
 function registerHomeWidget(def) {
   if (!def || typeof def.id !== 'string' || !def.id || typeof def.render !== 'function') throw new Error('registerHomeWidget needs {id, render}');
@@ -651,33 +639,6 @@ function _homeDragPill(el) {
   const it = getItem(el && el.dataset.id);
   if (!it) return '';
   return `<span class="hw-p ${escAttr(effPriority(it))}"></span><span class="sp-t">${esc(effTitle(it))}</span><span class="sp-k">${icon('calendar', 'i-xs')}Drop on a day</span>`;
-}
-
-/* ---------- task actions shared by the widgets (in place where we can, so it stays fluid) ---------- */
-function homeToggleSubtask(taskId, stId, cardEl) {
-  const cur = getSubtasks(taskId).slice();
-  const i = cur.findIndex(s => s.id === stId); if (i < 0) return;
-  cur[i] = Object.assign({}, cur[i], { done: !cur[i].done });
-  setOverride(taskId, 'subtasks', cur);         // saves; no full repaint
-  const nowDone = cur[i].done;
-  const doneN = cur.filter(s => s.done).length;
-  for (const scope of [cardEl, document.querySelector('.home-sheet')]) {
-    if (!scope) continue;
-    const li = scope.querySelector(`[data-st="${CSS.escape(stId)}"]`);
-    if (li) {
-      li.classList.toggle('done', nowDone);
-      const cb = li.querySelector('.cbx'); if (cb) { cb.classList.toggle('on', nowDone); cb.setAttribute('aria-checked', nowDone ? 'true' : 'false'); }
-      if (nowDone && window.Motion) Motion.animate(cb, [{ transform: 'scale(0.7)' }, { transform: 'scale(1.15)' }, { transform: 'scale(1)' }], { duration: 260, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
-    }
-    const bar = scope.querySelector('.hf-prog .progress > i, .hs-prog .progress > i');
-    const pg = scope.querySelector('.hf-prog'); if (pg) pg.title = doneN + ' of ' + cur.length + ' subtasks done';
-    if (bar) bar.style.setProperty('--pct', Math.round(doneN / cur.length * 100) + '%');
-    const num = scope.querySelector('.hf-prog .num, .hs-prog .num');
-    if (num) num.textContent = `${doneN}/${cur.length}`;
-  }
-  if (nowDone && doneN === cur.length && statusOf(taskId) !== 'done') {
-    toast('All subtasks done', { kind: 'ok', action: { label: 'Complete task', run: () => homeCompleteTask(taskId, document.querySelector(`.hf-card[data-id="${CSS.escape(taskId)}"]`)) } });
-  }
 }
 function homeAddSubtask(taskId, title) {
   const keep = `add-${taskId}`;

@@ -21,7 +21,6 @@
                             count: they are often the agenda, written before the meeting
                             (Meeting prep); the widget's own Save note sets wrapped.
      wuEndedText(min, dayDiff)  'just now', '12 min ago', '2 h ago', 'yesterday', '3 days ago'
-     wuSummary(n)           '1 meeting to wrap up' / '3 meetings to wrap up'
      wuFollowUpTitle(title) 'Follow up: <title>' (clipped to 120 characters)
      wuWorkdaysAfter(iso, n, days)   n working days after iso (days: 0 = Sunday; default Mon-Fri)
      wuDueChoices(today, days)       the follow-up's due-date choices [{key, label, date}]:
@@ -40,7 +39,6 @@
      wuThanksDraft(o)       {subject, body}: o = {title, first: [names], me, when ('today',
                             'yesterday' or a phrase like 'on Monday')}
    ============================================================ */
-const WU_WINDOWS = Object.freeze([0, 36, 168]);       // the settings' choices (today, 36 h, 7 days)
 
 function _wuMs(w) {
   if (w == null) return NaN;
@@ -103,11 +101,6 @@ function wuEndedText(min, dayDiff) {
   if (d <= 0 || m < 6 * 60) return Math.round(m / 60) + ' h ago';
   if (d === 1) return 'yesterday';
   return d + ' days ago';
-}
-
-function wuSummary(n) {
-  const k = Math.max(0, Math.round(Number(n) || 0));
-  return `${k} meeting${k === 1 ? '' : 's'} to wrap up`;
 }
 
 function wuFollowUpTitle(title) {

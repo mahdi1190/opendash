@@ -8,7 +8,6 @@
      animUkWhere()       {county record, town, km, source: 'travel' | 'weather'} | null
                          travel: where the travel feature places you now (a city
                          in GB, while away from home); else the weather town
-     animUkCountyId()    the county id for animCtx() (the packs' when() rules), '' when off
      animUkCheck(o)      the "Welcome to <county>" moment when the detected county
                          changes (remembered per device); o.first: also on the first
                          detection (just switched on)
@@ -136,12 +135,6 @@ function animUkWhere() {
   }
   _aukMemo = { at: now, key, where };
   return where;
-}
-function animUkCountyId() { try { const w = animUkWhere(); return w ? w.id : ''; } catch (e) { return ''; } }
-/** The county's signature opening (a UK pack item), or null when its region is not drawn yet or its pack is off. */
-function animUkSignature(id) {
-  const look = animLook();
-  return animItems({ slot: 'opening', look }).find(it => it.county === id && it.signature && !look.block.includes(it.ref)) || null;
 }
 
 /* ---------- the "Welcome to <county>" moment ---------- */

@@ -19,39 +19,22 @@
 @keyframes gsv-pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
 .gsv-av { display: inline-grid; place-items: center; width: var(--size, 28px); height: var(--size, 28px); border-radius: 50%; background: var(--bg-muted); font-size: 11px; font-weight: var(--weight-medium); flex: none; }
 
-.gsv-toolbar .gd-quick .btn.is-done .i { color: #e0466e; }
 .gsv-heart:not(:disabled):hover .i { color: #e0466e; }
-.gsv-stagebox { cursor: default; }
+
 .gsv-stagebox[data-mode="water"] .gd-plant { cursor: crosshair; }
-.gsv-stagebox .gd-view { gap: 0; }
-.gsv-stagebox .gd-view .gd-stage { border-radius: 0; }
-.gsv-stagebox .gd-cap { display: none; }
-.gsv-stagebox .gd-it { outline: none; transition: filter .15s; }
-.gsv-stagebox .gd-it.gsv-hot, .gsv-stagebox .gd-it:focus-visible { filter: brightness(1.12) drop-shadow(0 0 2px rgba(255, 255, 255, .95)) drop-shadow(0 0 5px rgba(255, 246, 200, .8)); }
+
 .gsv-stagebox[data-mode="water"] .gd-plant.is-thirsty { filter: drop-shadow(0 0 3px rgba(95, 179, 240, .9)); }
-.gsv-stagebox .gd-plant.gsv-watered { filter: saturate(1.15) brightness(1.04); }
-.gsv-over { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-.gsv-fig { position: absolute; height: 15%; transform: translate(-50%, -96%); display: flex; flex-direction: column; align-items: center; transition: left 1.2s cubic-bezier(.45, .05, .35, 1), top 1.2s cubic-bezier(.45, .05, .35, 1); z-index: 2; }
-.gsv-fig .fsc-fig { display: block; height: 100%; }
-.gsv-fig .fsc-fig svg { height: 100%; width: auto; display: block; }
-.gsv-fig.is-flip .fsc-fig { transform: scaleX(-1); }
-.gsv-fig.is-walking .fsc-fig { animation: gsv-step .32s ease-in-out infinite alternate; }
+
 @keyframes gsv-step { from { transform: translateY(0); } to { transform: translateY(-4%); } }
-.gsv-fig.is-flip.is-walking .fsc-fig { animation-name: gsv-step-flip; }
+
 @keyframes gsv-step-flip { from { transform: scaleX(-1) translateY(0); } to { transform: scaleX(-1) translateY(-4%); } }
-.gsv-tag { margin-top: 2px; padding: 0 6px; border-radius: var(--radius-full); background: color-mix(in srgb, var(--surface) 85%, transparent); font-size: 10px; line-height: 16px; color: var(--fg); white-space: nowrap; box-shadow: var(--shadow-xs); }
-.gsv-fig.is-me .gsv-tag { background: color-mix(in srgb, var(--sw-green) 20%, var(--surface)); }
-.gsv-wave { position: absolute; top: -18%; right: -30%; font-size: 16px; transform-origin: 70% 90%; animation: gsv-wave 1.2s ease-in-out 2 .6s both; }
+
 @keyframes gsv-wave { 0%, 100% { transform: rotate(0); opacity: 1; } 25% { transform: rotate(18deg); } 75% { transform: rotate(-12deg); } }
-.gsv-status:empty { display: none; }
-.gsv-fx { position: absolute; transform: translate(-50%, -100%); z-index: 3; }
-.gsv-fx.is-water svg path { animation: gsv-drop .9s ease-in both; animation-delay: calc(var(--i) * 70ms); }
+
 @keyframes gsv-drop { from { transform: translateY(-10px); opacity: 0; } 25% { opacity: 1; } to { transform: translateY(22px); opacity: 0; } }
-.gsv-fx-h { position: absolute; left: 0; top: 0; display: block; animation: gsv-float 1.6s cubic-bezier(.2, .8, .3, 1) var(--d, 0ms) both; }
-.gsv-fx-e { font-size: 20px; line-height: 1; }
+
 @keyframes gsv-float { from { transform: translate(0, 0) scale(.5); opacity: 0; } 20% { opacity: 1; transform: translate(calc(var(--x) * .4), -14px) scale(1.05); } to { transform: translate(var(--x), -70px) scale(.9); opacity: 0; } }
 
-.gsv-side .card { padding: var(--space-3) var(--space-4); }
 .gsv-card-s .gd-h3 { margin-top: 0; }
 .gsv-small { font-size: var(--text-xs); }
 .gsv-todo-l { list-style: none; margin: 0 0 var(--space-2); padding: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -181,24 +164,20 @@
 .gsb-bar { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
 
 /* ---------- motion: none under reduced motion, the Fun level Off, a hidden tab ---------- */
-.gsv-page.is-funoff .gsv-fx, .gsv-page.is-funoff .gsv-wave { display: none; }
+
 html.anim-paused .gsv-fig *, html.anim-paused .gsv-fx *, html.anim-paused .gsv-thumb-wait { animation-play-state: paused !important; }
 @media (prefers-reduced-motion: reduce) {
   .gsv-fig, .gsv-fig .fsc-fig, .gsv-fx, .gsv-fx *, .gsv-wave, .gsv-visited.is-new, .gsv-parcel-art, .gsv-thumb-wait, .gsv-gcard, .gsv-react-e { animation: none !important; transition: none !important; }
-  .gsv-fx { display: none; }
+  
 }
 html[data-motion="reduced"] .gsv-fig, html[data-motion="reduced"] .gsv-fig .fsc-fig, html[data-motion="reduced"] .gsv-wave, html[data-motion="reduced"] .gsv-visited.is-new,
 html[data-motion="reduced"] .gsv-parcel-art, html[data-motion="reduced"] .gsv-thumb-wait, html[data-motion="reduced"] .gsv-gcard, html[data-motion="reduced"] .gsv-react-e { animation: none !important; transition: none !important; }
 html[data-motion="reduced"] .gsv-fx { display: none; }
 
 /* 2.19.4: the Water tool says what it can do, and the plants a drink would help are clearly marked */
-.gsv-water-note { position: absolute; left: 50%; top: var(--space-3); transform: translateX(-50%); z-index: 3; display: inline-flex; align-items: center; gap: var(--space-2); max-width: min(92%, 640px); padding: 6px 14px; border-radius: var(--radius-full); background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(6px); box-shadow: var(--shadow-sm); font-size: var(--text-sm); color: var(--fg); pointer-events: none; }
-.gsv-water-note.is-ok { color: #1f5f93; }
-.gsv-water-note.is-ok .i { color: #3a8fd6; }
-.gsv-water-note.is-none { color: var(--fg-muted); }
-.gsv-water-note.is-nudge { animation: gsv-nudge .5s ease-out; }
+
 @keyframes gsv-nudge { 0%, 100% { transform: translateX(-50%); } 25% { transform: translateX(calc(-50% - 5px)); } 75% { transform: translateX(calc(-50% + 5px)); } }
-.gsv-stagebox .gd-plant.gsv-can { filter: drop-shadow(0 0 2px rgba(95, 179, 240, .8)); }
+
 .gsv-stagebox[data-mode="water"] .gd-plant.gsv-can { animation: gsv-can-pulse 1.4s ease-in-out infinite; cursor: pointer; }
 .gsv-stagebox[data-mode="water"] .gd-plant:not(.gsv-can) { opacity: .62; }
 @keyframes gsv-can-pulse { 0%, 100% { filter: drop-shadow(0 0 3px rgba(95, 179, 240, .85)) drop-shadow(0 0 7px rgba(95, 179, 240, .5)); } 50% { filter: drop-shadow(0 0 5px rgba(120, 200, 255, 1)) drop-shadow(0 0 14px rgba(95, 179, 240, .85)); } }

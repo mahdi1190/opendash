@@ -646,8 +646,6 @@ function gardenLandGrow(x, y) {
   return k;
 }
 function gardenLandAlways(x, y) { const c = gardenLandCell(x, y); return !!(c && c.always); }
-/** The whole cost of the land, for the numbers in docs/dev/GARDEN_PLAN.md. */
-function gardenLandTotals() { return { sections: GARDEN_LAND_SECTIONS.length, trails: GARDEN_LAND_TRAILS.length, features: GARDEN_LAND_FEATURES.length, land: GARDEN_LAND_SECTIONS.reduce((n, s) => n + s.buy, 0), built: GARDEN_LAND_FEATURES.reduce((n, f) => n + f.cost, 0) }; }
 /** Where the trees stand in the thickets: every so many cells, the same every time. For the drawing and nothing else. */
 function gardenLandTrees(o) {
   if (typeof gardenIslandActive === 'function' && gardenIslandActive()) {

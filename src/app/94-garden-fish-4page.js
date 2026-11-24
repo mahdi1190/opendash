@@ -6,7 +6,7 @@
      Tackle           rods, nets, bait and floats: buy, equip, see what each one does
      Showcase         your tank (6 fish) and bug case (9 bugs): what the aquarium, the case and the trophy board in your garden
                       show, and what friends see when they visit
-   Also the little card in the garden's side panel (gardenCatchSideCard): your rod, your bait, the casts you have left, the bugs about.
+   Also the little card in the garden's side panel: your rod, your bait, the casts you have left, the bugs about.
    ============================================================ */
 const _gdc = { zone: '', found: '', bag: 'bag', bagKind: '', tackle: 'now' };
 const GDC_TABS = Object.freeze([['bag', 'Bag and market', 'shopping-basket'], ['tackle', 'Tackle', 'store'], ['show', 'Showcase', 'trophy'], ['lake', 'The lake', 'waves'], ['hall', 'The lake hall', 'landmark']]);
@@ -14,18 +14,6 @@ function _gdcTab() { const t = _gdG().prefs.catchTab; return GDC_TABS.some(x => 
 function _gdcSetTab(t) { const a = document.activeElement; if (a && a.classList && a.classList.contains('gdb-search')) a.blur(); _gdG().prefs.catchTab = t; if (typeof saveUI === 'function') saveUI(); _gdc.pick = null; _gdc.q = ''; _gdxRepaintTab(); }
 function _gdcRar(r) { return GARDEN_RARITY[r] || GARDEN_RARITY.common; }
 function _gdcPill(r) { return r === 'common' ? null : _gdpEl('span', 'gd-rar gd-rar-' + r, _gdcRar(r).label); }
-function _gdcWhen(def, level) {
-  const bits = [], rgn = gardenRegionShort(def);
-  if (rgn) bits.push(rgn);
-  else if (def.cat === 'bug') bits.push(def.hab.map(h => ({ flower: 'flowers', lawn: 'the lawn', ground: 'the ground', tree: 'trees', water: 'the water’s edge', light: 'lights', woods: 'the woods' })[h] || h).slice(0, 2).join(' or '));
-  else bits.push(def.zone.map(z => (GARDEN_FISH_ZONES[z] || {}).label || z).slice(0, 2).join(' or '));
-  if (!rgn && def.cat !== 'bug' && def.zone.length === 1 && def.zone[0] === 'pond' && (level || 1) < 7) bits.push('the pond opens at garden level 7');
-  if (def.tod && def.tod.length && def.tod.length < 3) bits.push(def.tod.map(t => ({ dawn: 'at dawn', day: 'by day', dusk: 'at dusk', night: 'at night' })[t]).join(' or '));
-  if (def.seasons && def.seasons.length) bits.push('in ' + def.seasons.join(', '));
-  if (def.rain) bits.push('when it rains');
-  if (def.lv > (level || 1)) bits.push(`from garden level ${def.lv}`);
-  return bits.join(' · ');
-}
 function _gdcGoto(tab) { return () => _gdcSetTab(tab); }
 function _gdcSay(r) { return _gdpSay(r); }
 
@@ -273,30 +261,6 @@ function _gdcShow(el, m) {
   row.appendChild(_gdpBtn('Fish book', { icon: 'fish', run: _gdcGoto('fish') }));
   row.appendChild(_gdpBtn('Bug book', { icon: 'bug', run: _gdcGoto('bugs') }));
   el.appendChild(row);
-}
-
-/* ---------- the card in the garden's side panel: the rod and the net you carry ---------- */
-function gardenCatchSideCard(m) {
-  const card = _gdpEl('section', 'card gdc-side');
-  const rod = gardenRod(), net = gardenNet(), bait = gardenBait();
-  const h = _gdpEl('div', 'gdc-side-h');
-  h.innerHTML = `<span class="gdc-side-art">${gardenCatchSvg('rod', rod.id, 36)}</span>`;
-  const t = _gdpEl('div', 'gdc-side-t');
-  t.appendChild(_gdpEl('b', null, 'Fishing and bugs'));
-  t.appendChild(_gdpEl('small', 'muted', `${rod.name} · ${net.name}`));
-  h.appendChild(t); card.appendChild(h);
-  const row = _gdpEl('label', 'gdc-baitrow'); row.appendChild(_gdpEl('span', 'muted', 'Bait'));
-  const sel = _gdpEl('select', 'control'); sel.setAttribute('aria-label', 'Bait');
-  for (const b of GARDEN_BAITS) { if (!b.own && gardenHas('bait:' + b.id) < 1) continue; const o = document.createElement('option'); o.value = b.id; o.textContent = b.own ? b.name : `${b.name} (${gardenHas('bait:' + b.id)})`; if (b.id === bait.id) o.selected = true; sel.appendChild(o); }
-  sel.onchange = () => { gardenGearEquip('bait', sel.value); sel.blur(); };
-  row.appendChild(sel); card.appendChild(row);
-  if (typeof gardenSetupQuick === 'function') gardenSetupQuick(card);
-  const n = typeof _gw !== 'undefined' && _gw.bugs ? _gw.bugs.size : 0;
-  const tip = _gdpEl('p', 'muted gdc-side-tip');
-  tip.textContent = m.tod === 'night' ? 'Night: eels, zander and the deep lantern fish are about. ' : m.rain.now ? 'Rain: the trout and the catfish are biting. ' : '';
-  tip.textContent += n ? `${n} bug${n === 1 ? '' : 's'} about: click one to creep up on it.` : (gardenFun() === 'off' ? 'Bugs rest while the Fun level is Off.' : 'Click the lake to fish. Bugs come out by day near flowers, and by night near lights.');
-  card.appendChild(tip);
-  return card;
 }
 /** A friend's showcase as a card on their visit page (null when they have none): their best fish with size and stars, their bugs, their gear. */
 function gardenCatchVisitCard(f, snap) {

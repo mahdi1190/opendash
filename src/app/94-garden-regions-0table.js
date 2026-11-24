@@ -152,8 +152,6 @@ function _grgSightTrail(s) {
   }
   return best;
 }
-
-function _grgHash(id) { return gardenHash('rg|' + id) >>> 0; }
 const _GRG_FISH_HOME = new Map(GARDEN_FISH_ONLY.map(f => [f.id, f.home])), _GRG_BUG_HOME = new Map(GARDEN_BUGS.map(b => [b.id, b.home]));
 /** Where this kind lives, or null for a find (a boot turns up in any water). */
 function gardenRegionHome(def) {
@@ -336,5 +334,3 @@ function gardenRegionBugCell(H, rnd, areas, free) {
   for (let i = 0; i < 10 && cells.length; i++) { const c = cells[Math.floor(rnd() * cells.length)]; if (free(c.x, c.y)) return { x: c.x + 0.5, y: c.y + 0.5 }; }
   return null;
 }
-/** For the throwaway check: is there a cell to stand on when this home is open? */
-function gardenRegionHomeCellsOpen(H, areas) { return H.t || H.p ? _grgHomeCells(H).filter(c => areas.includes(c.id)).length : 1; }

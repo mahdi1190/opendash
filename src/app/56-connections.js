@@ -151,39 +151,6 @@ function _connHelp(c, e, all) {
   return box;
 }
 
-function _connCard(c, all) {
-  const e = all[c.id] || { state: 'unknown' };
-  const card = _connEl('section', 'card conn-card');
-  card.dataset.conn = c.id;
-  card.classList.add('st-' + (e.checking ? 'checking' : (e.state || 'unknown')));
-  const head = _connEl('div', 'conn-head');
-  const ic = _connEl('span', 'conn-ic'); ic.innerHTML = _connMark(c.id, c.icon);
-  const t = _connEl('div', 'conn-titles');
-  t.append(_connEl('div', 'conn-name', c.name), _connEl('div', 'conn-sub', c.sub));
-  head.append(ic, t, _connStatusPill(e));
-  card.appendChild(head);
-  card.appendChild(_connEl('p', 'conn-text', c.text));
-  const un = _connEl('div', 'conn-unlocks');
-  un.appendChild(_connEl('span', 'conn-unlocks-l', e.state === 'ok' ? 'Unlocked' : 'Unlocks'));
-  for (const u of c.unlocks) { const ch = _connEl('span', 'chip' + (e.state === 'ok' ? ' chip-accent' : ''), null); ch.innerHTML = (e.state === 'ok' ? icon('check', 'i-xs') : icon('lock', 'i-xs')) + `<span>${esc(u)}</span>`; un.appendChild(ch); }
-  card.appendChild(un);
-  if (e.message && e.state !== 'ok' && !e.checking && e.status !== 'needs-claude') {
-    const m = _connEl('div', 'callout ' + (e.state === 'error' ? 'danger' : 'warn') + ' conn-msg');
-    m.innerHTML = icon(e.state === 'error' ? 'circle-alert' : 'info');
-    m.appendChild(_connEl('span', null, e.message));
-    card.appendChild(m);
-  }
-  const help = !e.checking && _connHelp(c, e, all);
-  if (help) card.appendChild(help);
-  const foot = _connEl('div', 'conn-foot');
-  foot.appendChild(_connEl('span', 'conn-when', e.checking ? 'Checking now…' : `Checked ${_connAgo(e.checkedAt)}`));
-  const chk = uiButton({ label: e.checking ? 'Checking…' : 'Check again', icon: e.checking ? null : 'refresh-cw', kind: 'secondary', size: 'sm', run: () => connCheck(c.id) });
-  if (e.checking) { chk.disabled = true; chk.insertAdjacentHTML('afterbegin', '<span class="spinner"></span>'); }
-  foot.appendChild(chk);
-  card.appendChild(foot);
-  return card;
-}
-
 /* ---------- OpenDash MCP card ---------- */
 async function _connLoadMcp() {
   if (_connMcpLoading) return;

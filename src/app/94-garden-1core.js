@@ -518,15 +518,6 @@ function gardenWallet() {
 }
 /** What a purchase writes in the ledger: its price taken off, or nothing while the coins never run out. */
 function _gdCost(n) { return _gdG().inf === 1 ? 0 : -n; }
-/** The coin counter that never runs out. A switch on this computer's own garden (nothing about it goes to a friend: a visit shows the visitor's own wallet and snapshots hold no coins).
- *  From the console: gardenInfinite(true) / gardenInfinite(false); with no argument it says whether it is on. What is bought is still bought, the real balance underneath is left as it was. */
-function gardenInfinite(on) {
-  const g = _gdG();
-  if (on === undefined) return g.inf === 1;
-  if (on) g.inf = 1; else delete g.inf;
-  _gdSave();
-  return g.inf === 1;
-}
 function gardenHas(item) { const w = gardenWallet(); return Math.max(0, Math.floor(w.items[item] || 0)); }
 function _gdOwnsTool(id) { return gardenHas('tool:' + id) > 0; }
 

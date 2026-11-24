@@ -68,12 +68,6 @@ function recentlyClosedInView(item, view, today) {
   if (view === 'today') return _closedOn(item) === (today || todayStr());
   return !isArchived(item);
 }
-/** Number of open tasks in a view. */
-function taskViewCount(view) {
-  let n = 0;
-  for (const i of getAllItems()) if (matchesView(i, view)) n++;
-  return n;
-}
 
 /* ---------- search ---------- */
 // Operators: #tag  @person  p1..p3 / !p1  is:done|open|doing|wontdo|pinned|planned|inbox|waiting|blocked|someday

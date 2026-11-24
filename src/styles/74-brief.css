@@ -325,9 +325,7 @@ html.anim-off .brief.intro .kw { opacity: 1; }
 .tb-brief:hover { background: color-mix(in oklab, var(--sw-amber) 22%, var(--surface)); }
 
 /* ---------- Weekly review ---------- */
-.wk-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-4); }
-.wk-head h1 { font-size: 28px; line-height: 34px; letter-spacing: -0.02em; font-weight: 650; margin: var(--space-1) 0 var(--space-0-5); }
-.wk-head p { margin: 0; }
+
 .wk-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: var(--space-5); align-items: start; }
 .wk-rail { list-style: none; margin: 0; padding: 0; position: sticky; top: 68px; display: flex; flex-direction: column; gap: var(--space-0-5); }
 .wk-r button { display: flex; align-items: center; gap: var(--space-2); width: 100%; padding: var(--space-2) var(--space-2); border: 0; border-radius: var(--radius-md); background: none; color: var(--fg-muted); font: inherit; font-size: var(--text-sm); text-align: left; cursor: pointer; }

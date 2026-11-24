@@ -220,9 +220,7 @@ html.anim-off .anim-pop, html.anim-off .anim-burst, html[data-motion="reduced"] 
 .ev-scene:focus-visible { box-shadow: 0 0 0 2px var(--focus-ring); }
 
 /* Settings > Animations */
-.anim-gallery-h { display: flex; align-items: baseline; gap: var(--space-3); margin: var(--space-6) 0 var(--space-3); }
-.anim-gallery-h h3 { font-size: var(--text-md); font-weight: var(--weight-semibold); margin: 0; }
-.anim-gallery-h .control { width: 180px; }
+
 .anim-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: var(--space-2); }
 .ag-item { margin: 0; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-2); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); background: var(--surface); cursor: default; transition: border-color var(--m-fast), transform var(--m-fast); }
 .ag-item:hover { border-color: var(--border); transform: translateY(-1px); }

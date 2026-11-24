@@ -41,12 +41,6 @@ html[data-motion="full"] .ob-card { animation: ob-in var(--m-slow, 260ms) var(--
 .ob-chips .stream { font-size: var(--text-xs); }
 .ob-choices-2 .ob-choice { padding: var(--space-4); min-height: 96px; }
 
-.ob-conn { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border-subtle); }
-.ob-conn > .i { color: var(--fg-subtle); flex: none; }
-.ob-conn-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-0-5); font-size: var(--text-xs); line-height: var(--lh-xs); color: var(--fg-muted); }
-.ob-conn-t b { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--fg); }
-.ob-conn .btn { flex: none; }
-
 .ob-foot { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-4) var(--space-5); border-top: 1px solid var(--border-subtle); background: var(--bg-subtle); }
 .ob-foot .btn-primary .i { margin-left: var(--space-0-5); }
 

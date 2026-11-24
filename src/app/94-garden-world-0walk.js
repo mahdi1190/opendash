@@ -7,11 +7,8 @@
      gardenWorldStart(root) / gardenWorldStop()     the loop (one requestAnimationFrame, paused with the tab)
      gardenWorldClick(it, cell, ev, m)   a click on the stage: true when the world took it. You just click what you want: a building or a board
                                        (you walk to its door and it opens), a bug (you creep up and net it), the water (you cast), the ground (you walk there)
-   gardenWorldHover(ev, cell, it)      what is under the pointer: {kind: 'prop' | 'bug' | 'water', text}, for the status line and the cursor
-   gardenGoToProp(id)                  walk to a building's door and go in
      gardenWorldKey(ev, down)      WASD and the arrows walk, Space / E do the thing in front of you, + - Fit the camera
      gardenWalkToPoint(pt, then)   walk to a point (free movement: a straight line round whatever is in the way, not cell to cell), then `then`
-   gardenWalkTo(cell, then)      the same for the middle of a cell
      gardenWalkable(x, y)          can you stand here?
      gardenWorldFace(cell)         turn to face a cell (the tools use this: you look at what you water)
 
@@ -640,10 +637,6 @@ function _gwGridJobStep() {
   else { _gw.grid = grid; _gw.solids = solids; _gw.routeSnapshot = { grid, solids, state: J.state, inputs: J.inputs }; }
   _gw.grid.routeState = J.state; _gw.grid.landSig = gardenLevelLandSig(J.mm.level.level); _gw.grid.trunkSig = _gwTrunkSig() || ''; _gw.gridKey = J.key; _gw.grid.affordRev = J.ar; _gw.gridJob = null; _gw.gq = null; _gw.frameGrid = null;
   _gw.gridJobs = (_gw.gridJobs || 0) + 1; _gw.gridJobMs = Math.round(performance.now() - J.at);
-}
-function gardenWorldRouteGridStatus() {
-  const stats = _gw.routeGridStats || {};
-  return { coarseBuilds: stats.coarseBuilds || 0, preparations: stats.preparations || 0, reused: stats.reused || 0, preflightChecks: stats.preflightChecks || 0, preflightReused: stats.preflightReused || 0, boatPreparations: stats.boatPreparations || 0, physicalRevision: _gw.grid && _gw.grid.routeRevision || 0, anchors: _gw.grid && _gw.grid.anchors ? _gw.grid.anchors.size : 0, slicedBuilds: _gw.gridJobs || 0, slicedLastMs: _gw.gridJobMs || 0, slicedWorstSliceMs: _gw.gridJobWorst || 0 };
 }
 function _gwContinuousBoatGrid(m) {
   const land = _gwGrid(m || gardenHere(), true), to = gardenLakeOpenTo(), key = land.routeRevision + '|boat:' + to;
@@ -1343,7 +1336,6 @@ function gardenWalkToPoint(pt, then, o) {
   _gwEnsureLoop();
   return true;
 }
-function gardenWalkTo(cell, then, o) { return gardenWalkToPoint({ x: cell.x + 0.5, y: cell.y + 0.5 }, then, o); }
 function gardenWorldFace(cell) { if (!cell) return; _gwFacePt({ x: cell.x + 0.5, y: cell.y + 0.5 }); }
 function _gwFacePt(pt) { const dx = pt.x - (pt.x >= GARDEN_ROOM_X && _grm.me ? gardenRoomMeCell().x : _gw.px); if (Math.abs(dx) > 0.05) _gw.face = dx > 0 ? 1 : -1; _gwBody(); }
 /** Where on the stage (in cells, fractions allowed) a pointer event is. */
@@ -2023,7 +2015,6 @@ function _gwGoToProp(p) {
   if (Math.hypot((door.x - _gw.px) * GARDEN_WORLD.cellW, (door.y - _gw.py) * GARDEN_WORLD.cellH) < 56) { _gw.path = []; _gwOpenProp(p); return; }
   if (!gardenWalkToPoint(door, () => _gwOpenProp(p), { radius: 1.5 })) gameDeny(_gdp.svg && _gdp.svg.querySelector(`.gd-prop[data-prop="${p.id}"]`), { say: 'You cannot get to the door.' });
 }
-function gardenGoToProp(id) { const p = GARDEN_PROPS.find(x => x.id === id); if (p) _gwGoToProp(p); }
 /** Walk to whichever building does this (`act` in GARDEN_PROPS). */
 function gardenGoToAct(act) { const p = GARDEN_PROPS.find(x => x.act === act); if (p) _gwGoToProp(p); }
 /**
@@ -2098,16 +2089,6 @@ function gardenWorldPick(it, cell, ev, m) {
   const def = gardenArea(area), oc = m.occ.get(c.x + ',' + c.y);
   if (_gdpTool() === 'hand' && def && def.cats && def.cats.length && !oc && !(m.visit && m.visit.no.plant)) return { kind: 'spot', pt, cell: c };   // an empty spot in a bed: it offers planting right there
   return { kind: 'ground', pt, cell: c };
-}
-/** What is under the pointer: {kind, text} for a building, a bug or the water; null for anything else (plants are the page's own). */
-function gardenWorldHover(ev, cell, it) {
-  if (!_gw.on) return null;
-  _gw.hoverBug = '';
-  const k = gardenWorldPick(it || null, cell, ev, gardenHere());
-  if (k.kind === 'prop') return { kind: 'prop', id: k.prop.id, text: k.prop.name };
-  if (k.kind === 'bug') { _gw.hoverBug = k.bug.key; return { kind: 'bug', text: k.bug.def.name }; }
-  if (k.kind === 'water') return { kind: 'water', text: '' };
-  return null;
 }
 /** Walk up to a point and then do something; if you are already there, do it now. Returns false when there is no way there. */
 function gardenWalkAct(stand, fn, o) {

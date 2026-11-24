@@ -238,7 +238,6 @@ function _gdpWorldMount(container, view) {
 function _gdpWorldUnmount(keepOn) { if (window.GardenNative && GardenNative.active()) GardenNative.destroy(); if (typeof gardenDesignAbort === 'function') gardenDesignAbort(); document.documentElement.classList.remove('gd-immersive'); if (typeof toastHeldFlush === 'function') toastHeldFlush(); gardenHudReset(); gardenGameStop(); if (typeof gardenPopupClose === 'function') gardenPopupClose(); if (typeof gardenWorldStop === 'function') gardenWorldStop(keepOn); _gdp.entry = ''; _gdp.root = null; _gdp.svg = null; _gdp.press = null; _gdp.sweep = null; _gdpCarryEnd(); }
 /** Is the world what is on screen? Your garden, or a garden you are visiting. */
 function _gdpWorldView() { return state.view === 'garden' || (typeof gardenVisitOn === 'function' && gardenVisitOn()); }
-function _gdpBasketCount(m) { let n = 0; for (const [k, v] of Object.entries(m.wallet.items)) if (v > 0 && (k.startsWith('crop:') || k.startsWith('bq:') || k === 'honey')) n += v; return n; }
 /** Everything that shows the garden, brought up to date (the engine calls this after every change). */
 function _gdpRepaint() {
   if (_grm.on || _ee.on) { _gdp.owed = true; return; }   // nobody can see the stage from a room: going in saves a mark, and that alone redrew the whole garden, a quarter of a second, on the way in. It is done on the way out (_gwIndoors).
@@ -381,11 +380,6 @@ function _gdpPopOpen() {
   return !!_gdp.pop;
 }
 function _gdpRect(el, x, y, w, h) { if (!el) return; const W = GARDEN_WORLD; el.setAttribute('x', x * W.cellW + 1); el.setAttribute('y', W.sky + y * W.cellH + 1); el.setAttribute('width', Math.max(0, w * W.cellW - 2)); el.setAttribute('height', Math.max(0, h * W.cellH - 2)); }
-function _gdpFootOf(m, uid) {
-  const p = gardenPlantById(m, uid); if (p) return { x: p.x, y: p.y, w: p.fp, h: p.fp };
-  const d = gardenDecorById(m, uid); if (d) return { x: d.x, y: d.y, w: d.def.w || 1, h: d.def.h || 1 };
-  return null;
-}
 /** The selected plant or decoration glows (no square round its tiles). */
 function _gdpPaintSel(m) {
   if (!_gdp.svg) return;
@@ -864,33 +858,6 @@ function _gdpBindKeys() {
 /* ---------- bits the panels and the hotbar use ---------- */
 /* Other parts of the garden still call this after a change: it has nothing of its own to paint now, the HUD does it all. */
 function _gdpPaintSide() { if (_gdp.root && _gdp.root.isConnected) gardenHudPaint(gardenHere()); }
-function _gdpToday(el, m) {
-  const rows = gardenDailyTasks(m), qs = gardenWeekQuests(m);
-  const h = _gdpEl('div', 'gd-today-h');
-  h.appendChild(_gdpEl('b', null, 'Goals'));
-  const note = _gdpWeatherNote(m); if (note) h.appendChild(_gdpEl('span', 'gd-wx muted', note));
-  el.appendChild(h);
-  const list = _gdpEl('div', 'gd-tasks');
-  const task = (t, week) => {
-    const c = _gdpEl('div', 'gd-task' + (t.done ? ' is-done' : ''));
-    const pct = Math.round(t.have / t.n * 100);
-    c.innerHTML = `<span class="gd-ring" style="--p:${pct}">${icon(t.done ? 'check' : t.def.icon)}</span><span class="gd-task-t"><b></b><small class="muted"></small></span>`;
-    c.querySelector('b').textContent = t.label;
-    const pay = week ? t.def.c : gardenDailyCoins(t.def);
-    c.querySelector('small').textContent = t.done ? `Done · +${pay} coins` : `${Math.min(t.have, t.n)} of ${t.n} · +${pay} coins${week ? ' · this week' : ''}`;
-    return c;
-  };
-  for (const t of rows) list.appendChild(task(t, false));
-  el.appendChild(list);
-  const doneQ = qs.filter(q => q.done).length;
-  const det = document.createElement('details'); det.className = 'gd-quests';
-  const sum = document.createElement('summary'); sum.textContent = `This week’s garden quests · ${doneQ} of ${qs.length}`;
-  det.appendChild(sum);
-  const ql = _gdpEl('div', 'gd-tasks'); for (const q of qs) ql.appendChild(task(q, true)); det.appendChild(ql);
-  if (_gdp.questsOpen) det.open = true;
-  det.addEventListener('toggle', () => { _gdp.questsOpen = det.open; });
-  el.appendChild(det);
-}
 function _gdpWeatherNote(m) {
   if (m.rain.now) return (m.rain.label || 'Rain') + ': the garden is being watered for you.';
   if (m.rain.snow) return 'Snow: everything is tucked up and resting.';
@@ -900,7 +867,6 @@ function _gdpWeatherNote(m) {
   if (m.ripe) return `${m.ripe} ready to pick.`;
   return { dawn: 'Early light over the garden.', day: 'A calm day in the garden.', dusk: 'The garden is settling for the evening.', night: 'The garden is asleep.' }[m.tod] || '';
 }
-function _gdpAgo(ms) { const h = ms / 3600000; return h < 1 ? 'within the hour' : h < 24 ? Math.round(h) + ' hours ago' : Math.round(h / 24) + ' days ago'; }
 function _gdpEffectText(def) {
   const e = def.effect; if (!e) return '';
   return ({ coop: 'Hens come, and there are two eggs a day', play: 'Click it to use it', can: `+${e.n} water in the can every day`, sprinkler: 'Waters the cells around it every morning', pond: 'Frogs and dragonflies come to it', birds: 'Birds come to visit', bugs: 'Ladybirds and bees move in', hedgehog: 'A hedgehog may come at dusk', hive: 'Honey every two days while three flowers bloom', compost: 'One bag of fertiliser a day', light: 'Glows at night; moths and bats come', sit: 'A seat: someone’s cat may borrow it', show: 'Shows your best catches; friends see it when they visit', luck: 'Brings luck: rare finds come a little more often', wish: 'One wish a day (a coin in, sometimes a seed back)', cold: 'Plants beside it grow as if it were their season', scare: 'A little extra at harvest nearby', shed: 'A place for your tools', hedge: 'A wren may move in' })[e.kind] || '';

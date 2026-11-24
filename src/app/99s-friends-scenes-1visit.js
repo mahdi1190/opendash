@@ -34,7 +34,6 @@
    PUBLIC API
      friendsScenesWalkBy()          a friend who is around walks through the largest scene playing now (the palette
                                     command 'Friends: walk by in this scene'); explains in a toast when one cannot
-     friendsScenesVisits()          the visits now [{friend, scene, d, T, tau, mode}] (ids and numbers: debugging)
    Private names: _fsv*.
    ============================================================ */
 const FSV = Object.freeze({
@@ -548,9 +547,6 @@ async function friendsScenesWalkBy() {
   const n = await _fsvStartSoon(hosts[0], friends, true);
   if (!n) toast('There is no clear path across this scene for a walker. Try another scene.', { icon: 'users' });
   return n;
-}
-function friendsScenesVisits() {
-  return _fsv.visits.map(V => ({ friend: V.friendId, scene: V.cid, d: Math.round(V.d * 10) / 10, T: Math.round(V.T * 10) / 10, tau: V.now && V.t0 != null ? Math.round((V.now.t - V.t0) * 10) / 10 : null, mode: V.now && V.now.a ? V.now.a.mode : 'waiting' }));
 }
 
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {

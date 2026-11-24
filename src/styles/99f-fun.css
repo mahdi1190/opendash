@@ -25,13 +25,9 @@
 .fun-duo.is-lit .i { animation: fun-flicker 1.6s ease-in-out infinite; transform-origin: 50% 90%; }
 .fun-duo.is-big { margin-top: var(--space-1-5); align-self: flex-start; }
 @keyframes fun-flicker { 0%, 100% { transform: scale(1) rotate(0); } 30% { transform: scale(1.12, 1.05) rotate(-4deg); } 60% { transform: scale(0.96, 1.08) rotate(3deg); } }
-.fun-costume { font-size: var(--text-xl); margin-left: auto; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.15)); }
-.fun-giftbadge { display: inline-flex; align-items: center; gap: var(--space-0-5); margin-left: auto; padding: var(--space-0-5) var(--space-1-5); border: 0; border-radius: var(--radius-full); background: color-mix(in srgb, #e03131 12%, var(--surface)); cursor: pointer; font-size: var(--text-lg); animation: fun-wiggle 2.4s ease-in-out infinite; }
-.fun-costume + .fun-giftbadge { margin-left: var(--space-1); }
-.fun-giftbadge .num { font-size: var(--text-xs); font-weight: 650; color: #c92a2a; }
-.fun-giftbadge:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
 @keyframes fun-wiggle { 0%, 80%, 100% { transform: rotate(0); } 84% { transform: rotate(-12deg); } 88% { transform: rotate(10deg); } 92% { transform: rotate(-6deg); } 96% { transform: rotate(4deg); } }
-.fun-wavebtn .fun-e { font-size: var(--text-lg); }
+
 .fr-fhero-a .btn .fun-e { font-size: var(--text-lg); margin-right: var(--space-0-5); }
 
 /* ---------- themes: friend cards, a friend's page, shared spaces (friendship level rewards) ---------- */
@@ -68,13 +64,8 @@
 .fun-feed-act { margin-left: var(--space-1-5); flex: none; }
 
 /* ---------- the friend actions popover ---------- */
-.fun-pop { min-width: 260px; padding: var(--space-1); }
-.fun-pop-i { display: flex; align-items: center; gap: var(--space-2); width: 100%; padding: var(--space-1-5) var(--space-2); border: 0; border-radius: var(--radius-sm); background: none; color: var(--fg); text-align: left; cursor: pointer; }
+
 .fun-pop-i:hover:not(:disabled), .fun-pop-i:focus-visible { background: var(--hover, rgba(0, 0, 0, 0.05)); outline: none; }
-.fun-pop-i:disabled { opacity: 0.5; cursor: default; }
-.fun-pop-i .fun-e { font-size: var(--text-xl); width: 26px; text-align: center; }
-.fun-pop-t { display: flex; flex-direction: column; min-width: 0; }
-.fun-pop-t .muted { font-size: var(--text-xs); }
 
 /* ---------- gift boxes (drawn: no pictures) ---------- */
 .fun-box { --s: 64px; --w1: #e03131; --w2: #ffd43b; --pat: none; position: relative; display: inline-block; width: var(--s); height: var(--s); flex: none; }

@@ -21,8 +21,7 @@
    v1 scenes: the pass applies only with fx { atmos: 2 } (shading and rim; the v1 layer haze stays) or fx { weather: 2 } (fog banks).
 
    For builder D (the flow pass): sceneHeadlightSprite(k, view) -> { head, tail } pre-rendered light sprites
-   ({ c, x0, y0, w, h }: device px, the top-left offset from the lamp anchor), sceneHeadlightDraw(ctx, spr, X, Y, dir, alpha),
-   sceneLitSpillSprite(k, lenM) (the moving spill strip of a lit tram, train or bus).
+   ({ c, x0, y0, w, h }: device px, the top-left offset from the lamp anchor).
    Private names: _scat* (shared with 70-scene-1atmos.js; this file uses _scatP* / _scatB*).
    ============================================================ */
 const _SCATP_SHADE = new Set(['tree', 'building', 'structure', 'landmark', 'vehicle', 'car', 'bus', 'tram', 'train', 'bike', 'tractor', 'boat', 'person', 'cyclist', 'animal', 'animal-graze', 'animal-dog', 'rock']);
@@ -519,28 +518,6 @@ function sceneHeadlightSprite(k, view) {
     out = { head: { c, x0: -ax, y0: -ay, w: c.width, h: c.height }, tail: glow(0.45, '#ff2a1c', [[0, 0.9], [0.3, 0.45], [1, 0]]), k: kb };
   } else if (v === 'front') out = { head: pair(1.4, 0.7, '#fff6de', [[0, 1], [0.12, 0.8], [0.4, 0.25], [1, 0]]), tail: null, k: kb };
   else out = { head: null, tail: pair(1.4, 0.45, '#ff2a1c', [[0, 0.95], [0.25, 0.5], [1, 0]]), k: kb };
-  _scatPHead.set(key, out);
-  return out;
-}
-/** Draw one light sprite at the anchor (X, Y device px), mirrored for dir < 0, added ('lighter'). -> 1 draw (0 when nothing). */
-function sceneHeadlightDraw(ctx, spr, X, Y, dir, alpha) {
-  if (!spr || !spr.c) return 0;
-  const op = ctx.globalCompositeOperation, ga = ctx.globalAlpha;
-  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = alpha == null ? 1 : alpha;
-  ctx.setTransform(dir < 0 ? -1 : 1, 0, 0, 1, X, Y);
-  ctx.drawImage(spr.c, spr.x0, spr.y0, spr.w, spr.h);
-  ctx.globalCompositeOperation = op; ctx.globalAlpha = ga;
-  return 1;
-}
-/** The spill strip a lit tram, train or bus throws on the ground alongside (lenM long, about 1.6 m deep): anchor = its foot centre. */
-function sceneLitSpillSprite(k, lenM) {
-  const kb = typeof sceneScaleBucket === 'function' ? sceneScaleBucket(Math.max(0.5, k)) : k, len = Math.max(2, lenM || 12), key = 'spill|' + kb + '|' + Math.round(len);
-  let out = _scatPHead.get(key);
-  if (out) return out;
-  const w = len * kb, h = Math.max(2, 0.9 * kb), c = _scatPCanvas(w + 4, h), cx = c.getContext('2d');
-  const g = cx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(255,226,170,0.42)'); g.addColorStop(1, 'rgba(255,226,170,0)');
-  cx.fillStyle = g; cx.fillRect(2, 0, w, h);
-  out = { c, x0: -(w + 4) / 2, y0: 0, w: w + 4, h };
   _scatPHead.set(key, out);
   return out;
 }

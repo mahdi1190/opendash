@@ -208,8 +208,6 @@ function _wgdTone(cam, out, s, P, look, rnd, scr, W, H, n) {
     i++;
   }
 }
-/** Seeded small marks scattered by screen area (specks, ticks, leaves) inside a surface, where they are at least 0.6 units. */
-function _wgdScatter(cam, out, s, look, rnd, scr, W, H, perPx, kind, zMax) { _wgdRun(_wgdScatterSteps(cam, out, s, look, rnd, scr, W, H, perPx, kind, zMax)); }
 function* _wgdScatterSteps(cam, out, s, look, rnd, scr, W, H, perPx, kind, zMax) {
   const box = _wgdBox(scr), x0 = Math.max(0, box[0]), x1 = Math.min(W, box[2]), y0 = Math.max(cam.horizon + 2, box[1]), y1 = Math.min(H, box[3]);
   if (!(x1 > x0 && y1 > y0)) return;
@@ -240,12 +238,6 @@ function* _wgdScatterSteps(cam, out, s, look, rnd, scr, W, H, perPx, kind, zMax)
   }
 }
 const _WGD_COBBLE_TONES = Object.freeze(['#8f887b', '#a09787', '#7f786d', '#aaa292', '#968d7e', '#837b6f', '#9c8f7a', '#74706a']);
-/**
- * Cobbles along a strip surface: rows across the strip every `size` metres, each stone staggered and jittered, drawn FAR to NEAR so a near stone
- * covers the edge of the one behind it. Only the stones that read (>= 0.9 px wide and 0.4 px deep: about the first 22 m of a 1.7 m eye) are made;
- * a stone is its dark joint, the stone itself in one of eight tones (a seeded pick, so the lane never repeats) and, near, a pale catch of light.
- */
-function _wgdCobbles(cam, out, s, L, rnd, o) { _wgdRun(_wgdCobblesSteps(cam, out, s, L, rnd, o)); }
 function* _wgdCobblesSteps(cam, out, s, L, rnd, o) {
   const size = L.cobbles, near = _wgdNear(cam), hw = s.width / 2, path = s.path, cap = Math.max(400, Math.min(8000, (o && o.cobbleCap) || 7700)), W = (o && o.W) || 1600, H = (o && o.H) || 900;
   let acc = 0, made = 0;
@@ -288,8 +280,6 @@ function* _wgdCobblesSteps(cam, out, s, L, rnd, o) {
   }
   for (let i = groups.length - 1; i >= 0; i--) for (const m of groups[i]) out.push(m);
 }
-/** The marks of one surface by its look. */
-function _wgdSurfaceMarks(world, cam, s, look, L, o) { return _wgdRun(_wgdSurfaceMarksSteps(world, cam, s, look, L, o)); }
 /** The same, in steps (a yield every few lines or a few hundred marks: the bake's slices, 79-world-5frame.js). */
 function* _wgdSurfaceMarksSteps(world, cam, s, look, L, o) {
   const P = _wgdPoly(s), out = [], W = o.W || 1600, H = o.H || 900;

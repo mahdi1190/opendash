@@ -17,7 +17,6 @@
    Everything drawn here goes into the scene's 'actors' layer (<g class="gd-actors">), which the scene patch never touches; the reel
    is an HTML panel over the stage. State: _gw.fishing, _gw.reel, _gw.netting, _gw.bugs (94-garden-world-0walk.js declares _gw).
    ============================================================ */
-const NS_SVG = 'http://www.w3.org/2000/svg';
 let _gwFishHudNode = null;   // presentation only; never part of a fishing plan or snapshot
 function _gwActors() { if (_grm.on && _grm.game) return _grm.game; return _gw.svg ? _gw.svg.querySelector('.gd-actors') : null; }
 function _gwEl(tag, attrs) { return gardenSceneElement(tag, attrs); }
@@ -547,7 +546,6 @@ function _gwBugsSync(m) {
   for (const [k, b] of _gw.bugs) if (!keep.has(k)) { if (b.node && b.node.remove) b.node.remove(); _gw.bugs.delete(k); }
   _gw.bugsAt = performance.now();
 }
-function _gwBugFree(x, y) { return gardenWalkable(Math.floor(x), Math.floor(y)) || gardenIsWater(Math.floor(x), Math.floor(y)) && false; }
 function _gwBugBeachRoute(ax, ay, bx, by) {
   const W = GARDEN_WORLD, steps = Math.max(1, Math.ceil(Math.hypot((bx - ax) * W.cellW, (by - ay) * W.cellH) / 8));
   for (let i = 1; i <= steps; i++) { const t = i / steps, x = ax + (bx - ax) * t, y = ay + (by - ay) * t; if (!gardenBugBeachCell(x, y) || !gardenWorldFree(x, y, .08)) return false; }
@@ -655,18 +653,6 @@ function _gwBugNear(cx, cy, r) {
   let best = null, bd = r;
   for (const b of _gw.bugs ? _gw.bugs.values() : []) { const d = Math.hypot(b.x - cx, (b.y - (b.lift || 0) / GARDEN_WORLD.cellH - cy) * 1.3); if (d < bd) { bd = d; best = b; } }
   return best;
-}
-/** A click with the Net: on a bug, creep up and swing; on the ground, creep there. */
-function gardenNetClick(cell, ev, m) {
-  void m;
-  let wx = cell.x + 0.5, wy = cell.y + 0.5;
-  // use the exact point of the click when we can (a bug is small)
-  try { const svg = _gw.svg, ctm = svg.getScreenCTM(); if (ev && ctm && ev.clientX != null) { const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY; const p = pt.matrixTransform(ctm.inverse()), W = GARDEN_WORLD; wx = p.x / W.cellW; wy = (p.y - W.sky) / W.cellH; } } catch (e) { /* the cell will do */ }
-  const bug = _gwBugNear(wx, wy + 0.25, 1.15);
-  if (bug) { _gwNetChase(bug); return true; }
-  _gw.netting = null;
-  if (gardenWalkable(cell.x, cell.y) || _gwNearestFree(cell.x, cell.y, 4)) { gardenWalkTo(cell, null, { sneak: true, radius: 4 }); return true; }
-  return true;
 }
 /** How far a bug is from you, in cells (up and down squashed: a cell is shorter than it is wide). */
 function _gwBugDist(b) { return Math.hypot(b.x - _gw.px, (b.y - _gw.py) * 1.5); }

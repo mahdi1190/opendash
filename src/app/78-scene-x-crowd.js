@@ -32,8 +32,6 @@
        default sceneMotionFixed(C)), flows (the flow agents at t, else sceneFlowAgents), pre (Map actor -> its base place at t,
        the renderer's), cam (the v2 actors' camera), crowd: false (the base places only) }
      sceneXCrowdOn(C)          -> false when switched off (window.__sceneOpts.x.crowd === false, C.x.crowd === false, SCENE_X=off)
-     sceneXCrowdPairs(C, o)    -> { pairs, frames, near: [...] } person pairs closer than o.dist (0.55 m) over o.seconds (300) at
-                                  o.hz (4): the measure of this package (base vs resolved: o.crowd)
    Private names: _scxc*.
    ============================================================ */
 const SCENE_X_CROWD = Object.freeze({
@@ -362,50 +360,6 @@ function _scxcPlace(R, x, d, W, cam, fcam) {
   } else { const P = W.proj(x, d, R.h); R.X = P.X; R.Y = P.Y; }
   R.s = R.s * R.d / d;
   R.x = x; R.d = d;
-}
-
-/* ---------- the measure ---------- */
-/**
- * Person pairs closer than o.dist (0.55 m) over a loop: { frames, pairs (pair-frames), near (the first 20), offLayer (resolved points
- * off their layer's ground, where the base was on it), maxStep (the largest step over its base step plus speed x dt), maxExtra
- * (the largest step beyond what the base moved, m/s) }. o: { seconds 300, hz 4, crowd (false: the base places), dist }.
- */
-function sceneXCrowdPairs(C, o) {
-  o = o || {};
-  const T = o.seconds || 300, hz = o.hz || 4, dist = o.dist || 0.55, W = typeof sceneMotionWorld === 'function' ? sceneMotionWorld(C) : null;
-  const out = { frames: 0, pairs: 0, near: [], offLayer: 0, maxExtra: 0, ms: 0, movers: 0 };
-  if (!W) return out;
-  let prev = null;
-  for (let k = 0; k <= T * hz; k++) {
-    const t = k / hz, a0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    const recs = sceneXCrowdAt(C, t, o.L || null, { crowd: o.crowd });
-    out.ms += (typeof performance !== 'undefined' ? performance.now() : Date.now()) - a0;
-    out.frames++; out.movers = Math.max(out.movers, recs.length);
-    const ppl = recs.filter(r => r.layer === 'walk' && (r.cls === 'person' || r.cls === 'cyclist') && r.alpha > 0.3 && r.s > 0);
-    for (let i = 0; i < ppl.length; i++) for (let j = i + 1; j < ppl.length; j++) {
-      const A = ppl[i], B = ppl[j];
-      if (A.group && A.group === B.group) continue;
-      const dd = Math.hypot(A.x - B.x, A.d - B.d);
-      if (dd < dist && W.shown(A.x, A.d)) { out.pairs++; if (out.near.length < 20) out.near.push({ t, a: A.id, b: B.id, dist: Math.round(dd * 100) / 100, at: [Math.round(A.x * 10) / 10, Math.round(A.d * 10) / 10] }); }
-    }
-    const nav = new Map();
-    for (const R of recs) {
-      if (R.x === R.bx && R.d === R.bd) continue;
-      if (!nav.has(R.layer)) nav.set(R.layer, _scxcNav(C, W, _scxcActorsInfo(W, typeof sceneMotionFixed === 'function' ? sceneMotionFixed(C) : C.actors || []), R.layer));
-      const g = nav.get(R.layer);
-      if (g && sceneXNavSd(g, R.x, R.d) < 0 && sceneXNavSd(g, R.bx, R.bd) >= 0) out.offLayer++;
-    }
-    if (prev) for (const R of recs) {
-      const P = prev.get(R.id);
-      if (!P) continue;
-      const step = Math.hypot(R.x - P.x, R.d - P.d), base = Math.hypot(R.bx - P.bx, R.bd - P.bd);
-      out.maxExtra = Math.max(out.maxExtra, (step - base) * hz);
-    }
-    prev = new Map(recs.map(R => [R.id, R]));
-  }
-  out.ms = Math.round(out.ms / Math.max(1, out.frames) * 1000) / 1000;
-  out.maxExtra = Math.round(out.maxExtra * 100) / 100;
-  return out;
 }
 
 /* ---------- phase de-conflict (compile time) ---------- */

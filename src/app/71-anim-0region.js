@@ -18,7 +18,7 @@
    user is (the US, Asia, and every region added since). A region is DATA, never logic:
 
      src/app/71-anim-region-<id>.js            the config: animRegionDefine({...}) over the region's tables
-     src/app/71-anim-region-<id>-scenes-N.js   full-screen scenes: animRegionSceneAdd('<id>', {key, ...})
+     src/app/71-anim-region-<id>-scenes-N.js   full-screen scenes: <region>SceneAdd({key, ...}) (asiaSceneAdd, usSceneAdd)
      src/app/72-anim-pack-<id>-<group>.js      one pack per group: const B = REGION.builder('<group>'); ...
    (the legacy US and Asia files, 71-anim-us.js and 71-anim-asia.js, are thin configs over this file.)
 
@@ -114,8 +114,6 @@ function _arSceneStore(regionId, e) {
 function animRegion(id) { return ANIM_REGIONS.find(r => r.id === id) || null; }
 /** True when a pack id belongs to the region (the packs of a region are named '<id>-<group>'). */
 function animRegionOwns(regionId, packId) { packId = String(packId || ''); return packId === regionId || packId.startsWith(regionId + '-'); }
-/** Register a full-screen scene for a region: animRegionSceneAdd('asia', {key: 'country:JP', label, site, colour, mood, season, tags, svg}). Works before or after the region is defined. */
-function animRegionSceneAdd(regionId, e) { _arSceneStore(String(regionId), e); }
 /** Upgrades per region id (docs/dev/SCENE_ENGINE.md 16.2): { regionId: { key: up } }, and the keys upgraded more than once. */
 const _ANIM_REGION_UPGRADES = Object.create(null);
 const _ANIM_REGION_UPGRADE_DUPES = Object.create(null);
@@ -521,7 +519,7 @@ function animRegionDefine(cfg) {
 
 /* ---------- the full-screen scene kit (1600 x 900 openings, sliced to fill any screen) ----------
    Same toolkit as the Texas scenes (71-anim-texas-scenes.js), shared by every region (the US, Asia and the ones
-   added since; usSceneKit() / usSceneCss() in 71-anim-us.js are aliases). animSceneKit() returns the
+   added since; usSceneKit() in 71-anim-us.js are aliases). animSceneKit() returns the
    helpers (U fresh gradient ids, lin/linU/radU gradients, mv a moving group, ridge, canopy, cloud, streak, haze, rays,
    sun, stars, birds, shimmer, puffs, dots, lit, finish ...); animSceneCss() the motion classes (x-usdrift, x-uspar,
    x-usglide, x-usflap, x-usshim, x-uspuff, x-usmove, x-usbob, x-usglow, x-usrise, x-ussway, x-ussway2, x-usspin,

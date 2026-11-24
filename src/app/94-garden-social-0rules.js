@@ -24,7 +24,6 @@
      GSOC_BED / gsocBedPlantOk(def) / gsocBedState(el, def, now, season)
                          the co-op bed of a Together space (lib/friends/spaces.mjs part 'bed')
    ============================================================ */
-const GSOC_V = 1;
 const GSOC_REACTS = Object.freeze([
   Object.freeze({ id: 'lovely', e: '🌸', label: 'Lovely' }),
   Object.freeze({ id: 'sunny', e: '🌻', label: 'Sunny' }),

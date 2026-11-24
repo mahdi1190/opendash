@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.75.4] - 2026-11-24
+
+### Changed
+
+- A lighter app: about 350 unused functions and tables, 334 unused style rules, the old garden drawing bridge, the developer scene editor, old opening scenes, demo pictures and hand-drawn art that newer scenes replaced are gone, so the page is smaller and starts with less work. Nothing you use changes.
+
 ## [2.75.3] - 2026-11-24
 
 ### Added

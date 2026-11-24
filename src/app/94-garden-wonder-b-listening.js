@@ -170,11 +170,6 @@ function _wdelFrame(dt) {
     _wdelAttr(p, p.light, 'light', 'opacity', (pulse ? .65 + pulse * .35 : found ? .85 : .3).toFixed(2));
   }
 }
-/** Public observation of current world targets and already visible markings. */
-function gardenListeningWalkInfo() {
-  const m = gardenHere(), mask = _wdelMask(m), point = S => S ? { id: S.id, x: S.x, y: S.y, attached: !!S.node && S.node.isConnected } : null;
-  return { mask, restored: !!(mask & 8), visit: !!m.visit, phraseLength: _wdel.phrase, head: point(_wdel.head), posts: WD_LISTEN.map((r, i) => ({ name: r.name, step: mask & 1 << i ? r.step : null, found: !!(mask & 1 << i), ...point(_wdel.posts[i]) })), revision: _wdel.revision };
-}
 wdMod({
   id: 'listening-walk', fun: false, visit: true,
   begin(m) {

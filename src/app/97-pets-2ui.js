@@ -21,14 +21,6 @@ function _ptSec(title, ic, extra) {
   s.appendChild(secHead({ title, icon: ic, actions: extra ? [extra] : [] }));
   return s;
 }
-function _ptAge(born) {
-  const d = born ? _ptDays(born, _ptToday()) : 0;
-  if (d <= 0) return 'Together since today';
-  if (d < 14) return `${d} day${d === 1 ? '' : 's'} together`;
-  if (d < 60) return `${Math.round(d / 7)} weeks together`;
-  if (d < 730) return `${Math.round(d / 30.4)} months together`;
-  return `${Math.round(d / 365)} years together`;
-}
 
 /* ---------- the page ---------- */
 if (typeof registerSection === 'function') {
@@ -234,14 +226,6 @@ function _ptFeedNow(stage, after) {
   stage.appendChild(treat);
   setTimeout(() => treat.remove(), 900);
   setTimeout(() => { _ptRedrawStage(stage, g, stage._ptSize); petHeartsAt(stage); _ptSay(stage, 'Nom nom!', 1500); }, _ptMotionOk() ? 650 : 0);
-  if (after) after();
-}
-function _ptTeachNow(stage, t, after) {
-  const g = petGet(), r = petTeach(t.id);
-  if (!r.ok) { _ptDeny(stage, { say: r.msg }); return; }
-  if (r.already) return;
-  _ptPerform(stage, t.id, true);
-  toast(`${petName(g)} learned ${t.label.toLowerCase()}`, { icon: 'graduation-cap', action: { label: 'Undo', run: () => { petUnteach(t.id); if (after) after(); } } });
   if (after) after();
 }
 const _PT_TRICK_MS = { sit: 900, paw: 1400, spin: 1100, speak: 1600, roll: 1300, jump: 1100, dance: 2000, bow: 1400, moon: 2200, flip: 1300 };
@@ -520,12 +504,6 @@ function _ptJournalItem(e) {
   try { when = new Date(e.d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: e.d.slice(0, 4) === _ptToday().slice(0, 4) ? undefined : 'numeric' }); } catch (err) { /* the iso date */ }
   li.appendChild(_ptEl('span', 'pt-j-d muted', when));
   return li;
-}
-function _ptJournalList(list, g) {
-  const ul = _ptEl('ol', 'pt-journal');
-  if (!list.length) return emptyLine(`Days with ${petName(g)} will write themselves here.`);
-  for (const e of list) ul.appendChild(_ptJournalItem(e));
-  return ul;
 }
 
 /* ---------- the Home widget ---------- */

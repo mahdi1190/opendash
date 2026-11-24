@@ -29,7 +29,6 @@
    friendsOfferLockOut(deviceName)       after a device is removed from sync: "Lock it out" (Sync may call it)
    friendsPresenceShare(on, state?)      Online status on / off for everyone (Privacy's "Turn it on")
    friendsSetName(name)                  the name friends see (Profile's "Your name" keeps it in step)
-   frShellHeadOn(id) / frShellHeadMark(id)   the shared header draws this page's actions (see below)
    document 'opendash:identity-rotated'  {oldEd, newEd, role, source}: your keys were renewed (here or on another device)
 
    Every string from a friend is untrusted: this file and 96-friends-1ui.js
@@ -50,7 +49,6 @@ _fr.ready = new Promise((r) => { _fr.readyResolve = r; });
    control is ever lost (SIMPLIFY_PLAN.md P9). */
 const _frShellHead = new Set();
 function frShellHeadMark(id) { _frShellHead.add(String(id)); }
-function frShellHeadOn(id) { return _frShellHead.has(String(id)); }
 
 async function _frApi(path, body, opts) {
   const o = opts || {};

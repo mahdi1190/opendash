@@ -14,8 +14,7 @@
      state    priority 1: a signature opening (slot opening) and an element (slot symbol) per state
      city     priority 1.2: big city = a signature opening, small city = an element (symbol)
    A festival or the birthday (priority 2+) still wins the day.
-   The names the pack files and the scene files use (usPlace, usStateOf, usWhere, usBuilder, usSceneAdd, usSceneKit,
-   usSceneCss, US_SCENES) are one-line wrappers over the region, kept so those files need no edits.
+   The names the pack files and the scene files use (usPlace, usBuilder, usSceneAdd, usSceneKit) are one-line wrappers over the region, kept so those files need no edits.
    Guide: docs/dev/US_PACK.md. Gate: tests/anim-packs.test.mjs, tests/us-pack.test.mjs, tests/region-framework.test.mjs.
    ============================================================ */
 /** The 50 states: code -> [name, group]. */
@@ -150,17 +149,6 @@ const US_REGION = animRegionDefine({
 });
 /** The art place (a big or small city) for a ctx, {id, name, state, kind} or null. Travel wins (a trip to New York is the world pack's). */
 function usPlace(ctx) { return US_REGION.place(ctx); }
-/** The state code for a ctx ('' = not in the US, or travelling somewhere that is not a US place). Nearest table row wins. */
-function usStateOf(ctx) { return US_REGION.unitOf(ctx); }
-/** For the page (the opening sequence): where in the US, {id, name, state, stateName, kind} or null (Texas has its own pack). A town wins, else the state. */
-function usWhere(ctx) { return US_REGION.where(ctx); }
-/**
- * Full-screen scenes for the openings: US_SCENES['state:NY'] (a state's signature) or US_SCENES['place:buffalo'] (a big city),
- * filled by src/app/71-anim-us2-scenes-*.js through usSceneAdd(entry). An entry is {key, label, site, colour, mood, season,
- * tags, svg}; svg() returns the inside of a 1600 x 900 drawing built with usSceneKit(). usBuilder upgrades the matching
- * item to a full-screen one (full: true) and gives the pack usSceneCss().
- */
-const US_SCENES = US_REGION.scenes;
 function usSceneAdd(e) { US_REGION.sceneAdd(e); }
 /**
  * A builder for a US pack file: const B = usBuilder('northeast'); B.state('NY', 'signature', {...}); B.place('buffalo', {...});
@@ -170,4 +158,3 @@ function usSceneAdd(e) { US_REGION.sceneAdd(e); }
 function usBuilder(group) { const b = US_REGION.builder(group); b.state = b.unit; return b; }
 /** The full-screen scene kit and its css (animSceneKit / animSceneCss in 71-anim-0region.js): kept under their old names for the scene files. */
 function usSceneKit() { return animSceneKit(); }
-function usSceneCss() { return animSceneCss(); }

@@ -15,7 +15,6 @@
                                              the parts over water, cut out of the shadow; the water mirror dims there instead);
                                              thin things from their real outline (sil); movers only while visible; a mover on a
                                              deck casts onto the deck (it moves with the deck); a bridge deck shades what is under it
-     worldShadeAt(plan, x, z, o)          -> 0..1: how shaded a ground point is (under a bridge, in a tree's shadow); 0 on water
      worldLights(world, o)                -> [{ ref, part, kind, x, y, z, r, halo, src, col, on, pool?, beam?, agent? }] from LIBRARY
                                              GLOW PARTS only: windows per window by a seeded threshold against the sun's elevation
                                              (lit surfaces: src false, no halo), lamps with one pool each, head and tail lights of
@@ -326,19 +325,6 @@ function worldShadowPlan(world, cam, sun, o) {
   // the CW / CCW sign of the poly orientation does not matter for drawing; normalise dir to one shared direction for checks
   out.sunDir = S.kind ? [S.g[0], S.g[1]] : null;
   return out;
-}
-/** How shaded a ground point is now (0..1): the strongest shadow over it, 0 inside a hole (water never takes a shadow). */
-function worldShadeAt(plan, x, z, o) {
-  o = o || {};
-  let best = 0;
-  for (const s of plan || []) {
-    if (o.kinds && !o.kinds.includes(s.kind)) continue;
-    if (o.on && s.on !== o.on) continue;
-    if (!_wlInPoly(x, z, s.poly)) continue;
-    if ((s.holes || []).some(h => _wlInPoly(x, z, h.poly))) continue;
-    if (s.op > best) best = s.op;
-  }
-  return best;
 }
 
 /* ---------- reflections: none here ---------- */

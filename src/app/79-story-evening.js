@@ -238,12 +238,6 @@ function storyFinishTheDay() {
   if (!String(state.view || '').startsWith('home:evening')) setView('home:evening');
   storyOpen('evening', { autoplay: true });
 }
-/** Whether Home should offer "Finish the day" now: from the evening hour (Settings, 17:00) until today's recap is saved. */
-function storyEveningDue() {
-  const hour = typeof briefPrefs === 'function' ? briefPrefs().eveningHour : 17;
-  if (Clock.parts(Clock.now()).h < hour) return false;
-  return !(state.reviews || []).some(r => r && r.kind === 'evening' && r.date === todayStrSafe());
-}
 
 /* ---------- the builder ---------- */
 storyRegisterBuilder('evening', (ctx) => {

@@ -1,21 +1,4 @@
 // World engine: character class tables (data only; docs/dev/WORLD_ENGINE.md 4; requirements A1-A11, Y4, M6).
-//
-// Each brain says what KIND of mover it is (how the life sim moves it), which nav layer it lives on, its radius (avoidance and
-// nav dilation), a fallback height range by age (the knowledge base's worldKbSize wins when loaded), its turn time (seconds for
-// 180 degrees: no instant turns), which drawn views exist ('five' = side, q-front, front, q-back, back + mirrors; 'side' = side
-// only + mirror), its personal space (metres, scaled by the setting), and a state table. A state with speed > 0 moves (it
-// follows its goal), speed 0 holds still and plays its clip; `pose` is what the body is doing (stand, sit, lie, swim, fly).
-// `still` names what a moving state shows when the mover is held up (never walking on the spot, A4).
-//
-// kinds: walker (people, dogs, grazers, ground birds: grid nav), swimmer (water birds), wader (herons), boat (under way),
-// moored (never moves), percher (perches and dives), flyer (circles), lane (cars, buses, cyclists on roads: traffic lanes),
-// rail (trains and trams: the timetable).
-// group: a formation spawned with the leader (A7): members { who, slot: [lateral, ahead] } and, for dogs, a lead length.
-// react: the engine's reactions (M6): flee (from a 'scare' event), lift (pigeons from near walkers), freeze / strike (herons),
-// ring (a cyclist on a shared path), feed (comes to a 'feed' event).
-
-var WORLD_STATES = ['walk', 'turn', 'idle', 'look', 'sit', 'chat', 'graze', 'swim', 'dabble', 'preen', 'dive', 'fly', 'stalk',
-  'freeze', 'strike', 'perch', 'ride', 'drive', 'stopped', 'wait', 'board', 'fish', 'feed', 'moored', 'cruise', 'hop'];
 
 var _WBR_PERSON = { layer: 'walk', kind: 'walker', r: 0.25, ages: { adult: [1.6, 1.9], child: [1.0, 1.4], elderly: [1.55, 1.82] }, views: 'five', space: 1 };
 function _wbrPerson(o) { return Object.assign({}, _WBR_PERSON, o); }
