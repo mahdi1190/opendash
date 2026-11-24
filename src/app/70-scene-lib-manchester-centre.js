@@ -1119,10 +1119,7 @@ const SCENE_MCR_SPEC = { library: [], extension: [], cenotaph: [], midland: [], 
 })();
 
 /* ---------- pass 2 (the review: the views were too empty): the ground's tonal variation, the near life from behaviour presets,
-   and the street furniture and street trees the squares and pavements really have ----------
-   SCENE_MCR_FILL.tone(cv, o)     irregular patches of the hard ground's own variation (worn, newer, wet, stained), by depth band
-   SCENE_MCR_FILL.life(data, sp)  ground movers from sceneBehave presets at their real size (stride-matched walk, pauses,
-                                  out and back so nothing teleports): [{ obj, preset, route: [[x, d], ...], seed, offset, variant }] */
+   and the street furniture and street trees the squares and pavements really have ---------- */
 (function () {
   if (typeof sceneObjDefine !== 'function' || typeof sceneDraw === 'undefined') return;
   const SD = sceneDraw, f1 = SD.f1;
