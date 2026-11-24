@@ -438,6 +438,49 @@ function _gsPick(M, pool) {
   const f = bag.shift(); M.bags[pool.key] = bag;
   return pool.files.find(x => x.file === f);
 }
+/* ---------- one shared timeline, so everyone in a garden hears the same song at the same moment ----------
+   Every slot's songs (sorted by name) play in rounds: each round is a shuffle seeded by the slot key and the round number, with
+   GS_SYNC_GAP seconds of quiet after each song. A round always lasts the same (the songs' lengths, from the server, plus the gaps),
+   so the round and the place in it follow from the clock alone: two players (or a friend visiting) work out the same song and the
+   same second with nothing sent between them, and someone joining mid-song comes in where everyone else is. */
+const GS_SYNC_GAP = 4;
+function _gsRoundOrder(names, key, round) {
+  if (names.length < 3) return names.slice();   // (one or two songs: they simply take turns)
+  const shuffle = (r) => { const b = names.slice(), rnd = gardenRand('gs-music|' + key + '|' + r); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+  const o = shuffle(round), prev = shuffle(round - 1);
+  if (o[0] === prev[prev.length - 1]) [o[0], o[1]] = [o[1], o[0]];   // never the same song twice in a row across rounds (the last place is untouched)
+  return o;
+}
+/** Where the shared timeline is for this pool at nowS (seconds): {x, at, left} for a song, {x: null, gapLeft} between songs; null when
+    a song's length is unknown (the page then shuffles on its own). */
+function _gsSchedule(pool, nowS) {
+  const fs = pool.files.slice().sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0));
+  if (!fs.length || fs.some(x => !(Number(x.dur) > 10))) return null;
+  const by = new Map(fs.map(x => [x.file, x])), R = fs.reduce((n, x) => n + Number(x.dur) + GS_SYNC_GAP, 0), round = Math.floor(nowS / R);
+  let off = nowS - round * R;
+  for (const f of _gsRoundOrder(fs.map(x => x.file), pool.key, round)) {
+    const x = by.get(f), d = Number(x.dur);
+    if (off < d) return { x, at: off, left: d - off };
+    off -= d; if (off < GS_SYNC_GAP) return { x: null, gapLeft: GS_SYNC_GAP - off };
+    off -= GS_SYNC_GAP;
+  }
+  return { x: null, gapLeft: 1 };
+}
+function _gsNowS() { return (typeof _gdNow === 'function' ? _gdNow() : Date.now()) / 1000; }   // clock-ok: the shared timeline runs on real time
+/** Put a playing song on the timeline: a seek when it has drifted more than a second and a half (a slow load, a stall, a resumed tab). */
+function _gsTrackAt(T, at) {
+  try { if (!T.ending && T.el.readyState >= 1 && !T.el.seeking && Math.abs(T.el.currentTime - at) > 1.5) T.el.currentTime = at; } catch (e) { /* not seekable yet */ }
+}
+function _gsMusicSync(c, t, pool, sch) {
+  const M = _gsMu(), T = M.cur, want = sch.x ? sch.x.file : '';
+  if (T && T.held) { if (T.file === want && T.key === pool.key && !T.el.error) { _gsTrackAt(T, sch.at); _gsTrackPlay(T, 2.5); return; } _gsTrackDrop(T); }
+  else if (T) {
+    if (T.file !== want || T.key !== pool.key) _gsTrackEnd(T, GSM.fadeOut);   // a new slot (or the timeline moved on): the next one comes in under the fade
+    else if (sch.left < GSM.endFade + 0.6) _gsTrackEnd(T, Math.max(0.3, Math.min(GSM.endFade, sch.left)));
+    else { _gsTrackAt(T, sch.at); return; }
+  }
+  if (!M.cur && sch.x && sch.left > GSM.endFade + 2) _gsTrackStart(c, sch.x, pool.key, sch.at);
+}
 function _gsMusicList() {
   const M = _gsMu();
   if (M.loading || performance.now() < M.listAt) return;
@@ -453,11 +496,12 @@ function _gsRamp(c, param, v, secs) {
   try { if (param.cancelAndHoldAtTime) param.cancelAndHoldAtTime(t); else { const now = param.value; param.cancelScheduledValues(t); param.setValueAtTime(now, t); } } catch (e) { /* fresh */ }
   param.linearRampToValueAtTime(v, t + Math.max(0.02, secs));
 }
-function _gsTrackStart(c, x, key) {
+function _gsTrackStart(c, x, key, at) {
   const M = _gsMu(), G = _gsn.g;
   const el = new Audio(); el.preload = 'auto'; el.loop = false; el.src = '/api/garden-music/' + encodeURIComponent(x.file);
   const T = { file: x.file, key, el, node: null, g: c.createGain(), trim: _gsTrim(x), held: false, ending: false, c };
   T.g.gain.value = 0;
+  if (at > 0.5) { const t0 = performance.now(); el.addEventListener('loadedmetadata', () => { try { el.currentTime = at + (performance.now() - t0) / 1000; } catch (e) { /* from the top */ } }, { once: true }); }   // (joining mid-song: where everyone else is)
   try { T.node = c.createMediaElementSource(el); T.node.connect(T.g); T.g.connect(G.mTr); } catch (e) { _gsTrackDrop(T); return null; }
   el.addEventListener('error', () => { if (M.cur === T) M.gapUntil = c.currentTime + 20; _gsTrackDrop(T); });   // (a file gone or broken: the next one in a while)
   M.cur = T; M.last = x.file; M.starts++;
@@ -504,7 +548,9 @@ function _gsMusic(c, t, s) {
   if ((s.room && s.room.music) || s.band || _gsBandOn()) { _gsMusicHold(false); return; }   // the music room and the band play their own
   if (!M.list) { _gsMusicList(); return; }
   if (M.cur && M.cur.c !== c) _gsTrackDrop(M.cur);   // (a new sound context: the song starts again on it)
-  const pool = _gsPool(M.list, gardenMusicSlot(), s.season), T = M.cur;
+  const pool = _gsPool(M.list, gardenMusicSlot(), s.season), sch = _gsSchedule(pool, _gsNowS());
+  if (sch) { _gsMusicSync(c, t, pool, sch); return; }
+  const T = M.cur;   // (a song without a known length: the old way, a shuffle of its own)
   if (T && T.held) { if (T.key === pool.key && !T.el.ended && !T.el.error) { _gsTrackPlay(T, 2.5); return; } _gsTrackDrop(T); }
   else if (T) {
     if (T.key !== pool.key) { _gsTrackEnd(T, GSM.fadeOut); M.gapUntil = t + 1; }   // a new slot: the next one comes in under the fade
@@ -522,7 +568,8 @@ function gardenMusicState() {
   const M = _gsn.mu, T = M && M.cur;
   return { slot: gardenMusicSlot(), hour: Math.round(_gsHour() * 100) / 100, listed: M && M.list ? M.list.map(x => x.file) : null, file: T ? T.file : '', key: T ? T.key : '', held: T ? T.held : false, paused: T ? T.el.paused : true,
     at: T ? Math.round(T.el.currentTime * 10) / 10 : 0, dur: T && Number.isFinite(T.el.duration) ? Math.round(T.el.duration) : 0, gain: T ? Math.round(T.g.gain.value * 1000) / 1000 : 0, trim: T ? Math.round(T.trim * 1000) / 1000 : 0,
-    fading: M ? M.old.length : 0, starts: M ? M.starts : 0, last: M ? M.last : '' };
+    fading: M ? M.old.length : 0, starts: M ? M.starts : 0, last: M ? M.last : '',
+    shared: (() => { try { const p = M && M.list ? _gsPool(M.list, gardenMusicSlot(), _gsn.season || '') : null, x = p && _gsSchedule(p, _gsNowS()); return x ? (x.x ? { file: x.x.file, at: Math.round(x.at * 10) / 10 } : { gap: Math.round(x.gapLeft * 10) / 10 }) : null; } catch (e) { return null; } })() };
 }
 
 /* ---------- loudness (ITU-R BS.1770: K-weighted, gated), for levelling the songs: no speakers needed ---------- */

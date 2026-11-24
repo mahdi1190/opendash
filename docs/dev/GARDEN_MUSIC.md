@@ -29,7 +29,11 @@ code's MIT licence (`assets/music/README.md`). The player is the music part of
   or a friend's when you visit their garden.
 - Files for the current season win. If the slot has none, its plain files play. If the slot has no
   files at all, it borrows from another slot: `late` borrows `night`.
-- It plays one song at a time and shuffles through the slot's songs, never the same one twice in a row.
+- Everyone hears the same thing: the slot's songs play on one shared timeline worked out from the clock (rounds of a seeded
+  shuffle, 4 s of quiet after each song, lengths from the server), so two players in a garden hear the same song at the same
+  second with nothing sent between them, and someone arriving mid-song joins where the others are. A song more than 1.5 s
+  off the timeline (a slow load, a resumed tab) is moved back onto it. Never the same song twice in a row. (A file whose length
+  the server cannot read, such as .ogg or .m4a, makes that slot fall back to a shuffle of its own.)
 - When a song ends, its last 4 s fade out, then 2.5 to 5 s of quiet, then the next song fades in over 4 s.
   When the slot changes, the old song fades out over 4 s and the new one comes in under it.
 - It pauses (after a 1.2 s fade) in a music room, while the band plays, when the tab is hidden, when you
