@@ -195,8 +195,7 @@ html[data-motion="reduced"] .pf-fav:hover { transform: none; }
 @media (prefers-reduced-motion: reduce) { .pfb .pfb-a, .pf-np-fx-shimmer, .pf-fav { animation: none; transition: none; } .pf-fav:hover { transform: none; } }
 
 /* ---------- Settings > Profile ---------- */
-.pf-set-top { display: grid; grid-template-columns: minmax(260px, 400px) 1fr; gap: var(--space-5); align-items: start; }
-.pf-set-side { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding-top: var(--space-3); }
+
 .pf-sws { display: flex; flex-wrap: wrap; gap: var(--space-1-5); max-width: 320px; }
 .pf-sw { position: relative; width: 26px; height: 26px; padding: 0; border: 2px solid var(--surface); border-radius: 50%; background: var(--sw); box-shadow: 0 0 0 1px var(--border); cursor: pointer; flex: none; }
 .pf-sw:hover { transform: scale(1.08); }
@@ -329,7 +328,7 @@ html[data-motion="reduced"] .pf-l-ban, html[data-motion="reduced"] .pf-l-font, h
 .pf-fr-card { max-width: 460px; }
 
 @media (max-width: 860px) {
-  .pf-set-top { grid-template-columns: 1fr; }
+  
   .pf-b { grid-template-columns: 1fr; }
   .pf-b-stage { position: static; }
   .pf-l { grid-template-columns: 1fr; }

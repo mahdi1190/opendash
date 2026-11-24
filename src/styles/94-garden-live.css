@@ -12,10 +12,7 @@
 @keyframes gll-float { 0% { transform: translateY(6px); opacity: 0; } 14% { opacity: 1; } 70% { opacity: 1; } 100% { transform: translateY(-22px); opacity: 0; } }
 .gll-ghost { fill: rgba(120, 220, 120, .28); stroke: #5fbf63; stroke-width: 1.4; stroke-dasharray: 4 3; pointer-events: none; }
 .gll-ghost.is-bad { fill: rgba(230, 80, 70, .24); stroke: #d24b3f; }
-.gsv-stagebox.is-gl-live { cursor: pointer; }
-.gsv-stagebox.gll-cant { cursor: not-allowed; }
-.is-gl-live .gsv-over .gsv-fig { display: none; }
-.is-gl-live .gsv-water-note, .gsv-page.is-gl-live .gsv-toolbar .gd-tools { display: none; }
+
 .gll-parcel, .gll-bug { pointer-events: none; }
 .gll-bug { animation: gll-flit 2.4s ease-in-out infinite alternate; }
 @keyframes gll-flit { from { translate: -5px 2px; } to { translate: 6px -5px; } }

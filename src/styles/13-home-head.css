@@ -30,7 +30,6 @@
 .bf-hero .hd-play .hd-i { width: 16px; height: 16px; fill: currentColor; stroke: none; }
 html[data-motion="reduced"] .bf-hero .hd-play, html.anim-off .bf-hero .hd-play { transition: none; transform: none !important; }
 
-
 /* ----- Ideas for today: a row of cards under the sentences ----- */
 .hd-ideas { display: flex; flex-direction: column; gap: var(--space-2); }
 .hd-ideas-h { display: flex; align-items: center; gap: var(--space-1-5); color: var(--fg-subtle); }
@@ -48,7 +47,7 @@ html[data-motion="reduced"] .hd-idea-row > *, html.anim-off .hd-idea-row > * { a
 
 @media (max-width: 640px) {
   .bf-hero .hd-play { height: 44px; font-size: var(--text-md); padding: 0 var(--space-5) 0 var(--space-4); }
-  .hd-pos { display: none; }
+  
   .home-tabs .rv-tab { padding: 0 var(--space-2); }
 }
 

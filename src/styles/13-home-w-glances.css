@@ -263,16 +263,15 @@
 
 /* ============= Shared with the Morning brief page (74-brief-ui.js reuses these
    classes from the old Home glances): keep them. ============= */
-.hw-list, .hp-list { list-style: none; margin: 0 calc(-1 * var(--space-2)); padding: 0; }
+
 .hw-row, .hp-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-1-5) var(--space-2); border-radius: var(--radius-md); cursor: pointer; }
 .hw-row:hover, .hp-row:hover { background: var(--bg-muted); }
 .hw-row:focus-visible, .hp-row:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.hw-ic { width: 24px; height: 24px; border-radius: 50%; background: var(--bg-muted); color: var(--fg-subtle); display: grid; place-items: center; flex: none; }
-.hw-body, .hp-body { min-width: 0; flex: 1; }
+
 .hw-t, .hp-n { font-size: var(--text-sm); line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hp-n { font-weight: var(--weight-medium); }
 .hw-s, .hp-s { font-size: var(--text-xs); color: var(--fg-subtle); line-height: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hp-next { font-size: var(--text-xs); color: var(--fg-muted); font-variant-numeric: tabular-nums; flex: none; }
+
 .hfin-row { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); }
 .hfin-n { font-size: var(--text-2xl); line-height: var(--lh-2xl); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-tight); font-variant-numeric: tabular-nums; }
 .hfin-l { font-size: var(--text-xs); color: var(--fg-subtle); }

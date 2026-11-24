@@ -73,9 +73,8 @@
 ::-webkit-scrollbar-thumb:hover { background-color: var(--fg-disabled); }
 
 /* ---------- a spotlight ring other modules can reuse (95-whats-new.js) ---------- */
-.wn-flash { outline: 2px solid var(--accent) !important; outline-offset: 3px; border-radius: var(--radius-sm); animation: wn-flash 1.6s var(--m-ease-out) 1 both; }
+
 @keyframes wn-flash { 0% { outline-color: transparent; } 20%, 70% { outline-color: var(--accent); } 100% { outline-color: color-mix(in oklab, var(--accent) 0%, transparent); } }
-@media (prefers-reduced-motion: reduce) { .wn-flash { animation: none; } }
 html[data-motion="reduced"] .wn-flash { animation: none; }
 
 /* ---------- 2.18: the area's tabs (level 1) and a page's sections (level 2), in the page header ----------

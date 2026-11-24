@@ -21,9 +21,7 @@
 .conn-page .acc-actions { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .conn-page .acc-card.st-warn { border-color: #e9dbb9; }
 [data-theme="dark"] .conn-page .acc-card.st-warn { border-color: #605035; }
-.conn-page .acc-empty { grid-column: 1 / -1; padding: 22px; border: 1px dashed var(--cp-border-strong); border-radius: var(--radius-md); background: var(--cp-subtle); }
-.conn-page .acc-empty h3 { margin: 0 0 4px; font-size: var(--text-md); }
-.conn-page .acc-empty p { margin: 0; color: var(--cp-muted); font-size: var(--text-sm); }
+
 @media (prefers-reduced-motion: reduce) { .conn-page .acc-feature { transition: none; } }
 @media (max-width: 720px) { .conn-page .acc-add, .conn-page .acc-add-link { flex: 1 1 100%; justify-content: center; margin-left: 0; } }
 

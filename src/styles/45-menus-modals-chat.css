@@ -6,16 +6,6 @@
 }
 [data-theme="dark"] .ctx-menu { border-color: transparent; }
 .ctx-menu.open { display: block; }
-.ctx-item {
-  display: flex; align-items: center; gap: var(--space-2); min-height: 30px; padding: 0 var(--space-2);
-  border-radius: var(--radius-sm); cursor: pointer; font-size: var(--text-sm); color: var(--fg);
-}
-.ctx-item .ctx-ic { width: 16px; display: inline-flex; justify-content: center; color: var(--fg-subtle); flex: none; }
-.ctx-item .ctx-lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ctx-item:hover { background: var(--bg-muted); }
-.ctx-item.danger, .ctx-item.danger .ctx-ic { color: var(--danger-ink); }
-.ctx-item.danger:hover { background: var(--danger-soft); }
-.ctx-sep { height: 1px; background: var(--border); margin: var(--space-1) calc(-1 * var(--space-1)); }
 
 /* showModal(html): the legacy modal, restyled to the v2 dialog look (8vh from the top and the md width,
    like openDialog). Nothing in the app opens it any more; new code uses openDialog() (11-ui-kit.js). */

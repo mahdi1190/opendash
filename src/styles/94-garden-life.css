@@ -169,4 +169,4 @@
 @media (prefers-reduced-motion: reduce) { .gl-found, .gl-note, .gl-found.is-out { animation: none; transition: none; } .gl-bob, .gl-bob-slow, .gl-twinkle, .gl-glint, .gl-gift, .gl-glow-soft, .gl-ripple, .gl-rainbow { animation: none !important; } }
 
 /* a friend's garden keeps its shape on the visit page (a size container has no height of its own unless it is given one) */
-.gsv-full .gsv-col { height: 66vh; min-height: 320px; }
+

@@ -89,13 +89,6 @@
 .fpc-anchor { position: fixed; width: 1px; height: 1px; pointer-events: none; }
 
 /* ---------- the hangout: full figures, with the avatar as a small badge at their side (96-friends-1ui.js hook) ---------- */
-.fr-bubble.has-fig { position: relative; gap: var(--space-1); }
-.fr-bubble.has-fig > .fsc-fig { --fsc-h: 60px; transition: transform 0.2s ease; }
-.fr-bubble.has-fig:hover > .fsc-fig, .fr-bubble.has-fig:focus-visible > .fsc-fig { transform: translateY(-3px); }
-.fr-bubble.has-fig .fr-avw { --size: 24px !important; position: absolute; top: 40px; left: calc(50% + 8px); padding: var(--space-0-5); }
-.fr-bubble.has-fig .fr-avw .pf-av, .fr-bubble.has-fig .fr-avw .fr-av { --pf-size: 24px !important; --size: 24px !important; }
-.fr-bubble.has-fig .fr-dot { min-width: 7px; min-height: 7px; right: -1px; bottom: -1px; }
-.fr-bubble.has-fig:hover .fr-avw, .fr-bubble.has-fig:focus-visible .fr-avw { transform: none; }
-@media (prefers-reduced-motion: reduce) { .fr-bubble.has-fig > .fsc-fig { transition: none; } .fr-bubble.has-fig:hover > .fsc-fig { transform: none; } }
+
 [data-motion="reduced"] .fr-bubble.has-fig > .fsc-fig { transition: none; }
 [data-motion="reduced"] .fr-bubble.has-fig:hover > .fsc-fig { transform: none; }

@@ -87,12 +87,6 @@
 .owd-remind { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
 .owd-ta { height: auto; padding: 8px 10px; resize: vertical; line-height: 1.4; }
 .owd-remind-a { display: flex; flex-wrap: wrap; gap: 6px; }
-.owd-who { display: flex; flex-direction: column; max-height: 44vh; overflow: auto; border: 1px solid var(--border-subtle); border-radius: 10px; }
-.owd-who-r { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--border-subtle); font-size: var(--text-sm); cursor: pointer; }
-.owd-who-r:last-child { border-bottom: 0; }
-.owd-who-r span { flex: 1; min-width: 0; }
-.owd-who-r small { color: var(--fg-muted); }
-.owd-who-r input { width: 16px; height: 16px; accent-color: var(--accent); flex: none; }
 
 /* the bank's question when someone paid for others */
 .owd-ask-who { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; flex-basis: 100%; padding-left: 30px; }

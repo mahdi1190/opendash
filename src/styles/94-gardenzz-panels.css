@@ -45,20 +45,11 @@
 .gpg-sell > .gd-sellrow { padding-block: 4px; flex-wrap: nowrap; }
 .gpg-sell .gd-sellrow-t b, .gpg-sell .gd-sellrow-t small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gpg-sell .btn { flex: none; }
-.gdb-head.card { flex-flow: row wrap; align-items: center; gap: 6px 12px; padding: 8px 12px; margin-bottom: 8px; }
-.gdb-head .gdb-progress { flex: 1 1 280px; }
-.gdb-head .gdb-search { flex: 0 1 260px; width: auto; min-height: 32px; height: 32px; font-size: 13px; }
-.gdb-head .gdb-filter { flex: 0 1 auto; gap: 6px; flex-wrap: nowrap; }
-.gdb-head .gdb-filter-l { min-width: 0; color: #5a4c34; }
-.modal.gd-popup .gdb-head .gd-chips { margin: 0; }
-.gdb-head .gdb-more { flex: 0 0 auto; }
-.gdb-head .gdb-more > summary { color: #5a4c34; font-weight: 600; }
+
 .gdb-head .gdb-more[open] { flex: 1 1 100%; flex-flow: row wrap; gap: 6px 14px; align-items: center; }
 .gdb-head .gdb-more[open] > summary { flex: 1 1 100%; }
 .gdb-head .gdb-more[open] > .gdb-moon { flex: 1 1 100%; }
-.gdb-grid.gpg-page { margin-bottom: 0; }
-.gpg-page > .gdb-card { justify-content: center; gap: 2px; padding: 8px 6px; }
-.gpg-page > .gdb-card .gdb-card-art { flex: 0 1 64px; min-height: 40px; }
+
 .gdc-top.gd-shop-top { margin-bottom: 8px; }
 .gdc-filters.gdc-bagbar { align-items: center; justify-content: space-between; gap: 6px 12px; margin-bottom: 6px; }
 .modal.gd-popup .gdc-bagbar .gd-chips { margin: 0; }
@@ -82,7 +73,7 @@
 @media (max-width: 760px) {
   .gs-looks { grid-template-columns: minmax(0, 1fr); }
   .gs-looks .gs-you { display: none; }
-  .gdb-head .gdb-filter { flex-wrap: wrap; }
+  
   .gpg-mid { min-width: 96px; }
   .gpg-what { display: none; }
   .gpg-arrow { width: 72px; }
@@ -159,13 +150,8 @@ html[data-theme="dark"] .gpg-mid, html[data-theme="dark"] .gpg-what { color: inh
 .gpg-gear > .gvb-card .gd-card-art svg, .gpg-gear > .gvb-var .gd-card-art svg { max-height: 54px; }
 .gpg-cards { columns: 2 380px; column-gap: 12px; }
 .gpg-cards > * { break-inside: avoid; margin: 0 0 12px; }
-.grg-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 12px; align-items: start; }
-.grg-wrap .grg-over { margin: 0; padding: 10px 12px; }
-.grg-wrap .grg-map-w { max-width: min(100%, calc((82vh - 190px) * 1.18)); }
-.grg-wrap .grg-list { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+
 .gs-looks .gp-prizes { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-@media (max-width: 860px) { .grg-wrap { grid-template-columns: minmax(0, 1fr); } }
-.grg-wrap .grg-map-w { max-width: min(100%, calc((82vh - 240px) * 1.18)); }
 .gpg-gear .gd-card-t small.muted { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; flex: none; }
 .gd-tile .gd-price.is-locked { white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .gpg-gear .gd-card-t small.gd-facts { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; flex: none; }
@@ -189,8 +175,7 @@ html[data-theme="dark"] .gpg-mid, html[data-theme="dark"] .gpg-what { color: inh
 /* nine tabs on one row, down to a small window */
 @media (max-width: 1160px) { .gdc-top .seg button { padding: 0 7px; gap: 4px; } .gdc-top .seg button .i { display: none; } }
 @media (max-height: 700px) {
-  .gdb-head .gdb-filter-l { display: none; }
-  .gdb-head.card { padding: 6px 10px; gap: 4px 8px; }
+
   .modal.gd-popup .seg button { height: 26px; }
 }
 @media (max-width: 760px) { .gcr-right { max-height: 34vh; } }
@@ -205,6 +190,6 @@ html[data-theme="dark"] .gcr .gpg-mid, html[data-theme="dark"] .gcr .gpg-what { 
 html[data-theme="dark"] .gcr .gpg-arrow.is-off { color: #a89c84; background: #3a3226; border-bottom-color: #2f2a20; }
 .modal.gd-popup .gcr-body.modal-b { scrollbar-gutter: auto; }
 .gd-alm-top { margin-bottom: 8px; }
-.grg-wrap .grg-card { padding-block: 6px 9px; }
+
 .modal.gd-popup .gd-rar-legendary, .modal.gd-popup .gd-rar.gvb-t-legendary { color: #75500a; }
 .gd-rar.gvb-t-lifetime { background: linear-gradient(90deg, #b8342a, #96590a, #2a7a44, #2a5fa8, #6a3aa8); }

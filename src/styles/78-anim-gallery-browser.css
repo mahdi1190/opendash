@@ -2,9 +2,6 @@
 /* Settings > Animations: find a place, compare its versions, then choose a look. */
 .apg { min-width: 0; gap: var(--space-5); }
 .apg > * { min-width: 0; }
-.apg .anim-gallery-h { flex-wrap: wrap; gap: var(--space-2) var(--space-3); }
-.apg .anim-gallery-h h3 { font-size: var(--text-lg); }
-.apg .anim-gallery-h > .muted { font-size: var(--text-sm); }
 
 .apg-search { display: grid; gap: var(--space-2); }
 .apg-search > label, .apg-field > span { color: var(--fg); font-size: var(--text-sm); font-weight: var(--weight-medium); }

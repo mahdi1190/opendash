@@ -27,20 +27,6 @@
 }
 
 /* ---------- Sidebar: first-class Finances entry ---------- */
-.sidebar-section.nav-feature-section { padding: 2px 0 6px; }
-.nav-item.nav-feature { padding-top: 8px; padding-bottom: 8px; font-weight: 600; font-size: 13.5px; }
-.nav-item.nav-feature .icon {
-  width: 26px; height: 26px; border-radius: 7px;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--m-money-tint); color: var(--m-money);
-  font-size: 14px; font-weight: 700; line-height: 1;
-  transition: background-color var(--m-base) ease, color var(--m-base) ease, transform var(--m-base) var(--m-ease-out);
-}
-.nav-item.nav-feature .label { display: flex; flex-direction: column; line-height: 1.2; }
-.nav-item.nav-feature .label small { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-top: 1px; }
-.nav-item.nav-feature.active .icon { background: var(--m-money); color: #fff; }
-.nav-item.nav-feature .chev { color: var(--text-dim); font-size: 14px; transition: transform var(--m-base) var(--m-ease-out), opacity var(--m-base) ease; opacity: 0.6; }
-.nav-item.nav-feature:hover .chev { transform: translateX(2px); opacity: 1; }
 
 /* ---------- Sidebar: gliding active indicator ---------- */
 .sidebar { position: relative; }

@@ -72,7 +72,6 @@
 .cdw.is-ghost { opacity: 0.35; border-style: dashed; box-shadow: none; }
 .cdw-add { width: 32px; height: 32px; border-radius: var(--radius-md); border: 1px dashed var(--border-strong); background: transparent; color: var(--fg-subtle); display: grid; place-items: center; cursor: pointer; flex: none; }
 .cdw-add:hover { color: var(--fg); background: var(--bg-muted); }
-.drop-line { width: 2px; height: 28px; border-radius: 2px; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-2); }
 
 /* ---------- content: main | detail ---------- */
 .content {
