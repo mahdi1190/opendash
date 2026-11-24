@@ -10,7 +10,8 @@
        and a when() that holds near that place (25 km, the same rule as every UK pack) in its months; priority 1, subtle.
    - NOT PROMOTED: the pack 'world-preview' with when() always false and priority 0, exactly as before (the user asked, 14 Oct,
      to see the test scenes in the gallery before they pass review): never in the rotation, the splash or the Home card.
-   WORLD_OPENING_ON = false turns every promotion off at once (everything back to gallery-only).
+   WORLD_OPENING_ON = false would turn every promotion off at once, but the superseded items no longer carry their old art
+   (removed in the 2.76 speed pass), so keep it true; demote one scene at a time and restore its old builder from git instead.
    ============================================================ */
 const WORLD_OPENING_ON = true;
 (function () {
