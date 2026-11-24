@@ -1123,50 +1123,6 @@ const SCENE_MCR_SPEC = { library: [], extension: [], cenotaph: [], midland: [], 
    SCENE_MCR_FILL.tone(cv, o)     irregular patches of the hard ground's own variation (worn, newer, wet, stained), by depth band
    SCENE_MCR_FILL.life(data, sp)  ground movers from sceneBehave presets at their real size (stride-matched walk, pauses,
                                   out and back so nothing teleports): [{ obj, preset, route: [[x, d], ...], seed, offset, variant }] */
-const SCENE_MCR_FILL = Object.freeze({
-  tone(cv, o) {
-    const C = SCENE_MCR.cam(cv), r = SCENE_MCR.rnd(o.seed || 1), by = {}, band = d => d < 15 ? 'fore' : d < 50 ? 'near' : d < 200 ? 'mid' : 'far';
-    const dMin = C.f * cv.eye / (900 - cv.horizon) * 0.95, R0 = v => Math.round(v);
-    const [x0, x1, d0, d1] = o.box, cols = o.cols || ['@tone.0', '@tone.1', '@tone.2', '@tone.3'], w = o.w || [1, 1, 1, 1];
-    const tw = w.reduce((a, b) => a + b, 0);
-    for (let i = 0; i < o.n; i++) {
-      // depth sampled so patches spread evenly on SCREEN (more per metre near the camera)
-      const t = r(), d = d0 * Math.pow(d1 / d0, t), x = x0 + (x1 - x0) * r();
-      if (d < dMin || Math.abs(x) > d * 1.25 + 4 || (o.clip && !o.clip(x, d))) continue;
-      // a run of 1 to 4 slabs (a replaced patch, a worn or wet run) along x: each slab 0.6 to 1.2 m by two thirds of that,
-      // growing with depth so the far ground does not turn to noise
-      const sx = (o.size || 1) * (0.6 + r() * 0.6) * Math.max(1, d / 16), sd = sx * (0.55 + r() * 0.2), nr = 1 + Math.floor(r() * 4), pts = [];
-      const x0r = x - sx * nr / 2;
-      for (let j = 0; j < nr; j++) { const a0 = x0r + j * sx + 0.04 * sx, a1 = x0r + (j + 1) * sx - 0.04 * sx, dj = d + (r() < 0.3 ? sd * (r() < 0.5 ? -1 : 1) : 0); pts.push([[a0, dj], [a1, dj], [a1, dj + sd * 0.92], [a0, dj + sd * 0.92]]); }
-      if (pts.some(q => q.some(p => p[1] < dMin || (o.clip && !o.clip(p[0], p[1]))))) continue;
-      let u = r() * tw, ci = 0; while (ci < w.length - 1 && u > w[ci]) { u -= w[ci]; ci++; }
-      const key = band(d) + '|' + cols[ci];
-      for (const q of pts) by[key] = (by[key] || '') + 'M' + q.map(p => { const z = C.p(p[0], p[1], 0); return R0(z[0]) + ' ' + R0(z[1]); }).join('L') + 'Z';
-    }
-    return Object.keys(by).map(k => { const [layer, fill] = k.split('|'); return { layer, d: by[k], fill }; });
-  },
-  life(data, specs) {
-    const B = typeof sceneBehave !== 'undefined' ? sceneBehave : null, out = [];
-    for (const s of specs) {
-      const G = B ? B.preset(s.preset || B.presetFor(s.obj)) : null;
-      const a = { obj: s.obj, ground: s.route, loop: 'pingpong', seed: s.seed };
-      const speedM = s.speedM || (G ? G.speedM : 0);
-      if (speedM) a.speedM = speedM;
-      for (const key of ['variant', 'k', 'offset']) if (s[key] != null) a[key] = s[key];
-      const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(s.obj, s.variant | 0, 'summer') : null;
-      if (B && G && G.stepM && sh && (sh.anim || []).some(h => h.kind === 'walk')) a.anim = { walk: Object.assign({ period: B.stride(G, speedM) }, G.deg ? { deg: G.deg } : {}) };
-      out.push(a);
-    }
-    return out;
-  },
-});
-
-/* street.mcr-bin          the city-centre litter bin: a black cylinder, the gold bands, the domed hood (v1 a pair: the
-                           recycling bin beside it)
-   street.mcr-cycle-stand  a run of Sheffield stands (v0 two stands one bike, v1 three stands two bikes, v2 an empty pair)
-   street.mcr-totem        a wayfinding monolith: the slim dark slab, the pale map panel, the coloured head band (no lettering)
-   tree.mcr-street-tree    a planted street tree (plane or lime) in its grille: a mottled trunk, an open limb frame with sky
-                           between, small leaf sprays at the twig ends; gold in autumn, bare with seed balls in winter */
 (function () {
   if (typeof sceneObjDefine !== 'function' || typeof sceneDraw === 'undefined') return;
   const SD = sceneDraw, f1 = SD.f1;
