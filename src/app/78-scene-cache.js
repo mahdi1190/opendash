@@ -29,10 +29,8 @@
      sceneStoreGetMany(keys)              Promise<(record | null)[]> in one transaction (touches their use times)
      sceneStoreHas(keys)                  Promise<Set<key>>         which of these keys are kept (reads the small meta store only)
      sceneStorePut(record, bytes)         Promise<boolean>         record: { k, ... }; evicts afterwards
-     sceneStoreDelete(key)                Promise<boolean>
      sceneStoreEncode(canvases)           Promise<Blob[]>          PNG blobs of canvases (a worker where it can)
      sceneStoreDecode(blobs)              Promise<ImageBitmap[]>
-     sceneStoreClear()  sceneStoreStats() Promise
    window.__sceneStoreOff = true (tests, tools) turns it off for the page.
    ============================================================ */
 const SCENE_STORE_DB = 'opendash-scenes', SCENE_STORE_FORMAT = 1;

@@ -35,7 +35,7 @@
    letters; the existing one still asks "Approve <name>?".
    Changes from the other computer arrive through live sync (86-live-sync.js
    shows "Updated by Work laptop"). The helpers syncAgo / syncStatusLine /
-   syncDeviceLines / syncScreen / syncPairView / syncKindLabel /
+   syncDeviceLines / syncScreen / syncPairView /
    syncCodeLines / syncSummary / syncPathLine / syncComputerRows /
    syncNeedsYou / syncRelayState / syncLiveLines / syncMainLines are pure.
    ============================================================ */

@@ -22,8 +22,6 @@
          Never throws: an unknown lookAt or a malformed camera falls back to a sensible default and is logged (block.log).
      worldCameraXform(spec, i) -> { toCam(x, z) -> [x, z], toPlace(x, z), facing(deg) -> camera facing, facingToPlace(deg),
          pts(list), heading, pos, cam, identity }   the place frame -> camera frame transform of camera i (sense calls it for Q7).
-     worldCameraSpec(spec, i, o) -> a camera-frame spec (v 3 shape: one `camera`, every point, polygon, path, footprint and
-         facing in camera metres) for camera i: the convenience the tools and the fallback build use (one world, 4 cameras).
      worldCameraBearing(cam, x, z) -> the compass bearing of a camera-frame point (backdrop bearings come from the camera, W5).
      worldScreenBox(ent, cam, o) -> { box: [X0, Y0, X1, Y1], z, near, persp } | null   what an entity covers on screen, from
          the view it is drawn with (appearance's worldViewOf): a long hull in perspective (its footprint prism), a sprite

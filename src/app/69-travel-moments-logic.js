@@ -13,7 +13,6 @@
    centred modal, once per country, with Esc and click-to-skip.
 
      TM_LEVELS                     off | reduced | subtle | standard | playful (MOTION 5)
-     TM_MOMENTS / TM_PARTS         the moments and the parts each one has
      TM_LEVEL_MAP                  part -> level -> variant (spec 4.5)
      trMomentLevelPlan(kind, lv)   {part: variant} for one moment at one level
      trMomentLevelOf(o)            the level from {osReduced, userReduced, attr, preview}

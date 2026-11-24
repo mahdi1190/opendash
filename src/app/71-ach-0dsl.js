@@ -43,7 +43,7 @@
      achEval(cond, F) -> {n, of, done}      F: {n(fact), s(series), m(kind), ctx: {today, weekStart, birthday},
                                             unlocked, hist} (71-ach-1facts.js achFactsView builds one)
      achDayMatches(iso, filter, ctx), achFullMoonDay(iso), achDayAdd, achWeekOf
-     registerAchievementPack({id, label, defs}) / achPack(id, defs)   add achievements (any file, any time;
+     registerAchievementPack({id, label, defs})   add achievements (any file, any time;
                                             before 71-achievements.js they wait for the core 78)
      achPacksAll(), achLintReport(), achLintSummary()   what loaded and what was skipped (and why)
      achCanonical(cond)                     sorted-key JSON (the duplicate check)

@@ -1,6 +1,6 @@
 /* ============================================================
    BRIEF + REVIEW: the places it shows up elsewhere (owner: Brief + Review).
-     - Home: briefHomeBanner(root), the central "Start my day" / "Finish the day"
+     - Home: the central "Start my day" / "Finish the day"
      - top bar: a "Start my day" / "Finish the day" pill (registerTopbarWidget)
      - sidebar (Home): Review entries; the palette: commands
      - Settings: "Home and stories" and "Animations" (gallery, keyword rules,

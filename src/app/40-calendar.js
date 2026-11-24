@@ -21,8 +21,6 @@
    googleCalendarUrl(o)       Google's prefilled "new event" page (no write access)
    calendarAttendeeSuggestions(), calendarEventsFor(person)  for People
    renderCalendarEvents()     Today page: today's schedule strip
-   renderCalendarView(el)     task views' "Calendar" mode: month grid of the
-                              tasks that view shows, drag to reschedule
    calCalendars()             the Google calendars (several through one account),
                               with the user's names/colours and visibility
    window.CalendarData        the same helpers for other modules / tools

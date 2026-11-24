@@ -19,7 +19,6 @@
    gardenFolkActRows(px, py) the prompt's rows for the folk in reach (94-garden-zz-7act-1core.js asks)
    gardenFolkTalkTo(id)      talk to them now (the prompt, a click)
    gardenFolkFeet()          [{ x, y, name }] for the collision view (yellow: solid to your feet, gardenFolkBlocks)
-   gardenFolkState()         the dev tools' and audit's view: [{ id, x, y, act, spot, inside, walking, on }]
    ============================================================ */
 const VFR_NEAR = 6, VFR_TICK = 0.1, VFR_MS_WALK = 3, VFR_MS_IDLE = 8;
 const _vfr = { on: false, day: '', key: '', homes: new Map(), plans: new Map(), V: new Map(), queue: [], book: null, ctx: null, t: 0, tickT: 0, teller: null, lastKey: '', seen: new Set(), stats: { tick: 0, tickMax: 0, plan: 0, planMax: 0, frames: 0, frameMax: 0 } };

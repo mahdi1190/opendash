@@ -20,12 +20,10 @@
                                       one saveData step + an Undo toast; undefined = keep,
                                       null = clear (see planApplySlot). o: {toast:false,
                                       reason, render:false}. -> true when something changed
-     planSlotFor(idOrItem)            the slot (planSlotOf) of an open task, else null
      planSlotsOn(iso, {includeDone})  [{item, slot}] that day, by start
      planSlotLabel(item)              '10:00–11:30', or ''
      planTaskInfo(item)               {id, title, minutes, due, priority, plannedFor, plannedTime,
                                       doing, pinned}: the shape homeGapCandidates / homeAutoPlan take
-     homePlanInputs(iso)              {events, plans, load} for homeDayCapacity
 
    Calendar drag (40-calendar.js / 42-calendar-views.js call these):
      planDragNote(e, id)              at dragstart: what is being dragged (a planned block,

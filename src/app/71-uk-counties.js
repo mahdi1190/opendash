@@ -15,7 +15,6 @@
    the neighbour. Nothing here is personal or fetched.
      ukCountyNearest(lat, lon, maxKm=40)  {id, name, welcome, nation, region, town, km} | null
      ukCounty(id)                         the area record or null
-     ukCountiesIn(region)                 the areas of a pack region
      UK_REGIONS                           the 12 pack regions, in batch order
    ============================================================ */
 const UK_REGIONS = [

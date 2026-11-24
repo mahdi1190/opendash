@@ -8,11 +8,9 @@
      gartSeed(o, A, kind, col)     stage 0: a tilled mound, the seed or bulb peeking, a marker stake
                                    kind 'seed' | 'bulb' | 'striped' | 'acorn' | 'pip' | 'tuber' | 'cone' | 'spore' | 'cutting'
      gartSnowCap(A, x, y, w)       a soft cap of snow on a head or a crown (winter rest)
-     gartFrost(A, d)               a frosty edge stroke over shapes (winter)
      gartFallen(A, r, w, cols, n)  a few fallen leaves at the foot (autumn)
      gartDew(A, r, pts)            dew sparkles (spring mornings)
      gartSeasonLeaf(o, kind)       the leaf palette of a plant for the season ('deciduous' | 'evergreen' | 'silver' | 'succulent' | 'herb')
-     gartPick(list, o)             the main colour's tones [deep, base, light]: the catalogue's, else the list's by variant
      gartC2(o, fallback)           the second colour (centres, eyes, blossom)
      gartSway(o, r, inner)         the plant's sway about its foot (the engine's gda-sway, a seeded delay)
      gartHalo(o, r, x, y, R, col)  a glow behind lights and glowing plants at dusk and night (gda-glow)

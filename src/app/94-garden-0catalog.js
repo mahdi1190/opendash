@@ -29,15 +29,13 @@
      GARDEN_RIBBONS               the garden's own achievements (facts from gardenFacts in 94-garden-1core.js)
      GARDEN_DAILY / GARDEN_QUESTS daily garden tasks and weekly garden quests (picked by date)
      GARDEN_EVENTS                seasonal garden events (Trick or treat matches agent fun's window)
-     GARDEN_ART                   THE ART CONTRACT (agent 'garden-art'), see below and docs/dev/GARDEN.md
 
    Helpers: gardenPlant(id), gardenDecor(id), gardenVisitor(id), gardenTile(id), gardenArea(id), gardenTool(id),
-   gardenDef(id) (any table, with .kind), gardenSeasonOf(iso, south), gardenEventsOn(iso), gardenInSeason(def, season),
    gardenStageAt(def, hours), gardenStageName(def, stage), gardenLockOf(def, ctx), gardenAreaAt(x, y, level),
    gardenCellOk(def, x, y, level), gardenLevelOf(xp), gardenPickDaily(iso, level), gardenPickQuests(weekFrom, level),
    gardenBouquetOf(flowers), gardenHash(s), gardenRand(seed), gardenArtBox(kind, id), gardenSnapshotClean(raw).
 
-   THE ART CONTRACT (GARDEN_ART; agent 'garden-art' implements it, the engine calls it):
+   THE ART CONTRACT (agent 'garden-art' implements it, the engine calls it):
      gardenArt(id, o) -> an SVG FRAGMENT string ('<g>…</g>', no outer <svg>), or '' / null to fall back.
        o {kind: 'plant'|'decor'|'visitor'|'tile'|'crop'|'seed'|'tool'|'bouquet',
           stage 0..4 (plants; 0 = just planted), season 'spring'|'summer'|'autumn'|'winter',
@@ -49,7 +47,7 @@
           uid (a safe id prefix for any <defs> ids)}
        Coordinates: (0, 0) is the ground anchor at the bottom centre of the footprint. One cell is 64 units
        wide; a footprint of w x h cells spans x -32w..32w; the art grows UP (negative y) to about
-       -64 * look.h for plants (GARDEN_ART.box gives each kind's box) and may dip to +8 for shadows.
+       -64 * look.h for plants and may dip to +8 for shadows.
        Explicit colours only (no CSS variables, no external references, no <image>, no text, no scripts):
        the photo mode turns the whole garden into a PNG through a canvas. Deterministic: the same inputs
        give the same string (the engine caches it). Animation is by class names only, the engine's CSS

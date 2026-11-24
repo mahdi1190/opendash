@@ -16,7 +16,6 @@
    Everything the page's old clips were called by (actor.play('jump'), P.clip('sniff')) comes here first, so all pets got better at once. The CSS clips stay as the fallback.
 
      petClipSuits(id, species)   does it suit this species?
-     petClipsFor(species, pred)  the ids that suit it
      petClipRun(root, id, o)     play it on a drawn pet (root: the .pt-svg or .pt-g) -> {ms, stop()}; o {rate, look, still (hold the still pose), done}
      petClipStill(root, id, ms)  the still pose for a moment (reduced motion)
 

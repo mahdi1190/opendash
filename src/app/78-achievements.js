@@ -22,13 +22,11 @@
                           earned these"), never a flood of toasts; the level it brings is taken quietly.
      achRewardLabel(unlock)   'title:Oracle' -> 'the title Oracle' (an owner can name its own:
                           registerAchRewardLabel(kind, fn))
-     achRewardOpen(kind, id)  true / false (earned or not) / null (no achievement locks it)
-     achRewardsEarned(kind?)  [{kind, id, ach, day}]: what the 2.18 modules (you, wardrobe, garden, pets) read
                           On an unlock: document event 'opendash:ach-reward' {kind, id, ach, hist} and the
                           owner's guarded hook (typeof fn === 'function'): profileAchReward, wardrobeAchReward,
                           gardenAchReward, petAchReward (kind, id, achId, {hist})
      achFeatureOn(name)   is a feature an achievement needs on (finance, locations, travel, calendar,
-                          friends, claude, sync, garden, pets, wardrobe, you)? registerAchFeature(name, fn)
+                          friends, claude, sync, garden, pets, wardrobe, you)?
      achHistoryPending()  the history unlocks not yet seen in the summary (the wall shows them once)
      achPanelRender(el)   Settings > Animations > Achievements, with the recaps
    Gentle: nothing is lost once earned, nothing counts down, nothing nags.

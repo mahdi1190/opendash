@@ -16,7 +16,6 @@
 
    API used by other areas:
      getPerson(id), effPeople(item) (linked ids), tasksForPerson(id, {open}),
-     openTaskCountFor(id), addPersonToTask / removePersonFromTask (remembers
      the removal), avatarHtml(person, size), pplIndex() (cached index),
      pplAutoLinkOnCreate(item) (quick add calls it), createPerson(fields),
      updatePersonFields(id, patch), mergePeople(from, into), deletePersonById(id),

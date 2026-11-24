@@ -26,7 +26,6 @@
      worldCliffArcPath(arc)        -> [[x, z]] the arc as a polyline (a point every 5 m at most), or null
      worldCliffGeom(f)             -> the compiled cliff (smoothed path, side, profile numbers), memoised per feature object, or null
      worldCliffHeight(f, x, z)     -> the ground height at (x, z) from this cliff alone (0 away from it)
-     worldCliffZone(f, x, z)       -> true where the face's own picture stands in for the ground (the face and its lip, with a margin)
    ============================================================ */
 // where a face tapers below this share of its height it is no longer drawn as a face (the terrain strips draw the slope that is left)
 const WORLD_CLIFF_MIN_M = 0.2;

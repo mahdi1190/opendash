@@ -10,7 +10,6 @@
      GARDEN_BUGS       about 300 bugs: where they live, when they come out, how jumpy, how they sit
      needs             on any fish or bug, optional: world things decide whether it can APPEAR (gardenFishFits, gardenBugFits: tod, season, rain, moon, zone, spot, level,
                        decor, plant, event, chance), setup things whether it will COME TO YOUR LINE (gardenFishLacks: rod, reel, line, hook, bait) or into your net (net).
-                       gardenCatchNeedsWords(def) writes the how-to-catch lines from this very data, so the dictionary cannot disagree with the game
      GARDEN_RODS       five rods (the bamboo one is yours; the golden one is a ribbon prize)
      GARDEN_NETS       four nets (the hand net is yours; the golden one is a ribbon prize)
      GARDEN_BAITS      bait you can bring along; GARDEN_BOBBERS: floats you unlock by catching

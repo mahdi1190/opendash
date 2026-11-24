@@ -22,7 +22,6 @@
      Esc                           done
    Changes are spoken through a polite live region (homeAnnounce).
    Public: homeEditStart({gallery}), homeEditDone(), homeAnnounce(text),
-   homeWidgetMove(id, delta), homeWidgetResize(id, size), homeWidgetStep(id, dir),
    homeWidgetHide(id) (a copy 'id~n' is removed instead), homeWidgetShow(id);
    copies: homeWidgetAddCopy / homeWidgetRemoveCopy (12-home-platform.js).
    ============================================================ */

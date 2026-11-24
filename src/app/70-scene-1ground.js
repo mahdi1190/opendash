@@ -14,10 +14,9 @@
    Camera (2.1, 2.2)   SCENE_BANDS_DEFAULT, sceneIsV2(data), sceneCamera(data) -> Cam (memoised per data),
                        sceneProject(cam, x, d, h) -> { X, Y, k }, sceneUnproject(cam, X, Y) -> { x, d } | null,
                        sceneGroundHeight(cam, x, d), sceneDepthBand(cam, d) -> the layer index
-   Surfaces (3)        SCENE_SURFACE_KINDS, sceneSurfaceKinds(), sceneSurfacesCompile(data, cam, G),
+   Surfaces (3)        SCENE_SURFACE_KINDS, sceneSurfacesCompile(data, cam, G),
                        sceneSurfaceAt(C, x, d) -> { id, kind, flags } | null (water counts, kind 'water'),
                        sceneSurfaceNearest(C, x, d, kinds, maxM) -> { id, kind, x, d, m } | null,
-                       sceneSurfaceSpan(C, id, d) -> [[x0, x1], ...] (the slices of a surface at a depth)
    Water (5.1, 5.2)    sceneWaterCompile(data, cam, G): the regions' geometry (canals from a centreline, banks, rowAt, edges)
    Placements (4)      SCENE_PLACE_RULES, SCENE_DRIVE_LEFT, sceneObjClass(id), scenePlaceAllowed(cls, surf, p),
                        scenePlaceResolve(G, p, i) -> the placement in pixel form + its ground record, sceneGroundSnap(G, cls, x, d, o),

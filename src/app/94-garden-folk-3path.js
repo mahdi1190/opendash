@@ -10,7 +10,6 @@
    SMOOTHING. String-pulled only along cells no dearer than the dearer end (a lane route keeps to the lane, a grass route may cross grass).
    gardenFolkPathAsk(a, b, cb)  -> asks for a way from a to b (cells); cb(points | null) runs when it is found (maybe this frame)
    gardenFolkPathPump(ms)       -> works on the waiting searches for at most ms (the runner calls it each frame)
-   gardenFolkCost(x, y)         -> the field's cost at a point (Infinity: nobody walks there)
    ============================================================ */
 const VFP_SLICE = 1500, VFP_CACHE = 2000;
 const _vfp = { key: '', cost: null, tier: null, build: null, jobs: [], cache: new Map(), cur: null, pool: null, stats: { found: 0, cells: 0, ms: 0, slices: 0, maxSlice: 0 } };

@@ -16,7 +16,6 @@
                                           diffMin, line?, leg?, inMin?, leaveBy?}
      trUiCountdown(min)                  '2 h 05', '45 min', '1 d 3 h'
      trUiArc(h)                          {x, y, night}: the sun / moon on the chip's day arc (0-24 h)
-     trUiDiff(zA, zB, ms)                '+8 h', '−5 h 30', 'Same time as home', '+13 h · tomorrow there'
      trUiTripWhen(trip, today)           'Tokyo in 2 days' / 'day 2 of 6 · back Fri 9 Oct' / 'Back home' / ...
      trUiRange(from, to)                 '4–9 Oct', '28 Sep – 3 Oct'
      trUiTimeline(trip, o)               the Trip view's and widget's days in local time:

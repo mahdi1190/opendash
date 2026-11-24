@@ -4,7 +4,7 @@
 
      gardenCatchWorldArt(sc, o)   spots, today's hot spot, what is on at the lake, the rack
      gardenCatchPropArt(sc, o)    the lake hall (it grows), the lake board, the old angler (he changes as your story goes on), the smoker
-     the boat                     buy it, click the boat by the mooring post: the water becomes your ground (gardenBoatGrid)
+     the boat                     buy it, click the boat by the mooring post: the water becomes your ground
      the thing in the lake        a huge shadow on foggy nights, from the clock, so everyone there sees the same one
      decorations                  gartDefine: what bugs come to, what the lake gives you
    Calm: o.still, or reduced motion: nothing moves. Things only move while they are on (an event), or with the same gda- classes as the rest of the garden.

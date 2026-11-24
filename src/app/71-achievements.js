@@ -14,10 +14,7 @@
      achDef(id)
      achFacts({log, dayOf, notes, extra})   the old flat facts (done, bestStreak, the noted
                                  moments, the game's facts in extra); kept for old callers
-     ACH_GROUPS                  the old wall's groups (kept for older readers; the wall uses ACH_CATS)
      achProgress(def, facts)     {n, of, done}; facts: a view (71-ach-1facts.js achFactsView) or a flat object
-     achEarned(facts, unlocked)  ids newly earned (not yet in unlocked), in ACH_DEFS order
-     achRewardFor(id) / achLockedBy(ref)   what an achievement unlocks / who unlocks an animation
      achUnlockOf(kind, id)       the achievement whose unlock is '<kind>:<id>' (title, banner, plate, wear,
                                  seed, decor, treat, accent, anim) or null: the owning module's lock check
      recapRange(period, ref, today)   {period, from, to, label, key} for 'year' ('YYYY') or

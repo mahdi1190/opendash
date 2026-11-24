@@ -6,7 +6,7 @@
      Tackle           rods, nets, bait and floats: buy, equip, see what each one does
      Showcase         your tank (6 fish) and bug case (9 bugs): what the aquarium, the case and the trophy board in your garden
                       show, and what friends see when they visit
-   Also the little card in the garden's side panel (gardenCatchSideCard): your rod, your bait, the casts you have left, the bugs about.
+   Also the little card in the garden's side panel: your rod, your bait, the casts you have left, the bugs about.
    ============================================================ */
 const _gdc = { zone: '', found: '', bag: 'bag', bagKind: '', tackle: 'now' };
 const GDC_TABS = Object.freeze([['bag', 'Bag and market', 'shopping-basket'], ['tackle', 'Tackle', 'store'], ['show', 'Showcase', 'trophy'], ['lake', 'The lake', 'waves'], ['hall', 'The lake hall', 'landmark']]);

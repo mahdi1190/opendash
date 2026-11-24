@@ -10,10 +10,7 @@
      homeMeetingsBetween(from, to, o)   homeMeetings over the calendar store: the user's own day
                                         (calEventIsMine), deduped, attendees matched to People.
                                         from / to: ms, Date or ISO. o: {filter(ev)}
-     homeMeetingsOn(iso)                that day's meetings
      homeNextMeetingNow(o)              homeNextMeeting from now (o.horizonH, default 12)
-     homeMeetingsToWrap(o)              ended in the last o.sinceH hours (12), not wrapped up
-                                        (calIsWrapped, 43-calendar-meta.js), newest first
      peopleLastContact()                Map personId -> {date, kind, daysAgo}, memoised
      personLastContact(p | id)          {date, kind, daysAgo, label} | null, label like
                                         '3 days ago · meeting'

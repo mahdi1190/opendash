@@ -115,7 +115,7 @@ const sceneBehave = (function () {
   }
 
   /* ---------- object hooks: the idle and gait presets of the object library ---------- */
-  // Every hook uses the engine's kinds (SCENE_ANIM_KINDS). A part may be in ONE hook only (the renderers draw a part once per
+  // Every hook uses the engine's animation kinds. A part may be in ONE hook only (the renderers draw a part once per
   // hook), so a preset moves the body with one hook and the head, tail or arm with others. 'turn' with a hold is the cheap
   // one-sided motion (a look, a dip, a hop): still for `hold` of the period, then out and back.
   function hooks(name, o) {

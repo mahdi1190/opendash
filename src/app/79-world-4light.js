@@ -15,7 +15,6 @@
                                              the parts over water, cut out of the shadow; the water mirror dims there instead);
                                              thin things from their real outline (sil); movers only while visible; a mover on a
                                              deck casts onto the deck (it moves with the deck); a bridge deck shades what is under it
-     worldShadeAt(plan, x, z, o)          -> 0..1: how shaded a ground point is (under a bridge, in a tree's shadow); 0 on water
      worldLights(world, o)                -> [{ ref, part, kind, x, y, z, r, halo, src, col, on, pool?, beam?, agent? }] from LIBRARY
                                              GLOW PARTS only: windows per window by a seeded threshold against the sun's elevation
                                              (lit surfaces: src false, no halo), lamps with one pool each, head and tail lights of

@@ -15,7 +15,6 @@
      animRegisterPack(pack)          -> {ok, errors[]}; same id replaces
      animUnregisterPack(id)          wave 6: drop a non-core pack (the user's "mine" pack)
      animSupersede(ref, by, o)       a world scene takes over a registered item's picture (keeps its ref and rules)
-     animSupersededOriginal(ref)     the item it took over, or null
      animPacks() / animPack(id)
      animItems({slot, pack, look})   items, in registration order (look: only enabled packs)
      animItem(ref)                   'pack/item' -> item (with .ref and .pack)
@@ -35,7 +34,7 @@
          county welcome, the gallery stage); o.tod dawn|day|dusk|night tints it; size 'fill'
          fills the parent box. item.rich (full scenes only): a dense local scene with its
          own budget, ANIM_RICH_ITEM_MAX_BYTES (about 1 MB full screen) and ANIM_RICH_TILE_MAX_BYTES
-         in small tiles; animItemMaxBytes(item, size) / animPackMaxBytes(items) give the
+         in small tiles; animItemMaxBytes(item, size) gives the
          budgets the quality gate enforces. A rich scene only moves at 'fill' / 'hero' (smaller
          sizes draw it still; hover still plays it); o.detail 'tile' draws the tile detail at 'fill'
          (a card). item.liveSky (true, or {lat, lon}: the scene's own

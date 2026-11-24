@@ -21,8 +21,6 @@
    draw and in what order, then sbLayoutDecorate() renames, hides and orders
    rows. Rows carry data-view (sbNavItem, 14-shell.js).
      sbIsPinned(view) / sbTogglePin(view, o) / sbUnpin(view, o)
-     registerSidebarPinKind(prefix, resolve(view, ctx) -> {label, icon|avatarHtml, count, onClick} | null)
-                                    another module's pinnable things (saved boards: prefix 'board')
      sbBlockHidden(L, tab, block)   is a block hidden (the user's choice, else its default)
      sbViewPlacement(view, L?)      a Views row: 'shown' | 'more' | 'hidden' (15-nav-sidebar.js draws it)
      sbSetViewPlacement(view, p)    set it (one undo step)

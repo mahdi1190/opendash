@@ -18,7 +18,6 @@
      trPlaceKind({cityId, cc})     'towers' | 'oldtown' | 'coastal' | 'mountain' | 'desert' | 'tropical' | 'nordic' | 'lowlands'
      trCityFind(name, o)           the city a name means; o.cc / o.near {lat, lon} break ties, else the biggest
      trNearestCity(lat, lon, o)    {city, km} within o.maxKm (50) | null. Geo fixes: reduce, never store.
-     trNearestCountry(lat, lon)    the country of the nearest known point within 400 km | ''
      trAirportCity(iata)           the city an IATA code (or a metro code: LON, NYC) serves | null
      trKm(a, b)                    great-circle kilometres between two {lat, lon}
      trCurrencyInfo(ccOrCcy)       {code, name, symbol} | null

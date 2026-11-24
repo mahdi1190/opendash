@@ -5,7 +5,6 @@
    mailbox), each with its own accounts. API: /api/sources
    (server/routes/sources.mjs, lib/sources.mjs).
 
-   srcSection(all)          the "Data sources" block of the Connections page
    srcServersCard()         every MCP server `claude mcp list` shows, with health
    srcAddFlow({capability, server})  Add a source: what -> from where -> tools
                             (read-only ones pre-ticked, write ones locked) or an

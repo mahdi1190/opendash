@@ -8,7 +8,6 @@
      animUkWhere()       {county record, town, km, source: 'travel' | 'weather'} | null
                          travel: where the travel feature places you now (a city
                          in GB, while away from home); else the weather town
-     animUkCountyId()    the county id for animCtx() (the packs' when() rules), '' when off
      animUkCheck(o)      the "Welcome to <county>" moment when the detected county
                          changes (remembered per device); o.first: also on the first
                          detection (just switched on)

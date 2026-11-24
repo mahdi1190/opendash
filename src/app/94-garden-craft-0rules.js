@@ -24,12 +24,10 @@
 
    Rules only (no DOM at load): Node's page engine runs these for the assistant (lib/agent-engine.mjs).
      gardenRecipes()            every recipe with {known, can, missing, have, seen}
-     gardenRecipeKnown(id)      is it yours?
      gardenCraft(id)            make one -> {ok, msg?, why?, make}
      gardenCraftSellPrice(id)   what the market pays for craft:<id>
      gardenCraftSell(item, n)   gardenSell comes here for craft: items
      gardenCraftOwned(id)       how many you hold       gardenCraftedSet()   the recipe ids you have made and still hold (the wardrobe asks)
-     gardenCraftFresh()         recipes learnt since you last looked at the bench       gardenCraftSeen()
      gardenBottleNow(m)         a bottle on the shore today? {x, y, recipe} | null      gardenBottleOpen() -> {ok, recipe}
    ============================================================ */
 const GARDEN_CRAFT = Object.freeze({ dayTreats: 3, daySell: 40, sellMargin: 1.1, xp: 3 });

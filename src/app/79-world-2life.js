@@ -29,7 +29,7 @@
 //                                                      born, leaving, alpha, clip, phase, kind, lead }  (heading in radians,
 //                                                      atan2(dx, dz); facing the same in degrees: 0 = away from the camera,
 //                                                      90 = right, like entity facings; alpha < 1 while fading in or out)
-//   worldLifeOk(life, layer, x, z) -> bool;  worldLifeIsSpawn(life, layer, x, z) -> bool;  worldLifeLeads(life) -> leads
+//   worldLifeOk(life, layer, x, z) -> bool;  worldLifeIsSpawn(life, layer, x, z) -> bool
 //   worldLifeOf(world) -> the Life the systems runtime drives for a world (or null)
 // Life also keeps `events` ([{ t, kind, id, x, z, layer }], capped), `problems` ([{ pop, rule, msg }]) and `bus`.
 

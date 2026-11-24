@@ -9,7 +9,6 @@
    gardenAffordOfPet(word)          every thing a pet counts as `word` ('bench', 'well', 'fire' ...)
    gardenTerrainAt(x, y)            the ground's type there, read from the layout's cells: 'deep' 'water' 'sand' 'snow' 'path' 'slope' 'open-grass'
                                     'ground' or '' (off the land)
-   gardenTerrainNear(type, x, y, R) the nearest cell of that type: { x, y } or null
    ============================================================ */
 const _gks = { key: null, list: [], t: 0, unknown: [], orphans: new Set(), moved: new Map() };
 /** Things placed through layout data: the layout's own `things` win over the shared file's rows of the same id. */

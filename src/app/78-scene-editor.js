@@ -11,26 +11,9 @@
    and writes atomically). Nothing is saved until Save is pressed.
 
    Pure helpers (no DOM; tests/scene-editor.test.mjs runs them in a VM):
-     sceneEditorCamera(scene)                       -> cam { eye, fov, horizon, heading, x0, f, t, dMin, dMax, water }   (A's sceneCamera when loaded)
-     sceneEditorProject(cam, x, d, h)               -> { X, Y, k }       (A's sceneProject when the camera came from A)
-     sceneEditorUnproject(cam, X, Y)                -> { x, d } | null   (null above the horizon)
-     sceneEditorGrid(cam)                           -> [[X0, Y0, X1, Y1, w]]   ground lines every 5 m near (to 50 m), 25 m far (to 400 m)
-     sceneEditorSurfaces(scene, cam)                -> the stand-in surface geometry in ground metres (rest, band, poly, path strips, beside, water)
-     sceneEditorSurfaceAt(scene, cam, x, d)         -> { id, kind, water } | null   (the LAST surface that holds the point; water first)
-     sceneEditorClass(id)                           -> the placement class (A's sceneObjClass when loaded; V2 4.3)
-     sceneEditorValidAt(scene, cam, id, x, d, { C }) -> { ok, cls, kinds, at, snap: { x, d, m } | null, exempt }   the class rule (V2 4.4, 4.5)
-     sceneEditorPlaceGround(scene, cam, p)          -> { x, d } | null   the ground point of a placement (at; on + d + u; on + along; a pixel one inferred)
-     sceneEditorApply(rec, op)                      -> a NEW recipe (never mutates): move, nudge, add, delete, swap, set, camera, env
-     sceneEditorHistory(max = 100)                  -> { push, undo, redo, canUndo, canRedo, clear }   snapshots of the recipe
-     sceneEditorDiff(a, b)                          -> { moved, added, removed, changed, camera, env }   the save summary
-     sceneEditorPreviewData(scene, { season })      -> the scene data the stage plays: the recipe's own data when the v2 compile (A)
-                                                       is loaded; until then a v1 stand-in (surfaces and water as projected fills,
-                                                       ground placements as pixel ones at their projected scale), so the editor
-                                                       works before A lands and the drawing matches the handles.
    Page:
      sceneEditorAvailable()                         -> Promise<boolean>  (the status route answered 200; asked once per page)
      sceneEditorOpen(ref, { label, returnFocus })   -> opens the editor for a recipe ref ('<pack>/<id>')
-     sceneEditorClose()
 
    Callees (V2 26.10), each behind a typeof guard: A sceneCamera, sceneProject, sceneUnproject, sceneObjClass, sceneObjReal,
    sceneSurfaceAt, sceneSurfaceNearest, SCENE_PLACE_RULES, sceneFromRecipe; G SCENE_CAMERA_PRESETS / sceneCompositionSetups,

@@ -1,6 +1,6 @@
 /* ============================================================
    US FULL-SCREEN SCENES, batch 1 (Northeast): CT DE ME MD MA NH NJ NY PA RI VT.
-   Pure classic script: registers entries in US_SCENES through usSceneAdd(); usBuilder() (71-anim-us.js)
+   Pure classic script: registers entries through usSceneAdd(); usBuilder() (71-anim-us.js)
    upgrades the matching small icon to a full-screen opening. 1600 x 900 user units, sliced to fill any
    screen; the subject sits in the middle 1200 x 800, layers run to x -160 .. 1760 so they can drift.
    Colours are painted for daytime; finish() lays the evening grade and lights .us-lit / .us-lamps / .us-star.

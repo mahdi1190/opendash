@@ -30,7 +30,6 @@
    gardenMusicHeard(A, ev)                         a friend's tune message (94-garden-live-2visit.js, 3host.js)
    gardenMusicHeld(id) -> Set of places in use at that thing (its drawing leaves those instruments out: they are in someone's hands)
    gardenMusicState()                              for checking: { me, them, off, synced, roles, n, step, notes }
-   gardenMusicRender(voices, secs)                 the tune drawn into an OfflineAudioContext: for checking levels with no speakers
    ============================================================ */
 const GMU = Object.freeze({ bpm: 96, steps: 8, bars: 16, ear: 7, far: 20, ahead: 0.35, tickMs: 100, beatMs: 5000, staleMs: 26000, pingMs: 8000, pingQuickMs: 350, quickRtt: 220, awayMs: 400, healMs: 500, newcomerMs: [900, 3000], walkOff: 1.2 });
 const GM_STEP = 60000 / GMU.bpm / 2, GM_LOOP = GM_STEP * GMU.steps * GMU.bars, GM_NSTEP = GMU.steps * GMU.bars, GM_SYNC = GM_LOOP * 2;   // (the clock is told modulo two times round, so every screen is on the same time round too: the descant is on the second)

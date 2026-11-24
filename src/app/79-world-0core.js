@@ -28,8 +28,6 @@
                                         other views of the place for the C7 `templated` warning)
      worldRepair(spec)               -> { spec, log, errors, warnings }: the strict errors and the repaired spec (strip, default,
                                         drop; placement rules are left to worldPlace). severity: repair | drop | fatal | warn
-     worldMigrate(spec)              -> { spec, log }: v3.0 (camera frame) -> v3.1 (place frame: one camera at the origin with
-                                        the old heading; facings and edges re-expressed; the relief rides on the camera)
      worldSpecFor(spec, camera)      -> { spec, log, camera: { id, index }, culled }: the repaired camera-frame (v: 3) spec of
                                         one camera of any spec (identity for v3.0)
      worldBuild(spec, o)             -> World { cam, surfaces, lines, buildings, entities, life, backdrop, seed, style, problems,
@@ -43,12 +41,10 @@
                                         solids cut water); o.ground: the ground surface only; o.y: the level at or below y
      worldSurfaceY(s, x, z)          -> the height of a raised surface there (stairs and ramps interpolate from -> to)
      worldWaterLevelAt(world, x, z)  -> the water level of the region there (per region, W4), or null
-     worldFrontZ(foot, x)            -> the nearest z of a footprint at a column (Infinity outside its span; min z when x null)
      worldTemplated(specs)           -> warnings: views of one place too alike (C7), across specs and across cameras
      worldItem(meta, spec, o)        -> an item usable from a 72-anim-pack file (I1): call it at load, everything heavy is lazy
      worldItems(meta, spec, o)       -> one item per camera of a v3.1 spec (Q7)
      worldAdd(pack, meta, spec)      -> registers the items (never refuses); worldAddLog(id) the load log; worldAddProblems()
-     worldPopulationDefine(name, p)  -> extends WORLD_POPULATIONS (life adds its own population names)
    ============================================================ */
 /** The usual severity of each rule (5.2): repair = stripped, defaulted, snapped or moved; drop = the entry goes; warn = advice only. */
 const WORLD_RULE_SEVERITY = Object.freeze({
@@ -101,7 +97,7 @@ const WORLD_LAYER_KINDS = Object.freeze({
   walk: ['path', 'pavement', 'towpath', 'plaza', 'boardwalk', 'bridge-deck', 'deck', 'platform', 'stairs', 'ramp', 'crossing', 'grass', 'heath', 'field', 'sand'],
   graze: ['grass', 'heath', 'field', 'sand'], swim: ['water'], wade: ['water', 'reeds', 'bed'], drive: ['road'], rail: ['rail', 'tram'], air: null,
 });
-/** Life populations (5.1 `who`): name -> { layer, obj }. Life extends this with worldPopulationDefine. An object id also works as `who`. */
+/** Life populations (5.1 `who`): name -> { layer, obj }. An object id also works as `who`. */
 const WORLD_POPULATIONS = {
   walkers: { layer: 'walk', obj: 'person.walker' }, visit: { layer: 'walk', obj: 'person.walker' }, crowd: { layer: 'walk', obj: 'person.walker' },
   crowds: { layer: 'walk', obj: 'person.walker' }, 'dog-walkers': { layer: 'walk', obj: 'person.dog-walker' }, boater: { layer: 'walk', obj: 'person.walker' },

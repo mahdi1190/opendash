@@ -19,7 +19,7 @@
    ANIMATION STATE (13; M1, M2, M4, M5, M7, A6)
      ent.anim = { state, clip, rate, period, phase, pose, t, cyc, k, stride, step, speed, from, blend, dur, face, obj, view, mirror,
                   sec, mult }
-       state  what the entity is DOING, never a timer: move | idle | sit | lie | stopped | moored | none (WORLD_ANIM_STATES)
+       state  what the entity is DOING, never a timer: move | idle | sit | lie | stopped | moored | none
        clip   walk, run, trot, pedal, swim, fly, drive, cruise (move); idle, look, chat, sniff, graze, dabble, dive, perch,
               strike, wait (idle); sit, lie, stopped, moored; null (statics)
        rate   cycles a second: the ACTUAL ground speed (its velocity, never the brain's target) / stride when moving (the
@@ -41,7 +41,6 @@
      them), a moored boat only bobs slightly ('moored'), reeds part only when something passes.
 
    API
-     WORLD_ANIM_STATES, WORLD_ANIM_TRANS (transition durations)
      worldViewOf(ent, cam, o)              above
      worldAnimInit(world)                  statics' anim records and views (idempotent)
      worldAnimStep(world, dt, o)           one tick: every agent's anim from what it is doing, secondary motion, views

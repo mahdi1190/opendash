@@ -8,7 +8,6 @@
    from those records and registered like any other pack, so pins, favourites,
    blocks, packs off and the daily look all apply.
      animMineLoad()            fetch the saved records and (re)register the pack
-     animMineItems()           the records loaded
      animMakeOpen()            the "Create an animation" dialog (preview, then save)
      animMineSection(onChange) the gallery's "My animations" block (create, delete)
    Without the server, or without Claude, it says so and nothing breaks.

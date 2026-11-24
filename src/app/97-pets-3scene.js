@@ -22,7 +22,6 @@
 
      petSceneObj(look)              the scene object id of a pet (defined once), or null
      petFigureCompanion(fig, who, h, o)   put the pet beside a full figure element (o.walk: it walks)
-     petScenePets()                 the pets walking now [{friend, scene, d, mode}] (ids and numbers: debugging)
    Private names: _pts*.
    ============================================================ */
 const _pts = { objs: 0, ids: new Map(), info: new Map(), pets: new Map(), warm: new Set() };

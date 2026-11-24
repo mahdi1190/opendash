@@ -14,8 +14,7 @@
      state    priority 1: a signature opening (slot opening) and an element (slot symbol) per state
      city     priority 1.2: big city = a signature opening, small city = an element (symbol)
    A festival or the birthday (priority 2+) still wins the day.
-   The names the pack files and the scene files use (usPlace, usStateOf, usWhere, usBuilder, usSceneAdd, usSceneKit,
-   usSceneCss, US_SCENES) are one-line wrappers over the region, kept so those files need no edits.
+   The names the pack files and the scene files use (usPlace, usBuilder, usSceneAdd, usSceneKit) are one-line wrappers over the region, kept so those files need no edits.
    Guide: docs/dev/US_PACK.md. Gate: tests/anim-packs.test.mjs, tests/us-pack.test.mjs, tests/region-framework.test.mjs.
    ============================================================ */
 /** The 50 states: code -> [name, group]. */

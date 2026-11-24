@@ -7,11 +7,8 @@
      gardenWorldStart(root) / gardenWorldStop()     the loop (one requestAnimationFrame, paused with the tab)
      gardenWorldClick(it, cell, ev, m)   a click on the stage: true when the world took it. You just click what you want: a building or a board
                                        (you walk to its door and it opens), a bug (you creep up and net it), the water (you cast), the ground (you walk there)
-   gardenWorldHover(ev, cell, it)      what is under the pointer: {kind: 'prop' | 'bug' | 'water', text}, for the status line and the cursor
-   gardenGoToProp(id)                  walk to a building's door and go in
      gardenWorldKey(ev, down)      WASD and the arrows walk, Space / E do the thing in front of you, + - Fit the camera
      gardenWalkToPoint(pt, then)   walk to a point (free movement: a straight line round whatever is in the way, not cell to cell), then `then`
-   gardenWalkTo(cell, then)      the same for the middle of a cell
      gardenWalkable(x, y)          can you stand here?
      gardenWorldFace(cell)         turn to face a cell (the tools use this: you look at what you water)
 

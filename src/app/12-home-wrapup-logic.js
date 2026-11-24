@@ -21,7 +21,6 @@
                             count: they are often the agenda, written before the meeting
                             (Meeting prep); the widget's own Save note sets wrapped.
      wuEndedText(min, dayDiff)  'just now', '12 min ago', '2 h ago', 'yesterday', '3 days ago'
-     wuSummary(n)           '1 meeting to wrap up' / '3 meetings to wrap up'
      wuFollowUpTitle(title) 'Follow up: <title>' (clipped to 120 characters)
      wuWorkdaysAfter(iso, n, days)   n working days after iso (days: 0 = Sunday; default Mon-Fri)
      wuDueChoices(today, days)       the follow-up's due-date choices [{key, label, date}]:

@@ -20,7 +20,6 @@
    path, 70-scene-gen-1civic.js: far to near, faces in order, solids of revolution), so a church that is a dozen separate masses is
    drawn in the right order whatever way the eye looks at it.
 
-     sceneCathedralPlans() -> [name]                         the plan names
      sceneCathedralParts(W, D, plan) -> { parts, top, towers, ... }   the masses of a plan in metres (pure; the tests read it)
    ============================================================ */
 const _SCCD_PLANS = Object.freeze({

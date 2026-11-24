@@ -21,8 +21,7 @@
    v1 scenes: the pass applies only with fx { atmos: 2 } (shading and rim; the v1 layer haze stays) or fx { weather: 2 } (fog banks).
 
    For builder D (the flow pass): sceneHeadlightSprite(k, view) -> { head, tail } pre-rendered light sprites
-   ({ c, x0, y0, w, h }: device px, the top-left offset from the lamp anchor), sceneHeadlightDraw(ctx, spr, X, Y, dir, alpha),
-   sceneLitSpillSprite(k, lenM) (the moving spill strip of a lit tram, train or bus).
+   ({ c, x0, y0, w, h }: device px, the top-left offset from the lamp anchor).
    Private names: _scat* (shared with 70-scene-1atmos.js; this file uses _scatP* / _scatB*).
    ============================================================ */
 const _SCATP_SHADE = new Set(['tree', 'building', 'structure', 'landmark', 'vehicle', 'car', 'bus', 'tram', 'train', 'bike', 'tractor', 'boat', 'person', 'cyclist', 'animal', 'animal-graze', 'animal-dog', 'rock']);

@@ -24,7 +24,6 @@
      worldPersistId(spec)                       Promise<string | null>
      worldPersistWorldGet(spec, season)         Promise<world | null>
      worldPersistWorldPut(spec, season, world)  in idle time (a clone of the pristine world)
-     worldPersistPlanGet(spec) / worldPersistPlanPut(spec, plan)
      worldPersistStillGet(spec, season, tod)    Promise<Blob | null>
      worldPersistStillPut(spec, season, tod, canvas)   in idle time (WebP, at most WORLD_PERSIST_STILL_W wide)
      worldPersistPrefetch(env, S)               (the bake's prebake) starts reading what this bake can reuse

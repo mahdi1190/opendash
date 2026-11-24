@@ -32,8 +32,6 @@
        default sceneMotionFixed(C)), flows (the flow agents at t, else sceneFlowAgents), pre (Map actor -> its base place at t,
        the renderer's), cam (the v2 actors' camera), crowd: false (the base places only) }
      sceneXCrowdOn(C)          -> false when switched off (window.__sceneOpts.x.crowd === false, C.x.crowd === false, SCENE_X=off)
-     sceneXCrowdPairs(C, o)    -> { pairs, frames, near: [...] } person pairs closer than o.dist (0.55 m) over o.seconds (300) at
-                                  o.hz (4): the measure of this package (base vs resolved: o.crowd)
    Private names: _scxc*.
    ============================================================ */
 const SCENE_X_CROWD = Object.freeze({

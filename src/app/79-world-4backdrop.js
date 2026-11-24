@@ -10,14 +10,9 @@
                                                scene already has a skyline: a declared skyline entry's bearing range, the
                                                backdrop.yield bearing ranges, and far scene entities marked skyline or landmark (B2, C5)
      worldBackdropYield(world, cam)         -> [[rel0, rel1]] the camera-relative bearing ranges (degrees) the bands yield to
-     worldBackdropLook(members, sky, o)     -> per member { haze, hazeCol, leaf, lit, litShare } now (B1): haze by distance (and fog),
-                                               the season's leaf state, lit windows at night by a seeded threshold per member
      worldBackdropGround(world, cam)        -> the style's far ground surface (a polygon in metres from the scene's edge to dMax)
-     worldBackdropValidate(backdrop)        -> [{ path, rule, msg, fix }] (unknown style, bad skyline entries, look fields)
      worldCoverage(world, cam, o)           -> { bare, sky, ok, regions: [{ name, box, bare }], samples } (> 0.15 bare: emptyBackground)
      worldDither(x, y)                      -> -0.5..0.5: the 4 x 4 ordered dither of a pixel (section 19: no banding)
-     worldDitherGradient(img, x0, y0, w, h, stops, o) -> paints a dithered vertical gradient into an ImageData-like buffer
-                                               (sky and water gradients without bands; Node and browser)
 
    A world here is the record of worldBuild or anything with { cam?, surfaces, entities, life?, backdrop, seed }.
    Entities: { id, obj, x, z, y?, facing?, height? }. Surfaces: { id, kind, poly } or { id, kind, path, width }.

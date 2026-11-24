@@ -1,7 +1,7 @@
 /* ============================================================
    GARDEN, the placeholder art (2.18, agent 'garden-engine').
    gardenArtPlaceholder(id, o) keeps the art contract of 94-garden-0catalog.js
-   (GARDEN_ART, docs/dev/GARDEN.md section 2): an SVG fragment, (0, 0) at the
+   (docs/dev/GARDEN.md section 2): an SVG fragment, (0, 0) at the
    bottom centre of the footprint, 64 units a cell, explicit colours only, the
    gda-* animation classes. Agent 'garden-art' replaces it with gardenArt(id, o);
    the engine calls _gdArt(), which prefers gardenArt and falls back to this per

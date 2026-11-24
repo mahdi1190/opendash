@@ -5,7 +5,6 @@
    built-in systems: time, attach and lod here; wind in 79-world-6wind.js; particles in 79-world-6particles.js.
 
    Phases, components, systems (G1, Y1)
-     WORLD_PHASES                ['time', 'brain', 'nav', 'move', 'anim', 'attach', 'fx', 'light', 'render']
      WORLD_TICK_HZ = 30          the fixed simulation tick. WORLD_LOOP_S = 360: schedules divide it (T1)
      WORLD_COMPONENTS            component -> the entity (or world) fields it covers (1.2); systems declare what they read
                                  and write, and the order check warns when two systems of one phase write the same component
@@ -14,13 +13,12 @@
        def = { id, phase, after: [ids], before: [ids], components: { read: [...], write: [...] },
                rate: Hz dividing 30 (1 2 3 5 6 10 15 30) | 'frame', budgetMs,
                init(world), update(world, dt), onEvent: { <kind>(world, e) }, degrade(level, world), dispose(world) }
-       A def with no id or an unknown phase is refused (worldSystemProblems() says why), never half-registered. A rate that
+       A def with no id or an unknown phase is refused, never half-registered. A rate that
        does not divide 30 snaps to the nearest divisor (logged). Registering an id again replaces it (logged).
      worldSystemOrder(defs) -> { order: [def], problems }   the total, deterministic order: phase, then after / before
                                  (Kahn), then id. A cycle is broken at the smallest id (logged); an after / before that
                                  contradicts the phases is ignored (logged).
      worldSystemList() -> [{ id, phase, after, before, rate, budgetMs, components }]   the registry in run order
-     worldSystemProblems(), worldSystemLevel(world, id) -> the degrade level (0..3) the runner set on this world
 
    The runner (11.3: M8, G8, G12, Y7)
      worldRun(world, o) -> Runner { step(dtReal), frame(nowMs), advance(sec), pause(), resume(), stop(), setTime(ms),
@@ -235,7 +233,7 @@ function _wsyNormalise(def, problems) {
   _wsyNormalised.add(out);
   return out;
 }
-/** Register a system (Y1). Returns the frozen def, or null when it is refused (worldSystemProblems() says why). */
+/** Register a system (Y1). Returns the frozen def, or null when it is refused. */
 function worldSystem(def) {
   const R = _wsyRegistry(), d = _wsyNormalise(def, R.problems);
   if (!d) return null;

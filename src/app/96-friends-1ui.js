@@ -19,7 +19,7 @@
    2.18 (UI_CLEANUP_PLAN.md C6, SIMPLIFY_PLAN.md 5.9): buttons are uiButton, errors toastError,
    copies copyText (11-ui-kit.js). The page's one primary action (Add a friend; Cheer on a friend's
    page) and the rest go to the shared header (headerActions); until the shell draws them the page
-   keeps its own row (frShellHeadOn, 96-friends-0core.js). The settings fold is short: your name
+   keeps its own row (96-friends-0core.js). The settings fold is short: your name
    (it lives on Profile), Online status (one select), your connection to friends; Blocked under More; Connect
    directly and Lost a computer? (Lock out a lost computer) under Advanced.
 

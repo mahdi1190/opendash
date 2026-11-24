@@ -34,7 +34,6 @@
    PUBLIC API
      friendsScenesWalkBy()          a friend who is around walks through the largest scene playing now (the palette
                                     command 'Friends: walk by in this scene'); explains in a toast when one cannot
-     friendsScenesVisits()          the visits now [{friend, scene, d, T, tau, mode}] (ids and numbers: debugging)
    Private names: _fsv*.
    ============================================================ */
 const FSV = Object.freeze({

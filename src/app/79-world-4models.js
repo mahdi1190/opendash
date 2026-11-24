@@ -22,20 +22,16 @@
          build(p, h) -> { height, footprint?, lights?, extra?, faces? } | void
        }
      worldModelFor(objId) -> def | null      worldModelHas(objId) -> bool      worldModelIds() -> [model id]
-     worldModelGet(id) -> def | null         worldModelRemove(id) -> bool (scratch models of tests)
-     worldModelList() -> [{ id, name, ids, float, liveries, samples }]
+     worldModelGet(id) -> def | null
      worldModelParams(ent, o) -> p           seed, season, size, L, B, H, age, livery, variant, facing, moving, t ... (pure)
      worldModelBuild(ent, cam, o) -> prim | null    the prim worldExtrudeDraw draws ({ kind: 'hull', model: true, faces, foot, zKey,
-                                             height, box, ... }); never throws (o.strict rethrows; worldModelError() is the last one)
+                                             height, box, ... }); never throws (o.strict rethrows)
      worldModelBuildWith(id, ent, cam, o)    the same with a named model (a registered model id)
      worldModelCheck(id, o) -> { ok, problems, stats }   the conformance run: 8 angles x 3 eyes x seasons x with and without a time:
                                              builds, finite faces, known materials, a face budget, a footprint, determinism, no clones
      worldModelFit(ent, info, model)         the entity's own size, height, footprint from the model parameters (the engine's core
                                              calls it for an entity that carries `model`)
      worldModelSpecCheck(model) -> string | null   the spec check of an entity's `model` key
-     worldModelSizeOf(objId, model) -> { w, d, h } | null
-     worldModelOutline(o) -> { outline, half, R }  a plan outline for hulls and bodies (round / transom / pointed ends)
-     worldModelShade(hex, k), worldModelMix(a, b, t), worldModelAge(hex, age, kind)   colour helpers
    The builder context `h` (what build(p, h) gets) is documented in WORLD_MODELS.md and built by _wmdKit below.
    ============================================================ */
 var _wmdS;   // the registry (var: hoisted, so an earlier file's worldModelDefine finds the slot and later this file's body leaves it)

@@ -19,8 +19,6 @@
      trHolidayOn(cc, iso, o)          the holiday on that date (a substitute counts) | null
      trHolidayCountries()             the country codes with rules
      trHolidayRegions(cc)             [{id, label}] (GB only)
-     trHolidayCoverage(cc, year)      'full' | 'partial' (lunar dates not in the table) | 'none'
-     trEasterIso(year, orthodox)      'YYYY-MM-DD'
      trJpEquinox(year, 'spring'|'autumn')   the day of March / September
    ============================================================ */
 

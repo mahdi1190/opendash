@@ -19,7 +19,6 @@
      sceneBuildingTier(storeyPx) -> 0..3    the detail tier of a storey that tall on screen (19.3)
      sceneBuildingResolve(b)                the seeded spec of one building (colours, choices): what makes no two alike
      sceneBuildingObject(params) -> id      ELEVATION mode: registers building.gen-<style>-<hash8> lazily (memoised)
-     sceneBuildingObjectSigns(params, place, signage) -> [sign]   the fascia sign of a shop object placed at {x, y, s, layer}
      sceneBuildingProject(b, cam, ctx) -> direct | null   PROJECTED mode: { shapes, lit, snow, glow, box, foot, h, eave, src,
                                             n, dz, dc, anchor, smoke, signs, tier }
      sceneBuildingShadow(b, sunG, sunTan, cam) -> [[X, Y], ...] | null   the screen polygon of the prism's shadow (6.2)

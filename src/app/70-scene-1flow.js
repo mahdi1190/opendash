@@ -28,7 +28,7 @@
    Agents      sceneFlowAgents(C, t, L, opt) -> every visible agent at time t, far to near: { flow, lane, k, o, v, base, cls, kind,
                x, d, h, X, Y, s, k3, view, viewMissing, flip, alpha, layer, speed, moving, night, bus, water, len, phase }
                (a pure function of (C, t, L): no state, any frame; t = 0 is half a period into the schedule, so a still shows a
-               street already in motion). sceneFlowAt(flow, k, t, cam, mult): one agent; sceneFlowCount(C, t, L)
+               street already in motion).
    Views       sceneObjViews(id) -> { side?, 'q-front', front, 'q-back', back } | null (rear = back, q = q-front);
                sceneHeadingView(id, tx, td, x, d, prev) -> { view, o, v, flip, rel, off, fs, lat, want, missing }; sceneViewAt(id,
                rel, prev); sceneTurnLean(...) -> radians; sceneFlowViewOf(id, across, toward, prev) (compatibility); SCENE_FACING

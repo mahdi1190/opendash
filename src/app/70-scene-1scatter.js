@@ -13,7 +13,6 @@
                                    petals in spring, long grass and wild flowers in summer, winter tufts; screen-even, cut beyond 60 m
                                    or under 3 units tall, at most 1,500 placements, all static (baked).
      scenePoissonDisk(r, box, minD, accept, o)   Bridson's Poisson-disk sampling (seeded; multiple seeds for disconnected regions)
-     sceneScatterNN(points)        the Clark-Evans nearest-neighbour index (1: random, < 1: clustered, > 1: even)
    Candidates are even but never a grid (Poisson disk), clumped when asked (a Thomas process: seeded centres, Gaussian spread,
    20 % unclustered), kept off avoided surfaces and on what the class may stand on (4.4: no shrubs on roads, ever), and their
    footprints never overlap the hand placements' or each other's (gap: 'foot'; cover is exempt).

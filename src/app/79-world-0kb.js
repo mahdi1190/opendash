@@ -6,7 +6,6 @@
    does not matter and a missing module removes a detail, never the answer. No function here throws.
 
    Every object class knows itself; the ENGINE reads this, scenes never repeat it.
-     WORLD_KB_TAGS                    the habitat tag vocabulary (K1)
      WORLD_KB_CLASSES                 one descriptor per world class (every class of the core's _wcClass, plus bough, frond, lead,
                                       mooring-line, smoke, washing-line, window-light, flower, insect, lily, fish-ring, market-stall,
                                       cafe-table, umbrella, picnic, car, van, bus, signage)

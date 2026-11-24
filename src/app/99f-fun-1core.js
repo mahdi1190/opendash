@@ -29,7 +29,6 @@
      funInCostume(profile?)      wearing the event's costume item
      funAchFacts()               the friendship achievements' facts (78-achievements.js reads them)
    Hooks other files call (all `typeof fn === 'function'`):
-     funFriendCard(card, friend)    96-friends-1ui.js _frCard: the duo flame, costume, gifts, quick actions, theme
      funFriendHero(el, friend)      96-friends-1ui.js _frFriendHero: Wave / High five / Gift (/ the event's knock)
      funFeedItem(li, entry, friend) 96-friends-1ui.js the feed: reactions, Unwrap, answer a knock
      funSpaceDecor(root, space)     99-together-1space.js tgRenderSpace: the space theme

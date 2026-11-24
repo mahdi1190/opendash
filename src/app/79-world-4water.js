@@ -26,7 +26,6 @@
                                                  the rows above it); -Infinity for a low bank
      worldWaterContactBase(region, c, X)      -> the row the owner's art stands on there (its waterline; a bank owner's ground),
                                                  laid on the contact row by the mirror so a bank thing's image has no gap
-     worldWaterOwners(world, cam, region, ents) -> [{ id, z, contact }] the owner table for the entities that can reflect here
      worldWaterComposite(region, draws, o)    -> { comp, owner: { idx, list, layers } }: the composite above the water, its
                                                  per-pixel owner (the last drawn there at half cover or more) and every owner's OWN
                                                  layer (the union of its pieces), which the mirror reads first, so what a nearer
@@ -49,7 +48,7 @@
      worldWaterReflectOf(world, cam, ent, regions) -> { surface, rowY } | null (the frame record's reflect field)
      worldWaterFalls(world, cam, regions)     -> weirs, falls and lock steps as falling water: [{ id, kind, crest, drop, upper, lower,
                                                  top: [[X, Y]], foot: [[X, Y]] }] (H4)
-     worldWaterInit(world), worldWaterTick(world, dt, ctx), worldWaterEvent(world, kind, e), worldWaterBob(world, ent)
+     worldWaterInit(world), worldWaterTick(world, dt, ctx), worldWaterEvent(world, kind, e)
                                               the 'water' system (phase fx): ripples' clock, wakes from 'wake' events (and from moving
                                                  boats) spreading and fading, rings from paddling birds and rain, buoyancy bob and
                                                  rocking in passing wakes, the flow advecting floating leaves in autumn; spray at

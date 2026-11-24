@@ -3,12 +3,12 @@
    with no DOM and no page globals. src/motion.js (window.Motion) reads these
    globals in the page; tests/motion-logic.test.mjs runs this file in a VM.
 
-     tokens       MOTION_T  MOTION_D  MOTION_STEP  MOTION_SPRING_MS
-     intensity    MOTION_LEVELS  MOTION_PROFILES  motionResolveLevel  motionMigrateLevel
-                  motionProfile  motionMs  motionPx  motionStaggerDelay
+     tokens       MOTION_STEP
+     intensity    MOTION_LEVELS  MOTION_PROFILES  motionResolveLevel
+                  motionProfile  motionStaggerDelay
      navigation   motionSectionOf(view, resolve?)  motionNavKind(from, to, resolve?)
                   motionNavDir(from, to)  motionRenderKind(prev, next)
-     rotation     MOTION_PALETTES  motionHash  motionPick(context, seed, level, recent)
+     rotation     motionHash
      lists        motionFlipPlan(before, after, o)   which rows glide, which enter
      sky          motionSkyExtras(weather, o)        wind / rainbow / heat flags for the sky
 

@@ -4,7 +4,6 @@
    there, each from their own screen: the picture itself is never sent to anyone. A row holds ids and numbers only: `who` the friends who were there and `at` whose garden it was
    (names are read from Friends when a photo is shown), `kind` 'garden' or 'group'.
 
-     memPhotos()                         the rows we know of, newest first
      memPhotosLoad(force)                -> Promise of the rows (asks the server once, then remembers)
      memPhotoKeep(blob, meta)            -> Promise of the row: meta {iso, ts, who: [friend ids], at: friend id | '', kind}. A big picture is shrunk first (at most 1600 px wide, JPEG)
      memPhotoShrink(blob, maxW)          -> Promise of a JPEG blob

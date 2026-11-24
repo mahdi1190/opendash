@@ -6,27 +6,25 @@
    Classic script, one shared scope: every top-level name starts with scene / SCENE_ / _sc.
    It may call 71 functions (ukNatureKit, animSceneKit, animSeasonOf ...) only LAZILY.
 
-   Constants   SCENE_W / SCENE_H, SCENE_CATEGORIES, SCENE_ANIM_KINDS, SCENE_LAYERS_DEFAULT,
+   Constants   SCENE_W / SCENE_H, SCENE_CATEGORIES, SCENE_LAYERS_DEFAULT,
                SCENE_MOMENTS, SCENE_SETTINGS, SCENE_SEASONS_4, SCENE_SIGN_FONT, SCENE_SIGN_DENY
    Randomness  sceneHash(str), sceneRnd(seed), sceneD (circ, ell, rect, poly, lobed, leaf)
    Objects     sceneObjDefine(def) (kind 'raster': 70-scene-0raster.js), sceneObj(id), sceneObjs(), sceneObjShapes(id, v, season),
-               sceneObjCheck(id) -> [problem], sceneObjDups()
    Light       sceneKit(name), sceneSeason(ms, lat, scene), sceneLight(o, view), sceneTone(L),
                sceneColour(hex, {L, haze, hazeCol, tint}), sceneWind(t, x, L), sceneScaleBucket(s)
    Detail      sceneDetailAt(id, sh, scale), SCENE_DETAIL_PX (size-tiered detail shapes)
    People      scenePersonHeight(view, y), scenePersonScale(objHeight, y, view), SCENE_PERSON (the depth ladder)
    Scenes     sceneValidate(data), sceneCompile(data, {season, lod, L}), sceneData(itemOrThunk),
-               sceneItem(meta, data), sceneAdd(pack, meta, data), sceneItems(pack), sceneItemDups()
+               sceneItem(meta, data), sceneAdd(pack, meta, data), sceneItems(pack)
    Scene engine v2 (docs/dev/SCENE_ENGINE_V2.md 12, 14): data whose camera has eye / fov / horizon / preset (sceneIsV2) compiles
                through the guarded v2 stages of 70-scene-1ground.js, -1scatter.js and the other builders' files: the camera,
                surfaces, water geometry, ground placements, scatter, cover, flows, atmosphere, weather, lights, draw order. v1
                data takes exactly the path below (byte-identical compiles: tests/scene-compat.test.mjs). v2 compiles end with world
                sense (sceneXSense, 78-scene-x-sense.js; off with opt.x.sense === false). A recipe item
                (item.recipe, 70-scene-1recipe.js) supersedes a v1 item of the same pack and id in sceneItems.
-   Archetypes  sceneArchetypeDefine(id, a), sceneArchetype(id), sceneArchetypes(),
+   Archetypes  sceneArchetypeDefine(id, a), sceneArchetype(id),
                sceneArchetypeCheck(id, row), sceneFromArchetype(archId, params, patch),
                sceneKitPick(kits, role, {tags, exclude}), sceneTableDefine(id, t), sceneTable(id),
-               sceneTables(), sceneBatch(archId, tableId, {filter, when, extra}),
                sceneLinesDefine(map), sceneLine(id), sceneSignText(s)
    The compiled form (section 4) is the contract with the renderers (70-scene-svg.js,
    78-scene-canvas.js) and the lint (tools/lib/scene-lint.mjs).
@@ -70,7 +68,7 @@ const _scObjs = new Map(), _scShapeMemo = new Map(), _scObjDups = [];
 let _scWardrobeWet = null;
 function sceneWardrobeWet() { return _scWardrobeWet; }
 const _SC_OBJ_ID_RE = /^[a-z]+\.[a-z0-9-]{1,40}$/;
-/** Define (or, for tests, redefine) an object. A second definition of an id replaces the first and is reported by sceneObjCheck / sceneObjDups. */
+/** Define (or, for tests, redefine) an object. A second definition of an id replaces the first and is reported by sceneObjDups. */
 function sceneObjDefine(def) {
   if (!def || !_SC_OBJ_ID_RE.test(def.id || '')) throw new Error('sceneObjDefine: bad id ' + (def && def.id) + ' (the form is <category>.<name>)');
   if (def.kind === 'raster') def = sceneRasterPrep(def);   // image-backed objects (70-scene-0raster.js): a build() of image shapes

@@ -23,8 +23,7 @@
    Keyboard (12-home-board.js boardEditKey): arrows move, Shift+arrows resize one column / row.
    The hero is not on the grid: it stays where it is.
    Public: boardEditor(grid, A) -> {destroy(), dragging}, _homeGridEditor(grid), homeBoardAdapter(),
-   homeWidgetSet(id, {size?, cols?, h?}), homeWidgetMoveTo(id, j), homeWidgetMoveRow(id, dir),
-   homeWidgetHeight(id, h), homeWidgetHeightStep(id, dir), homeWidgetCols(id, n),
+   homeWidgetSet(id, {size?, cols?, h?}), homeWidgetMoveTo(id, j),
    homeShelfDropIndex(boxes, x, y, gridW) (pure).
    ============================================================ */
 

@@ -115,7 +115,7 @@ async function _gartBakeNext(svg) {
 /* ---------- who may move ---------- */
 /**
  * A thing out of the window is hidden, and what is in it is lifted off the page and kept beside it: an SVG <g> stays in the page's layout even at display: none, so 15,000 hidden nodes were walked in every frame.
- * Something with ids in it stays (another thing may use its gradient). Whatever copies the stage calls gardenArtAllBack first.
+ * Something with ids in it stays (another thing may use its gradient).
  */
 function _gartOffSet(el, far) {
   el._gartOff = far; el.classList.toggle('gart-off', far);
