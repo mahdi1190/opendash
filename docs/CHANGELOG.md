@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.75.6] - 2026-11-24
+
+### Added
+
+- Alpha tester boost: while the game is in alpha, every garden is lifted once to level 99 with 1,000,000 coins, 5,000 timber and stone, 200 compost and every tool, rod and net, so the whole vale can be tried. It is one gift line that syncs like any other and will be cleared when gardens are reset for beta.
+
 ## [2.75.5] - 2026-11-24
 
 ### Changed
