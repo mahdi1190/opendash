@@ -16,7 +16,7 @@ export const MUSIC_NAME = /^(dawn|morning|afternoon|evening|night|late)(?:-(spri
 const MIME = { mp3: 'audio/mpeg', ogg: 'audio/ogg', m4a: 'audio/mp4' };
 const MAX_BYTES = 40 * 1024 * 1024;
 
-/** The songs in the folder: [{file, slot, season, n, db}] (db: the trim from levels.json, 0 when it has none). */
+/** The songs in the folder: [{file, slot, season, n, db}] (db: the trim from levels.json; null when it has none: the page uses its default). */
 export async function musicList(root = ROOT) {
   let names = [];
   try { names = await readdir(root); } catch { return []; }
@@ -26,7 +26,7 @@ export async function musicList(root = ROOT) {
   for (const file of names.sort()) {
     const m = MUSIC_NAME.exec(file); if (!m) continue;
     const db = Number(levels[file] && typeof levels[file] === 'object' ? levels[file].db : levels[file]);
-    out.push({ file, slot: m[1], season: m[2] || '', n: Number(m[3]), db: Number.isFinite(db) ? Math.max(-30, Math.min(12, db)) : 0 });
+    out.push({ file, slot: m[1], season: m[2] || '', n: Number(m[3]), db: Number.isFinite(db) ? Math.max(-30, Math.min(12, db)) : null });
   }
   return out;
 }
