@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.75.1] - 2026-11-24
+
+### Changed
+
+- The garden has real music: songs for dawn, morning, afternoon, evening and night that follow the garden clock, take turns without repeating, crossfade gently, soften in the rain and quieten indoors. The songs were made by the owner with Suno and are not covered by the MIT licence (see assets/music/README.md).
+
 ## [2.75.0] - 2026-11-21
 
 ### Added
