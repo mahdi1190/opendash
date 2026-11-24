@@ -69,7 +69,6 @@ function gardenLevelDepth(lv, x, y) {
 }
 function gardenHeightLevel() { return _ght.lv; }
 function gardenHeightSwimming() { return !!(_ght.swim && _ght.swim.on); }
-function gardenHeightBusy() { return !!_ght.climb || !!(_ght.swim && !_ght.swim.on); }
 /** How high the figure (and its shadow) is drawn: the floor you stand on. (While climbing the figure alone rises: gartActLift.) */
 function gardenHeightLift() { return _ght.lv && !_ght.climb ? _ght.lv.h : _ght.climb && _ght.climb.inside ? _ght.climb.lift || 0 : 0; }
 /** How far up the view looks: the floor you are on, or how far up the ladder you are. */

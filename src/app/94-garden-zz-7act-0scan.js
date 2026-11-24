@@ -41,9 +41,6 @@ function _gksDecorKey() {
 }
 /** The garden's level as a number (the model keeps { level, ... }). */
 function _gksLevel() { try { const L = gardenModel().level; return Number(L && typeof L === 'object' ? L.level : L) || 0; } catch (e) { return 0; } }
-/** A number that changes whenever the walker's map of what stops the feet is rebuilt (land opened, a thing built). */
-const _gksGrid = { obj: null, n: 0 };
-function _gksGridRev() { const g = typeof _gw !== 'undefined' && _gw ? _gw.grid : null; if (g && g !== _gksGrid.obj) { _gksGrid.obj = g; _gksGrid.n++; } return _gksGrid.n; }
 /** Every thing standing now, with its kind. Rebuilt when the key changes (looked at at most twice a second). */
 function gardenAffordThings() {
   const now = typeof performance !== 'undefined' ? performance.now() : 0;
@@ -197,12 +194,6 @@ function gardenTerrainWaterAhead(px, py) {
   if (_gksWet(px, py)) return null;
   for (const dy of [-1.1, -1.8]) if (_gksWet(px, py + dy) && _gksWet(px, py + dy - 1.6)) return { x: px, y: py + dy, deg: -90, deep: _gksWet(px, py + dy - 2.8) && _gksWet(px, py + dy - 4.2) };
   return null;
-}
-/** The nearest cell of a terrain type within R (cell middles): { x, y } or null. */
-function gardenTerrainNear(type, x, y, R) {
-  R = R || 6; let best = null, bd = R;
-  for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) { const cx = Math.floor(x) + dx + 0.5, cy = Math.floor(y) + dy + 0.5, d = Math.hypot(cx - x, cy - y); if (d >= bd) continue; if (gardenTerrainAt(cx, cy) === type) { bd = d; best = { x: cx, y: cy }; } }
-  return best;
 }
 /** Somewhere a thing may be laid on the ground (a pet's puddle, its leaves, a fire): grass or soil (a puddle or a hole also on sand), never a
  *  road, water, a building's ground or on top of anything found standing there. The same rule for every prop of the world. */

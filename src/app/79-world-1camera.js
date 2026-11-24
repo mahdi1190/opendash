@@ -286,50 +286,6 @@ function worldCameraXform(spec, i, o) {
 /** The compass bearing of a camera-frame point (W5: backdrop bearings come from the camera's heading). */
 function worldCameraBearing(cam, x, z) { return _wcm360((cam && _wcmNum(cam.heading) ? cam.heading : 0) + Math.atan2(x, z) / _WCM_DEG); }
 
-/**
- * A camera-frame spec for camera i: one `camera` (the resolved v2 block), every point, polygon, path, footprint and facing in
- * camera metres. Keys it does not know are copied unchanged (bearings stay compass bearings). o.keep: keep `cameras`.
- */
-function worldCameraSpec(spec, i, o) {
-  o = o || {};
-  if (!_wcmObj(spec)) return spec;
-  const X = worldCameraXform(spec, i, o), cam = X.cam;
-  const out = {};
-  for (const k of Object.keys(spec)) if (k !== 'cameras' || o.keep) out[k] = spec[k];
-  const block = { eye: cam.eye, fov: cam.fov, horizon: cam.horizon, heading: cam.heading, x0: cam.x0 };
-  for (const k of ['lat', 'lon', 'alt', 'water', 'preset']) if (cam[k] != null) block[k] = cam[k];
-  out.camera = block;
-  if (X.identity) return out;
-  out.v = 3;
-  const P = p => (_wcmPt(p) ? X.toCam(p[0], p[1]) : p);
-  const pts = L => (Array.isArray(L) ? L.map(P) : L);
-  const surf = s => { if (!_wcmObj(s)) return s; const r = Object.assign({}, s); if (Array.isArray(s.poly)) r.poly = pts(s.poly); if (Array.isArray(s.path)) r.path = pts(s.path); return r; };
-  const ent = e => {
-    if (!_wcmObj(e)) return e;
-    const r = Object.assign({}, e);
-    if (_wcmPt(e.at)) r.at = P(e.at);
-    if (_wcmNum(e.facing)) r.facing = X.facing(e.facing);
-    if (Array.isArray(e.foot)) r.foot = pts(e.foot);
-    if (Array.isArray(e.path)) r.path = pts(e.path);
-    return r;
-  };
-  if (Array.isArray(spec.surfaces)) out.surfaces = spec.surfaces.map(surf);
-  for (const k of ['entities', 'landmarks', 'buildings', 'lines']) if (Array.isArray(spec[k])) out[k] = spec[k].map(ent);
-  if (Array.isArray(spec.life)) out.life = spec.life.map(L => {
-    if (!_wcmObj(L)) return L;
-    const r = Object.assign({}, L);
-    if (Array.isArray(L.goals)) r.goals = L.goals.map(g => { if (!_wcmObj(g)) return g; const q = Object.assign({}, g); for (const v of ['go', 'view', 'feed', 'fish']) if (_wcmPt(g[v])) q[v] = P(g[v]); return q; });
-    return r;
-  });
-  if (_wcmObj(spec.ground)) {
-    const g = Object.assign({}, spec.ground);
-    if (Array.isArray(spec.ground.features)) g.features = spec.ground.features.map(ent);
-    out.ground = g;
-  }
-  if (_wcmObj(spec.place)) { const p = Object.assign({}, spec.place); delete p.origin; out.place = p; }
-  return out;
-}
-
 /* ---------- screen boxes ---------- */
 function _wcmProj(cam, x, z, y) {
   if (typeof sceneProject === 'function' && cam && _wcmNum(cam.f)) return sceneProject(cam, x, z, y);

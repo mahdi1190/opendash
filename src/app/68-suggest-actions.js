@@ -28,7 +28,6 @@ const SG_ACTIONS = {};
 let _sgCalwTick = 0;                 // bumped on CalWrite changes: the snapshot memo key
 const _sgOpenOps = new Map();        // card key -> extra ops to run when its prefilled event card is saved (cal.createOpen)
 function sgDefineAction(type, def) { SG_ACTIONS[type] = Object.assign({ check: () => '' }, def); }
-function sgActionSafety(type) { return SG_ACTION_TYPES[type] || ''; }
 function _sgToday() { return typeof todayStr === 'function' ? todayStr() : sgAddDays('1970-01-01', 0); }
 function _sgNowMin() { const d = Clock.parts(Clock.now()); return d.h * 60 + d.mi; }
 /** 'YYYY-MM-DDTHH:MM' on the wall clock (CalWrite and the event card read it as local time). */

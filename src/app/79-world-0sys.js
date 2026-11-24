@@ -130,10 +130,8 @@ function _wsyStdKinds() {
   return ['spawn', 'leave', 'arrive', 'depart', 'board', 'alight', 'sit', 'stand', 'stop', 'go', 'scare', 'strike', 'lightsOn', 'lightsOff',
     'weather', 'snowStart', 'snowStop', 'schedule', 'wake'];
 }
-const WORLD_PHASES = Object.freeze(_wsyPhaseList());
 const WORLD_TICK_HZ = 30;
 const WORLD_LOOP_S = 360;
-const WORLD_SYSTEM_BUDGETS = Object.freeze(_wsyBudgets());
 const WORLD_COMPONENTS = Object.freeze(_wsyComponentMap());
 const WORLD_BUS_KINDS = Object.freeze(_wsyStdKinds());
 /** LOD and culling thresholds (G7): projected height in frame units (the v2 frame is 1600 x 900), hysteresis, cull margins. */
@@ -316,7 +314,6 @@ function worldSystemList() {
   return _wsyRegOrder().map(d => ({ id: d.id, phase: d.phase, after: d.after.slice(), before: d.before.slice(), rate: d.rate, budgetMs: d.budgetMs,
     components: { read: d.components.read.slice(), write: d.components.write.slice() } }));
 }
-function worldSystemProblems() { _wsyRegOrder(); const R = _wsyRegistry(); return [...R.problems, ...R.orderProblems].map(p => Object.assign({}, p)); }
 /** The degrade level (0..3) the runner has set for a system on this world (a system reads it in update). */
 function worldSystemLevel(world, id) {
   const r = world && world.runner, I = r && r._inst ? r._inst.find(x => x.id === id) : null;

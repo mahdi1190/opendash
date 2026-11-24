@@ -88,7 +88,6 @@ function gardenFolkReach(a, b) {
   const i = _vfpNearOpen(a.x, a.y), j = _vfpNearOpen(b.x, b.y);
   return i >= 0 && j >= 0 && _vfp.comp[i] === _vfp.comp[j];
 }
-function gardenFolkCost(x, y) { const W = GARDEN_WORLD, cx = Math.floor(x), cy = Math.floor(y); if (!_vfp.cost || cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) return Infinity; return _vfp.cost[cy * W.cols + cx]; }
 function gardenFolkTier(x, y) { const W = GARDEN_WORLD, cx = Math.floor(x), cy = Math.floor(y); if (!_vfp.tier || cx < 0 || cy < 0 || cx >= W.cols || cy >= W.rows) return 9; return _vfp.tier[cy * W.cols + cx]; }
 /** The nearest cell anyone can walk to from a point (the start or end of a leg may be on a seat's edge or a door step). */
 function _vfpNearOpen(x, y) {

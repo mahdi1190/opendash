@@ -40,7 +40,6 @@ function briefWxIcon(cond, isDay, cls) {
   const c = cls ? ' ' + String(cls).replace(/[^a-zA-Z0-9 _-]/g, '') : '';
   return `<svg class="i bf-wxi${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${_BF_WX_SVG[k]}</svg>`;
 }
-const _BF_TYPE_ICON = { birthday: 'cake', party: 'party-popper', flight: 'plane', train: 'train-front', deadline: 'hourglass', meeting: 'users', 'video-call': 'video' };
 
 /* ---------- settings ---------- */
 function briefPrefs() {
@@ -138,8 +137,6 @@ function _animRebalance() {
   const list = [..._animVisible].sort((a, b) => (b.classList.contains('is-hero') - a.classList.contains('is-hero')) || ((a.compareDocumentPosition(b) & 4) ? -1 : 1));
   list.forEach((el, i) => el.classList.toggle('is-live', i < ANIM_MAX_LIVE));
 }
-/** How many scenes animate right now (tests and the CPU check). */
-function animLiveCount() { return document.querySelectorAll('.anim-scene.is-live').length; }
 document.addEventListener('visibilitychange', () => {
   document.documentElement.classList.toggle('anim-paused', document.hidden);
   if (!document.hidden) { _bfTick(); _briefDayCheck(); }

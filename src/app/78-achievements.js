@@ -86,9 +86,6 @@ function _achIsMeta(d) {
   if (v == null) { v = JSON.stringify(d.when).indexOf('"meta"') >= 0; _achMetaMemo.set(d, v); }
   return v;
 }
-
-/* ---------- features an achievement needs ---------- */
-function registerAchFeature(name, fn) { if (name && typeof fn === 'function') _ach.features.set(String(name), fn); }
 function achFeatureOn(name) {
   const own = _ach.features.get(name);
   if (own) { try { return !!own(); } catch (e) { return false; } }
@@ -138,16 +135,6 @@ function achRewardLabel(unlock) {
 }
 /** Is the owner of a reward here? (When not, the card says "with the Garden" and the id waits.) */
 function achRewardOwnerOn(unlock) { const r = achRewardParse(unlock); const k = r ? ACH_REWARD_KINDS[r.kind] : null; return !k || !k.needs || achFeatureOn(k.needs); }
-function achRewardOpen(kind, id) { const a = achUnlockOf(kind, id); if (!a) return null; return !!achState().unlocked[a]; }
-function achRewardsEarned(kind) {
-  const un = achState().unlocked, out = [];
-  for (const d of ACH_DEFS) {
-    if (!d.unlock || !un[d.id]) continue;
-    const r = achRewardParse(d.unlock);
-    if (r && (!kind || r.kind === kind)) out.push({ kind: r.kind, id: r.id, ach: d.id, day: un[d.id] });
-  }
-  return out;
-}
 function _achRewardEmit(d, hist) {
   const r = achRewardParse(d && d.unlock);
   if (!r) return;

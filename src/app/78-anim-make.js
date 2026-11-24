@@ -26,7 +26,6 @@ async function _amPost(url, body) {
   }
   return j;
 }
-function animMineItems() { return _amMine.slice(); }
 function _amRegister(items) {
   _amMine = Array.isArray(items) ? items : [];
   const pack = animMinePack(_amMine);

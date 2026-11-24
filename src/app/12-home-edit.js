@@ -229,18 +229,6 @@ function _homeSizeGhost(frame, size) {
   g.innerHTML = `<span>${esc(_HG_SIZE_LONG[size])}</span>`;
   frame.appendChild(g);
 }
-/**
- * While customising, the columns a row leaves empty show as a dashed "+" slot that opens Add widget (HOME_SPEC.md 2),
- * and the widget it adds takes exactly that space. A slot fills exactly the hole the packing leaves, so nothing moves
- * (12-home-board.js boardGapSlots). Wide screens only (on narrow ones every row is whole).
- */
-/**
- * Where a 12-column board that packs densely leaves columns empty (pure). spans: the columns each widget takes, in
- * order. -> [{at, cols}]: `cols` free columns at the end of the row whose last widget is before `at`.
- */
-function homeShelfGaps(spans) {
-  return boardGaps(spans, true).map(g => ({ at: g.after + 1, cols: g.cols }));
-}
 function _homeGapSlots(grid) {
   boardGapSlots(grid, { isFrame: (k) => k.classList.contains('hg-w') && !!k.dataset.wid, onAdd: (cols) => _homeOpenGallery(null, null, cols) });
 }
@@ -276,29 +264,12 @@ function homeWidgetOrder(ids, movedId) {
   _homeEditFocusId = movedId || null;
   homeSaveLayout(next, { say: def ? `${def.title} moved to position ${pos} of ${ids.length}` : 'Widgets reordered' });
 }
-function homeWidgetMove(id, delta) {
-  const ids = _homeVisibleIds();
-  const i = ids.indexOf(id), j = i + delta;
-  if (i < 0) return;
-  const def = homeWidgetDef(id);
-  if (j < 0 || j >= ids.length) { homeAnnounce(`${def.title} is already ${j < 0 ? 'first' : 'last'}`); return; }
-  [ids[i], ids[j]] = [ids[j], ids[i]];
-  homeWidgetOrder(ids, id);
-}
 function homeWidgetResize(id, size) {
   const def = homeWidgetDef(id);
   if (!def || !def.sizes.includes(size)) return;
   _homeEditFocusId = id;
   const next = homeLayout().widgets.map(w => { if (w.id !== id) return w; const o = Object.assign({}, w, { size }); delete o.c; return o; });   // a preset drops a custom width
   if (!homeSaveLayout(next, { say: `${def.title}: ${HOME_SIZE_LABEL[size]}` })) homeAnnounce(`${def.title} is already ${HOME_SIZE_LABEL[size]}`);
-}
-function homeWidgetStep(id, dir) {
-  const def = homeWidgetDef(id);
-  const cur = (homeLayout().widgets.find(w => w.id === id) || {}).size;
-  const i = def ? def.sizes.indexOf(cur) : -1;
-  const n = def && def.sizes[i + dir];
-  if (!n) { if (def) homeAnnounce(`${def.title} is already as ${dir > 0 ? 'big' : 'small'} as it goes`); return; }
-  homeWidgetResize(id, n);
 }
 function homeWidgetHide(id) {
   const def = homeWidgetDef(id);

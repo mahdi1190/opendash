@@ -899,7 +899,6 @@ const _GV_BUGS = [
 ];
 /* the birds and beasts each page has (Nature book creatures, noted by saying hello: gardenLifeFound('c', id)). Seen, never caught. */
 const GARDEN_JOURNAL_SEEN = Object.freeze({ village: Object.freeze(['robin', 'blackbird', 'blue-tit', 'hen', 'mallard', 'hedgehog', 'frog']), woodland: Object.freeze(['squirrel', 'fox', 'rabbit']), valley: Object.freeze(['otter', 'bat']), oldwood: Object.freeze(['white-stag']), orchard: Object.freeze([]), mountains: Object.freeze([]), sea: Object.freeze([]) });
-const GARDEN_JOURNAL_LEGEND_SEEN = Object.freeze(['white-stag']);
 function _gvLook(look, base, shape) { return Object.freeze(look ? Object.assign({}, shape ? { s: shape } : {}, look) : base.look); }
 function _gvFishDef(r, i, n) {
   const [id, name, page, home, rar, cm, diff, beh, seasons, tod, more, clue, by, note, look] = r, base = _GF_ALL.find(f => f.id === id) || null, m = more || {};
@@ -1033,12 +1032,6 @@ function _gfMoonAge(iso) {
 function gardenMoonPhase(isoDay) {
   const age = _gfMoonAge(isoDay), M = GF_MOON.month, E = GF_MOON.edge;
   return age < E || age > M - E ? 'new' : Math.abs(age - M / 2) < E ? 'full' : age < M / 2 ? 'waxing' : 'waning';
-}
-/** How many days until that phase comes round (0: it is that now). */
-function gardenMoonIn(isoDay, phase) {
-  const t = Date.parse(String(isoDay || '').slice(0, 10) + 'T12:00:00Z'); if (!Number.isFinite(t)) return 0;   // clock-ok: counting from that day
-  for (let i = 0; i < 31; i++) if (gardenMoonPhase(new Date(t + i * 86400000).toISOString().slice(0, 10)) === phase) return i;
-  return 0;
 }
 
 /* ---------- can it appear? ---------- */
@@ -1179,8 +1172,6 @@ function gardenCatchNeedsRows(def) {
   add('fight', 'The fight', (d <= 3 ? 'Gentle' : d <= 5 ? 'Steady' : d <= 7 ? 'Hard' : 'Very hard') + ': ' + (_GF_FIGHT[def.beh] || _GF_FIGHT.smooth) + '.');
   return rows;
 }
-/** The how-to-catch lines in plain words, for anyone to show. */
-function gardenCatchNeedsWords(def) { return gardenCatchNeedsRows(def).map(r => r.label + ': ' + r.text); }
 /** Pick by weight with a seeded random. */
 function gardenFishPick(odds, rnd) {
   let sum = 0; for (const [, w] of odds) sum += w;

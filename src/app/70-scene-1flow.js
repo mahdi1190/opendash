@@ -785,22 +785,3 @@ function sceneFlowAgents(C, t, L, opt) {
   });
   return out.sort((a, b) => (a.d !== b.d ? b.d - a.d : a.flow - b.flow || a.k - b.k));
 }
-/** The k-th agent (schedule order over the flow's lanes, in the period) at time t, or null when it is not on screen. */
-function sceneFlowAt(flow, k, t, cam, mult) {
-  if (!flow || !cam) return null;
-  const m = mult == null ? (flow.timetable ? 1 : flow.peak || 1) : mult, P = SCENE_FLOW_PERIOD, tau = (t || 0) + P / 2;
-  let rest = k | 0;
-  for (let li = 0; li < flow.lanes.length; li++) {
-    const S = sceneFlowSchedule(flow, li, m);
-    if (rest >= S.list.length) { rest -= S.list.length; continue; }
-    const a = S.list[rest], p = Math.floor(tau / P);
-    for (let q = p; q >= p - Math.ceil(S.durMax / P); q--) {
-      const ag = _scflPlace(cam, flow, 0, li, a, q * P + a.t0, tau, { night: false, rain: false });
-      if (ag) return ag;
-    }
-    return null;
-  }
-  return null;
-}
-/** How many agents are on screen at t. */
-function sceneFlowCount(C, t, L, opt) { return sceneFlowAgents(C, t, L, opt).length; }

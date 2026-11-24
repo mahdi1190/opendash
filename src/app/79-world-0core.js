@@ -50,10 +50,6 @@
      worldAdd(pack, meta, spec)      -> registers the items (never refuses); worldAddLog(id) the load log; worldAddProblems()
      worldPopulationDefine(name, p)  -> extends WORLD_POPULATIONS (life adds its own population names)
    ============================================================ */
-const WORLD_VERSIONS = Object.freeze([3, 3.1]);
-const WORLD_RULES = Object.freeze(['badVersion', 'badType', 'badValue', 'unknownKey', 'screenOrLookField', 'seasonPinned', 'perSeasonData', 'missingField',
-  'dupId', 'unknownSize', 'unknownVariant', 'careRule', 'regionInvalid', 'badAttach', 'overlap', 'blocksPath', 'orphan', 'orient', 'gridRow', 'nearBand', 'badSurface',
-  'unknownSurface', 'unknownWho', 'unreachable', 'emptyBackground', 'unknownBackdrop', 'landmarkSrc', 'walkwayWater', 'templated', 'buildError']);
 /** The usual severity of each rule (5.2): repair = stripped, defaulted, snapped or moved; drop = the entry goes; warn = advice only. */
 const WORLD_RULE_SEVERITY = Object.freeze({
   badVersion: 'repair', badType: 'repair', badValue: 'repair', unknownKey: 'repair', screenOrLookField: 'repair', seasonPinned: 'repair', perSeasonData: 'repair',
@@ -66,7 +62,6 @@ const WORLD_LOOK_KEYS = Object.freeze(['X', 'Y', 'px', 's', 'scale', 'layer', 'f
   'reflections', 'highlight', 'glow', 'shimmer', 'lightPath', 'lit', 'opacity', 'alpha', 'blur', 'haze', 'hue', 'saturation', 'brightness', 'contrast', 'bed']);
 /** Library objects that ARE a look (a hand shadow, a hand reflection, a light pool): never placed (L3). Parts so named are never drawn. */
 const WORLD_LOOK_OBJ_RE = /(^|[.-])(shadows?|reflections?|reflect|shade|glint|light-?pools?|light-?path|sun-?rays|god-?rays|lens-?flare)(-|$)/;
-const WORLD_LOOK_PART_RE = /^(shadow|shade|reflect|reflection|mirror|glint)/i;
 /** Words that make a key per-season, per-time or per-weather data (V1). */
 const _WC_SEASON_WORDS = new Set(['spring', 'summer', 'autumn', 'fall', 'winter', 'season', 'seasons', 'seasonal', 'night', 'nights', 'nighttime', 'daytime',
   'dawn', 'dusk', 'morning', 'evening', 'noon', 'midday', 'sunrise', 'sunset', 'golden', 'rain', 'rainy', 'snow', 'snowy', 'fog', 'foggy', 'frost', 'frosty',
@@ -119,7 +114,6 @@ const WORLD_POPULATIONS = {
   cattle: { layer: 'graze', obj: 'animal.cattle' }, ponies: { layer: 'graze', obj: 'animal.pony' }, sheep: { layer: 'graze', obj: 'animal.sheep' },
   deer: { layer: 'graze', obj: 'animal.deer' }, rabbits: { layer: 'graze', obj: 'animal.rabbit' },
 };
-function worldPopulationDefine(name, p) { if (!/^[a-z0-9-]+$/.test(String(name)) || !p || !WORLD_LAYER_KINDS.hasOwnProperty(p.layer)) throw new Error('worldPopulationDefine: bad ' + name); WORLD_POPULATIONS[name] = Object.assign({}, p); }
 
 /* ---------- small maths ---------- */
 const _WC_DEG = Math.PI / 180;
@@ -263,18 +257,6 @@ function _wcSat(A, B) {
 }
 /** The penetration depth of two convex polygons (separating axis), 0 when apart. */
 function _wcPenetration(A, B) { const r = _wcSat(A, B); return r ? r.depth : 0; }
-/** The nearest z of a footprint at column x (2.3 rule 3); Infinity when x is outside its span; the polygon's min z when x is null. */
-function worldFrontZ(foot, x) {
-  if (!Array.isArray(foot) || !foot.length) return Infinity;
-  if (x == null) return Math.min(...foot.map(p => p[1]));
-  let z = Infinity;
-  for (let i = 0, j = foot.length - 1; i < foot.length; j = i++) {
-    const [x1, z1] = foot[j], [x2, z2] = foot[i];
-    if (x < Math.min(x1, x2) || x > Math.max(x1, x2)) continue;
-    z = Math.min(z, x1 === x2 ? Math.min(z1, z2) : z1 + (z2 - z1) * (x - x1) / (x2 - x1));
-  }
-  return z;
-}
 /** The UK lane direction (drive on the LEFT) at a point beside a road centre line: a facing. */
 function _wcLaneFacing(path, x, z) {
   const n = _wcLineNear(path, x, z); if (!n) return null;
@@ -1205,31 +1187,6 @@ function worldRepair(spec) {
       log: [{ id: null, obj: null, action: 'default', rule: 'buildError', reason: 'the repair threw (' + m + '): an empty scene', from: null, to: 'empty', by: 'sense', path: 'spec', severity: 'fatal' }] };
   }
   return { spec: r.spec, log: r.log, errors: r.errors, warnings: r.warnings };
-}
-
-/* ---------- versions (G11, 5.3) ---------- */
-/** v3.0 (camera frame) -> v3.1 (place frame): one camera at the origin with the old heading; points rotated, facings and edges re-expressed. */
-function worldMigrate(spec) {
-  const log = [];
-  if (!_wcObjOf(spec)) return { spec, log };
-  const s = _wcClone(spec, (p, m) => log.push({ id: null, obj: null, action: 'drop', rule: 'buildError', reason: `${p} threw: ${m}`, from: null, to: null, by: 'sense', path: p }));
-  if (s.v === 3.1 || Array.isArray(s.cameras)) {
-    if (s.v !== 3.1) { log.push({ id: null, obj: null, action: 'migrate', rule: 'badVersion', reason: 'cameras belong to v 3.1', from: s.v, to: 3.1, by: 'sense' }); s.v = 3.1; }
-    if (!Array.isArray(s.cameras) && _wcObjOf(s.camera)) { s.cameras = [s.camera]; delete s.camera; }
-    return { spec: s, log };
-  }
-  const c = _wcObjOf(s.camera) ? s.camera : {}, H = _wcNum(c.heading) ? c.heading : 180, cs = Math.cos(H * _WC_DEG), sn = Math.sin(H * _WC_DEG);
-  const pt = p => _wcPt(p) ? [p[0] * cs + p[1] * sn, -p[0] * sn + p[1] * cs] : p, face = f => _wcNum(f) ? _wcFace(f + H) : f;
-  const cam = { id: 'main', at: [0, 0], heading: H };
-  if (_wcNum(c.eye)) cam.height = c.eye;
-  for (const k of ['fov', 'horizon', 'x0', 'water', 'lat', 'lon', 'alt', 'preset']) if (c[k] != null) cam[k] = c[k];
-  if (_wcObjOf(s.ground) && s.ground.relief != null) { cam.relief = s.ground.relief; delete s.ground.relief; if (!Object.keys(s.ground).length) delete s.ground; }
-  _wcMapSpec(s, pt, face, x => (typeof x === 'string' && ['N', 'S', 'E', 'W'].includes(x)) ? WORLD_EDGE_ALIAS[x] : x);
-  delete s.camera;
-  s.cameras = [cam];
-  log.push({ id: null, obj: null, action: 'migrate', rule: 'version', reason: 'v3.0 camera frame -> v3.1 place frame (one camera at the origin, heading ' + _wcR3(H) + ')', from: s.v, to: 3.1, by: 'sense' });
-  s.v = 3.1;
-  return { spec: s, log };
 }
 /** Map every point, facing and edge of a spec in place (shared by the migration and the camera transform). */
 function _wcMapSpec(s, pt, face, edge) {

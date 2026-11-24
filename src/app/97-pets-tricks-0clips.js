@@ -165,7 +165,6 @@ function petClipSuits(id, species) {
   if (c.nt && PET_CLIP_LACKS.tail.has(sp.id)) return false;
   return true;
 }
-function petClipsFor(species, pred) { return Object.keys(PET_CLIP_LIB).filter(id => petClipSuits(id, species) && (!pred || pred(PET_CLIP_LIB[id]))); }
 
 /* ---------- from a row to Web Animations ---------- */
 const _pcN = (v) => Math.round(v * 100) / 100;

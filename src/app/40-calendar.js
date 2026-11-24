@@ -747,40 +747,6 @@ function _calMonthEntries(opt) {
   return iso => calEntriesOn(iso, opt, tasksForDay);
 }
 
-// A month grid of exactly the tasks the current view and filter show; drag a
-// task to another day to reschedule it. The full Calendar lives at #view=calendar.
-function renderCalendarView(container) {
-  if (!/^\d{4}-\d{2}$/.test(state.calMonth || '')) state.calMonth = todayStr().slice(0, 7);
-  const [yr, mo] = state.calMonth.split('-').map(Number);
-  const filter = (i) => matchesView(i, state.view) || (effDate(i) && ['today', 'week', 'tomorrow'].includes(state.view) && !isArchived(i));
-  const wrap = document.createElement('div'); wrap.className = 'cal-taskmonth';
-  const head = document.createElement('div'); head.className = 'cal-h';
-  head.innerHTML = `<h1>${esc(new Date(yr, mo - 1, 1).toLocaleDateString(_CAL_LOCALE(), { month: 'long' }))} <span>${yr}</span></h1>`
-    + `<button type="button" class="btn-icon" data-d="-1" aria-label="Previous month">${icon('chevron-left')}</button>`
-    + `<button type="button" class="btn-icon" data-d="1" aria-label="Next month">${icon('chevron-right')}</button>`
-    + `<button type="button" class="btn btn-secondary btn-sm" data-d="0">Today</button>`
-    + `<span class="spacer"></span><button type="button" class="btn btn-ghost btn-sm" data-open>${icon('calendar-days')}<span>Open full calendar</span></button>`;
-  head.querySelectorAll('[data-d]').forEach(b => {
-    b.onclick = () => {
-      const n = Number(b.dataset.d);
-      const d = n === 0 ? _calParse(todayStr()) : new Date(yr, mo - 1 + n, 1);
-      state.calMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; // clock-ok: wall date
-      saveUI(); renderMain();
-    };
-  });
-  head.querySelector('[data-open]').onclick = () => setView('calendar');
-  wrap.appendChild(head);
-  const grid = calMonthGrid({
-    year: yr, month: mo - 1,
-    entries: _calMonthEntries({ sources: { google: false, countdowns: false, tasks: true }, taskFilter: (i) => filter(i) && matchesSearch(i, searchQuery), includeDone: true }),
-    onDay: (iso) => setView('day:' + iso),
-  });
-  grid.classList.add('compact');
-  wrap.appendChild(grid);
-  container.appendChild(wrap);
-  requestAnimationFrame(() => calFitMonth(grid));
-}
-
 /**
  * The month grid used by the Calendar section and the task views.
  * o: {year, month (0-11), entries(iso) -> [entry], selected, onDay(iso),

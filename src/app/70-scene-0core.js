@@ -33,7 +33,6 @@
    ============================================================ */
 const SCENE_W = 1600, SCENE_H = 900;
 const SCENE_CATEGORIES = Object.freeze(['tree', 'plant', 'ground', 'rock', 'water', 'bird', 'animal', 'person', 'vehicle', 'boat', 'building', 'street', 'rail', 'structure', 'prop', 'sky', 'landmark']);
-const SCENE_ANIM_KINDS = Object.freeze(['sway', 'bob', 'flap', 'walk', 'paddle', 'turn', 'flicker', 'spin', 'frames']);
 const SCENE_LAYERS_DEFAULT = Object.freeze([
   { id: 'horizon', depth: 0.08, haze: 0.65 }, { id: 'far', depth: 0.2, haze: 0.45 }, { id: 'mid', depth: 0.45, haze: 0.2 },
   { id: 'near', depth: 0.75, haze: 0.06 }, { id: 'fore', depth: 1, haze: 0 }, { id: 'front', depth: 1.25, haze: 0 },
@@ -161,17 +160,6 @@ function sceneObjShapes(id, v, season) {
   const out = { box: def.box || _scBox(parts), parts, order, anim: hooks, still: order.filter(n => n !== 'lit' && !(def.animOnly || []).includes(n)) };
   _scShapeMemo.set(key, out);
   return out;
-}
-/** Definition-level problems of one object (the drawing rules are tools/lib/scene-lint.mjs lintObject). */
-function sceneObjCheck(id) {
-  const def = sceneObj(id), p = [];
-  if (!def) return ['no object ' + id];
-  if (!SCENE_CATEGORIES.includes(def.category)) p.push('unknown category ' + def.category);
-  if (id.split('.')[0] !== def.category) p.push('the id prefix must be the category');
-  if (_scObjDups.includes(id)) p.push('defined more than once');
-  if (!Array.isArray(def.size) || def.size.length !== 2 || def.size.some(n => !(n >= 4 && n <= 2000))) p.push('size must be [w, h] within 4 to 2000');
-  for (const kind of Object.keys(def.anim || {})) if (!SCENE_ANIM_KINDS.includes(kind)) p.push('unknown animation kind ' + kind);
-  return p;
 }
 
 /* ---------- the nature kit, seasons, light, colour, wind (2.3, 5) ---------- */
@@ -700,16 +688,6 @@ function sceneItems(pack) {
   }
   return out;
 }
-/** The superseded pairs (V2 14.3, information, not an error): [{ pack, id, kind: 'superseded', by: 'recipe' }]. */
-function sceneItemDups() {
-  const out = [];
-  for (const pack of Object.keys(_scPacks)) {
-    const byId = new Map();
-    for (const it of _scPacks[pack]) { const e = byId.get(it.id) || { r: 0, v: 0 }; if (it.recipe) e.r++; else e.v++; byId.set(it.id, e); }
-    for (const [id, e] of byId) if (e.r && e.v) out.push({ pack, id, kind: 'superseded', by: 'recipe' });
-  }
-  return out;
-}
 
 /* ---------- archetypes, kits, tables, lines (2.7, 8) ---------- */
 const _scArch = Object.create(null), _scTables = Object.create(null), _scLines = Object.create(null);
@@ -721,7 +699,6 @@ function sceneArchetypeDefine(id, a) {
   return _scArch[id];
 }
 function sceneArchetype(id) { return _scArch[id] || null; }
-function sceneArchetypes() { return Object.values(_scArch); }
 /** A params row coerced to the archetype's types (lists split on |, numbers parsed, enums checked) plus its problems. */
 function _scParams(a, row) {
   const out = Object.assign({}, row), problems = [];
@@ -859,7 +836,6 @@ function sceneTable(id) {
   const listCols = new Set(t.cols.filter((c, i) => (t.lists || []).includes(c) || t.rows.some(r => typeof r[i] === 'string' && r[i].includes('|'))));
   return t.rows.map(r => Object.fromEntries(t.cols.map((c, i) => [c, listCols.has(c) && typeof r[i] === 'string' ? r[i].split('|').filter(Boolean) : r[i]])));
 }
-function sceneTables() { return Object.keys(_scTables); }
 /** One registry item per table row; scene is a THUNK, so rows cost nothing until shown or linted (8.2). */
 function sceneBatch(archId, tableId, o) {
   o = o || {};

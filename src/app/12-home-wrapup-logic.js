@@ -40,7 +40,6 @@
      wuThanksDraft(o)       {subject, body}: o = {title, first: [names], me, when ('today',
                             'yesterday' or a phrase like 'on Monday')}
    ============================================================ */
-const WU_WINDOWS = Object.freeze([0, 36, 168]);       // the settings' choices (today, 36 h, 7 days)
 
 function _wuMs(w) {
   if (w == null) return NaN;
@@ -103,11 +102,6 @@ function wuEndedText(min, dayDiff) {
   if (d <= 0 || m < 6 * 60) return Math.round(m / 60) + ' h ago';
   if (d === 1) return 'yesterday';
   return d + ' days ago';
-}
-
-function wuSummary(n) {
-  const k = Math.max(0, Math.round(Number(n) || 0));
-  return `${k} meeting${k === 1 ? '' : 's'} to wrap up`;
 }
 
 function wuFollowUpTitle(title) {

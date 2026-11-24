@@ -74,19 +74,12 @@ function worldModelFor(objId) {
   S.memo.set(objId, hit);
   return hit;
 }
-/** Remove a model (tests and tools that define scratch models). */
-function worldModelRemove(id) { const S = _wmdState(); const ok = S.defs.delete(id); S.memo.clear(); return ok; }
 function worldModelHas(objId) { return !!worldModelFor(objId); }
 /** A model that is not a hull falls back to the object's sprite when its build fails (worldExtrudeHull must not draw it as an art hull). */
 function worldModelSpriteOnly(objId) { const d = worldModelFor(objId); return !!d && !d.float && d.hullFallback !== true; }
 function worldModelIds() { return [..._wmdState().defs.keys()]; }
 /** The registered definition of a model id (not an object id: worldModelFor). */
 function worldModelGet(id) { return _wmdState().defs.get(id) || null; }
-function worldModelList() {
-  return [..._wmdState().defs.values()].map(d => ({ id: d.id, name: d.name, ids: d.ids.map(String), float: d.float, liveries: _wmdLiveries(d).map((l, i) => l.name || String(i)), samples: Array.isArray(d.samples) ? d.samples : [] }));
-}
-/** The error of the last failed build (null when none): a failed build falls back to the sprite, so the cause is kept here. */
-function worldModelError() { return _wmdState().err; }
 function _wmdLiveries(def) {
   const L = typeof def.liveries === 'function' ? def.liveries() : def.liveries;
   if (Array.isArray(L)) return L;
@@ -98,7 +91,6 @@ function _wmdLiveries(def) {
 const _wmdRgb = (hex) => { const n = parseInt(String(hex).slice(1), 16); return Number.isFinite(n) && String(hex).length === 7 ? [(n >> 16) & 255, (n >> 8) & 255, n & 255] : [128, 128, 128]; };
 const _wmdHex = (c) => '#' + ((1 << 24) | (c[0] << 16) | (c[1] << 8) | c[2]).toString(16).slice(1);
 const _wmdC = (v) => Math.max(0, Math.min(255, Math.round(v)));
-function worldModelShade(hex, k) { return _wexShade(hex, k); }
 function worldModelMix(a, b, t) { const A = _wmdRgb(a), B = _wmdRgb(b), u = Math.max(0, Math.min(1, t)); return _wmdHex(A.map((v, i) => _wmdC(v + (B[i] - v) * u))); }
 /**
  * Weathering by age (0 new .. 1 old). kind: 'paint' fades to a chalky grey and darkens; 'metal' rusts; 'timber' silvers; 'fabric'
@@ -177,13 +169,6 @@ function worldModelParams(ent, o, defIn) {
   } else { p.livery = null; p.liveryIndex = null; p.liveryName = null; }
   return p;
 }
-/** The size { w, d, h } of an object's model with a scene's `model` key (null: no model). */
-function worldModelSizeOf(objId, model) {
-  const def = worldModelFor(objId);
-  if (!def) return null;
-  const p = worldModelParams({ obj: objId, x: 0, z: 1, id: null, model: model || null }, {}, def);
-  return p ? { w: _wexR(p.L, 3), d: _wexR(p.B, 3), h: _wexR(p.H, 3) } : null;
-}
 /** The model's true footprint of an entity in world metres [[x, z]...] (its seeded size and facing), or null: where it really stands, as worldModelFit lays it out. */
 function worldModelFootOf(ent, model) {
   if (!ent || !_wexNum(ent.x) || !_wexNum(ent.z)) return null;
@@ -220,36 +205,6 @@ function worldModelFit(ent, info, model) {
     if (dk && Array.isArray(dk.poly) && dk.poly.length > 2 && _wexNum(dk.y)) ent.deck = { poly: dk.poly.map(([u, v]) => [_wexR(ent.x + u * hx + v * rx, 3), _wexR(ent.z + u * hz + v * rz, 3)]), y: _wexR((_wexNum(ent.y) ? ent.y : 0) + dk.y, 3) };
   }
   return ent;
-}
-
-/* ---------- shapes ---------- */
-/**
- * A plan outline (a, l): from the stern's tip round the right side to the stem and back down the left, closed. o: { L, B,
- * bowLen (default 0.2 L), bowPow (the stem's curve: 1 straight, 1.9 a sweep), sternLen, stern: 'round' | 'transom' | 'point',
- * step (metres between straight-side points), n (points per curved end) }. Returns { outline, half(a), R (the right side only) }.
- */
-function worldModelOutline(o) {
-  o = o || {};
-  const L = o.L || 10, B = o.B || 3, hb = B / 2, s0 = -L / 2, bowA = L / 2;
-  const bowLen = Math.min(L * 0.45, o.bowLen != null ? o.bowLen : 0.2 * L), pw = o.bowPow || 1.9, sternLen = Math.min(L * 0.4, o.sternLen != null ? o.sternLen : 0.07 * L);
-  const stern = o.stern || 'round', n = Math.max(3, o.n || 8), step = o.step || Math.max(1, L / 8);
-  const half = (a) => {
-    if (a > bowA - bowLen) { const u = (a - (bowA - bowLen)) / bowLen; return hb * (1 - Math.pow(Math.min(1, Math.max(0, u)), pw)); }
-    if (a < s0 + sternLen && sternLen > 1e-6) {
-      const u = (s0 + sternLen - a) / sternLen;
-      return stern === 'point' ? hb * Math.max(0, 1 - u) : stern === 'transom' ? hb * (1 - 0.18 * u) : hb * Math.sqrt(Math.max(0, 1 - u * u));
-    }
-    return hb;
-  };
-  const R = [];
-  if (stern === 'round' && sternLen > 1e-6) for (let k = 0; k <= 5; k++) { const th = k / 5 * Math.PI / 2; R.push([s0 + sternLen * (1 - Math.cos(th)), hb * Math.sin(th)]); }
-  else R.push([s0, stern === 'point' ? 0 : half(s0)]);
-  if (stern !== 'round' && sternLen > 1e-6) for (let k = 1; k <= 3; k++) { const a = s0 + sternLen * k / 3; R.push([a, half(a)]); }
-  for (let a = s0 + sternLen + step; a < bowA - bowLen - 0.3 * step; a += step) R.push([a, hb]);
-  for (let k = 0; k <= n; k++) { const a = bowA - bowLen + bowLen * k / n; R.push([a, half(a)]); }
-  const outline = R.concat(R.slice(1, -1).reverse().map(([a, l]) => [a, -l]));
-  // a transom stern is closed by the last point meeting its mirror: when the end has a width, the first and last points are the corners
-  return { outline, half, R };
 }
 
 /** The swell motion of a moored floater from its idle bob: about four times the heave and three times the roll and pitch, a touch slower. */

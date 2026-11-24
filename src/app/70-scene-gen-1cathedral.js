@@ -28,7 +28,6 @@ const _SCCD_PLANS = Object.freeze({
   'central-spire': Object.freeze({ west: 'none', westH: 0, central: 'spire', centralH: 46, transept: true, pinnacle: 4.2, spireH: 38 }),
   'west-tower': Object.freeze({ west: 'single', westH: 48, central: 'none', centralH: 0, transept: false, pinnacle: 4.4 }),
 });
-function sceneCathedralPlans() { return Object.keys(_SCCD_PLANS); }
 const _sccdClamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /** The masses of a plan in metres, in the church's own frame (s along the west front, t away from it, z up). Pure. */

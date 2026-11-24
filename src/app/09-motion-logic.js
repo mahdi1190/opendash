@@ -16,12 +16,7 @@
    standard | playful. The OS "reduce motion" setting gives 'reduced', which
    wins over the level. Off keeps the old switch's meaning (everything still).
    ============================================================ */
-
-/* ---------- tokens (Standard; the level scales them) ---------- */
-const MOTION_T = Object.freeze({ instant: 80, fast: 120, base: 180, slow: 240, slower: 320, enter: 460, stage: 640, long: 900, pulse: 1800 });
-const MOTION_D = Object.freeze({ d0: 2, d1: 4, d2: 8, d3: 12, d4: 24, d5: 48 });
 const MOTION_STEP = Object.freeze({ char: 22, word: 45, row: 24, chip: 30, card: 55, tile: 60 });
-const MOTION_SPRING_MS = Object.freeze({ snappy: 406, gentle: 570, bouncy: 610 });
 
 /* ---------- intensity ---------- */
 const MOTION_LEVELS = Object.freeze(['off', 'subtle', 'standard', 'playful']);
@@ -49,24 +44,7 @@ function motionResolveLevel(o) {
   if (o.legacy === 'reduced') return 'off';     // the old "Reduce motion" switch zeroed every duration: that is Off
   return 'standard';
 }
-/** The value to store in 'dashboard-motion-level' once (null: leave it). */
-function motionMigrateLevel(stored, legacy) {
-  if (stored && MOTION_LEVELS.includes(stored)) return null;
-  return legacy === 'reduced' ? 'off' : 'standard';
-}
 function motionProfile(level) { return MOTION_PROFILES[level] || MOTION_PROFILES.standard; }
-/** A duration token (or ms) at a level. */
-function motionMs(token, level) {
-  const v = MOTION_T[token] != null ? MOTION_T[token] : Number(token) || 0;
-  const q = typeof level === 'object' && level ? level : motionProfile(level);
-  return Math.round(v * q.k);
-}
-/** A distance token (or px) at a level. */
-function motionPx(token, level) {
-  const v = MOTION_D[token] != null ? MOTION_D[token] : Number(token) || 0;
-  const q = typeof level === 'object' && level ? level : motionProfile(level);
-  return v * q.dk;
-}
 /** Delay of item i of n: min(i, cap) x min(step x sk, budget / min(n - 1, cap)). No cap = no stagger. */
 function motionStaggerDelay(i, n, step, level) {
   const q = typeof level === 'object' && level ? level : motionProfile(level);
@@ -132,29 +110,8 @@ function motionRenderKind(prev, next) {
   if (prev.view !== next.view || (prev.mode || '') !== (next.mode || '')) return 'sub';
   return null;
 }
-
-/* ---------- variant rotation ---------- */
-/** Contexts that rotate, per level. Frequent actions are NOT here: they use one fixed variant. */
-const MOTION_PALETTES = Object.freeze({
-  'page-title': { subtle: ['fade'], standard: ['mask', 'wipe', 'rise'], playful: ['mask', 'drift', 'blur', 'drop'] },
-  'celebrate-milestone': { subtle: ['sparkle'], standard: ['confetti', 'stars'], playful: ['confetti', 'stars', 'coins', 'hearts'] },
-  'sub-swap': { subtle: ['fade'], standard: ['slide'], playful: ['slide', 'rise'] },
-});
 /** FNV-1a, 32 bit. */
 function motionHash(s) { s = String(s); let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
-/**
- * The same seed always gives the same variant (a re-render never changes it); if it would repeat
- * `recent`, take the next one. null for an unknown context, Off or Reduced.
- */
-function motionPick(context, seed, level, recent) {
-  const pal = MOTION_PALETTES[context];
-  if (!pal || level === 'off' || level === 'reduced') return null;
-  const list = pal[level] || pal.standard;
-  if (!list || !list.length) return null;
-  let i = motionHash(seed) % list.length;
-  if (recent && list.length > 1 && list[i] === recent) i = (i + 1) % list.length;
-  return list[i];
-}
 
 /* ---------- lists (FLIP) ---------- */
 /**

@@ -19,39 +19,6 @@ function _briefSeenToday() { try { return seenDay('brief', todayStr()); } catch 
 function _briefHourNow() { return Clock.parts(Clock.now()).h; }
 function _eveningNow() { return _briefHourNow() >= briefPrefs().eveningHour; }
 function _eveningSavedToday() { return (state.reviews || []).some(r => r && r.kind === 'evening' && r.date === todayStr()); }
-function briefHomeBanner(root) {
-  const h = _briefHourNow();
-  const evening = _eveningNow();
-  const morning = !evening && (h < 12 || !_briefSeenToday());
-  const w = _bf.weather && _bf.weather.ok ? _bf.weather : null;
-  if (!_bf.weather && _serverAvailable && APP_CONFIG.location) briefLoadWeather().then(() => { const b = document.querySelector('.home-brief'); if (b && state.view === 'home') b.replaceWith(_briefBannerEl()); });
-  root.appendChild(_briefBannerEl(morning, evening, w));
-}
-function _briefBannerEl(morning, evening, w) {
-  if (morning === undefined) { evening = _eveningNow(); morning = !evening && (_briefHourNow() < 12 || !_briefSeenToday()); w = _bf.weather && _bf.weather.ok ? _bf.weather : null; }
-  const el = document.createElement('section');
-  const big = morning || (evening && !_eveningSavedToday());
-  el.className = 'home-brief' + (big ? ' big' : ' small') + (evening ? ' is-evening' : '') + ' anim-hover-host';
-  const tod = briefTod(w);
-  const cond = w && w.current ? w.current.cond : 'none';
-  const wx = w && w.current ? `<span class="hb-wx">${briefWxIcon(cond, w.current.isDay, 'i-sm')}<b class="num">${esc(_bfDeg(w.current.temp))}</b><span>${esc(w.current.label)}</span></span>` : '';
-  if (big) {
-    el.innerHTML = (animEnabled() ? briefSkyHtml(cond, evening ? (tod === 'night' ? 'night' : 'dusk') : tod, { setting: evening }) : '')
-      + `<div class="hb-in">${animSceneHtml(evening ? 'rest' : 'idea', { size: 'lg', hover: true })}<div class="hb-t"><div class="overline">${esc(evening ? 'Evening' : 'Morning')}</div><b>${esc(evening ? 'Ready to wrap up?' : 'Your day, laid out')}</b><span>${esc(evening ? 'See what you got done, roll what slipped and pick tomorrow’s top 3.' : 'Weather, calendar, focus and deadlines, refreshed and on one calm page.')}</span></div>${wx}</div>`;
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-primary btn-lg hb-go';
-    b.innerHTML = icon(evening ? 'sunset' : 'sunrise') + `<span>${evening ? 'Finish the day' : 'Start my day'}</span>`;
-    b.onclick = () => (evening ? (typeof storyFinishTheDay === 'function' ? storyFinishTheDay() : setView('home:evening')) : typeof storyStartMyDay === 'function' ? storyStartMyDay() : briefOpen({ welcome: false }));
-    el.querySelector('.hb-in').appendChild(b);
-  } else {
-    el.innerHTML = `<div class="hb-in">${wx}<span class="spacer"></span></div>`;
-    const row = el.querySelector('.hb-in');
-    const mk = (label, ic, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm'; b.innerHTML = icon(ic, 'i-sm') + `<span>${esc(label)}</span>`; b.onclick = run; row.appendChild(b); };
-    mk('Today', 'sunrise', () => briefOpen({ welcome: false }));
-    mk(evening ? 'Recap saved' : 'Finish the day', evening ? 'circle-check' : 'sunset', () => setView('home:evening'));
-    mk('Weekly review', 'calendar-range', () => setView('home:week'));
-  }
-  return el;
-}
 
 /* ---------- top bar ---------- */
 registerTopbarWidget({

@@ -44,7 +44,6 @@ function smClip(t, max) { const s = String(t == null ? '' : t).replace(/\s+/g, '
 
 /* ---------- time ---------- */
 function smMin(hm) { const m = /^(\d{1,2}):(\d{2})/.exec(String(hm || '')); return m ? Number(m[1]) * 60 + Number(m[2]) : null; }
-function smHM(min) { min = Math.max(0, Math.round(min)); return String(Math.floor(min / 60) % 24).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0'); }
 /** "3 pm", "11 am", "noon", "half past 3", for narration and labels. */
 function smHourText(hm) {
   const m = smMin(hm); if (m === null) return '';

@@ -53,7 +53,6 @@
      the 'anim' system                     worldSystem({ id: 'anim', phase: 'anim', rate: 30, budgetMs: 0.5, ... }) when 0sys
                                            is loaded; without it the tools call worldAnimStep directly
    ============================================================ */
-const WORLD_ANIM_STATES = Object.freeze(['move', 'idle', 'sit', 'lie', 'stopped', 'moored', 'none']);
 /** Transition durations in seconds (M7), by clip pair first, then state pair; never under 0.25 s. */
 const WORLD_ANIM_TRANS = Object.freeze({
   'move>idle': 0.35, 'idle>move': 0.3, 'move>sit': 0.6, 'idle>sit': 0.6, 'sit>idle': 0.5, 'sit>move': 0.6, 'idle>lie': 0.8, 'lie>idle': 0.7,

@@ -35,21 +35,11 @@ function homeMeetingsBetween(from, to, o) {
   const ms = (x) => (x instanceof Date ? x.getTime() : x);
   return homeMeetings(_pcEvents(), { from: ms(from), to: ms(to), myEmails: _pcMyEmails(), ix: homeMeetIndex(), filter: o.filter });
 }
-function homeMeetingsOn(iso) {
-  const day = String(iso || todayStr());
-  return homeMeetingsBetween(Clock.at(day, 0), Clock.at(Clock.addDays(day, 1), 0));
-}
 function homeNextMeetingNow(o) {
   o = o || {};
   const now = Date.now();
   const h = Number.isFinite(o.horizonH) ? o.horizonH : 12;
   return homeNextMeeting(homeMeetingsBetween(now - 12 * 3600000, now + h * 3600000), now, { horizonH: h });
-}
-function homeMeetingsToWrap(o) {
-  o = o || {};
-  const now = Date.now();
-  const h = Number.isFinite(o.sinceH) ? o.sinceH : 12;
-  return homeEndedMeetings(homeMeetingsBetween(now - h * 3600000 - 12 * 3600000, now), now, { sinceH: h, isWrapped: typeof calIsWrapped === 'function' ? calIsWrapped : null });
 }
 
 /* ---------- last contact ---------- */

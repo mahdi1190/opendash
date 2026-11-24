@@ -20,20 +20,6 @@
    run, so none of this does. OFF SCREEN: P.clip plays nothing for a pet out of view, and the rows only read a few numbers.
    ============================================================ */
 const _pl = { q: [], stillT: 0, moveT: 0, lastMoveT: 0, room: false, tod: '', bite: false, built: 0, thingsKey: '', things: null, fished: -1, festSeen: '', greeted: 0, lastPat: 0, sulked: 0, tries: 0, cel: [] };
-/** Kinds of thing in the world a row can go to: the pets' word for each (a row's `at`) is the `pet` of a kind in the one registry
- *  (94-garden-zz-7act-0kinds.js GARDEN_KINDS), and every thing found standing (94-garden-zz-7act-0scan.js), on any layout, of a kind with
- *  that word counts. Nothing is matched on a place's name. Words no thing has yet are data rows for the layout's authors (PET_LIFE_SPOTS):
- *  place a thing of that kind (a layout row, a decoration, or a row in assets/garden/vale-things.json) and the rows that wait for it start. */
-const PET_LIFE_SPOTS = Object.freeze([
-  { kind: 'slide', rows: [66], ask: 'A playground slide (kind "slide") a pet can try to climb.' },
-  { kind: 'swing', rows: [67], ask: 'A rope swing (kind "swing"); the swing seat and hammock count meanwhile.' },
-  { kind: 'bell', rows: [71], ask: 'A bell that rings (kind "bell", a ship\u2019s bell on a post); any chapel counts meanwhile.' },
-  { kind: 'maypole', rows: [77], ask: 'A maypole as a thing of its own (kind "maypole"): one painted into a green with a foot is found too.' },
-  { kind: 'chime', rows: [80], ask: 'Wind chimes a pet can bump (kind "chime").' },
-  { kind: 'bed', rows: [76], ask: 'A pet bed or basket (kind "pet-bed" or "basket").' },
-  { kind: 'music', rows: [99], ask: 'A music box or a busker\u2019s pitch (kind "music-box" or "busker").' },
-  { kind: 'pier', rows: [69], ask: 'A pier (kind "pier"): its far end, as far as it is built.' },
-]);
 function _plSoon(P, id, secs) { const k = 'at_l-' + id; return !P[k] || performance.now() - P[k] > secs * 1000; }
 function _plMark(P, id) { P['at_l-' + id] = performance.now(); }
 /** Every thing a row can go to, by the pets' word for its kind, read once each time the garden changes (the roaming loop's own key). */

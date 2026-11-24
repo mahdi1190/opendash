@@ -70,7 +70,6 @@ function effContexts(item) {
 function effEnergy(item) { return item && (item.energy === 'low' || item.energy === 'high') ? item.energy : null; }
 function ctxLabel(id) { const c = ctxById(id); return c ? c.label : String(id || ''); }
 function ctxIcon(id) { const c = ctxById(id); return c ? c.icon : 'map-pin'; }
-function energyLabel(level) { return TASK_ENERGY[level] ? TASK_ENERGY[level].label : ''; }
 
 function setTaskContexts(id, ids, o) {
   o = o || {};

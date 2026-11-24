@@ -36,11 +36,6 @@ function _gartGrain() {
 }
 function _gartBakeCap() { const dpr = window.devicePixelRatio || 1; return Math.min(2, Math.max(1.5, dpr)); }
 function _gartEngineBaking(svg) { const engine = window.GardenPhaser; return !!(engine && (engine.active(svg) || typeof engine.preparing === 'function' && engine.preparing(svg))); }
-/** Serialized SVG images cannot load the native painter's nested blob URLs. */
-function gardenArtRestoreVectors(svg) {
-  if (!svg) return;
-  for (const group of svg.querySelectorAll('.gart-bake.is-baked')) if (typeof group._gartVectorMarkup === 'string') { group.innerHTML = group._gartVectorMarkup; group.classList.remove('is-baked'); }
-}
 function gardenArtRestoreClone(svg, clone) {
   const restore = (source, copy) => {
     if (typeof source._gartVectorMarkup === 'string') { copy.innerHTML = source._gartVectorMarkup; copy.classList.remove('is-baked'); return; }
@@ -128,11 +123,6 @@ function _gartOffSet(el, far) {
     if (el._gartIds === undefined) el._gartIds = !!el.querySelector('[id]');
     if (!el._gartIds && el.firstChild && !el._gartKids) { const f = document.createDocumentFragment(); while (el.firstChild) f.appendChild(el.firstChild); el._gartKids = f; }
   } else if (el._gartKids) { el.appendChild(el._gartKids); el._gartKids = null; }
-}
-/** Everything back in its place, for a moment: the stage is about to be copied whole. The next look lifts it off again. */
-function gardenArtAllBack(svg) {
-  for (const el of svg.querySelectorAll('.gart-off')) if (el._gartKids) { el.appendChild(el._gartKids); el._gartKids = null; el._gartOff = false; el.classList.remove('gart-off'); }
-  svg._gartViewKey = '';
 }
 function _gartRestItems(svg) {
   if (window.GardenPhaser && GardenPhaser.active(svg)) return;

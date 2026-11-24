@@ -513,8 +513,6 @@ function _vfrCrossingWait(V, list, now) {
   }
   return false;
 }
-/** Off screen, walking a leg: the way they face is the way the leg goes. */
-function at_prevDir(w) { const P = w.e && w.e.spot; return P && Number.isFinite(w.x) && Math.abs(P.x - w.x) > 0.05 ? (P.x > w.x ? 1 : -1) : 0; }
 /* ---------- the frame ---------- */
 function _vfrFrame(dt) {
   if (!_vfr.on) return;
@@ -700,10 +698,6 @@ function gardenFolkAtHome(who) {
   return calm && Math.hypot(_gw.px - d.x, _gw.py - d.y) < 8;
 }
 function gardenFolkFeet() { return (_vfr.on ? (_vfr.list || []) : [..._vfg.V.values()]).filter(V => V.S && !V.inside).map(V => ({ x: V.x, y: V.y, name: V.row.name })); }
-function gardenFolkState() {
-  return (_vfr.rows || []).map(r => { const V = _vfr.V.get(r.id) || {}; const e = V.entry || {}; return { id: r.id, x: V.x, y: V.y, act: e.act, t0: e.t0, t1: e.t1, spot: e.spot ? { x: e.spot.x, y: e.spot.y, src: e.spot.src, kind: e.spot.kind } : null, inside: !!V.inside, drawn: !!V.S, walking: !!(V.path && V.path.length) || !!V.offWalk, arrived: !!V.arrived, home: (_vfr.homes.get(r.id) || {}).id, away: _vfr.away ? _vfr.away.has(r.id) : false, visit: !!V.visit }; });
-}
-function gardenFolkPlans() { const o = {}; for (const [k, v] of _vfr.plans) o[k] = v.map(e => ({ t0: e.t0, t1: e.t1, act: e.act, x: e.spot && e.spot.x, y: e.spot && e.spot.y, src: e.spot && e.spot.src, inside: !!e.inside, walk: e.walk })); return o; }
 function gardenFolkStats() { return Object.assign({ villagers: (_vfr.rows || []).length, planned: _vfr.plans.size, drawn: (_vfr.list || []).filter(V => V.S).length, path: typeof gardenFolkPathStats === 'function' ? gardenFolkPathStats() : null }, _vfr.stats); }
 wdMod({
   id: 'vale-folk', pref: 'folk',

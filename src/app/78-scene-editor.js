@@ -494,24 +494,6 @@ const _sced = (function () {
   return { W, H, r1, r2, num, clone, escHtml, camera, project, unproject, grid, surfaces, surfaceAt, spanAt, alongPath, clipView, screenPoly, objDef, objClass, kindsFor, realH, scaleFor, floats,
     placeGround, validAt, apply, history, diff, previewData, v2Engine, FOOT, OVERLAY_COL, HARD, SURF_COL };
 })();
-
-function sceneEditorCamera(scene) { return _sced.camera(scene); }
-function sceneEditorProject(cam, x, d, h) { return _sced.project(cam, x, d, h); }
-function sceneEditorUnproject(cam, X, Y) { return _sced.unproject(cam, X, Y); }
-function sceneEditorGrid(cam) { return _sced.grid(cam); }
-function sceneEditorSurfaces(scene) { return _sced.surfaces(scene); }
-function sceneEditorSurfaceAt(scene, cam, x, d) { const s = _sced.surfaceAt(scene, x, d); return s ? { id: s.id, kind: s.kind, water: s.water } : null; }
-function sceneEditorClass(id) { return _sced.objClass(id); }
-function sceneEditorValidAt(scene, cam, id, x, d, o) { return _sced.validAt(scene, cam, id, x, d, o); }
-function sceneEditorPlaceGround(scene, cam, p) { return _sced.placeGround(scene, cam, p); }
-function sceneEditorApply(rec, op) { return _sced.apply(rec, op); }
-function sceneEditorHistory(max) { return _sced.history(max); }
-function sceneEditorDiff(a, b) { return _sced.diff(a, b); }
-function sceneEditorPreviewData(scene, o) { return _sced.previewData(scene, o); }
-
-/* ============================================================
-   The page: availability, the dialog, the stage, the overlay, the panels.
-   ============================================================ */
 let _scedAvail = null, _scedCur = null, _scedSeq = 0;
 /** Is the editor's dev route on? Asked once per page (a 404 means off: a normal install never shows the button). */
 function sceneEditorAvailable() {
@@ -521,7 +503,6 @@ function sceneEditorAvailable() {
     .then(r => (r.ok ? r.json() : null)).then(j => !!(j && j.enabled)).catch(() => false);
   return _scedAvail;
 }
-function sceneEditorClose() { if (_scedCur) _scedCur.close(); }
 
 async function _scedJson(method, url, body) {
   const r = await fetch(url, { method, headers: body ? { 'content-type': 'application/json', accept: 'application/json' } : { accept: 'application/json' }, body: body ? JSON.stringify(body) : undefined });

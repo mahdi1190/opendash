@@ -91,7 +91,6 @@ function _gdgFly(plantId, x, y, w, h, delay) {
     a.onfinish = () => { n.remove(); if (tgt) { tgt.classList.remove('is-bump'); void tgt.offsetWidth; tgt.classList.add('is-bump'); } };
   } catch (e) { n.remove(); }
 }
-function _gdgPlantsNow() { try { return gardenHere().plants; } catch (e) { return []; } }
 /** Bulk rewards still include every plant. Only nearby visible transients need
  * to fly and sparkle; keep their delayed DOM animations small as well. */
 function _gdgVisualCells(cells) {
@@ -268,32 +267,6 @@ function gardenNextStep(m) {
   if (rumour) return rumour;
   return { icon: 'footprints', title: 'Have a wander', text: 'Walk, fish, or see who is about. Time on your real tasks quietly fills your purse.', target: null, btn: null, key: 'wander' };
 }
-/* ---------- today's income ---------- */
-function gardenEconCard(m) {
-  const w = m.wallet, e = w.econToday, g = _gdG();
-  const c = _gdpEl('section', 'gd-econ card');
-  const pct = Math.min(100, Math.round(100 * e.coins / e.cap));
-  c.innerHTML = `<div class="gd-econ-h"><b>Coins today</b><span class="num"></span></div><div class="gd-capbar" role="progressbar" aria-valuemin="0" aria-valuemax="${e.cap}" aria-valuenow="${e.coins}"><i style="width:${pct}%"></i></div><p class="gd-econ-line"></p>`;
-  c.querySelector('.num').textContent = `${e.coins} / ${e.cap}`;
-  c.querySelector('.gd-econ-line').textContent = gardenEconLine(e);
-  const rows = e.log.slice();
-  for (const id of Object.keys(g.dt[m.today] || {})) { const def = GARDEN_DAILY.find(x => x.id === id); if (def) rows.push({ why: 'Garden goal: ' + def.label.replace('{n}', def.n), c: gardenDailyCoins(def, m.today) }); }
-  let sold = 0, soldN = 0; for (const x of Object.values(g.led)) if (x && x.k === 's' && x.d === m.today) { sold += Number(x.c) || 0; soldN += Number(x.n) || 0; }
-  if (sold) rows.push({ why: `Sold ${soldN} thing${soldN === 1 ? '' : 's'} at the market`, c: sold });
-  const det = document.createElement('details'); det.className = 'gd-econ-log';
-  det.innerHTML = '<summary>Where today’s coins came from</summary>';
-  const ul = _gdpEl('ul');
-  if (!rows.length) ul.appendChild(_gdpEl('li', 'muted', 'Nothing yet today. Start a focus timer on a task: 12 coins an hour.'));
-  for (const r of rows) { const li = _gdpEl('li'); li.appendChild(_gdpEl('span', null, r.why)); li.appendChild(_gdpEl('b', r.c < 0 ? 'neg' : '', (r.c > 0 ? '+' : '') + r.c)); ul.appendChild(li); }
-  det.appendChild(ul);
-  det.appendChild(_gdpEl('p', 'muted gd-econ-how', 'Rules: 1 coin per 5 focused minutes (first 2 hours a day, half after, none past 4), a bonus for the time a finished task took, sessions under 5 minutes and quick or empty tasks pay nothing, each task pays once.'));
-  det.open = !!_gdp.econOpen;
-  det.addEventListener('toggle', () => { _gdp.econOpen = det.open; });
-  c.appendChild(det);
-  const tid = typeof gameFocusNextTask === 'function' ? gameFocusNextTask() : null;
-  if (tid && typeof gameFocusStart === 'function' && typeof gameFocusRun === 'function' && !gameFocusRun()) c.appendChild(_gdpBtn('Start a focus timer', { icon: 'timer', run: () => { gameFocusStart(tid); gardenToast('Focus timer started. Coins arrive as the minutes add up.', { icon: 'timer' }); } }));
-  return c;
-}
 
 /* ---------- first run: no tour (2.23): a bouncing arrow does it (94-garden-world-2hud.js). The free seed is still there. ---------- */
 function _gdgFirstSeed() {
@@ -302,47 +275,6 @@ function _gdgFirstSeed() {
   g.seen.tourSeed = _gdToday();
   _gdLed('onb', { c: 0, i: { 'seed:daisy': 1 }, n: 0 });
   _gdSave();
-}
-function _gdgGoalDisclosure(key, label, content) {
-  const d = document.createElement('details'); d.className = 'gd-curated-section'; d.dataset.gardenSection = key;
-  const s = document.createElement('summary'); s.textContent = label; d.appendChild(s); if (content) d.appendChild(content); return d;
-}
-function _gdgGoalNext(m, atHome) {
-  const n = gardenNextStep(m), row = _gdpEl('section', 'gd-curated-next'); row.dataset.gardenSection = 'goals-next-step';
-  row.innerHTML = `<span class="gd-next-ic" aria-hidden="true">${icon(n.icon)}</span>`;
-  const text = _gdpEl('div', 'gd-curated-next-text'); text.append(_gdpEl('small', 'gd-curated-next-label', atHome ? 'At home, in your garden' : 'In your garden'), _gdpEl('h3', '', n.title), _gdpEl('p', '', n.text)); row.appendChild(text);
-  const b = _gdpBtn(atHome ? 'Go to your garden' : n.btn ? n.btn.label : 'Back to the garden', { kind: 'btn-primary', run: () => { gardenPopupClose(); if (atHome || typeof gardenVisitOn === 'function' && gardenVisitOn()) { setView('garden'); return; } if (n.btn) n.btn.run(); } }); b.dataset.gardenAction = atHome ? 'home:go' : 'next:' + n.key; row.appendChild(b); return row;
-}
-function _gdgGoalVisitLead() {
-  const here = typeof gardenVisitModel === 'function' && gardenVisitModel(), name = here && here.visit && here.visit.name;
-  const row = _gdpEl('section', 'gd-curated-next'); row.dataset.gardenSection = 'goals-visit';
-  row.innerHTML = `<span class="gd-next-ic" aria-hidden="true">${icon('footprints')}</span>`;
-  const text = _gdpEl('div', 'gd-curated-next-text'); text.append(_gdpEl('small', 'gd-curated-next-label', 'Visiting'), _gdpEl('h3', '', name ? name + '’s garden' : 'A friend’s garden'), _gdpEl('p', '', 'Enjoy this garden at your own pace. Your next step at home is below.')); row.appendChild(text);
-  const b = _gdpBtn('Back to the garden', { kind: 'btn-primary', run: gardenPopupClose }); b.dataset.gardenAction = 'visit:back'; row.appendChild(b); return row;
-}
-/** One lead action; existing goal progress and income remain on demand. */
-function gardenGoalsPanel(el, m) {
-  el._gdGoalViewKey = typeof gardenLiveGoalSummaryKey === 'function' ? gardenLiveGoalSummaryKey() : '';
-  el.classList.add('gd-goals-curated');
-  const visiting = typeof gardenVisitOn === 'function' && gardenVisitOn(), next = _gdgGoalNext(m, visiting), shared = _gdpEl('div', 'gd-curated-shared');
-  if (typeof gardenLiveGoalSummary === 'function') gardenLiveGoalSummary(shared);
-  const view = typeof _glg !== 'undefined' && _glg.view, active = shared.firstElementChild && view && view.st === 0;
-  if (active) {
-    shared.dataset.gardenSection = 'goals-shared:' + view.g;
-    const skip = shared.querySelector('button'); if (skip) { skip.dataset.gardenAction = 'shared:' + view.g + ':skip'; shared.appendChild(_gdgGoalDisclosure('goals-shared-options:' + view.g, 'Shared goal options', skip)); }
-    const back = _gdpBtn('Back to the garden', { kind: 'btn-primary', run: gardenPopupClose }); back.dataset.gardenAction = 'shared:' + view.g + ':play'; shared.appendChild(back); el.appendChild(shared);
-    el.appendChild(_gdgGoalDisclosure(visiting ? 'goals-home-next' : 'goals-next', visiting ? 'At home: your next step' : 'A step in your garden', next));
-  } else {
-    el.appendChild(visiting ? _gdgGoalVisitLead() : next);
-    if (visiting) el.appendChild(_gdgGoalDisclosure('goals-home-next', 'At home: your next step', next));
-    if (shared.firstElementChild) el.appendChild(_gdgGoalDisclosure('goals-shared-recent', 'Recent shared goal', shared));
-  }
-  // Reuse the existing rows and their handlers; this changes presentation only.
-  const tasks = _gdpEl('div'); _gdpToday(tasks, m);
-  const daily = tasks.querySelector(':scope > .gd-tasks'), weekly = tasks.querySelector(':scope > .gd-quests');
-  if (daily) { daily.classList.add('gd-curated-goallist'); el.appendChild(_gdgGoalDisclosure('goals-daily', visiting ? 'Your goals today' : 'Today’s garden goals', daily)); }
-  if (weekly) { weekly.classList.add('gd-curated-section'); weekly.dataset.gardenSection = 'goals-weekly'; weekly.open = false; weekly.querySelector('summary').textContent = visiting ? 'Your weekly quests' : 'This week’s quests'; el.appendChild(weekly); }
-  el.appendChild(_gdgGoalDisclosure('goals-coins', visiting ? 'Your coins today' : 'Coins today', gardenEconCard(m)));
 }
 
 /* ---------- the guide ---------- */

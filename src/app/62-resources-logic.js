@@ -269,8 +269,6 @@ function rsrcFindSame(list, kind, target) {
   const fam = RSRC_PATH_KINDS.includes(kind) ? RSRC_PATH_KINDS : RSRC_URL_KINDS;
   return (Array.isArray(list) ? list : []).find(r => r && fam.includes(r.kind) && rsrcTargetKey(r.kind, r.target) === key) || null;
 }
-
-function _rsrcLinkKey(l) { return l.type + ':' + l.id; }
 function rsrcNormLinks(links, field) {
   const out = [], seen = new Set();
   if (links == null) return out;

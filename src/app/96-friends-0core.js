@@ -50,7 +50,6 @@ _fr.ready = new Promise((r) => { _fr.readyResolve = r; });
    control is ever lost (SIMPLIFY_PLAN.md P9). */
 const _frShellHead = new Set();
 function frShellHeadMark(id) { _frShellHead.add(String(id)); }
-function frShellHeadOn(id) { return _frShellHead.has(String(id)); }
 
 async function _frApi(path, body, opts) {
   const o = opts || {};

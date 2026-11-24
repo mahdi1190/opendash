@@ -381,9 +381,6 @@ function _wplOrientFields(world, P, x, z, inWater) {
   if (fb) { out.fenceDir = _wcFace(Math.atan2(fb.dir[0], fb.dir[1]) / _WC_DEG); out.fenceDist = fb.d; out.fencePt = [fb.x, fb.z]; }
   return out;
 }
-
-/* ---------- knowledge: kb first, the class table as the fallback ---------- */
-function _wplInfo(e) { return worldObjectInfo(e.obj); }
 function _wplMode(info, e) {
   if (e.landmark) return 'free';
   const id = String(e.obj);

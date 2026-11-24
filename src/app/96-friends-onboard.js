@@ -70,12 +70,6 @@ function _froVisible(d, p, s) {
 
 /* ---------- the panel ---------- */
 function _froEl(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; }
-function _froDone(text) {
-  const e = _froEl('div', 'fro-done');
-  e.innerHTML = icon('circle-check', 'i-sm');
-  e.appendChild(_froEl('span', null, text));
-  return e;
-}
 function _froStep(n, done, active, title, sub) {
   const li = _froEl('li', 'fro-step' + (done ? ' is-done' : '') + (active ? ' is-active' : ''));
   const num = _froEl('span', 'fro-num');

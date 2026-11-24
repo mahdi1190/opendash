@@ -42,7 +42,6 @@ const WORLD_FRAME_LIVE_AREA = 0.4;         // ... and covering at most this shar
 const WORLD_FRAME_LOD_LO = 12, WORLD_FRAME_LOD_HI = 16;
 const WORLD_FRAME_GHOST_MIN = 0.85;        // a figure at least WORLD_FRAME_LOD_PX device px tall is never more see-through than this in a ghost pass
 const WORLD_FRAME_LIGHT_FADE_S = 0.5;      // a lamp, a window or a flame's light comes on or goes off over this (never in one frame)
-const WORLD_FRAME_SWAP_FADE_S = 1;         // a relit chunk or light layer cross-fades from the old over this
 const WORLD_FRAME_MEM_KEEP_S = 1;          // an agent's draw memory (view, scale bucket, LOD) outlives its last frame by this (it comes back with its hysteresis)
 // statics movers pass behind are taken out of the chunks and drawn on their own at their depth (interface I2): at most this many, each at
 // most this share of the frame, prims at most this many (each is a bitmap of its own box)
@@ -92,7 +91,6 @@ function _wfrHeight(e) {
   if (typeof _wh5HeightOf === 'function') return _wh5HeightOf(e);
   return Number.isFinite(e.height) && e.height > 0 ? e.height : Number.isFinite(e.h) && e.h > 0 ? e.h : 1.7;
 }
-function _wfrHash(str) { let h = 2166136261 >>> 0; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
 /** The drawn view of a static or an agent: appearance's worldViewOf, else the agent's own (life), else from its facing. */
 function _wfrView(e, cam, agent, prev) {
   if (typeof worldViewOf === 'function') {

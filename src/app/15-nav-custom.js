@@ -31,11 +31,6 @@
    Keys: Alt+1..9 opens the first nine pins.
    ============================================================ */
 const _SB_PIN_KINDS = [];
-function registerSidebarPinKind(prefix, resolve) {
-  if (typeof prefix !== 'string' || typeof resolve !== 'function') return;
-  const i = _SB_PIN_KINDS.findIndex(k => k.prefix === prefix);
-  if (i >= 0) _SB_PIN_KINDS[i] = { prefix, resolve }; else _SB_PIN_KINDS.push({ prefix, resolve });
-}
 const _SB_BLOCK_LABELS = { 'pinned': 'Pinned', boards: 'Boards', 'task-views': 'Views', 'smart-lists': 'Smart lists', streams: 'Streams', tags: 'Tags', people: 'People', minical: 'Month', calendars: 'Calendars', 'cal-countdowns': 'Countdowns', 'finance-sections': 'Money', 'life-tabs': 'Life', 'life-you': 'You', 'all-pages': 'All pages', 'review-nav': 'Plan' };
 const _sbBlockTitles = {};   // the heading each block drew last (before a rename)
 const _SB_TABS = [['home', 'Home'], ['tasks', 'Tasks'], ['calendar', 'Calendar'], ['finance', 'Money'], ['life', 'Life']];

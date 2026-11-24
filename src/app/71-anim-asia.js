@@ -129,16 +129,6 @@ const ASIA_REGION = animRegionDefine({
 });
 /** The art place (a big or small city) for a ctx, {id, name, cc, kind} or null. Travel wins. */
 function asiaPlace(ctx) { return ASIA_REGION.place(ctx); }
-/** The country code for a ctx ('' = not in Asia, or travelling somewhere that is not an Asian place). Nearest table row wins. */
-function asiaCountryOf(ctx) { return ASIA_REGION.unitOf(ctx); }
-/** For the page (the opening sequence): where in Asia, {id, name, cc, countryName, kind} or null. A town wins, else the country. */
-function asiaWhere(ctx) { return ASIA_REGION.where(ctx); }
-/**
- * Full-screen scenes (the openings): ASIA_SCENES['country:JP'] (a country's signature) or ASIA_SCENES['place:tokyo'] (a big city), filled by
- * src/app/71-anim-asia2-scenes-*.js through asiaSceneAdd(entry). An entry is {key, id?, label, site, colour, mood, season, tags, svg}; svg() returns
- * the inside of a 1600 x 900 drawing built with usSceneKit() (an alias of animSceneKit(), the shared full-scene toolkit in 71-anim-0region.js).
- */
-const ASIA_SCENES = ASIA_REGION.scenes;
 function asiaSceneAdd(e) { ASIA_REGION.sceneAdd(e); }
 /**
  * A builder for an Asia pack file: const B = asiaBuilder('west');

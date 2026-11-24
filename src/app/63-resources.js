@@ -18,8 +18,6 @@
    a SAVED resource only; links open in the browser. Text from paths, URLs,
    labels, notes and snippets is escaped (esc / textContent) everywhere.
    ============================================================ */
-
-const _RES_NOUN = { folder: 'folder', file: 'file', url: 'link', github: 'GitHub link', drive: 'Drive link', snippet: 'snippet' };
 const _RES_LINK_NOUN = { task: 'task', stream: 'stream', person: 'person', section: 'page' };
 let _resStatus = {};                 // id -> {exists, dir, size, mtime, at}
 let _resStatusWant = new Set();

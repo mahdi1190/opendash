@@ -79,9 +79,6 @@ const VALE_FOLK_ROW = new Map(VALE_FOLK.map(r => [r.id, r]));
  *  'angler'): once the folk live their days, the villager is drawn where they really are and that thing is neither drawn nor solid.
  *  By kind, so any layout's stand-in for any villager works the same. */
 function valeFolkStandIn(t) { const k = t && t.kind; if (!k) return false; try { return VALE_FOLK.some(r => r.cast === k); } catch (e) { return false; } }   // (asked while the catalogue is built, before this file's tables exist: nothing is a stand-in yet)
-/** Reed stays a traveller: the road's own runtime walks him in by the arrival road (94-garden-travellers-1runtime.js). One system, so
- *  he is a row of that table, not this one. */
-const VALE_FOLK_TRAVELLERS = Object.freeze(['travelling-angler']);
 /** Relationships: every pair is warm unless listed. `turns` names the story flag that warms it. The one who was harmed never steps aside. */
 const VALE_REL = Object.freeze([
   Object.freeze({ a: 'thistle', b: 'hollin', v: 'no', aside: 'hollin' }),

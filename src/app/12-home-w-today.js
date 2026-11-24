@@ -70,14 +70,6 @@ let _hh = {
   evs: null,                                     // today's events by id (the last model), for chips and Next
 };
 
-/** Is the hero on Home (12-home.js then titles the page "Home" instead of repeating the greeting)? */
-function homeTodayOnBoard() {
-  try {
-    const w = homeLayout().widgets.find(x => x.id === 'today');
-    return !!(w && !w.hidden && homeWidgetAvailable(homeWidgetDef('today')));
-  } catch (e) { return false; }
-}
-
 /* ---------- small helpers ---------- */
 function _hhPad(n) { return String(n).padStart(2, '0'); }
 // Hours and minutes where the user is (Clock, travel spec 2.7 P12).

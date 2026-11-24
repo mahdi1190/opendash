@@ -549,9 +549,6 @@ async function friendsScenesWalkBy() {
   if (!n) toast('There is no clear path across this scene for a walker. Try another scene.', { icon: 'users' });
   return n;
 }
-function friendsScenesVisits() {
-  return _fsv.visits.map(V => ({ friend: V.friendId, scene: V.cid, d: Math.round(V.d * 10) / 10, T: Math.round(V.T * 10) / 10, tau: V.now && V.t0 != null ? Math.round((V.now.t - V.t0) * 10) / 10 : null, mode: V.now && V.now.a ? V.now.a.mode : 'waiting' }));
-}
 
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   _fsv.timer = setInterval(_fsvTick, 3000);

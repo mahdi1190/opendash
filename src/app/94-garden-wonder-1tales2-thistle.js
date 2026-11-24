@@ -5,7 +5,6 @@
 /* ---------- Mother Thistle: The old house (STORY_BIBLE §3; C:/tmp/stories/thistle.md) ----------
    gentle: 'soft'. In the gentle telling there is no husband: the old house was a cold, lonely place she left one winter, and the steps become simple kind ones.
    (If the story lead keeps gentle: 'skip', see thistle.md §9: the light steps 1 and 4 then need to move to a 'keep' story.) */
-const _wtGentle = () => !_wtDeep();
 wdTaleKeep({ id: 'bramble-jam', name: 'A jar of bramble jam', text: 'From Mother Thistle. “Nobody needs to steal this one.”' });
 wdTaleKeep({ id: 'odd-teacup', name: 'A small blue teacup', text: { t: 'From Mother Thistle. A chip off the handle the shape of a thumb. It holds four spoonfuls of soup, exactly.', soft: 'From Mother Thistle. It holds four spoonfuls of soup, exactly.' } });
 wdTaleRecipe({ id: 'nothing-soup', name: 'Nothing soup', from: 'Mother Thistle’s, as told at the Great Oak', text: [

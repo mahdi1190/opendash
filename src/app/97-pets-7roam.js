@@ -18,7 +18,6 @@
    New behaviour = one entry. P: a roaming pet (say, walkTo, sit, sleep, clip, then). W: {m (the garden's model), rain, night, day, pets}.
    ============================================================ */
 const _ptw = { on: false, svg: null, pets: [], key: '', raf: 0, last: 0, enc: null, encKey: '', flies: [], bubble: null, timer: 0 };
-const _PTW_NS = 'http://www.w3.org/2000/svg';
 /* How many of the pets you let out are about on one visit: this share of visits has one, two, three (never more than you let out). The others are having a lie-down, and take turns. */
 const PET_ROAM_ODDS = Object.freeze([0.55, 0.33, 0.12]);
 function _ptwMotion() { return _ptMotionOk() && _ptFun() !== 'off'; }

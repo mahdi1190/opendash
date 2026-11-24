@@ -351,41 +351,11 @@ function homeWidgetSet(id, ch, say) {
   });
   return homeSaveLayout(next, { say });
 }
-/** A widget's width in columns (1-12; one save). */
-function homeWidgetCols(id, n) {
-  const def = homeWidgetDef(id);
-  if (!def) return;
-  if (!homeWidgetSet(id, { cols: n }, `${def.title}: ${n} of 12 columns`)) homeAnnounce(`${def.title} is already ${n} of 12 columns`);
-}
 /** Put a widget at index j among the other shown widgets. */
 function homeWidgetMoveTo(id, j) {
   const ids = _homeVisibleIds().filter(x => x !== id);
   ids.splice(Math.max(0, Math.min(ids.length, j)), 0, id);
   homeWidgetOrder(ids, id);
-}
-/** Up / down a shelf (dir -1 / 1): it goes before (up) or after (down) the widget on that shelf nearest its centre. */
-function homeWidgetMoveRow(id, dir) {
-  boardMoveRow(homeBoardAdapter(), document.querySelector('#main-body .home-grid'), id, dir);
-}
-/** A widget's height in rows (null = fits its content). */
-function homeWidgetHeight(id, h) {
-  const def = homeWidgetDef(id);
-  if (!def) return;
-  const v = h == null ? null : Math.max(HOME_H_MIN, Math.min(HOME_H_MAX, Math.round(h)));
-  if (!homeWidgetSet(id, { h: v }, `${def.title}: ${v ? `${v} rows tall` : 'fits its content'}`)) homeAnnounce(`${def.title} is already ${v ? `${v} rows tall` : 'fitting its content'}`);
-}
-/** One row taller (1) or shorter (-1); from its content's height the first time. */
-function homeWidgetHeightStep(id, dir) {
-  const w = homeLayout().widgets.find(x => x.id === id);
-  if (!w) return;
-  let cur = w.h;
-  if (!cur) {
-    const f = document.querySelector(`#main-body .hg-w[data-wid="${CSS.escape(id)}"]`);
-    cur = Math.round((f ? f.offsetHeight : 6 * HOME_ROW_PX) / HOME_ROW_PX);
-  }
-  const n = Math.max(HOME_H_MIN, Math.min(HOME_H_MAX, cur + dir));
-  if (n === w.h) { homeAnnounce(`${homeWidgetDef(id).title} is already as ${dir > 0 ? 'tall' : 'short'} as it goes`); return; }
-  homeWidgetHeight(id, n);
 }
 
 /* ---------- Customise's own Undo (the toolbar button): the layout before each change ---------- */

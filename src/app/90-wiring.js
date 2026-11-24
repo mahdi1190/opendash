@@ -27,39 +27,6 @@ document.querySelectorAll('.view-mode-toggle .mode').forEach(b => {
   // "Calendar" is the Calendar section (week view, tasks in the due lane), not a list layout.
   b.onclick = () => { if (b.dataset.goto) { setView(b.dataset.goto); return; } if (typeof viewsSetMode === 'function') { viewsSetMode(b.dataset.mode); return; } state.viewMode = b.dataset.mode; saveUI(); render(); };
 });
-
-// "Display" popover: sort, group, density, expand - one place instead of three buttons.
-const _SORTS = [['date', 'Date'], ['priority', 'Priority'], ['title', 'Title'], ['manual', 'Manual']];
-const _GROUPS = [['auto', 'Auto'], ['date', 'Date'], ['priority', 'Priority'], ['stream', 'Stream'], ['none', 'None']];
-function openDisplayPopover(anchor) {
-  openPopover(anchor, (el) => {
-    el.classList.add('pad');
-    const paint = () => {
-      el.innerHTML = '';
-      const row = (label, opts, cur, set) => {
-        const f = document.createElement('div'); f.className = 'field'; f.style.marginBottom = '12px';
-        const l = document.createElement('span'); l.className = 'field-label'; l.textContent = label; f.appendChild(l);
-        const seg = document.createElement('div'); seg.className = 'seg seg-block';
-        for (const [k, t] of opts) {
-          const b = document.createElement('button'); b.type = 'button'; b.textContent = t;
-          b.setAttribute('aria-pressed', cur === k ? 'true' : 'false');
-          b.onclick = () => { set(k); saveUI(); render(); paint(); };
-          seg.appendChild(b);
-        }
-        f.appendChild(seg); el.appendChild(f);
-      };
-      row('Sort by', _SORTS, state.sortBy, v => { state.sortBy = v; });
-      row('Group by', _GROUPS, state.groupBy, v => { state.groupBy = v; });
-      row('Rows', [['normal', 'Comfortable'], ['compact', 'Compact']], state.density === 'compact' ? 'compact' : 'normal', v => { state.density = v; });
-      const exp = document.createElement('button'); exp.type = 'button'; exp.id = 'expand-all-btn';
-      exp.className = 'btn btn-secondary btn-block';
-      exp.innerHTML = icon(_expandedTaskIds.size ? 'minimize-2' : 'maximize-2') + `<span>${_expandedTaskIds.size ? 'Collapse all tasks' : 'Expand all tasks'}</span>`;
-      exp.onclick = () => { toggleExpandAll(); paint(); };
-      el.appendChild(exp);
-    };
-    paint();
-  }, { width: 300, align: 'end' });
-}
 document.getElementById('display-btn').onclick = (e) => openTaskDisplayPopover(e.currentTarget);   // per-view sort/group: 32-tasks-ui.js
 document.getElementById('new-task-btn').onclick = (e) => openNewTask('', { from: e.currentTarget });   // centre card in create mode
 document.getElementById('more-btn').onclick = (e) => openMenu(e.currentTarget, shellMenuItems('more'), { align: 'end', width: 260 });
@@ -152,14 +119,6 @@ async function runMorningBriefing() {
   } catch (e) {
     toastError('start the morning briefing', e, () => runMorningBriefing());
   }
-}
-
-// Expand/Collapse-all toggle. If anything is currently expanded, click collapses
-// everything. Otherwise expands every task currently rendered in the main view.
-function toggleExpandAll() {
-  if (_expandedTaskIds.size > 0) { _expandedTaskIds.clear(); }
-  else { for (const id of _lastRenderedTaskIds) _expandedTaskIds.add(id); }
-  render();
 }
 
 

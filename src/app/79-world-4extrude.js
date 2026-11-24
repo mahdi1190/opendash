@@ -83,12 +83,6 @@ function _wexBox(pts, b) {
 }
 /** Is a face with outward normal n (x, y, z) at point p seen by the eye (0, eye, 0)? */
 const _wexSees = (cam, n, p) => n[0] * -p[0] + n[1] * (cam.eye - p[1]) + n[2] * -p[2] > 1e-6;
-/** Q5: the screen size of w metres at depth z (see the header). */
-function worldForeshorten(cam, z, w) {
-  w = _wexNum(w) ? w : 1;
-  if (!cam || !_wexNum(cam.f) || !(z > 0)) return { across: 0, along: 0, row: null };
-  return { across: cam.f * w / z, along: cam.f * cam.eye * w / (z * (z + w)), row: cam.horizon + cam.f * cam.eye / z };
-}
 
 /* ---------- linear features (Q2) ---------- */
 function _wexLen(path) { let L = 0; for (let i = 1; i < path.length; i++) L += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]); return L; }
@@ -561,9 +555,6 @@ const _wexLit = n => 0.78 + 0.3 * Math.max(0, -0.45 * n[0] + 0.8 * n[1] - 0.4 * 
 /* ---------- the canal boat model lives in the model registry (15-16 Oct; moved 16 Oct) ----------
    worldExtrudeBoatModel is kept by name: the narrowboat is the registered model 'narrowboat' (79-world-4model-narrowboat.js)
    built by the shared kit (79-world-4models.js). The helpers above (_wexShade, _wexNewell, _wexLit) are the kit's. */
-function worldExtrudeBoatModel(ent, cam, o) {
-  return typeof worldModelBuildWith === 'function' ? worldModelBuildWith('narrowboat', ent, cam, o) : null;
-}
 function worldExtrudeHull(ent, cam, o) {
   o = o || {};
   if (!ent || !cam || !_wexNum(cam.f) || typeof ent.obj !== 'string') return null;

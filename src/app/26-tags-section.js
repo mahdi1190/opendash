@@ -36,8 +36,6 @@ function tagRows() {
     return { tag, open: u.open, total: u.total, done: u.done, pinned: tglIsPinned(state, tag), archived: !!e.archived, note: e.note || '', flags: tglFlags(tag, ctx).filter(f => f.kind !== 'archived' && f.kind !== 'unused') };
   });
 }
-/** Old name (shell's starter version). */
-function tagUsage() { return tagRows().map(r => ({ tag: r.tag, open: r.open, total: r.total })); }
 
 /* ---------- pickers ---------- */
 /** Canonical tags for autocomplete: registry + tags in use, minus archived. -> [{tag, count}] */
@@ -187,10 +185,6 @@ function _tagRulePreview(kind) {
     for (const x of was) if (!(t.tags || []).includes(x)) tags.add(x);
   }
   return { tasks: s.tasksChanged, open: s.openTasksChanged, tags: [...tags] };
-}
-function tagApplyRule(kind, label) {
-  const s = tglCleanState(state, {}, { index: pplIndex(), today: todayStr(), only: [kind], log: (tid, e) => logActivity(tid, e.type || 'tags', e) });
-  _tagDone(`${label}: ${s.tasksChanged} task${s.tasksChanged === 1 ? '' : 's'} changed`);
 }
 
 /* ---------- the manager ---------- */

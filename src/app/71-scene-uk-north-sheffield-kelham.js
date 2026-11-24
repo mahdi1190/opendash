@@ -84,9 +84,6 @@ function _klmWall(cam, line, w, cols, key) {
   flush();
   return out;
 }
-
-/** Shapes as ground fills of a layer (drawn first in it, never sorted among the items; fills only, opaque). */
-function _klmGround(shapes, layer) { return shapes.filter(s => s.f && s.d).map(s => ({ layer, d: s.d, fill: s.f })); }
 /**
  * Sheffield's far hillside (screen units, absolute): the ridge, then rows of stone and brick terraces stepping up it along the
  * contours (roofs, walls, a lit window or two), trees and the fields between. Returns shapes for one horizon piece.
@@ -388,35 +385,6 @@ function sceneUkSheffieldKelhamV2() {
   // (the busier visitors' flow below fills the yard with people; the leaf litter and tufts already texture the setts)
   Pl.push({ obj: 'plant.klm-sycamore-bough', x: 1700, y: -30, s: 1.1, pin: true, layer: 'front', shadow: false, flip: true, variant: 0 });
   return data;
-}
-
-/** The point and unit tangent of a polyline at arc length s: [x, d, tx, td]. */
-function _klmAt(L, s) {
-  let acc = 0;
-  for (let i = 1; i < L.length; i++) {
-    const a = L[i - 1], b = L[i], seg = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    if (acc + seg >= s || i === L.length - 1) { const t = Math.max(0, Math.min(1, (s - acc) / seg)); return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, (b[0] - a[0]) / seg, (b[1] - a[1]) / seg]; }
-    acc += seg;
-  }
-  return [L[0][0], L[0][1], 0, 1];
-}
-/**
- * Frontages along a street edge: buildings placed one after another from arc s0, each [frontage, depth, style, storeys, seed,
- * extra]; side -1 (the left of the path's direction) or 1, at offset o from the centreline. A frontage of style null is a gap.
- */
-function _klmRow(L, s0, side, o, list) {
-  const out = [];
-  let s = s0;
-  for (const [w, dp, style, storeys, seed, extra] of list) {
-    if (style) {
-      const a = _klmAt(L, s), b = _klmAt(L, s + w);
-      const n = (q) => [q[0] + side * q[3] * o, q[1] - side * q[2] * o];
-      const n2 = (q) => [q[0] + side * q[3] * (o + dp), q[1] - side * q[2] * (o + dp)];
-      out.push(Object.assign({ foot: [n(a), n(b), n2(b), n2(a)].map(p => [_klmR2(p[0]), _klmR2(p[1])]), style, storeys, seed }, extra || {}));
-    }
-    s += w;
-  }
-  return out;
 }
 
 /**

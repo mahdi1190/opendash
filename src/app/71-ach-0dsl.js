@@ -412,7 +412,6 @@ function registerAchievementPack(pack) {
   if (typeof _achOnPack === 'function') { try { _achOnPack(p.id); } catch (e) { /* the page's hook */ } }
   return r;
 }
-function achPack(id, defs, label) { return registerAchievementPack({ id, defs, label }); }
 /** The core list (71-achievements.js), then every pack that was waiting. Returns the live list (ACH_DEFS). */
 function _achBindCore(list) {
   if (_ACH.core) return _ACH.defs;

@@ -12,7 +12,6 @@
      memPhotoEl(row)                     one card for the album
    ============================================================ */
 const _mph = { items: null, loading: null };
-function memPhotos() { return Array.isArray(_mph.items) ? _mph.items : []; }
 function memPhotoUrl(row) { return '/api/memories/photo/' + encodeURIComponent(String(row && row.name || '')); }
 function memPhotosLoad(force) {
   if (_mph.items && !force) return Promise.resolve(_mph.items);

@@ -468,13 +468,6 @@ const WHATS_NEW = [
     view: ['finance'], sel: ['.fvb-layout', '.fvb-cust', '#main-body'] },
 ];
 
-/** A feature module adds (or replaces, by id) its own entry. */
-function registerWhatsNew(entry) {
-  if (!entry || typeof entry.id !== 'string' || !entry.title) return;
-  const i = WHATS_NEW.findIndex(e => e.id === entry.id);
-  if (i >= 0) WHATS_NEW[i] = Object.assign({}, WHATS_NEW[i], entry); else WHATS_NEW.push(entry);
-}
-
 /* ---------- what an entry can show here ---------- */
 function _wnReduced() { return !!(window.Motion && Motion.prefersReduced && Motion.prefersReduced()); }
 function _wnViewOk(v) { try { return typeof v === 'string' && !!_viewFromHash('#view=' + v); } catch (e) { return false; } }

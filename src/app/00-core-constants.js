@@ -57,5 +57,4 @@ const PRIORITIES = {
   p3: { label: 'P3 — Low',    color: 'var(--p3)' },
   p0: { label: 'No priority', color: 'var(--p0)' },
 };
-const PRIO_FLAG_SVG = '<svg viewBox="0 0 16 16"><path d="M3 1.5v13a.5.5 0 0 0 1 0V10h7l1 2h3a.5.5 0 0 0 .447-.724L13 7l2.447-4.276A.5.5 0 0 0 15 2H4v-.5a.5.5 0 0 0-1 0z"/></svg>';
 

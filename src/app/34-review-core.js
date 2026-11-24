@@ -59,7 +59,6 @@ function rfLeavesView(i, view) {
 
 /* ---------- dates ---------- */
 function rfNextWeek() { return fmtDate(_qaAdd(_qaWeekStart(_qaToday()), 7)); }
-function rfWeekEnd() { return fmtDate(_qaAdd(_qaWeekStart(_qaToday()), 6)); }
 function _rfIsoOf(c) {
   if (!c) return null;
   if (typeof c === 'string' && /^\d{4}-\d{2}-\d{2}/.test(c)) return c.slice(0, 10);

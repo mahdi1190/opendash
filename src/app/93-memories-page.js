@@ -171,22 +171,6 @@ function _mpJournal(outer) {
   pgList.parentNode.insertBefore(tools, pgList);
 }
 
-/** The journal's side column: what it is, how many days it holds, and the two things you can do from here. */
-function _mpJournalSide(list) {
-  return (h) => {
-    const card = document.createElement('section'); card.className = 'card mem-side-card';
-    const n = document.createElement('p'); n.className = 'mem-side-n';
-    n.innerHTML = `<b class="num">${list.length.toLocaleString()}</b> <span class="muted">day${list.length === 1 ? '' : 's'} kept</span>`;
-    const p = document.createElement('p'); p.className = 'muted';
-    p.textContent = 'Each evening Freeflo writes a few lines about your day from what you did, where and with whom. Add your own line and how the day felt. It is all kept, forever.';
-    const row = document.createElement('div'); row.className = 'mem-side-a';
-    row.append(uiButton({ label: 'Rediscover a day', icon: 'sparkles', kind: 'ghost', size: 'sm', run: _mpRediscover }),
-      uiButton({ label: 'Write a time capsule', icon: 'mail', kind: 'ghost', size: 'sm', run: () => memCapsuleWrite() }));
-    card.append(n, p, row);
-    h.appendChild(card);
-  };
-}
-
 /* ---------- year ---------- */
 function _mpYears() {
   const ys = new Set([todayStr().slice(0, 4)]);

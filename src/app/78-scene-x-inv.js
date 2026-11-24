@@ -50,14 +50,6 @@ const SCENE_X_INV_RULES = Object.freeze([
 /* ---------- small maths ---------- */
 const _scxiNum = v => typeof v === 'number' && Number.isFinite(v);
 const _scxiR = v => Math.round(v * 100) / 100;
-function _scxiInPoly(P, x, y) {
-  let c = false;
-  for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
-    const a = P[i], b = P[j];
-    if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c;
-  }
-  return c;
-}
 // the top speed of a class in m/s (teleport), and the classes that walk (offLayer, nearBand)
 const _SCXI_VMAX = { person: 3.6, cyclist: 9, animal: 6, 'animal-dog': 6, 'animal-graze': 2.5, 'bird-water': 2.5, 'bird-ground': 3, boat: 2.5 };
 const _SCXI_LAND = ['person', 'cyclist', 'animal', 'animal-dog', 'animal-graze', 'bird-ground'];
@@ -66,7 +58,6 @@ const _SCXI_SIZED = ['person', 'cyclist', 'animal', 'animal-dog', 'animal-graze'
 const _SCXI_FLIER = /flight|swallow|swift|martin|bat|butterfly|dragonfly|bee\b|kite|buzzard|hobby|skylark/;
 const _SCXI_WADER = /heron|egret|stork|crane|wader|curlew|kingfisher/;
 const _SCXI_DIVER = /grebe|dabchick|coot|cormorant|shag|tufted|pochard|goldeneye|merganser|goosander|diver|kingfisher/;
-const _SCXI_HIDDEN = Object.freeze({ x: -1e5, y: -1e5, X: -1e5, Y: -1e5, s: 0, alpha: 0, dir: 1, flip: false, d: 1e5 });
 
 /* ---------- the movers of a frame ---------- */
 const _scxiMemo = new WeakMap();

@@ -150,15 +150,6 @@ function trNearestCity(lat, lon, o) {
   }
   return best && bestKm <= max ? { city: best, km: Math.round(bestKm * 10) / 10 } : null;
 }
-function trNearestCountry(lat, lon) {
-  const p = { lat: Number(lat), lon: Number(lon) };
-  if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) return '';
-  const T = trPlaceTables();
-  let cc = '', bestKm = Infinity;
-  for (const c of T.cities) { const k = trKm(p, c); if (k < bestKm) { bestKm = k; cc = c.cc; } }
-  for (const z in T.zones) { const e = T.zones[z]; const k = trKm(p, e); if (k < bestKm) { bestKm = k; cc = e.cc; } }
-  return bestKm <= 400 ? cc : '';
-}
 function trAirportCity(iata) {
   const id = trPlaceTables().airports[String(iata || '').toUpperCase()];
   return id ? trCity(id) : null;

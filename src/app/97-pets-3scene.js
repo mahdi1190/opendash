@@ -215,11 +215,6 @@ if (typeof sceneRenderPassDefine === 'function') {
     stats(env) { let n = 0; for (const [V, P] of _pts.pets) if (P && !V.done && P.now && P.now.env === env && P.now.a) n++; return n ? { pets: n } : {}; },
   });
 }
-function petScenePets() {
-  const out = [];
-  for (const [V, P] of _pts.pets) if (P && !V.done) out.push({ friend: V.friendId, scene: V.cid, d: P.now && P.now.a ? Math.round(P.now.a.d * 10) / 10 : null, mode: P.now && P.now.a ? (P.now.a.v ? 'sit' : 'walk') : 'waiting' });
-  return out;
-}
 // forget the pets of visits that ended
 if (typeof window !== 'undefined') setInterval(() => { for (const V of [..._pts.pets.keys()]) if (V.done) _pts.pets.delete(V); }, 15000);
 

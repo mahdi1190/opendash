@@ -1,36 +1,8 @@
 /* ============================================================
    CONTEXT MENU
    ============================================================ */
-function showCtxMenu(x, y, items) {
-  const m = document.getElementById('ctx-menu');
-  if (!m) return;
-  m.innerHTML = '';
-  for (const it of items) {
-    if (it === 'sep') { const s = document.createElement('div'); s.className = 'ctx-sep'; m.appendChild(s); continue; }
-    const el = document.createElement('div');
-    el.className = 'ctx-item' + (it.danger ? ' danger' : '');
-    // icon: a sprite name (preferred) or trusted markup from code; label is text.
-    el.innerHTML = `<span class="ctx-ic">${it.icon ? (_isIconName(it.icon) ? icon(it.icon) : it.icon) : ''}</span><span class="ctx-lbl">${esc(it.label)}</span>`;
-    el.onclick = () => { closeCtxMenu(); it.action && it.action(); };
-    m.appendChild(el);
-  }
-  m.style.left = Math.min(x, window.innerWidth - 240) + 'px';
-  m.style.top = Math.min(y, window.innerHeight - items.length * 30 - 20) + 'px';
-  m.classList.add('open');
-}
 function closeCtxMenu() { const m = document.getElementById('ctx-menu'); if (m) m.classList.remove('open'); }
 document.addEventListener('click', closeCtxMenu);
-
-// Task rows use openTaskMenu() (32-tasks-ui.js); this keeps the old
-// showCtxMenu() shape for any caller that still builds a ctx menu.
-function buildTaskCtxMenu(taskId) {
-  return taskMenuItems(taskId).map(it => (it === 'sep' ? 'sep' : { icon: it.icon, label: it.label, danger: it.danger, action: it.run }));
-}
-
-/* ============================================================
-   GENERIC MODAL (legacy: nothing in the app calls it any more; the
-   dialogs below and in 86-live-sync.js use openDialog, 11-ui-kit.js)
-   ============================================================ */
 function showModal(html, onOpen) {
   const card = document.getElementById('modal-card');
   if (!card) return;
@@ -85,7 +57,6 @@ function kbHelpGroups() {
     ...(typeof viewsKeyHelp === 'function' ? [['Task layouts', viewsKeyHelp()]] : []),
   ];
 }
-function kbHelpOpen() { const ov = document.getElementById('kb-overlay'); return !!(ov && ov.classList.contains('open')); }
 function closeKbHelp() {
   const ov = document.getElementById('kb-overlay');
   if (!ov || !ov.classList.contains('open')) return;

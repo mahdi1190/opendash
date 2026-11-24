@@ -114,8 +114,6 @@ function _arSceneStore(regionId, e) {
 function animRegion(id) { return ANIM_REGIONS.find(r => r.id === id) || null; }
 /** True when a pack id belongs to the region (the packs of a region are named '<id>-<group>'). */
 function animRegionOwns(regionId, packId) { packId = String(packId || ''); return packId === regionId || packId.startsWith(regionId + '-'); }
-/** Register a full-screen scene for a region: animRegionSceneAdd('asia', {key: 'country:JP', label, site, colour, mood, season, tags, svg}). Works before or after the region is defined. */
-function animRegionSceneAdd(regionId, e) { _arSceneStore(String(regionId), e); }
 /** Upgrades per region id (docs/dev/SCENE_ENGINE.md 16.2): { regionId: { key: up } }, and the keys upgraded more than once. */
 const _ANIM_REGION_UPGRADES = Object.create(null);
 const _ANIM_REGION_UPGRADE_DUPES = Object.create(null);

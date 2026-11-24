@@ -82,7 +82,6 @@ const WORLD_COVERAGE_MAX = 0.15;
 // surfaces that are dressed by themselves (texture, mirror, ripple, stems); grass, paving, fields are bare unless something
 // stands on them or a life population walks them
 const _WBD_DRESSED_KINDS = new Set(['water', 'reeds', 'bed', 'hedge', 'weir', 'rail', 'tram']);
-const _WBD_SKY_KEYS = ['obj', 'bearing', 'dist', 'src', 'id', 'variant'];
 
 /* ---------- small helpers (shared with 79-world-4light.js: one classic scope) ---------- */
 function _wlHash(s) { let h = 2166136261 >>> 0; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
@@ -153,27 +152,6 @@ function _wlFarZ(world) {
 }
 /** The half-width of the camera frustum at depth z (metres), with a margin. */
 function _wlHalfW(cam, z, margin) { return (cam.x0 + (margin || 0)) * z / cam.f; }
-
-/* ---------- the backdrop ---------- */
-/** Errors of a backdrop block (rules: badBackdrop, unknownStyle, screenOrLookField, unknownSize). */
-function worldBackdropValidate(b) {
-  const errs = [], E = (path, rule, msg, fix) => errs.push({ path, rule, msg, fix });
-  if (!b || typeof b !== 'object') { E('backdrop', 'emptyBackground', 'backdrop is required', "add backdrop: { style: 'woodland' } (" + Object.keys(WORLD_BACKDROP_STYLES).join(', ') + ')'); return errs; }
-  for (const k of Object.keys(b)) if (k !== 'style' && k !== 'skyline' && k !== 'yield') E('backdrop.' + k, /^(X|Y|px|s|scale|layer|tint|light|colour|grade)$/.test(k) ? 'screenOrLookField' : 'unknownKey', 'backdrop has no field ' + k, 'remove it');
-  if (b.yield != null && !(Array.isArray(b.yield) && b.yield.every(r => Array.isArray(r) && r.length === 2 && r.every(Number.isFinite)))) E('backdrop.yield', 'badBackdrop', 'yield is a list of bearing ranges [from, to] (degrees from north) where the scene has its own skyline', 'yield: [[300, 330]]');
-  if (!WORLD_BACKDROP_STYLES[b.style]) E('backdrop.style', 'unknownStyle', 'unknown backdrop style ' + b.style, 'one of ' + Object.keys(WORLD_BACKDROP_STYLES).join(', '));
-  if (b.skyline != null && !Array.isArray(b.skyline)) E('backdrop.skyline', 'badBackdrop', 'skyline is a list', 'skyline: [{ obj, bearing, dist, src }]');
-  (Array.isArray(b.skyline) ? b.skyline : []).forEach((s, i) => {
-    const p = 'backdrop.skyline[' + i + ']';
-    if (!s || typeof s !== 'object') { E(p, 'badBackdrop', 'not an object', '{ obj, bearing, dist, src }'); return; }
-    for (const k of Object.keys(s)) if (!_WBD_SKY_KEYS.includes(k)) E(p + '.' + k, /^(X|Y|px|s|scale|layer|y|h)$/.test(k) ? 'screenOrLookField' : 'unknownKey', 'a skyline entry has no field ' + k, 'only ' + _WBD_SKY_KEYS.join(', '));
-    if (typeof sceneObj === 'function' && !sceneObj(s.obj)) E(p + '.obj', 'unknownSize', 'no library object ' + s.obj, 'use a library id');
-    if (!Number.isFinite(s.bearing)) E(p + '.bearing', 'badBackdrop', 'bearing (degrees from north) is required', 'bearing: 312');
-    if (!(s.dist > 0)) E(p + '.dist', 'badBackdrop', 'dist (metres) is required', 'dist: 1800');
-    if (!s.src) E(p + '.src', 'badBackdrop', 'a real landmark carries src', "src: 'OS map'");
-  });
-  return errs;
-}
 /** The style's far ground: a polygon from just inside the scene's far edge to the camera's far limit, across the frustum. */
 function worldBackdropGround(world, cam) {
   cam = _wlCam(world, cam);
@@ -272,28 +250,6 @@ function worldBackdrop(world, cam, season, o) {
       height: _wlDims(s.obj).h, static: true, backdrop: true, skyline: true, src: s.src || null, season: season || null, solidity: 'passable', attach: 'ground',
       haze: Math.round(_wbdHaze(s.dist) * 1000) / 1000 });
   });
-  return out;
-}
-/**
- * How the band members look now (B1). sky: worldSkyOf (light package). o: { ctx (the time context, for the leaf state) }.
- * -> Map id -> { haze (by distance; fog thickens it), hazeCol (the sky's haze colour), leaf ('bare' | 'bud' | 'full' | 'turn',
- * seeded per member so a far wood turns unevenly), lit (a building's windows are on: its own seeded threshold against the sun's
- * elevation), litShare (the share of its windows lit) }.
- */
-function worldBackdropLook(members, sky, o) {
-  o = o || {};
-  const out = new Map(), alt = sky && sky.sun ? sky.sun.alt : 30, fogV = sky && sky.fogV, share = sky && sky.windowShare ? sky.windowShare : 0.6;
-  const mctx = typeof worldMaterialCtx === 'function' ? worldMaterialCtx(o.ctx || {}, { sky }) : null;
-  for (const m of members || []) {
-    if (!m || !m.obj) continue;
-    const d = Math.hypot(m.x || 0, m.z || 0);
-    let haze = Number.isFinite(m.haze) ? m.haze : _wbdHaze(d);
-    if (fogV) haze = Math.max(haze, 0.92 * (1 - Math.exp(-d / fogV)));
-    const r = { haze: Math.round(haze * 1000) / 1000, hazeCol: (sky && sky.haze) || '#c9d6dc', leaf: null, lit: false, litShare: 0 };
-    if (/^tree\./.test(m.obj) && mctx && typeof worldMaterialFor === 'function') r.leaf = worldMaterialFor(mctx, m, o.ctx).leaf;
-    if (/^building\./.test(m.obj)) { const thr = -7 + 8 * _wlRng('bdlit|' + m.id)(); r.lit = alt < thr; r.litShare = r.lit ? share : 0; }
-    out.set(m.id, r);
-  }
   return out;
 }
 
@@ -419,28 +375,3 @@ function worldCoverage(world, cam, o) {
 const _WBD_BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 /** The ordered (4 x 4 Bayer) dither offset of a pixel, -0.5..0.5 of one 8-bit step. */
 function worldDither(x, y) { return (_WBD_BAYER[((y & 3) << 2) | (x & 3)] + 0.5) / 16 - 0.5; }
-/**
- * Paint a dithered vertical gradient into an ImageData-like buffer ({ data, width, height }): rows y0 .. y0 + h, columns x0 ..
- * x0 + w; stops [[t (0..1 down the rows), '#hex'], ...]. o: { mask(x, y) -> bool (only those pixels), alpha (0..255) }.
- * Returns the pixels written. Each channel gets the ordered dither before rounding, so a slow gradient shows no bands.
- */
-function worldDitherGradient(img, x0, y0, w, h, stops, o) {
-  o = o || {};
-  if (!img || !img.data || !Array.isArray(stops) || !stops.length) return 0;
-  const S = stops.map(s => [s[0], _wbdRgb(s[1])]).sort((a, b) => a[0] - b[0]), a = o.alpha == null ? 255 : o.alpha, W = img.width, D = img.data;
-  let n = 0;
-  for (let y = Math.max(0, y0 | 0); y < Math.min(img.height, (y0 + h) | 0); y++) {
-    const t = h > 1 ? (y - y0) / (h - 1) : 0;
-    let c = S[S.length - 1][1];
-    if (t <= S[0][0]) c = S[0][1];
-    else for (let i = 1; i < S.length; i++) if (t <= S[i][0]) { const [t0, c0] = S[i - 1], [t1, c1] = S[i], k = t1 > t0 ? (t - t0) / (t1 - t0) : 0; c = [0, 1, 2].map(j => c0[j] + (c1[j] - c0[j]) * k); break; }
-    for (let x = Math.max(0, x0 | 0); x < Math.min(W, (x0 + w) | 0); x++) {
-      if (o.mask && !o.mask(x, y)) continue;
-      const q = (y * W + x) * 4, dz = worldDither(x, y);
-      D[q] = Math.max(0, Math.min(255, Math.round(c[0] + dz))); D[q + 1] = Math.max(0, Math.min(255, Math.round(c[1] + dz))); D[q + 2] = Math.max(0, Math.min(255, Math.round(c[2] + dz))); D[q + 3] = a;
-      n++;
-    }
-  }
-  return n;
-}
-function _wbdRgb(hex) { let s = String(hex || '#000').replace('#', ''); if (s.length === 3) s = s.replace(/./g, '$&$&'); const n = parseInt(s.slice(0, 6), 16) || 0; return [n >> 16 & 255, n >> 8 & 255, n & 255]; }

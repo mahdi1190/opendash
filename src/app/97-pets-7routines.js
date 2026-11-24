@@ -209,7 +209,6 @@ function petGardenPlayReceived(P, name, event) {
   P.puddlePlayReceived = { name, request: event.p || null, x: event.pc[0] / 10, y: event.pc[1] / 10, left: event.pc[2] === 1, age: 0, until: performance.now() + 6000, targetSeen: false, scene: _ptw.svg, previousCb: P.cb };
 }
 function petGardenPlaySuspend(P) { if (typeof petGardenGuideSuspend === 'function') petGardenGuideSuspend(P); P.puddlePlayInvite = P.puddlePlayContact = P.puddlePlayReceived = null; _ptwPlayClear(P, 'suspended'); }
-function petGardenPlayState() { return _ptw.pets.map(P => ({ species: P.look.species, companion: !!P.me, slot: _ptwPlaySlot(P), invited: !!P.puddlePlayInvite, current: P.environmentPlay ? { phase: P.environmentPlay.phase, pool: P.environmentPlay.pool, stage: P.environmentPlay.index, age: +P.environmentPlay.age.toFixed(2) } : null, last: P.puddlePlayLast || null })); }
 PET_BEHAVIOURS.puddlePlay = {
   when(P, W) { return !W.night && PET_PUDDLE_PLAY[P.look.species] && _ptwPlayContext(P, W) && _ptwPlayIdle(P) && _ptwSoon(P, 'puddlePlay', 90) && performance.now() >= (P.puddlePlayRestUntil || 0) && _ptwPlayPools(P).length ? 4 : 0; },
   run(P, W) { const result = _ptwPlayStart(P, W, false); if (!result.ok) { P.at_puddlePlay = performance.now() - 75000; P.busy = .7; } },

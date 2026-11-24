@@ -57,7 +57,6 @@ function _frMoreItems(d) {
   items.push({ label: 'What friends can see', icon: 'shield-check', run: () => setView('settings:privacy') });
   return items;
 }
-function _frHeadAnchor() { return document.querySelector('#view-header .btn-primary') || document.getElementById('view-header') || document.body; }
 /** Ask friends' computers for anything new now (the feed's refresh and the More item). */
 function _frCheckNow(btn) {
   return _frDo(btn, async () => { const r = await _frApi('/api/friends/check', {}); _frUI.feedAt = 0; await friendsLoad(true); _frRepaint(); return r; },
@@ -147,9 +146,6 @@ function _frAvatarWrap(f, size, o) {
     w.title = `${friendName(f)}: ${(_FR_PRES[f.presence] || _FR_PRES.offline)[0]}`;
   }
   return w;
-}
-function _frMeAvatar(d, size) {
-  return _frAvatarWrap({ id: '', name: (d.me && d.me.name) || 'You', profile: null }, size, { presence: false, cls: 'is-me' });
 }
 /** A ring (SVG, static markup) for a level: pct 0..1. */
 function _frRingSvg(pct) {

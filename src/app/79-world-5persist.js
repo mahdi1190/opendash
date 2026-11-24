@@ -84,11 +84,6 @@ async function worldPersistId(spec) {
   const eng = await _wpsEngine();
   return !eng || eng === 'none' ? null : eng.slice(0, 16) + '.' + sh + '.' + WORLD_PERSIST_FORMAT;
 }
-/** The same, now (null while the engine version is still being worked out: the first call of a page). */
-function worldPersistIdNow(spec) {
-  const sh = worldPersistSpecHash(spec), m = _wpsMeta('freeflo-world-version');
-  return sh && m ? m.slice(0, 16) + '.' + sh + '.' + WORLD_PERSIST_FORMAT : null;
-}
 
 /* ---------- the built world and the ground plan ---------- */
 /** A kept world for a spec and season (the live world: season undefined), or null. */
@@ -110,13 +105,6 @@ function worldPersistWorldPut(spec, season, world) {
       await sceneStorePut({ k: 'W|' + id + '|world|' + (season || '-'), world, at: Date.now() }, 64 * 1024 + n * 900);
     } catch (e) { /* not kept: built again next time */ }
   });
-}
-async function worldPersistPlanGet(spec) {
-  if (!worldPersistOn()) return null;
-  const id = await worldPersistId(spec);
-  if (!id) return null;
-  const rec = await sceneStoreGet('W|' + id + '|gplan');
-  return rec && rec.plan && Array.isArray(rec.plan.groups) ? rec.plan : null;
 }
 function worldPersistPlanPut(spec, plan) {
   if (!worldPersistOn() || !plan || !Array.isArray(plan.groups) || plan.stats && plan.stats.error) return;
@@ -355,18 +343,6 @@ function worldPersistSaveSoon(env, S) {
     finally { P.saving = false; _wpsSaving--; }
   }), WORLD_PERSIST_SAVE_DELAY_MS);
 }
-/** Debug and tools: what the store keeps for a spec ({ id, keys }). */
-async function worldPersistStats(spec) {
-  const id = spec ? await worldPersistId(spec) : null;
-  const all = typeof sceneStoreStats === 'function' ? await sceneStoreStats() : { keys: [] };
-  const keys = (all.keys || []).filter(k => k.startsWith('W|') && (!id || k.startsWith('W|' + id + '|')));
-  return { id, entries: keys.length, keys, bytes: all.bytes || 0 };
-}
-
-/* ---------- a world item's SVG still (animItemHtml's small sizes and reduced motion: 71-anim-registry.js) ----------
-   item.svg() builds the world of its season synchronously (0.7-1.5 s) and then its SVG (0.2-2.8 MB). Markup never does that now: the
-   still comes from the memo when its world is in memory, else a placeholder of the scene's sky is drawn and the real still replaces
-   it once the world is restored or built and the SVG drawn, in idle periods, one at a time. */
 const WORLD_STILL_SVG_MEMO = 24;
 const _wpsSvgMemo = new Map(), _wpsSvgQueue = [];
 let _wpsSvgSeq = 0, _wpsSvgBusy = false;

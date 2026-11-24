@@ -58,14 +58,3 @@ const SCENE_REGION_PARAMS = Object.freeze({
   climate: ['temperate', 'tropical', 'arid', 'alpine', 'mediterranean', 'polar'], kits: 'list', landmarks: 'list',
   water: ['none', 'bay', 'river', 'lake', 'sea', 'pond', 'canal'], horizon: 'number', density: 'number', palette: 'object',
 });
-/** The default kits of a region scene: the group's (first match; 'uk-*' is a prefix), else the climate's, plus `always`. */
-function sceneRegionKits(group, climate) {
-  const K = SCENE_REGION_KITS;
-  let base = null;
-  for (const [k, v] of Object.entries(K)) {
-    if (k === 'climate' || k === 'always') continue;
-    if (k === group || (k.endsWith('*') && String(group || '').startsWith(k.slice(0, -1)))) { base = v; break; }
-  }
-  if (!base) base = K.climate[climate] || K.climate.temperate;
-  return [...new Set([...base, ...K.always])];
-}

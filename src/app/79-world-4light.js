@@ -327,19 +327,6 @@ function worldShadowPlan(world, cam, sun, o) {
   out.sunDir = S.kind ? [S.g[0], S.g[1]] : null;
   return out;
 }
-/** How shaded a ground point is now (0..1): the strongest shadow over it, 0 inside a hole (water never takes a shadow). */
-function worldShadeAt(plan, x, z, o) {
-  o = o || {};
-  let best = 0;
-  for (const s of plan || []) {
-    if (o.kinds && !o.kinds.includes(s.kind)) continue;
-    if (o.on && s.on !== o.on) continue;
-    if (!_wlInPoly(x, z, s.poly)) continue;
-    if ((s.holes || []).some(h => _wlInPoly(x, z, h.poly))) continue;
-    if (s.op > best) best = s.op;
-  }
-  return best;
-}
 
 /* ---------- reflections: none here ---------- */
 /** The water level (y, metres) of a water surface (its own level, else the camera's water plane). */

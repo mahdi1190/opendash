@@ -90,7 +90,6 @@ function _wmhBlob(cx, cz, rx, rz, ang, rnd, seed) {
   }
   return _wmhSmooth(ctl, 0.9);
 }
-const _wmhInPoly = (P, x, z) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a[1] > z) !== (b[1] > z) && x < (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
 
 function worldMarsh(o) {
   o = o && typeof o === 'object' ? o : {};

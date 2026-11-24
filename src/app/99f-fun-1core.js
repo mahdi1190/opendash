@@ -344,30 +344,6 @@ function _funDuoChip(x, f, big) {
   c.setAttribute('aria-label', tip);
   return c;
 }
-function funFriendCard(card, f) {
-  if (!funOn() || !card || !f || f.status !== 'friend') return;
-  const x = funFor(f.id);
-  if (!x) { if (!_fun.data && !_fun.loading && !_fun.err && !_fun.stopped) funLoad(false).catch(() => {}); return; }
-  _funFreshen();
-  if (x.theme && x.theme !== 'plain' && funItem('theme', x.theme)) card.classList.add('fun-th', 'fun-th-' + x.theme);
-  const g = card.querySelector('.fr-card-g');
-  const chip = _funDuoChip(x, f, false);
-  if (g && chip) g.appendChild(chip);
-  const head = card.querySelector('.fr-card-h');
-  if (head && funFriendInCostume(f)) { const c = _funEl('span', 'fun-costume', '🧙'); c.setAttribute('data-tip', `${_funFirst(f)} is dressed up for ${funEventNow().def.label}`); head.appendChild(c); }
-  if (head && x.gifts) {
-    const b = _funBtn('', { raw: true, cls: 'fun-giftbadge', e: '🎁', tip: `${x.gifts} gift${x.gifts === 1 ? '' : 's'} from ${_funFirst(f)} to unwrap`, aria: `Unwrap ${_funFirst(f)}'s gift`, run: () => { const gg = ((_fun.data && _fun.data.gifts && _fun.data.gifts.inbox) || []).find(y => y.f === f.id); if (gg && typeof funUnwrap === 'function') funUnwrap(gg.id); } });
-    if (x.gifts > 1) b.appendChild(_funEl('span', 'num', String(x.gifts)));
-    head.appendChild(b);
-  }
-  const foot = card.querySelector('.fr-card-foot');
-  if (foot) {
-    const wave = _funBtn('', { kind: 'btn-ghost', sm: true, cls: 'fun-wavebtn', e: '👋', tip: `Wave at ${_funFirst(f)}`, aria: `Wave at ${_funFirst(f)}`, run: (e, b) => funWave(f, 'wave', { anchor: b }) });
-    const more = _funBtn('', { kind: 'btn-ghost', sm: true, cls: 'fun-morebtn', icon: 'sparkles', tip: `High five, thinking of you, a gift${funEventNow() ? ', ' + funEventNow().def.knock.label.toLowerCase() : ''}`, aria: `More fun with ${_funFirst(f)}`, run: (e, b) => { if (typeof funActionsMenu === 'function') funActionsMenu(b, f); } });
-    const cheer = foot.querySelector('.fr-cheer');
-    for (const b of [wave, more]) { if (cheer) foot.insertBefore(b, cheer); else foot.appendChild(b); }
-  }
-}
 function funFriendHero(el, f) {
   if (!funOn() || !el || !f || f.status !== 'friend') return;
   const x = funFor(f.id);

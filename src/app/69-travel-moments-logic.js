@@ -34,9 +34,6 @@
    ============================================================ */
 
 const TM_LEVELS = Object.freeze(['off', 'reduced', 'subtle', 'standard', 'playful']);
-/** The moments: arrive (the centred card), reopen (the same card, settled), home (the welcome-home
- *  postcard), recap (its "See more" card), depart (the Home card), dock (closing into the chip). */
-const TM_MOMENTS = Object.freeze(['arrive', 'reopen', 'home', 'recap', 'depart', 'dock']);
 const TM_PARTS = Object.freeze({
   arrive: ['entrance', 'scene', 'actor', 'title', 'time', 'diff', 'chips', 'stamp', 'loops'],
   reopen: ['entrance', 'scene', 'actor', 'title', 'time', 'diff', 'chips', 'stamp', 'loops'],
@@ -370,8 +367,6 @@ function trSceneSvg(o) {
   }
   return s + `<desc data-cats="${[...cats].join(' ')}"></desc></svg>`;
 }
-/** The loop categories a scene's markup uses (read back from its <desc>). */
-function trSceneLoops(svg) { const m = /<desc data-cats="([^"]*)"/.exec(String(svg || '')); return m ? m[1].split(' ').filter(Boolean) : []; }
 
 /* ---------- the dial (spec 4.4: the hands sweep from home time by the true difference) ---------- */
 /**

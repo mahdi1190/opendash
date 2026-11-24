@@ -76,9 +76,6 @@ function _sctfResolve(sp, b) {
   sp.wall = _scbgMix(tf.plaster, ((st.wall && st.wall.grime) || '#3a3530'), sp.wear * 0.5);
   sp.frame = tf.timber;
 }
-
-/* ---------- the model: a stack of storeys ---------- */
-const _sctfRect = (a, b, z0, z1) => [[a[0], z0, a[1]], [b[0], z0, b[1]], [b[0], z1, b[1]], [a[0], z1, a[1]]];
 /**
  * The style's build hook: the generator's own model on the footprint of the TOP storey (roof, gable, chimneys), then its front and
  * side walls replaced by one face per storey (each on its own plane, shifted by the storey's overhang), and a soffit under every

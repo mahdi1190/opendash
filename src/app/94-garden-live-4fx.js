@@ -92,7 +92,6 @@ function _gllToolFeedback(result, local) {
   } else play(t === 'dig' || t === 'take' ? 'lift' : t === 'weed' ? 'trim' : t === 'harvest' && result.gold === true ? 'gold' : t, result.x, result.y);
   return true;
 }
-function gardenLiveToolFeedbackStatus() { const s = _gllToolFeedbackState; return { scope: s.scope, remembered: s.seen.size, duplicates: s.duplicates, bulk: s.bulk, bulkRows: s.bulkRows, bulkCulled: s.bulkCulled, played: { ...s.played } }; }
 /* ---------- they did it ---------- */
 function _gllFxPlay(A, ev) {
   if (!A || !ev) return;

@@ -137,12 +137,6 @@ function animUkWhere() {
   _aukMemo = { at: now, key, where };
   return where;
 }
-function animUkCountyId() { try { const w = animUkWhere(); return w ? w.id : ''; } catch (e) { return ''; } }
-/** The county's signature opening (a UK pack item), or null when its region is not drawn yet or its pack is off. */
-function animUkSignature(id) {
-  const look = animLook();
-  return animItems({ slot: 'opening', look }).find(it => it.county === id && it.signature && !look.block.includes(it.ref)) || null;
-}
 
 /* ---------- the "Welcome to <county>" moment ---------- */
 let _aukShowing = false;

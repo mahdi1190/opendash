@@ -58,7 +58,6 @@
        gda-flicker (flames), gda-spin (pinwheels, windmills), gda-bob (floating, bobbing), gda-blink.
      Until agent 'garden-art' lands, the engine draws gardenArtPlaceholder(id, o) (94-garden-2art.js).
    ============================================================ */
-const GARDEN_V = 1;
 function _gdF(o) { return Object.freeze(o); }
 function _gdRows(list) { return Object.freeze(list.map(r => Object.freeze(r))); }
 /* Rows the garden designer can move: the list is fixed, a row's x, y and door are not (gardenDesignShow, 94-garden-design-0rules.js). */
@@ -788,16 +787,6 @@ function gardenVisitor(id) { return _GD_VISITOR.get(String(id)) || null; }
 function gardenTile(id) { return _GD_TILE.get(String(id)) || null; }
 function gardenArea(id) { return id === 'lawn' ? GARDEN_LAWN : (_GD_AREA.get(String(id)) || null); }
 function gardenTool(id) { return _GD_TOOL.get(String(id)) || null; }
-/** Any catalogue entry by id, with its kind ('plant' | 'decor' | 'visitor' | 'tile' | 'area' | 'tool'). */
-function gardenDef(id) {
-  const p = gardenPlant(id); if (p) return { kind: 'plant', def: p };
-  const d = gardenDecor(id); if (d) return { kind: 'decor', def: d };
-  const v = gardenVisitor(id); if (v) return { kind: 'visitor', def: v };
-  const t = gardenTool(id); if (t) return { kind: 'tool', def: t };
-  const a = gardenArea(id); if (a) return { kind: 'area', def: a };
-  const g = gardenTile(id); if (g) return { kind: 'tile', def: g };
-  return null;
-}
 
 /* ---------- small pure helpers ---------- */
 function gardenHash(s) { s = String(s); let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -983,15 +972,6 @@ function gardenBouquetOf(flowers) {
   }
   return null;
 }
-
-/* ---------- the art contract ---------- */
-const GARDEN_ART = _gdF({
-  unit: 64,
-  kinds: _gdF(['plant', 'decor', 'visitor', 'tile', 'crop', 'seed', 'tool', 'bouquet']),
-  classes: _gdF(['gda-sway', 'gda-flutter', 'gda-glow', 'gda-ripple', 'gda-flicker', 'gda-spin', 'gda-bob', 'gda-blink']),
-  sizes: _gdF(['s', 'm', 'l']),
-  tods: _gdF(['dawn', 'day', 'dusk', 'night']),
-});
 /**
  * The box an art fragment is drawn in, in art units (anchor at the bottom centre): {x, y, w, h} for a viewBox.
  * Plants: the footprint's width and look.h cells of height (+ a margin); decorations: their footprint and look.h;

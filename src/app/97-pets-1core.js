@@ -146,7 +146,6 @@ function petUnlockCtx() {
   const best = s && s.streaks && s.streaks.done ? Math.max(Number(s.streaks.done.best) || 0, Number(s.streaks.done.current) || 0) : 0;
   return { game: !!s, levelMax: Math.max(1, Number(g.levelMax) || 1, s ? Number(s.level.max) || s.level.level : 1), bestStreak: best, collected: _ptS().collected, today: _ptToday(), unl: _ptS().unl || {}, bought: _ptS().buy || {}, bondBest: typeof _ptcBondBest === 'function' ? _ptcBondBest(_ptS()) : 1 };
 }
-function petLocked(field, id, species) { try { return petLockOf(field, id, petUnlockCtx(), species || (_ptS().look || {}).species); } catch (e) { return ''; } }
 /** Seasonal accessories: in season they are collected, and stay yours for good. */
 function _ptCollectSeasonal(silent) {
   const p = _ptS();
@@ -372,7 +371,6 @@ function petItemsSet(owner, list) {
 }
 /** Your saved designs (clean copies of the records, newest last). */
 function petItemsList() { return [..._pit.mine.values()]; }
-function petItemGet(id) { return _pit.mine.get(id) || null; }
 const _ptFmemo = new WeakMap();
 /**
  * The designs a friend's pet wears, from their view (window.Friends: view.petItems, the body of their 'pet:items'): a Map id -> clean

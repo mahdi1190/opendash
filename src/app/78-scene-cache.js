@@ -134,18 +134,6 @@ async function sceneStoreHas(keys) {
   } catch (e) { /* none */ }
   return out;
 }
-/** Forget one record. */
-async function sceneStoreDelete(key) {
-  if (!sceneStoreOn() || !key) return false;
-  try {
-    const db = await _scstDb();
-    if (!db) return false;
-    const tx = db.transaction(['data', 'meta'], 'readwrite');
-    tx.objectStore('data').delete(key); tx.objectStore('meta').delete(key);
-    await _scstDone(tx);
-    return true;
-  } catch (e) { return false; }
-}
 /** Store a record ({ k, ... }; bytes: its size on disk, for the eviction). */
 async function sceneStorePut(rec, bytes) {
   if (!sceneStoreOn() || !rec || !rec.k) return false;
@@ -177,14 +165,6 @@ async function _scstEvict() {
   for (const k of drop) { tx.objectStore('data').delete(k); tx.objectStore('meta').delete(k); }
   await _scstDone(tx);
   return drop.length;
-}
-async function sceneStoreClear() {
-  const db = await _scstDb();
-  if (!db) return false;
-  const tx = db.transaction(['data', 'meta'], 'readwrite');
-  tx.objectStore('data').clear(); tx.objectStore('meta').clear();
-  await _scstDone(tx);
-  return true;
 }
 async function sceneStoreStats() {
   const db = await _scstDb();

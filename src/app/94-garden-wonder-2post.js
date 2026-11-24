@@ -24,13 +24,11 @@ const WD_LETTERS = Object.freeze([
   ...(typeof WK_LETTERS !== 'undefined' ? WK_LETTERS : []),   // the folk's letters (94-garden-wonder-1kin.js)
   { id: 'wick2', from: 'Wick', if: F => F.stars >= 12, after: 'wick1', days: 0, text: ['That is all twelve. It took you a year, because they don’t come up any faster than that. There is nothing I can give you for it. It was already yours, it was just over your head.'], sign: 'Wick' },
 ]);
-const WD_LETTER_ROW = new Map(WD_LETTERS.map(r => [r.id, r]));
 function _wdGiftLetters() {
   const W = _wdG(), out = [];
   for (const k of Object.keys(W)) { if (!k.startsWith('fg.')) continue; const [, who, n] = k.split('.'), row = WD_FOLK_ROW.get(who), e = W[k]; if (!row || !e || !e.d) continue; out.push({ id: `gift.${who}.${n}`, from: row.name, text: row.thanks(e.name || 'thing'), sign: row.name, due: e.d, back: row.back }); }
   return out;
 }
-function _wdLetterOf(id) { return WD_LETTER_ROW.get(id) || _wdGiftLetters().find(x => x.id === id) || (typeof wdTaleLetterRow === 'function' ? wdTaleLetterRow(id) : null) || null; }
 /** The next letter that may come today, or null. */
 function _wdLetterDue(m) {
   const W = _wdG(), today = m.today;
@@ -80,7 +78,6 @@ function wdLetterPage(r) {
 function _wdItemWords(item) { if (item === 'fertiliser') return 'a bag of compost'; const p = item.startsWith('seed:') ? gardenPlant(item.slice(5)) : null; return p ? 'a ' + p.name.toLowerCase().replace(/ tree$/, '') + ' seed' : 'something small'; }
 function _wdLettersHad() { const W = _wdG(), all = [...WD_LETTERS, ..._wdGiftLetters(), ...(typeof wdTaleLettersHad === 'function' ? wdTaleLettersHad() : [])]; return all.filter(r => W['l.' + r.id]).sort((a, b) => String(W['l.' + b.id]).localeCompare(String(W['l.' + a.id]))); }
 function _wdUnread() { const W = _wdG(); return _wdLettersHad().filter(r => !W['lr.' + r.id]).length; }
-function gardenWonderBadge() { try { return _wdUnread(); } catch (e) { return 0; } }
 /* ---------- the snail ---------- */
 const _wdp = { snail: null, flag: null, tried: false };
 function _wdSnailSvg() {
@@ -133,17 +130,6 @@ wdMod({
 });
 /* ---------- the Keepsakes panel: letters, what you have found, the days to come ---------- */
 const _wdb = { tab: 'letters' };
-function gardenWonderBox(el, m) {
-  el.textContent = '';
-  el.classList.add('wd-box');
-  const un = _wdUnread();
-  el.appendChild(_gdxChips([['letters', un ? `Letters (${un})` : 'Letters'], ['found', 'Found'], ['stories', 'Stories'], ['days', 'The year']], _wdb.tab, (k) => { _wdb.tab = k; gardenWonderBox(el, m); }));
-  const body = _gdpEl('div', 'wd-box-in'); el.appendChild(body);
-  if (_wdb.tab === 'letters') _wdBoxLetters(body, () => gardenWonderBox(el, m));
-  else if (_wdb.tab === 'found' && typeof wdBoxFound === 'function') wdBoxFound(body, m);
-  else if (_wdb.tab === 'stories' && typeof wdBoxStories === 'function') wdBoxStories(body, m);
-  else if (typeof wdBoxDays === 'function') wdBoxDays(body, m);
-}
 function _wdBoxLetters(el, again) {
   const had = _wdLettersHad();
   if (!had.length) { el.appendChild(_gdpEl('p', 'muted wd-box-empty', 'Nothing yet. Keep an eye on the lane: the post is slow, but it comes.')); return; }

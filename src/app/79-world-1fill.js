@@ -695,16 +695,6 @@ function _wflThroughLane(F) {
   }
   return removed;
 }
-/** The tightest way through the walked ground of a world, for tools and tests: { slack (< 0: too narrow for two abreast), len, need, at, surface } or null. */
-function worldFillLane(world, o) {
-  o = o || {};
-  const cam = o.cam || (world && world.cam);
-  if (!world || !cam || !_wflNum(cam.f)) return null;
-  const F = { world, cam, W: o.W || 1600, H: o.H || 900, pad: (o.overscan == null ? 0.18 : o.overscan) * (o.W || 1600), lived: _wflLived(world), ix: null, added: [] };
-  let best = null;
-  for (const L of _wflLanes(F)) { const sc = _wflLaneScan(F, L); if (sc && (!best || sc.slack < best.slack)) best = Object.assign({ surface: L.s.id }, sc); }
-  return best;
-}
 /** The descriptor of a kit object, or null; a name the library does not have is logged once (kitMissing), never swapped. */
 function _wflKb(F, id) {
   if (typeof id !== 'string' || !id) return null;
@@ -1204,15 +1194,6 @@ function _wflFrameState(F) {
     } catch (e) { /* no walls */ }
   }
   return st;
-}
-/** Does the view already have its framing? -> a description or null. */
-function _wflHasFrame(F) {
-  const st = _wflFrameState(F);
-  if (st.declared) return st.declared;
-  const natural = F.style.place === 'rural' || F.style.place === 'park';
-  const sideD = st.side[0] || st.side[1];
-  if (natural ? (st.topHang && sideD) : (st.top || sideD)) return [st.top, st.side[0], st.side[1]].filter(Boolean).join(', ');
-  return null;
 }
 /**
  * The framing foreground (C3, N2): an author's declared framing element is kept and nothing is added. Otherwise a view needs a

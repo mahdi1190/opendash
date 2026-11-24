@@ -23,7 +23,6 @@ const GART_EMOTES = Object.freeze({
   startled: { name: 'Startled', icon: 'zap', ms: 900, how: { hidden: 1 }, root: [[0.08, { y: 1, sy: 0.92 }, 'l'], [0.14, { y: -18, sy: 1.14, sx: 0.92 }, 'o'], [0.4, { y: -20 }, 'i'], [0.56, { y: 1, sy: 0.86, sx: 1.1 }, 'o'], [0.74, { sy: 1.03 }, 'io']], armL: [[0.14, { r: 120 }, 'o'], [0.5, { r: 110 }, 'o'], [0.8, {}]], armR: [[0.14, { r: -120 }, 'o'], [0.5, { r: -110 }, 'o'], [0.8, {}]] },
 });
 const _pe = { H: null, wheel: null, hold: false };
-function _pePad() { try { return profileGet().avatar; } catch (e) { return null; } }
 function gartEmoteOwned(id) {
   const e = GART_EMOTES[id]; if (!e || e.how.hidden) return false;
   if (e.how.free) return true;

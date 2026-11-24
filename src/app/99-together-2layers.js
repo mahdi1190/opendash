@@ -459,10 +459,6 @@ function tgBestSlots(cands, n) {
   for (const c of sorted) { if (pick.length >= n) break; if (!pick.includes(c) && pick.every(p => Math.abs(p.t0 - c.t0) >= 2 * 3600000)) pick.push(c); }
   return pick.sort((a, b) => a.t0 - b.t0);
 }
-/** Kept for older callers: free slots with the old switches (workOnly: weekdays in working hours, else any day, daytime). */
-function tgFreeSlots(fids, minutes, days, workOnly) {
-  return tgFindSlots({ fids, minutes, days, dayPref: workOnly ? 'weekdays' : 'any', timePref: workOnly ? 'work' : 'day' }).sort((a, b) => a.t0 - b.t0).slice(0, 40);
-}
 function _tgHM(min) { const h = Math.floor(min / 60) % 24, m = min % 60; const hm = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; return typeof _calTimeLabel === 'function' ? _calTimeLabel(hm) : hm; }
 function tgSlotLabel(sl) {
   if (Number.isFinite(sl.t0) && Number.isFinite(sl.t1)) return tgWhenLabel(sl.t0, sl.t1);
@@ -646,10 +642,4 @@ function tgFindTimeDialog(o) {
     onClose: () => { gen++; },
     actions: [{ label: 'Close' }],
   });
-}
-/** Kept for older callers: one time on the space's board (now through tgProposeSlots). */
-function tgProposeSlot(spaceId, sl, minutes) {
-  const t0 = Number.isFinite(sl.t0) ? sl.t0 : Clock.at(sl.day, sl.s);
-  const t1 = Number.isFinite(sl.t1) ? sl.t1 : t0 + (Number(minutes) || (sl.e - sl.s) || 60) * 60000;
-  return typeof tgProposeSlots === 'function' ? tgProposeSlots(spaceId, [{ t0, t1 }], '') : Promise.resolve(false);
 }

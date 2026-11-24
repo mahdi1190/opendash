@@ -59,9 +59,6 @@ const _wkbLerp = (r, t) => r[0] + (r[1] - r[0]) * t;
 /* ---------- habitat tags (K1) ---------- */
 /** The habitat tag vocabulary. Surface tags come from worldKbSurfaceTags(kind); the probe adds the distance tags
     (water-margin, bank, grass-edge, walkline, wet) and 'pit' / 'perch' / 'roof' / 'deck' come from hosts. */
-const WORLD_KB_TAGS = Object.freeze(['water', 'water-margin', 'bank', 'wet', 'walk', 'path', 'paving', 'deck', 'crossing', 'cycle', 'grass', 'soil', 'heath',
-  'field', 'wood', 'sand', 'stone', 'grass-edge', 'walkline', 'road', 'road-lane', 'rail', 'tram', 'hedge', 'weir', 'roof', 'perch', 'wall', 'air', 'ground',
-  'reeds', 'attached']);
 const _WKB_SURFACE_TAGS = Object.freeze({
   water: ['water'], puddle: ['water'], weir: ['weir', 'water'], reeds: ['water-margin', 'wet', 'reeds', 'soil'], reedbed: ['water-margin', 'wet', 'reeds', 'soil'],
   bed: ['water-margin', 'wet', 'soil'], mud: ['wet', 'soil', 'water-margin'],

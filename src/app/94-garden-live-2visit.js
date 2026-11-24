@@ -12,7 +12,6 @@ const _glv = { fid: '', state: '', why: '', lv: 'none', w: null, road: null, tou
 function _glvLive() { return _glv.state === 'live'; }
 function _glvAmbientClock(ac) { const session = [_glv.fid, _glv.boot, _glv.gen].join('|'), traveller = typeof gardenTravellerReceiveClock === 'function' && gardenTravellerReceiveClock(ac, _glv.fid, session), native = window.GardenNativeLight && GardenNativeLight.receiveClock(ac, _glv.fid, session); return !!(native || traveller); }
 function _glvAmbientClear() { if (window.GardenNativeLight) GardenNativeLight.clearClock(); if (typeof gardenTravellerClearClock === 'function') gardenTravellerClearClock(); }
-function _glvFriend() { return _gscFriend(_glv.fid); }
 function _glvSend(k, body) { return _gllPipe('/api/garden-live/send', { k, body, f: _glv.fid, gen: _glv.gen, boot: _glv.boot }); }
 function _glvLookSig(l) { return JSON.stringify([l.a || null, l.g || null, l.pet || null]); }
 function _glvLook() { const l = gardenLiveLook(); if (typeof _gw !== 'undefined' && _gw.on) { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; if (typeof gartMoveWhole === 'function') Object.assign(l, gartMoveWhole()); } return l; }   // (move360: and the way you face and walk, h and gt)
@@ -425,7 +424,6 @@ function gardenLivePhrases(anchor) {
     el.appendChild(grid);
   }, { align: 'center' });
 }
-const _glvPhrases = gardenLivePhrases;
 /** Say one: your own bubble at once, and everyone else's a moment later. */
 function gardenLiveSay(id) {
   if (!GL_PHRASE_IDS.includes(id)) return;

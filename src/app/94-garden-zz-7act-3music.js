@@ -416,11 +416,3 @@ if (typeof _gaWords === 'function') {
   _gaWords = function (r) { const s = _gmWords0(r); try { const row = r && GARDEN_ACTS[r.act]; if (row && row.music && r.src && _gmBands().get(r.src)) return 'Join in: ' + s.charAt(0).toLowerCase() + s.slice(1); } catch (e) { /* as it was */ } return s; };   // eslint-disable-line no-func-assign
 }
 function gardenMusicState() { const b = _gmu.band; return { me: _gmu.me, them: [..._gmu.them].map(([w, r]) => ({ w, id: r.id, i: r.i, voice: r.voice })), off: Math.round(_gmu.off), synced: _gmu.synced, rtt: _gmu.samples.length ? Math.round(Math.min(..._gmu.samples.map(s => s.rtt))) : null, roles: b && b.roles, n: b && b.n, k: b && b.k, step: Math.floor(gmNow() / GM_STEP) % GM_NSTEP, on: !!_gmu.iv, notes: _gmu.notes }; }
-/** The tune with these voices playing, drawn into an OfflineAudioContext: a Promise of { peak, rms, notes } (and the buffer as o.buffer). */
-function gardenMusicRender(voices, secs) {
-  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!OAC) return Promise.reject(new Error('no offline audio'));
-  const sr = 22050, c = new OAC(2, Math.floor(sr * (secs || 10)), sr), out = c.createGain(); out.connect(c.destination); out.gain.value = 0.9;
-  const roles = gmRoles(voices), n = voices.length; let notes = 0;
-  for (let s = 0; s * GM_STEP / 1000 < (secs || 10) - 0.5; s++) for (const v of Object.keys(roles)) gmStepNotes(v, roles[v], s, n, (voice, dt, m, d, k) => { gmNote(c, out, voice, s * GM_STEP / 1000 + dt + 0.05, m, d, k); notes++; });
-  return c.startRendering().then(buf => { let peak = 0, sum = 0; const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; sum += d[i] * d[i]; } return { peak: Math.round(peak * 1000) / 1000, rms: Math.round(Math.sqrt(sum / d.length) * 1000) / 1000, notes, roles, buffer: buf }; });
-}

@@ -44,10 +44,6 @@ const TRL_CITY_STATES = new Set(['SG', 'HK', 'MO', 'MC', 'VA', 'SM', 'GI', 'LI',
 /** Minutes at the station or airport before departure (T2), by mode. */
 const TRL_BUFFER_MIN = Object.freeze({ flight: 120, 'flight-domestic': 90, eurostar: 60, train: 15, ferry: 60, coach: 15 });
 const TRL_TRAVEL_MIN = 60;          // getting there (T2), until Settings has a value
-const _trlPad = (n) => String(n).padStart(2, '0');
-
-/* ---------- small helpers ---------- */
-function _trlHM(min) { const m = ((Math.round(Number(min) || 0) % 1440) + 1440) % 1440; return _trlPad(Math.floor(m / 60)) + ':' + _trlPad(m % 60); }
 function _trlFold(s) {
   return String(s == null ? '' : s).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
     .replace(/[’'`]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();

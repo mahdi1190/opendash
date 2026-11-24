@@ -69,12 +69,6 @@ function trUiArc(h) {
   const y = 12 - 9 * Math.sin(Math.PI * t);
   return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, night };
 }
-/** The difference of zB against zA: '+8 h', 'Same time as home', '+13 h · tomorrow there'. */
-function trUiDiff(zA, zB, ms) {
-  if (typeof clockDiffLabel === 'function') return clockDiffLabel(zA, zB, ms);
-  const min = clockOffsetIn(ms, zB) - clockOffsetIn(ms, zA);
-  return clockFmtDiff(min);
-}
 /** '4–9 Oct', '28 Sep – 3 Oct', '4 Oct'. */
 function trUiRange(from, to) {
   const [, m1, d1] = String(from || '').split('-').map(Number);

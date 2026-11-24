@@ -402,12 +402,6 @@ function tgHangoutOnce(spaceId, key, text, ic, o) {
     return true;
   } catch (e) { return false; }
 }
-/** Older callers: one line, capped like the rest (o: {text, icon, space?, key?}). */
-function tgHangout(o) {
-  if (!o) return;
-  const sp = o.space && TG_ID_RE.test(o.space) ? o.space : (tgSpaces()[0] && tgSpaces()[0].id);
-  if (sp) tgHangoutOnce(sp, o.key || ('t:' + String(o.text || '').slice(0, 80)), o.text, o.icon);
-}
 /** Trip and countdown milestones in your spaces (from togetherAfterRender; every 10 minutes and when the day turns). */
 const TG_MILESTONES = [30, 14, 7, 3, 1, 0];
 var _tgHangTick = { at: 0, day: '' };

@@ -244,28 +244,6 @@ function worldCliffTalus(f, x, z) {
   const n = _wclNear(g, x, z), t = (n.side * g.hi > 0 ? 1 : -1) * n.d;
   return t <= 0 ? _wclProfile(g, t, _wclTaper(g, n.s), _wclTab(g.fanH, n.s), _wclTab(g.fanW, n.s)) : 0;
 }
-/** Is (x, z) in the zone the face's picture stands in for: from just below the face's foot to just past its lip? */
-function worldCliffZone(f, x, z) {
-  const g = worldCliffGeom(f);
-  if (!g) return false;
-  const n = _wclNear(g, x, z), t = (n.side * g.hi > 0 ? 1 : -1) * n.d, m = _wclTaper(g, n.s);
-  if (m < WORLD_CLIFF_MIN_M) return false;
-  const tTop = Math.max(0.05, g.b * Math.max(0, g.H * m - Math.min(g.lipH * m, g.H * m * 0.2) - g.hs * m));
-  return t > -1.2 && t < tTop + g.lipW + 1.2;
-}
-
-/* ============================================================
-   The picture of the face (TR6 to TR9). worldCliffPrims(world, cam, o) -> [prim]: the face in COLUMNS (a column is where the face is
-   one screen-column wide, about 7 px), grouped by depth (3 % bins, as the terrain strips) so every group orders with whatever stands
-   on the ground in front of it, each prim { kind: 'line', sub: 'terrain', zKey, foot (the plan of the run), box, ops }. The ops are
-   the drawing, in the order it is painted: the beds of the rock (horizontal strata: one smooth gradient fill a bed, so the tone drifts
-   along it and never tiles), an ambient shade (the foot is damp and dark, the top dry and pale), the shade under every bed that stands
-   proud, weathering streaks (the long dark water stains are the face's signature), lichen, the ledge lines (a dark line with a light
-   catch, in runs of a few metres to a few tens, never across the whole cliff), the joints (grykes: vertical, dark, jogging at the beds),
-   tufts and small trees on the ledges, and the turf of the rim. Everything is placed in (s, h) along the face (metres along the plan,
-   metres of height), from a seeded texture of the whole cliff, so it is the same in every group and every frame and never shimmers
-   (TR8). The colours are base colours: the material system and the light grade them when drawn.
-   ============================================================ */
 const _WCL_LOOK = Object.freeze({
   limestone: { base: '#c7c3b8', warm: '#d6cbb0', cool: '#aab0b2', dark: '#4b4843', light: '#e6e3d8', stain: '#3f443f', lichen: '#aaa66a', moss: '#667f48', bed: [1.5, 6.5], joint: [4.5, 15], tone: 0.13, joints: 1, streak: 1, ledge: 1, veg: 1 },
   // millstone grit (Stanage, Almscliff, the Roaches): massive beds a few metres thick cut by joints into big square blocks, dark with weathering and
@@ -276,8 +254,6 @@ const _WCL_LOOK = Object.freeze({
   slate: { base: '#6e7278', warm: '#7b7468', cool: '#5f666e', dark: '#25282c', light: '#8f949a', stain: '#23262a', lichen: '#7e8564', moss: '#4f6a3e', bed: [0.35, 1.3], joint: [1.2, 4], tone: 0.06, joints: 1.6, streak: 0.8, ledge: 0.6, veg: 0.4 },
   granite: { base: '#a29d95', warm: '#b3a590', cool: '#8f9396', dark: '#3d3a36', light: '#c4c0b8', stain: '#383a38', lichen: '#a09b62', moss: '#5a7340', bed: [2.5, 7.5], joint: [2.5, 8], tone: 0.06, joints: 1.2, streak: 0.8, ledge: 0.7, veg: 0.5 },
 });
-/** The look table of a rock (tone, bedding, jointing, vegetation) or null. */
-function worldCliffLook(rock) { return _WCL_LOOK[rock] || null; }
 function _wclHash(s) { let h = 2166136261 >>> 0; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
 function _wclRng(seed) { let a = (seed >>> 0) || 1; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 /** Smooth 1-D noise in [-1, 1] from a seed and a position (value noise on a lattice, smoothstep between). */
@@ -449,89 +425,6 @@ function worldCliffPrims(world, cam, o) {
     const g = worldCliffGeom(f);
     if (!g) continue;
     for (const p of _wclFace(g, cam, o, world.reliefBase ? { relief: world.reliefBase } : null)) out.push(p);
-  }
-  return out;
-}
-/**
- * The lip of a face seen from BEHIND (the camera on the plateau, the face turned away): what the eye sees there is the edge itself, a broken line
- * of rounded cap blocks on the rim with the drop beyond (Stanage from the top), never a plateau that simply stops. Blocks 0.8 to 3.5 m long with
- * gaps, each a low loaf with a lit top, a darker outer flank and a dark line where the rock falls away; heather lapping at their foot. Only a blocky
- * rock (gritstone), only nearer than 160 m, only where the eye is above the rim. -> terrain prims (one per depth bin).
- */
-function _wclLipSeed(g) { return String(_wclHash((g.id || 'c') + '|lip')); }
-function _wclLipBack(g, cam) {
-  const lk = _WCL_LOOK[g.rock] || null, out = [];
-  if (!lk || !lk.blocky || !(cam.eye > g.H * 0.9)) return out;
-  const f = cam.f, x0 = _wclNum(cam.x0) ? cam.x0 : 800, hz = cam.horizon, eye = cam.eye, near = Math.max(0.5, (cam.dMin || 1) * 0.6), lnB = Math.log(1.03);
-  const r = _wclRng(_wclHash((g.id || 'c') + '|lipback'));
-  const Pt = (x, z, y) => [_wclR1(x0 + f * x / z), _wclR1(hz + f * (eye - y) / z)];
-  const bins = new Map();
-  for (let s = r() * 2; s < g.L; ) {
-    const L = (0.8 + Math.pow(r(), 1.4) * 2.7) * (_wclAt(g, s).z < 12 ? 0.75 : 1), gap = 0.15 + r() * (r() < 0.2 ? 1.6 : 0.5), s1 = Math.min(g.L, s + L), sm = (s + s1) / 2, a = _wclAt(g, sm);
-    const nx = g.hi > 0 ? -a.tz : a.tz, nz = g.hi > 0 ? a.tx : -a.tx, m = _wclTaper(g, sm);
-    const back = -(a.x * nx + a.z * nz) <= 0.02 * Math.hypot(a.x, a.z);
-    if (back && m > 0.5 && a.z > Math.max(near, 22) && a.z < 160 && eye > g.H * m + 0.3) {
-      const X = x0 + f * a.x / a.z;
-      if (X > -200 && X < 1800) {
-        const H = g.H * m, hb = 0.25 + r() * 0.5, inset = 0.3 + r() * 0.7, tone = r();
-        const A = _wclAt(g, s), B = _wclAt(g, s1);
-        // the block: its outer foot on the lip line, its body set back onto the plateau by `inset`, a rounded top
-        const ox = (q, t) => [q.x - nx * t, q.z - nz * t];
-        const p0 = ox(A, -0.2), p1 = ox(B, -0.2), q0 = ox(A, inset), q1 = ox(B, inset);
-        const P = (q, y) => Pt(q[0], Math.max(0.3, q[1]), y);
-        const midO = [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2], midI = [(q0[0] + q1[0]) / 2, (q0[1] + q1[1]) / 2];
-        // (corners rounded: a weathered block of grit is a loaf, never a box)
-        const rnd = (pts, k) => { const o = []; for (let i = 0; i < pts.length; i++) { const p = pts[i], a1 = pts[(i + pts.length - 1) % pts.length], b1 = pts[(i + 1) % pts.length]; o.push([_wclR1(p[0] + (a1[0] - p[0]) * k), _wclR1(p[1] + (a1[1] - p[1]) * k)], [_wclR1(p[0] * 0.5 + (a1[0] + b1[0]) * 0.25), _wclR1(p[1] * 0.5 + (a1[1] + b1[1]) * 0.25)], [_wclR1(p[0] + (b1[0] - p[0]) * k), _wclR1(p[1] + (b1[1] - p[1]) * k)]); } return o; };
-        const body = rnd([P(p0, H - 0.25), P(p0, H + hb * 0.55), P(q0, H + hb * 0.85), P(midI, H + hb), P(q1, H + hb * 0.8), P(p1, H + hb * 0.5), P(p1, H - 0.25), P(midO, H - 0.35)], 0.2);
-        const top = rnd([P(p0, H + hb * 0.55), P(q0, H + hb * 0.85), P(midI, H + hb), P(q1, H + hb * 0.8), P(p1, H + hb * 0.5), P(midO, H + hb * 0.62)], 0.22);
-        const zb = a.z, bin = Math.floor(Math.log(zb) / lnB);
-        let B0 = bins.get(bin); if (!B0) { B0 = { ops: [], z: zb, foot: [], box: [Infinity, Infinity, -Infinity, -Infinity] }; bins.set(bin, B0); }
-        const nrm = [_wclR1(nx * 100) / 100, _wclR1(nz * 100) / 100];
-        B0.ops.push({ t: 'f', p: body, m: 'stone', h: _wclShade(lk.base, 0.8 + 0.3 * tone), a: 1, n: nrm });
-        B0.ops.push({ t: 'f', p: top, m: 'stone', h: _wclShade(lk.light, 0.86 + 0.18 * tone), a: 0.85, up: true });
-        B0.ops.push({ t: 's', p: [P(p0, H - 0.3), P(midO, H - 0.4), P(p1, H - 0.3)], m: 'stone', h: lk.dark, w: Math.max(1, f / zb * 0.12), a: 0.7 });
-        if (r() < 0.35) B0.ops.push({ t: 'f', p: [P(q0, H + hb * 0.5), P(midI, H + hb * 0.62), P(q1, H + hb * 0.5), P(midI, H + hb * 0.38)], m: 'stone', h: r() < 0.5 ? lk.lichen : lk.dark, a: 0.35 });
-        // a block big on screen shows its bedding and a crack, and lichen in rosettes
-        if (f / zb * L > 40) {
-          const bed = (u) => [P(p0, H + hb * u), P(midO, H + hb * u * 1.05 + 0.02), P(p1, H + hb * u)];
-          B0.ops.push({ t: 's', p: bed(0.3 + 0.1 * r()), m: 'stone', h: lk.dark, w: Math.max(0.8, f / zb * 0.03), a: 0.4 });
-          const cu = 0.25 + 0.5 * r(), cq = [p0[0] + (p1[0] - p0[0]) * cu, p0[1] + (p1[1] - p0[1]) * cu];
-          B0.ops.push({ t: 's', p: [P(cq, H - 0.3), P(cq, H + hb * 0.45)], m: 'stone', h: lk.dark, w: Math.max(0.8, f / zb * 0.035), a: 0.5 });
-          for (let i = 0; i < 3; i++) { const lu = r(), lq = [p0[0] + (p1[0] - p0[0]) * lu, p0[1] + (p1[1] - p0[1]) * lu], c = P(lq, H + hb * (0.15 + 0.3 * r())), rr = Math.max(1.2, f / zb * (0.06 + 0.1 * r())); B0.ops.push({ t: 'f', p: [[c[0] - rr, c[1]], [c[0], c[1] - rr * 0.7], [c[0] + rr, c[1]], [c[0], c[1] + rr * 0.7]], m: 'stone', h: i === 0 && lk.lichen2 ? lk.lichen2 : lk.lichen, a: 0.6 }); }
-        }
-        for (const q of body) { B0.box[0] = Math.min(B0.box[0], q[0]); B0.box[1] = Math.min(B0.box[1], q[1]); B0.box[2] = Math.max(B0.box[2], q[0]); B0.box[3] = Math.max(B0.box[3], q[1]); }
-        B0.foot.push(q0, q1); B0.z = Math.min(B0.z, zb);
-      }
-    }
-    s = s1 + gap;
-  }
-  // the line of the lip itself, nearer than 90 m: a pale worn edge and, under it, the dark of the rock falling away (in runs that follow the plan)
-  for (let s = 0; s < g.L; ) {
-    const a = _wclAt(g, s), nx = g.hi > 0 ? -a.tz : a.tz, nz = g.hi > 0 ? a.tx : -a.tx, m = _wclTaper(g, s);
-    const back = -(a.x * nx + a.z * nz) <= 0.02 * Math.hypot(a.x, a.z);
-    if (!(back && m > 0.5 && a.z > Math.max(near, 3) && a.z < 90 && eye > g.H * m + 0.3)) { s += 1; continue; }
-    const run = [], lo = [];
-    let e = s;
-    for (; e < g.L && run.length < 40; e += Math.max(0.4, a.z / 40)) {
-      const b = _wclAt(g, e), bnx = g.hi > 0 ? -b.tz : b.tz, bnz = g.hi > 0 ? b.tx : -b.tx, bm = _wclTaper(g, e);
-      if (!(-(b.x * bnx + b.z * bnz) <= 0.02 * Math.hypot(b.x, b.z)) || b.z < 3 || b.z > 90 || bm < 0.5 || b.z > a.z * 1.03 || b.z < a.z / 1.03) break;
-      const H = g.H * bm, w = 0.35 + 0.5 * (0.5 + 0.5 * _wclN1(_wclLipSeed(g) + 'lp', e / 3));
-      run.push([b.x - bnx * 0.1, Math.max(0.3, b.z - bnz * 0.1), H + 0.05]); lo.push([b.x + bnx * w, Math.max(0.3, b.z + bnz * w), H - 0.5 - 0.9 * w]);
-    }
-    if (run.length > 1) {
-      const top = run.map(q => Pt(q[0], q[1], q[2])), bot = lo.map(q => Pt(q[0], q[1], q[2])), zb = Math.min(...run.map(q => q[1])), bin = Math.floor(Math.log(Math.max(0.5, zb)) / lnB);
-      let B0 = bins.get(bin); if (!B0) { B0 = { ops: [], z: zb, foot: [], box: [Infinity, Infinity, -Infinity, -Infinity] }; bins.set(bin, B0); }
-      B0.ops.unshift({ t: 'f', p: top.concat(bot.slice().reverse()), m: 'stone', h: _wclShade(lk.dark, 1.2), a: 0.92 }, { t: 's', p: top, m: 'stone', h: lk.light, w: Math.max(1.2, f / zb * 0.12), a: 0.75, up: true });
-      for (const q of top.concat(bot)) { B0.box[0] = Math.min(B0.box[0], q[0]); B0.box[1] = Math.min(B0.box[1], q[1]); B0.box[2] = Math.max(B0.box[2], q[0]); B0.box[3] = Math.max(B0.box[3], q[1]); }
-      for (const q of run) B0.foot.push([q[0], q[1]]);
-      B0.z = Math.min(B0.z, zb);
-    }
-    s = Math.max(e, s + 1);
-  }
-  for (const [bin, B0] of bins) {
-    if (!B0.ops.length) continue;
-    const xs = B0.foot.map(q => q[0]), zs = B0.foot.map(q => q[1]), xa = Math.min(...xs), xb = Math.max(...xs), za = Math.min(...zs), zb = Math.max(...zs);
-    out.push({ id: 'cliff-' + (g.id || 'c') + '-lip-' + bin, kind: 'line', sub: 'terrain', lineKind: 'cliff', box: [B0.box[0] - 2, B0.box[1] - 2, B0.box[2] + 2, B0.box[3] + 2], zKey: za, foot: [[xa, za], [xb, za], [xb, zb + 0.3], [xa, zb + 0.3]], height: 1, solidity: 'passable', faces: [], ops: B0.ops, mat: 'stone', heading: cam.heading || 0 });
   }
   return out;
 }

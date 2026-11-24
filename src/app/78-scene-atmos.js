@@ -522,27 +522,5 @@ function sceneHeadlightSprite(k, view) {
   _scatPHead.set(key, out);
   return out;
 }
-/** Draw one light sprite at the anchor (X, Y device px), mirrored for dir < 0, added ('lighter'). -> 1 draw (0 when nothing). */
-function sceneHeadlightDraw(ctx, spr, X, Y, dir, alpha) {
-  if (!spr || !spr.c) return 0;
-  const op = ctx.globalCompositeOperation, ga = ctx.globalAlpha;
-  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = alpha == null ? 1 : alpha;
-  ctx.setTransform(dir < 0 ? -1 : 1, 0, 0, 1, X, Y);
-  ctx.drawImage(spr.c, spr.x0, spr.y0, spr.w, spr.h);
-  ctx.globalCompositeOperation = op; ctx.globalAlpha = ga;
-  return 1;
-}
-/** The spill strip a lit tram, train or bus throws on the ground alongside (lenM long, about 1.6 m deep): anchor = its foot centre. */
-function sceneLitSpillSprite(k, lenM) {
-  const kb = typeof sceneScaleBucket === 'function' ? sceneScaleBucket(Math.max(0.5, k)) : k, len = Math.max(2, lenM || 12), key = 'spill|' + kb + '|' + Math.round(len);
-  let out = _scatPHead.get(key);
-  if (out) return out;
-  const w = len * kb, h = Math.max(2, 0.9 * kb), c = _scatPCanvas(w + 4, h), cx = c.getContext('2d');
-  const g = cx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(255,226,170,0.42)'); g.addColorStop(1, 'rgba(255,226,170,0)');
-  cx.fillStyle = g; cx.fillRect(2, 0, w, h);
-  out = { c, x0: -(w + 4) / 2, y0: 0, w: w + 4, h };
-  _scatPHead.set(key, out);
-  return out;
-}
 
 if (typeof sceneRenderPassDefine === 'function') { try { sceneRenderPassDefine(sceneAtmosPass); } catch (e) { if (typeof console !== 'undefined') console.warn('atmos pass not registered:', e && e.message); } }

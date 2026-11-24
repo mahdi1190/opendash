@@ -60,7 +60,6 @@ function _gllPump() {
   t = setTimeout(() => { timedOut = true; controller.abort(); }, 6000);
   _gllApi(it.path, it.body, { signal: controller.signal }).then((v) => next(timedOut || v && v.accepted === false ? null : v), () => next(null));
 }
-function _gllEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function _gllSvgEl(tag, cls) { const e = gardenSceneElement(tag); if (cls) e.setAttribute('class', cls); return e; }
 function _gllToday() { return typeof _gdToday === 'function' ? _gdToday() : new Date().toISOString().slice(0, 10); }  // clock-ok: fallback
 function _gllReduced() { return typeof gardenMotionOn === 'function' ? !gardenMotionOn() : false; }
@@ -232,11 +231,6 @@ function _gllStep(A, dt, quiet) {
   if (!quiet && typeof gartMoveActor === 'function') { try { gartMoveActor(A); } catch (e) { /* the plain walk */ } }   // the stride, the run and the turn, as your own (94-garden-zz-6move.js)
   return moving;
 }
-/** Put a node in the row it stands in, among the plants, so what is in front of it hides it. */
-function _gllPlace(svg, node, z) {
-  const layer = svg && svg.querySelector('.gd-objects'); if (!layer) return;
-  gardenRowPlace(layer, node, z);
-}
 /* ---------- what people do ---------- */
 function _gllEmote(A, id, instant) {
   if (!A.root || typeof GART_EMOTES === 'undefined') return false;
@@ -341,14 +335,6 @@ function _gllTip(box, text, ev) {
   el.style.left = Math.round(ev.clientX + 14) + 'px'; el.style.top = Math.round(ev.clientY + 14) + 'px';
 }
 function _gllByLine(kind, name) { return name ? (kind === 'p' ? `Planted by ${name}` : `Placed by ${name}`) : ''; }
-
-/** A popover over the pointer needs something to hang from. */
-function _gllAnchorAt(ev) {
-  let a = document.getElementById('gll-anchor');
-  if (!a) { a = document.createElement('span'); a.id = 'gll-anchor'; a.setAttribute('aria-hidden', 'true'); a.style.position = 'fixed'; a.style.width = '1px'; a.style.height = '1px'; a.style.pointerEvents = 'none'; document.body.appendChild(a); }
-  a.style.left = Math.round(ev.clientX) + 'px'; a.style.top = Math.round(ev.clientY) + 'px';
-  return a;
-}
 /* ---------- what the server knows ---------- */
 function gardenLiveLoad(force) {
   if (_gll.loading) return _gll.loading;

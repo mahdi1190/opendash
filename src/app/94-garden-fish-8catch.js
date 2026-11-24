@@ -51,7 +51,6 @@ function _gcaWorn(kind) {
   const list = GARDEN_TACKLE_KINDS[kind], id = _gdG().prefs[kind], d = id && list.find(x => x.id === id);
   return d && gardenGearOwned(d.id) ? d : list[0];
 }
-function gardenTackleOwned(kind, id) { const d = gardenGearDef(id); return !!d && d.kind === kind && gardenGearOwned(id); }
 const _gcaUse = { at: -1e9, v: null };
 /** What is on your line now: {rod, reel, line, hook, bait, float}, all ids. Asked four times a second while a line is out. */
 function gardenTackleInUse() {
@@ -153,12 +152,6 @@ function gardenTackleSvg(d, px) {
   else if (d.id === 'bug-jar') b = '<rect x="-13" y="-17" width="26" height="34" rx="6" fill="#d8ecd8" fill-opacity=".8" stroke="#5a6a5a" stroke-width="2"/><path d="M-13 -17h26" stroke="#8a6a3a" stroke-width="5"/><circle cx="-4" cy="5" r="2.6" fill="#f4ff8a"/><circle cx="5" cy="-3" r="2.6" fill="#f4ff8a"/>';
   else b = '<path d="M-14 -8h28l-4 26h-20z" fill="#b8a678" stroke="#6e4c2a" stroke-width="2"/><ellipse cx="0" cy="-8" rx="14" ry="4" fill="#fbf5e6" stroke="#6e4c2a" stroke-width="2"/><path d="M6 -10L18 -24" stroke="#8a6a3a" stroke-width="3" stroke-linecap="round"/>';
   return `<svg class="gd-catch-ico" viewBox="-30 -30 60 60" width="${px}" height="${px}" aria-hidden="true" focusable="false">${b}</svg>`;
-}
-
-/* ---------- will it come to your line? ---------- */
-function _gcaFits(want, have) {   // this or better for a reel, exactly this for the rest, as gardenFishLacks has it
-  const w = gardenGearDef(want), h = gardenGearDef(have); if (!w) return true; if (!h) return false;
-  return w.kind === 'reel' ? h.tier >= w.tier : h.id === w.id;
 }
 /** Why this fish ignores this line, in plain words ('' if it does not). One truth: the catalogue's gardenFishLacks, which the book and the host's water use too. */
 function gardenLineWhyNot(def, set) { const l = def && def.needs && set ? gardenFishLacks(def, set) : []; return l.length ? l[0] : ''; }
@@ -501,44 +494,6 @@ function gardenJobEvent(e) {
   _gdSave(); gardenCatchShowSoon();
   return 'The old angler nodded. Go and see him';
 }
-
-/* ---------- getting ready for a fish ---------- */
-/** Everything that fish needs, what you have of it, and where it lives. {rows: [{what, ok, on?, id?}], where: {x, y, words}|null, when: words} */
-function gardenReadyFor(def) {
-  const n = def.needs || {}, u = gardenTackleInUse(), rows = [], name = (id) => { const d = gardenGearDef(id); return d ? d.name : id; };
-  if (n.rod) { const w = GARDEN_RODS.find(x => x.tier >= n.rod && gardenGearOwned(x.id)), need = GARDEN_RODS.find(x => x.tier === n.rod); rows.push({ what: `${need ? need.name : 'A better rod'} or better`, ok: !!w, id: w ? w.id : '', kind: 'rod' }); }
-  for (const k of ['reel', 'line', 'hook']) if (n[k]) { const have = GARDEN_TACKLE_KINDS[k].find(x => gardenGearOwned(x.id) && _gcaFits(n[k], x.id)); rows.push({ what: name(n[k]), ok: !!have, id: have ? have.id : '', kind: k }); }
-  if (Array.isArray(n.bait) && n.bait.length) { const have = n.bait.find(id => { const b = GARDEN_BAITS.find(x => x.id === id); return b && (b.own || gardenHas('bait:' + id) > 0); }); rows.push({ what: n.bait.map(name).slice(0, 3).join(' or '), ok: !!have, id: have || '', kind: 'bait' }); }
-  const sp = n.spot ? gardenSpotDef(n.spot) : null; let where = null;
-  if (sp) where = { x: sp.x, y: sp.y, words: sp.name };
-  else { const z = (n.zone && [].concat(n.zone)[0]) || def.zone[0], fav = GARDEN_SPOTS.find(s => s.zone === z); if (z === 'pond') { const a = GARDEN_AREAS.find(q => q.water && !q.fishing); if (a) where = { x: a.water.x + a.water.w / 2, y: a.water.y + a.water.h / 2, words: 'the pond' }; } else if (fav) where = { x: fav.x, y: fav.y, words: fav.name.replace(/^The /, 'the ') + ', or anywhere in that water' }; }
-  let reach = '';
-  { const H = gardenRegionHome(def), w = H && H.w && H.w !== 'pond' ? gardenRegionWaterDef(H.w) : null;
-    if (w && w.room) {
-      const room = GARDEN_ROOM_SIGHT_ROOMS[w.at]; where = w.entrance && room ? { x: w.entrance.x, y: w.entrance.y, words: w.name, room } : null;
-      if (!where) reach = _grgOpenWords(H);
-    } else if (w) where = { x: w.x + w.w / 2, y: w.y + w.h / 2, words: w.name };
-  }   // it lives in a water of its own; indoor water is reached through its current door
-  const bits = [];
-  if (def.tod && def.tod.length && def.tod.length < 4) bits.push(def.tod.map(t => ({ dawn: 'at dawn', day: 'by day', dusk: 'at dusk', night: 'at night' })[t]).join(' or '));
-  if (def.seasons && def.seasons.length) bits.push('in ' + def.seasons.join(' or '));
-  if (n.rain || def.rain) bits.push(n.rain ? 'in the rain' : 'best in the rain');
-  void u;
-  return { rows, where, reach, when: bits.join(', ') };
-}
-/** Put on everything you have that it needs. */
-function gardenReadyEquip(def) {
-  const R = gardenReadyFor(def), g = _gdG(), had = [];
-  for (const r of R.rows) { if (r.ok && r.id) g.prefs[r.kind] = r.id; else had.push(r.what); }
-  _gcaUseDirty(); _gdSave(); _gdEmit('gear', { kind: 'ready' });
-  return { ok: !had.length, msg: had.length ? `You still need: ${had.join(', ')}. The tackle shop has them.` : 'All on. You are ready.' };
-}
-function gardenPinToggle(id) {
-  const c = _gca(), list = Array.isArray(c.pins) ? c.pins.slice() : [], at = list.indexOf(id);
-  if (at >= 0) list.splice(at, 1); else { if (list.length >= 3) list.shift(); list.push(id); }
-  c.pins = list; _gdSave();
-  return at < 0;
-}
 const _gcaPinSaid = new Map();
 /** A soft word when a fish you pinned can be caught right now. At most once in half an hour for each one, and never over a line that is out. */
 function _gcaPinCheck(m) {
@@ -550,9 +505,6 @@ function _gcaPinCheck(m) {
     if (d.zone.some(z => { try { return gardenFishFits(d, Object.assign({}, ctx, { zone: z, spot: d.needs && d.needs.spot ? d.needs.spot : null })); } catch (e) { return false; } })) { _gcaPinSaid.set(id, t); if (typeof _gdgNote === 'function') _gdgNote(`The ${_gdG().fl[id] ? d.name.toLowerCase() : 'fish you pinned'} is about now.`, icon('fish')); return; }
   }
 }
-
-/* ---------- the diary: a few plain lines about your day, from what was kept ---------- */
-const _GCA_TOD = Object.freeze({ dawn: 'at dawn', day: 'by day', dusk: 'at dusk', night: 'at night' });
 function gardenDiaryDay(iso) {
   const fd = _gdG().fd[iso]; if (!fd || typeof fd !== 'object') return null;
   const n = Number(fd.c) || 0, J = fd.j || {}, rk = Array.isArray(fd.rk) ? fd.rk : [], bugs = Array.isArray(fd.k) ? fd.k.length : 0, out = [];

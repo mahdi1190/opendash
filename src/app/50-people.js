@@ -46,7 +46,6 @@ function tasksForPerson(personId, opts) {
   const all = getAllItems().filter(i => pplLinked(state, i, idx).includes(personId));
   return opts && opts.open ? all.filter(i => statusOf(i.id) !== 'done') : all;
 }
-function openTaskCountFor(personId) { return tasksForPerson(personId, { open: true }).length; }
 
 function setTaskPeople(taskId, people) { setOverride(taskId, 'people', people); }
 function addPersonToTask(taskId, personId) {
@@ -215,8 +214,6 @@ function updatePersonFields(id, patch) {
   saveData();
   return '';
 }
-/** Old API (single field). */
-function updatePerson(id, field, value) { return updatePersonFields(id, { [field]: value }); }
 /** Fold one person into another: links, aliases, emails, streams, notes. Returns the number of tasks relinked. */
 function mergePeople(fromId, intoId, opts) {
   const a = getPerson(fromId), b = getPerson(intoId);
@@ -294,7 +291,6 @@ function linkSuggestedPeople(list) {
 
 /* ---------- old entry points (kept for other modules) ---------- */
 function addNewPerson(prefill) { if (typeof openPersonEditor === 'function') openPersonEditor(null, prefill); }
-function deletePerson(id) { if (typeof pplConfirmDelete === 'function') pplConfirmDelete(id); }
 function renderPersonView(personId, container) { if (typeof renderPeoplePage === 'function') renderPeoplePage(container, personId); }
 
 /* ---------- recent email (Gmail snapshot via /api/inbox/person) ---------- */

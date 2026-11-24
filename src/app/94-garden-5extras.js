@@ -235,54 +235,6 @@ function gardenAlmanacTab(el, m) {
   const cards = _gdpEl('div', 'gpg-cards'); el.appendChild(cards);
   if (typeof gardenLakeTab === 'function') gardenLakeTab(cards, m);
 }
-function _gdxHint(d, kind, m) {
-  if (kind === 'plant') { const why = gardenLockOf(d, gardenUnlockCtx(m)); return why ? why : 'In the shop: plant one to discover it'; }
-  if (kind === 'decor') return 'In the shop';
-  const n = d.needs || {}, bits = [];
-  if (n.bloom) bits.push(`${n.bloom}+ flowers in bloom`);
-  if (n.plants) bits.push('likes ' + n.plants.slice(0, 2).map(id => gardenPlant(id).name.toLowerCase()).join(' or '));
-  if (n.decor) bits.push('comes to a ' + gardenDecor(n.decor[0]).name.toLowerCase());
-  if (n.effect) bits.push({ pond: 'needs water', birds: 'a bird bath or feeder', light: 'drawn to lights', hedgehog: 'a hedgehog house or leaf pile', sit: 'a seat in the sun' }[n.effect] || '');
-  if (n.area) bits.push('the ' + gardenArea(n.area).name.toLowerCase());
-  if (n.trees) bits.push('grown trees'); if (n.ripe) bits.push('ripe fruit'); if (n.rain) bits.push('after rain');
-  const when = d.when.tod.length < 4 ? d.when.tod.join(' or ') : '';
-  return [bits.filter(Boolean)[0], when].filter(Boolean).join(' · ') || 'Keep gardening';
-}
-function _gdxAlmDetail(d, kind, found, m) {
-  const back = _gdp.pop && _gdp.pop.tab;   // closing an entry goes back to the page of the book you were on
-  openDialog({
-    title: found ? d.name : 'Not discovered yet', width: 520, className: 'gd-popup', onClose: back ? () => setTimeout(() => gardenPopupOpen(back), 0) : undefined,
-    body(el) {
-      el.classList.add('gd-almdlg');
-      const art = _gdpEl('div', 'gd-almdlg-art');
-      if (kind === 'plant') art.innerHTML = [1, 2, 3, 4].map(s => gardenIconSvg(d.id, { kind: 'plant', stage: s, season: (d.seasons || ['summer'])[0], silhouette: !found, ripe: s === 4, heart: d.special === 'heart' ? s + 1 : undefined, px: 84 })).join('');
-      else art.innerHTML = gardenIconSvg(d.id, { kind, silhouette: !found, px: 120 });
-      el.appendChild(art);
-      if (!found) { el.appendChild(_gdpEl('p', null, _gdxHint(d, kind, m))); return; }
-      if (d.blurb) el.appendChild(_gdpEl('p', 'gd-almdlg-blurb', d.blurb));
-      const ul = _gdpEl('ul', 'gd-insp-facts');
-      const li = (ic, t) => { const x = _gdpEl('li'); x.innerHTML = icon(ic, 'i-sm'); x.appendChild(_gdpEl('span', null, t)); ul.appendChild(x); };
-      if (kind === 'plant') {
-        li('tag', `${GARDEN_RARITY[d.rarity].label} ${GARDEN_CATS[d.cat].one}`);
-        li('map-pin', 'Grows in the ' + (d.areas || GARDEN_CATS[d.cat].areas).map(a => gardenArea(a).name.toLowerCase()).join(', '));
-        li('calendar', 'In season: ' + (d.seasons.length === 4 ? 'all year' : d.seasons.map(s => GARDEN_SEASON_LABEL[s]).join(', ')));
-        const gh = GARDEN_GROW[d.grow]; li('timer', d.special === 'heart' ? 'Grows with every task you finish' : `About ${_gdHoursLabel(gh[3] / 1.3)} to ${d.cat === 'veg' || d.cat === 'fruit' ? 'harvest' : 'full bloom'} in season, faster as you finish tasks`);
-        if (d.thirst) li('droplet', `Wants water every ${_gdHoursLabel(d.thirst)}`); else li('droplet', 'Never thirsty');
-        if (d.yield) li('shopping-basket', `${d.yield.regrow ? 'Picked again and again' : 'Lifted at harvest'}; sells for ${gardenSellPrice('crop:' + d.id, m)} each`);
-        if (d.attracts) li('bird', 'Attracts ' + d.attracts.map(id => (gardenVisitor(id) || {}).name).filter(Boolean).join(', ').toLowerCase());
-        const n = m.plants.filter(p => p.def.id === d.id).length; if (n) li('sprout', `${n} in your garden now`);
-      } else if (kind === 'visitor') {
-        li('clock', 'Comes at ' + d.when.tod.join(', ')); li('calendar', d.when.seasons.length === 4 ? 'All year' : d.when.seasons.map(s => GARDEN_SEASON_LABEL[s]).join(', '));
-        li('sparkles', 'Brought by: ' + _gdxHint(d, kind, m));
-        const seen = _gdG().disc[d.id]; if (seen) li('eye', 'First seen ' + seen);
-      } else {
-        li('ruler', `${d.w} × ${d.h} cell${d.w * d.h > 1 ? 's' : ''}`); if (d.effect) li('sparkles', _gdpEffectText(d));
-        li('coins', `${d.price} coins`);
-      }
-      el.appendChild(ul);
-    },
-  });
-}
 
 /* ---------- the basket ---------- */
 function gardenBasketTab(el, m) {
@@ -340,17 +292,6 @@ function gardenBasketTab(el, m) {
   for (const [k, n] of crops) list.appendChild(_gdxSellRow(k, Math.floor(n), gardenSellPrice(k, m)));
   if (items.honey > 0) list.appendChild(_gdxSellRow('honey', Math.floor(items.honey), gardenSellPrice('honey', m)));
   sec.appendChild(list);
-  el.appendChild(sec);
-}
-function _gdxBag(el, m) {
-  const items = m.wallet.items;
-  const seeds = Object.entries(items).filter(([k, n]) => k.startsWith('seed:') && n > 0);
-  const decor = Object.entries(items).filter(([k, n]) => k.startsWith('decor:') && n > 0);
-  const sec = _gdpEl('section', 'gd-bag');
-  sec.appendChild(_gdpEl('h3', 'gd-h3', 'Your bag'));
-  const p = _gdpEl('p', 'muted');
-  p.textContent = `${seeds.reduce((s, [, n]) => s + Math.floor(n), 0)} seeds of ${seeds.length} kinds · ${decor.reduce((s, [, n]) => s + Math.floor(n), 0)} decorations waiting to be placed · ${gardenHas('fertiliser')} fertiliser${items.clover > 0 ? ' · a four-leaf clover' : ''}`;
-  sec.appendChild(p);
   el.appendChild(sec);
 }
 

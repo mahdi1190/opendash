@@ -18,7 +18,6 @@ const _gp = { hudAt: 0, ac: null, group: 'games' };
 function gardenPlayAdd(row) { _gpRows.push(gardenActivityRow(row.id) ? Object.assign({}, row, { group: 'world' }) : row); }
 function gpGet(k, d) { const v = _gdG().seen['pl.' + k]; return v === undefined ? d : v; }
 function gpSet(k, v) { _gdG().seen['pl.' + k] = v; _gdSave(); }
-function gpEsc(s) { return esc(String(s == null ? '' : s)); }
 function gpEl(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; }
 function gpDayHash(salt, day) { return gardenHash('gp|' + salt + '|' + (day || _gdToday())); }
 
@@ -187,7 +186,6 @@ function gardenPlayBubble(d, items) {
   items.unshift({ ic: r.icon, label: r.verb || r.name, cls: 'is-go', run: () => { gardenBubbleClose(); gardenPlayOpen(r.id); } });
   if (r.bubble) r.bubble(d, items);
 }
-function gardenPlayBadge() { let n = 0; for (const r of _gpRows) { try { if (gpGet('opened.' + r.id) && r.fresh && r.fresh()) n++; } catch (e) { /* no */ } } return n; }
 function _gpTidy() {
   const today = _gdToday(); if (_gp.tidied === today) return; _gp.tidied = today;
   const s = _gdG().seen, cut = _gdAddDays(today, -30); let n = 0;

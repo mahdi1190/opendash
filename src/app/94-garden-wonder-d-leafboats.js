@@ -272,10 +272,6 @@ function gardenLeafBoatWaterActors() {
   }
   return out;
 }
-function gardenLeafBoatState() {
-  const view = _gleafView(), own = view && view.boats.get(_gleafSlot());
-  return { id: view ? view.id : '', sharing: !!(_glh.on || _gleafVisit() && _glvLive()), visit: _gleafVisit(), own: _gleafSlot(), spot: view && view.spot, course: view ? view.course.map(p => ({ ...p })) : [], boats: view ? [...view.boats.values()].map(b => ({ slot: b.w, token: b.token, x: b.x, y: b.y, heading: b.h, rudder: b.rudder, trim: b.trim, hull: LEAFBOAT_HULLS[b.hull].id, nextGate: b.gate, finished: b.gate === 4, wet: _gleafWet(b.x, b.y) })) : [], displays: [..._gleaf.sprites].map(([slot, S]) => ({ slot, x: S.x, y: S.y, attached: !!S.node && S.node.isConnected, wet: _gleafWet(S.x, S.y) })), pending: _gleaf.pending && _gleaf.pending.action, desired: _gleaf.desired && { rudder: _gleaf.desired.rudder, trim: _gleaf.desired.trim }, running: !!view && view.running && !_gleafHeld(), ownFinished: !!own && own.gate === 4, boundaryContacts: _gleaf.boundaryContacts, snapshots: _gleaf.snapshots, controlsSent: _gleaf.controlsSent, viewing: _gleaf.viewing };
-}
 wdMod({
   id: 'leaf-boats', fun: false, visit: true,
   begin() { _gleaf.spot = null; _gleaf.course = null; _gleaf.probeAt = 0; _gleaf.courseKey = ''; _gleaf.frameAt = 0; _gleaf.room = false; _gleaf.heldLast = null; _gleafWorld(); },

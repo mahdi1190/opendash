@@ -44,7 +44,6 @@ function registerAchFactSource(id, fn, o) {
   _ACH_SRC.sort((a, b) => a.order - b.order || (a.id < b.id ? -1 : 1));
   return true;
 }
-function achFactSources() { return _ACH_SRC.map(s => s.id); }
 function _achOut() {
   const n = Object.create(null), s = Object.create(null);
   const ser = (k) => s[k] || (s[k] = Object.create(null));
