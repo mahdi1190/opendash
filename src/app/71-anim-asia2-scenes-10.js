@@ -86,28 +86,7 @@
 
   /* ---------- Taipei: Taipei 101 over the morning mist and the green hills ---------- */
   asiaSceneAdd({ key: 'place:taipei', label: 'Taipei 101 in the morning mist', site: 'Taipei 101 from Elephant Mountain', colour: 'teal', mood: 'proud', season: 'any', tags: ['skyscraper', 'skyline', 'mountain'],
-    svg: () => {
-      const s1 = U(), g1 = U();
-      let t = '', yb = 690;
-      const sec = (hw, h, flare) => { const p = `<path fill="#5f9fb0" d="M800 ${yb}H${800 - hw}L${800 - hw - flare} ${yb - h}H${800 + hw + flare}L${800 + hw} ${yb}z"/><path fill="#8cc8d4" d="M800 ${yb}H${800 + hw}L${800 + hw + flare} ${yb - h}H800z" opacity=".55"/><rect x="${800 - hw - flare - 3}" y="${yb - h - 4}" width="${2 * (hw + flare) + 6}" height="8" fill="#e4c46a"/>`; yb -= h; return p; };
-      t += `<path fill="#6a8f9c" d="M${800 - 70} 720L${800 - 54} 690H${800 + 54}L${800 + 70} 720z"/>`;
-      for (let i = 0; i < 8; i++) t += sec(50 - i * 1.6, 56, 8) + win(800 - 40 + i, yb + 12, 80 - i * 2, 36, 12, 12);
-      t += sec(36, 40, 0) + sec(30, 30, 0) + sec(24, 26, 0);
-      t += `<path fill="#d6d9de" d="M${800 - 20} ${yb}L${800 - 8} ${yb - 44}H${800 + 8}L${800 + 20} ${yb}z"/><path d="M800 ${yb - 44}V${yb - 120}" stroke="#c8ccd2" stroke-width="5"/>`;
-      return `<defs>${lin(s1, [[0, '#7fb0d6'], [0.5, '#bfe0e8'], [1, '#fbeed0']])}${lin(g1, [[0, '#ffffff', 0], [0.6, '#eaf5f2', 0.85], [1, '#f6fbf8', 0.95]])}</defs>` + full(`url(#${s1})`) + stars(5, 24, 200)
-        + sun(380, 330, 40, '#fffbe8', '#ffe6a8') + cloud(1150, 210, 1.1, '#d3e6ee', 0.9, 52, 6) + cloud(260, 150, 0.8, '#d8e8f0', 0.85, 60, 16) + cloud(1500, 330, 0.9, '#e0eef2', 0.8, 48, 28)
-        + birds(6, 4, 1000, 300, '#35566a', 1.2, 600)
-        + mv('uspar', { ad: '50s', dx: '10px' }, ridge('#8fb8b0', 520, 110, 7, 41) + ridge('#79a89c', 580, 80, 8, 43))
-        + haze(500, 110, '#ffffff', 0.6)
-        + mv('uspar', { ad: '36s', dx: '14px' }, city(51, -160, 700, 690, 30, 150, 28, 60, '#7f9aa6', 0.35) + city(52, 900, 1760, 690, 30, 150, 28, 60, '#7f9aa6', 0.35)
-          + city(53, -160, 760, 690, 20, 90, 30, 60, '#6c8896', 0.3) + city(54, 860, 1760, 690, 20, 90, 30, 60, '#6c8896', 0.3))
-        + t + mv('usflicker', { ad: '1.6s', to: '800px 580px' }, `<circle cx="800" cy="${yb - 124}" r="5" fill="#ff5a4a"/>`)
-        + mv('usdrift', { ad: '40s', dx: '120px' }, `<rect x="-200" y="620" width="2000" height="120" fill="url(#${g1})" opacity=".8"/>`)
-        + mv('usdrift', { ad: '55s', dx: '90px', d: '-20s' }, `<rect x="-200" y="700" width="2000" height="90" fill="url(#${g1})" opacity=".9"/>`)
-        + mv('uspar', { ad: '28s', dx: '12px' }, ridge('#3f7a5a', 780, 70, 7, 61) + canopy('#2f6a4c', 800, 24, 7, -160, 1760))
-        + mv('uspar', { ad: '22s', dx: '8px' }, ridge('#265a42', 850, 40, 6, 62) + canopy('#1d4c38', 868, 22, 9, -160, 1760))
-        + finish(0.3);
-    } });
+    svg: () => '' });
 
   /* ---------- Kaohsiung: the Dragon and Tiger Pagodas on Lotus Pond ---------- */
   asiaSceneAdd({ key: 'place:kaohsiung', label: 'Dragon and Tiger Pagodas on Lotus Pond', site: 'Lotus Pond pagodas', colour: 'orange', mood: 'cheerful', season: 'any', tags: ['pagoda', 'lake', 'temple'],
@@ -151,59 +130,11 @@
 
   /* ---------- Hong Kong: Victoria Harbour at dusk, a red-sailed junk in front ---------- */
   asiaSceneAdd({ key: 'place:hong-kong', label: 'Victoria Harbour at dusk', site: 'Victoria Harbour and the Peak', colour: 'indigo', mood: 'energetic', season: 'any', tags: ['skyline', 'harbour', 'junk'],
-    svg: () => {
-      const s1 = U(), g1 = U();
-      const tower = (x, base, w, h, fill, side, crown) => `<path fill="${fill}" d="M${x} ${base}V${base - h}${crown || ''}H${x + w}V${base}z"/><path fill="${side}" d="M${x + w * 0.62} ${base}V${base - h}H${x + w}V${base}z" opacity=".6"/>` + win(x + 5, base - h + 14, w - 10, h - 26, 11, 15);
-      // ICC-style tall tower, IFC with a crown, and a faceted bank tower
-      const feat = `<path fill="#33406a" d="M1180 640V300h110V640z"/><path fill="#46558a" d="M1250 640V300h40V640z" opacity=".7"/>` + win(1186, 316, 98, 310, 13, 16) + `<rect x="1180" y="290" width="110" height="10" fill="#5d6ca5"/>`
-        + `<path fill="#3a4872" d="M640 640V380L672 330L704 380V640z"/><path fill="#51629a" d="M672 330L704 380V640H672z" opacity=".6"/>` + win(648, 396, 48, 230, 12, 16) + `<path d="M672 330V270" stroke="#6a7ab0" stroke-width="3"/>`
-        + `<path fill="#3a4a6c" d="M880 640V420l24-30l24 30l24-30l24 30V640z"/><path fill="none" stroke="#6272a6" stroke-width="2" d="M880 480l72 -50M880 540l72 -50M952 430l24 50M928 430l-48 40"/>` + win(886, 440, 84, 180, 12, 15);
-      const peak = `<path fill="#34426e" d="M-160 640V510Q150 480 330 430Q480 372 560 378Q780 410 1040 456Q1300 492 1760 500V640z"/>` + canopy('#24405a', 470, 14, 3, -160, 1760, 540);
-      let refl = ''; const r = rnd(9); for (let i = 0; i < 40; i++) refl += `<rect class="x-usshim" style="--ad:${(2 + r() * 2).toFixed(1)}s;--d:-${(r() * 3).toFixed(1)}s" x="${R(560 + r() * 760)}" y="${R(660 + r() * 90)}" width="${R(14 + r() * 40)}" height="4" rx="2" fill="${r() < 0.5 ? '#ffc86a' : '#7fd8ff'}"/>`;
-      const ferry = (x, y, s) => `<path fill="#f1f1ee" d="M${x - 70 * s} ${y}h${140 * s}l${-10 * s} ${18 * s}h${-120 * s}z"/><rect x="${x - 50 * s}" y="${y - 18 * s}" width="${100 * s}" height="${18 * s}" fill="#f6f6f2"/><path fill="#2d7fb0" d="M${x - 70 * s} ${y + 8 * s}h${140 * s}l${-4 * s} ${8 * s}h${-132 * s}z"/>` + lit(R(x - 44 * s), R(y - 14 * s), R(88 * s), R(7 * s));
-      return `<defs>${lin(s1, [[0, '#1f2f6e'], [0.4, '#5b4a92'], [0.7, '#e97e72'], [1, '#ffc98a']])}${lin(g1, [[0, '#ffb98a', 0.7], [1, '#ffb98a', 0]])}</defs>` + full(`url(#${s1})`) + stars(12, 70, 300)
-        + sun(1000, 600, 40, '#fff1cc', '#ff9a6a') + streak(300, 250, 280, '#ff9a8a', 0.5) + streak(1300, 380, 300, '#ffb08a', 0.55, 70) + cloud(560, 300, 1.0, '#a8639a', 0.85, 52, 8, '#ffb59a') + cloud(1380, 190, 0.8, '#7f5a9a', 0.8, 46, 24, '#f09aa0')
-        + birds(14, 4, 420, 330, '#2f2a4c', 1.2, 600)
-        + mv('uspar', { ad: '50s', dx: '10px' }, peak) + haze(430, 120, '#e88a8a', 0.5)
-        + mv('uspar', { ad: '34s', dx: '14px' }, city(71, -160, 620, 640, 40, 200, 26, 54, '#3a4572', 0.55) + city(72, 1300, 1760, 640, 40, 220, 26, 54, '#3a4572', 0.55) + city(73, 720, 1170, 640, 20, 120, 24, 50, '#46517e', 0.5)
-          + tower(1280, 640, 90, 160, '#2f3a64', '#44528a') + feat)
-        + water(638, '#3a4f8a', '#1f3a74', '#12275a') + `<rect y="638" width="1600" height="70" fill="url(#${g1})" opacity=".45"/>`
-        + dots('M-100 650H1700', '#ffd27a', 4, 22, 'us-lamps') + refl
-        + mv('usmove', { ad: '50s', dx: '600px' }, ferry(700, 710, 1.1)) + mv('usbob', { ad: '4.5s', dy: '4px' }, mv('usmove', { ad: '70s', dx: '300px' }, junk(1000, 830, 1.6, '#c4301f', '#4a1f16', 3)))
-        + dots('M-100 858H1700', '#ff9a6a', 3, 30, '', ' opacity=".4"')
-        + finish(0.3);
-    } });
+    svg: () => '' });
 
   /* ---------- Macau: the old facade on its hill, the tower and the golden lotus hotel ---------- */
   asiaSceneAdd({ key: 'place:macau', label: 'Old facade, tower and bridge in golden light', site: 'Macau Tower and the old city', colour: 'amber', mood: 'cheerful', season: 'any', tags: ['facade', 'tower', 'bridge'],
-    svg: () => {
-      const s1 = U(), w1 = U();
-      const facade = (x, y) => `<path fill="#9a8f80" d="M${x - 130} ${y}V${y - 190}h260V${y}z"/><path fill="#b0a595" d="M${x - 130} ${y - 190}h260v-6h-260z"/>`
-        + `<path fill="#a69b8b" d="M${x - 110} ${y - 196}h220v-60h-220z"/><path fill="#9a8f80" d="M${x - 118} ${y - 332}h236l-118 -50z" transform="translate(0 76)"/>`
-        + `<path fill="#a69b8b" d="M${x - 70} ${y - 258}H${x + 70}L${x} ${y - 318}z"/><circle cx="${x}" cy="${y - 284}" r="10" fill="#6c6256"/>`
-        + [-90, -30, 30, 90].map((dx) => `<path d="M${x + dx - 12} ${y - 130}V${y - 170}a12 12 0 0 1 24 0V${y - 130}z" fill="#4a4036"/>`).join('')
-        + [-90, 0, 90].map((dx) => `<path d="M${x + dx - 11} ${y - 220}V${y - 244}a11 11 0 0 1 22 0V${y - 220}z" fill="#4a4036"/>`).join('')
-        + `<path fill="#4a4036" d="M${x - 24} ${y}V${y - 66}a24 24 0 0 1 48 0V${y}z"/><path d="M${x - 130} ${y - 60}h260M${x - 130} ${y - 100}h260" stroke="#80766a" stroke-width="4"/>`
-        + `<path fill="#a69b8b" d="M${x - 150} ${y + 80}L${x - 110} ${y}H${x + 110}L${x + 150} ${y + 80}z"/>` + `<path d="M${x - 120} ${y + 20}h240M${x - 134} ${y + 44}h268M${x - 142} ${y + 64}h284" stroke="#837868" stroke-width="3"/>`;
-      let tw = `<path fill="#d8d3c8" d="M1180 700L1196 330H1212L1228 700z"/><path fill="#f0ece2" d="M1200 700L1204 330H1212L1228 700z" opacity=".6"/><path fill="#b8b2a6" d="M1160 330Q1204 296 1248 330L1236 358H1172z"/><path fill="#e4dfd4" d="M1166 318Q1204 280 1242 318Z"/><path d="M1204 296V150" stroke="#cfcac0" stroke-width="5"/><path d="M1204 150V90" stroke="#bbb" stroke-width="2"/>`
-        + `<rect x="1172" y="338" width="64" height="10" fill="#7fc0e0" opacity=".8"/>`;
-      const lisboa = `<path fill="#c9a248" d="M960 690V470h40V690z"/><path fill="#e8c86a" d="M990 690V470h10V690z" opacity=".6"/><path fill="#d8b04a" d="M968 470Q930 420 944 360Q980 300 1016 360Q1030 420 992 470z"/><path fill="none" stroke="#fff3b0" stroke-width="2" d="M956 440Q980 380 1004 440M950 400Q980 340 1010 400"/>` + dots('M960 470Q930 420 944 360Q980 300 1016 360Q1030 420 992 470', '#fff1a8', 4, 14, 'us-lamps');
-      let bridge = `<path d="M-160 640Q400 610 800 640T1760 640" stroke="#8a8f9c" stroke-width="10" fill="none"/>`;
-      for (let i = 0; i < 12; i++) bridge += `<path d="M${40 + i * 140} 640v26" stroke="#7a7f8c" stroke-width="8"/>`;
-      return `<defs>${lin(s1, [[0, '#5aa0d8'], [0.45, '#f2d9a0'], [0.8, '#ffb870'], [1, '#ffd89a']])}${lin(w1, [[0, '#f0c48a'], [0.4, '#6aa6b6'], [1, '#2f6a88']])}</defs>` + full(`url(#${s1})`) + stars(15, 20, 160)
-        + rays(1060, 500, 1100, '#fff3c0', 0.12) + sun(1060, 520, 44, '#fffbe0', '#ffd27a') + cloud(300, 210, 1.1, '#e8c8a8', 0.85, 54, 6, '#fff5e0') + cloud(800, 150, 0.9, '#f0d8b8', 0.85, 46, 16, '#fff8ea') + cloud(1450, 320, 0.8, '#e8c4a0', 0.8, 60, 30, '#fff0d4')
-        + birds(18, 4, 700, 300, '#5a4636', 1.2, 600)
-        + mv('uspar', { ad: '46s', dx: '10px' }, ridge('#9db7a6', 560, 70, 8, 81) + city(82, -160, 1760, 600, 20, 100, 24, 46, '#b9a8a0', 0.25))
-        + haze(520, 100, '#ffe2b0', 0.55)
-        + mv('uspar', { ad: '34s', dx: '12px' }, city(83, -160, 1760, 700, 40, 170, 28, 60, '#a08a8a', 0.4) + lisboa + tw)
-        + water(700, '#e8c690', '#6ea6b2', '#2f6a88') + `<rect y="700" width="1600" height="30" fill="#ffd89a" opacity=".5"/>` + bridge
-        + mv('uspar', { ad: '28s', dx: '10px' }, `<path fill="#4a7a52" d="M-160 640V560Q100 500 300 540Q440 580 560 620V700H-160z"/>` + canopy('#3a6a44', 560, 20, 4, -160, 580, 640) + facade(260, 640))
-        + mv('usmove', { ad: '60s', dx: '500px' }, junk(900, 770, 1.1, '#d4382a', '#5a2a1a', 2)) + mv('usbob', { ad: '5s', dy: '3px' }, '')
-        + shimmer(21, 44, 0, 1600, 730, 890, '#fff2c8', 80)
-        + `<path fill="#e6c9a0" d="M-160 860Q400 830 800 850T1760 840V900H-160z"/>` + dots('M-100 868H1700', '#b88a5a', 5, 26, '', ' opacity=".5"')
-        + mv('uspar', { ad: '26s', dx: '8px' }, palm(120, 880, 260, 40, '#3f7a48', '#6a4a30', 5) + palm(1480, 880, 300, -50, '#3a7444', '#6a4a30', 6))
-        + finish(0.3);
-    } });
+    svg: () => '' });
 
   /* ---------- Indonesia: Mount Bromo smoking at sunrise over a sea of cloud ---------- */
   asiaSceneAdd({ key: 'country:ID', label: 'Mount Bromo at sunrise', site: 'Mount Bromo', colour: 'orange', mood: 'dreamy', season: 'any', tags: ['volcano', 'sunrise', 'caldera'],
@@ -267,28 +198,7 @@
 
   /* ---------- Singapore: Marina Bay Sands and the bay on a bright morning ---------- */
   asiaSceneAdd({ key: 'country:SG', label: 'Marina Bay on a bright morning', site: 'Marina Bay Sands', colour: 'blue', mood: 'energetic', season: 'any', tags: ['skyline', 'bay', 'tropical'],
-    svg: () => {
-      const s1 = U(), w1 = U();
-      const slab = (x, lean) => `<path fill="#dfe6ee" d="M${x} 640L${x + lean} 270H${x + lean + 60}L${x + 60} 640z"/><path fill="#b9c8d8" d="M${x + 30} 640L${x + lean + 30} 270H${x + lean + 60}L${x + 60} 640z" opacity=".7"/>` + `<path d="M${x + 8} 600L${x + lean + 8} 290M${x + 20} 600L${x + lean + 20} 290" stroke="#8aa2b8" stroke-width="2" opacity=".7"/>`;
-      const mbs = slab(560, 14) + slab(660, 6) + slab(770, -2)
-        + `<path fill="#d4dde8" d="M520 262Q760 232 1010 258L1090 276Q1000 300 760 292Q560 292 520 262z"/><path fill="#aebfd0" d="M520 262Q760 232 1010 258L1090 276Q1000 284 770 276Q560 276 520 262z" opacity=".5"/>`
-        + `<path fill="#3a8fc2" d="M900 272Q990 258 1050 266Q1000 276 900 276z" opacity=".8"/><path fill="#8ad4a0" d="M650 256q40 -14 90 -4q-40 8 -90 4z"/>`
-        + win(570, 300, 40, 300, 12, 16, '#4a6a8a') + win(672, 300, 40, 300, 12, 16, '#4a6a8a') + win(782, 300, 40, 300, 12, 16, '#4a6a8a');
-      const tree = (x, y, h, c1, c2) => `<path fill="#6a5a60" d="M${x - 10} ${y}L${x - 4} ${y - h}H${x + 4}L${x + 10} ${y}z"/><path fill="${c1}" d="M${x - 70} ${y - h + 20}Q${x} ${y - h - 60} ${x + 70} ${y - h + 20}Q${x} ${y - h - 6} ${x - 70} ${y - h + 20}z"/><path fill="${c2}" d="M${x - 50} ${y - h + 6}Q${x} ${y - h - 40} ${x + 50} ${y - h + 6}Q${x} ${y - h - 14} ${x - 50} ${y - h + 6}z" opacity=".8"/>` + dots(`M${x - 56} ${y - h + 18}Q${x} ${y - h - 16} ${x + 56} ${y - h + 18}`, '#ffc8f0', 4, 14, 'us-lamps');
-      const sail = (x, y, s, c) => `<path fill="${c}" d="M${x} ${y}V${y - 70 * s}L${x + 40 * s} ${y - 6 * s}z"/><path fill="#fff" d="M${x - 4} ${y - 60 * s}L${x - 34 * s} ${y - 6 * s}H${x - 4}z"/><path fill="#4a3a30" d="M${x - 40 * s} ${y}h${90 * s}l${-10 * s} ${12 * s}h${-70 * s}z"/>`;
-      return `<defs>${lin(s1, [[0, '#2f84d8'], [0.5, '#7cc4f0'], [1, '#e4f4fa']])}${lin(w1, [[0, '#8fd8e8'], [0.5, '#2f96c4'], [1, '#1e5f94']])}</defs>` + full(`url(#${s1})`) + stars(41, 20, 160)
-        + sun(1350, 190, 34, '#fffef0', '#fff6c0') + cloud(280, 200, 1.3, '#d8e8f4', 0.95, 52, 4) + cloud(900, 120, 1.0, '#e4f0f8', 0.95, 62, 18) + cloud(1200, 330, 1.1, '#d0e2f0', 0.9, 46, 8) + cloud(60, 380, 0.9, '#e0eef8', 0.9, 58, 24)
-        + birds(42, 5, 1000, 220, '#2f4a68', 1.3, 700)
-        + mv('uspar', { ad: '42s', dx: '10px' }, city(43, -160, 520, 640, 60, 240, 30, 62, '#9fb2c6', 0.35) + city(44, 1110, 1760, 640, 60, 240, 30, 62, '#9fb2c6', 0.35) + city(45, 520, 1110, 640, 20, 70, 30, 60, '#b0c0d0', 0.2))
-        + mv('uspar', { ad: '32s', dx: '8px' }, mbs)
-        + `<path fill="#f4f6f8" d="M1120 640Q1160 590 1210 584Q1260 580 1300 640z"/><path fill="none" stroke="#c4ced8" stroke-width="3" d="M1160 640Q1190 600 1210 584M1210 640V584M1260 640Q1230 600 1210 584"/>`
-        + water(640, '#7fd2e8', '#2f96c4', '#1e5f94') + `<rect y="640" width="1600" height="16" fill="#d8eef6" opacity=".6"/>`
-        + shimmer(46, 52, 0, 1600, 660, 880, '#e8fbff', 90)
-        + mv('usmove', { ad: '60s', dx: '700px' }, sail(500, 760, 1.4, '#e84a3a')) + mv('usbob', { ad: '4s', dy: '3px' }, mv('usmove', { ad: '80s', dx: '600px' }, sail(1100, 800, 1.8, '#f0a82a')))
-        + mv('uspar', { ad: '26s', dx: '10px' }, `<path fill="#4a9a58" d="M1100 900V800Q1300 760 1760 790V900z"/>` + tree(1300, 800, 300, '#3a8a5a', '#d070b8') + tree(1480, 810, 250, '#3a8a5a', '#d070b8') + tree(1170, 830, 200, '#3a8a5a', '#d070b8'))
-        + mv('uspar', { ad: '20s', dx: '8px' }, `<path fill="#2f7a48" d="M-160 860Q300 820 700 850V900H-160z"/>` + palm(150, 900, 320, 50, '#2f9a50', '#6a5238', 5) + palm(310, 900, 220, -30, '#38a858', '#6a5238', 6))
-        + finish(0.3);
-    } });
+    svg: () => '' });
 
   /* ---------- Thailand: Wat Arun on the river at dawn ---------- */
   asiaSceneAdd({ key: 'country:TH', label: 'Wat Arun on the river at dawn', site: 'Wat Arun and the Chao Phraya', colour: 'pink', mood: 'dreamy', season: 'any', tags: ['temple', 'river', 'dawn'],

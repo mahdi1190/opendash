@@ -215,36 +215,7 @@
 
   /* ---------- Jakarta: monsoon dusk over the towers and the flame-topped monument ---------- */
   asiaSceneAdd({ key: 'place:jakarta', label: 'Dusk over the towers and Monas', site: 'Jakarta skyline at dusk', colour: 'orange', mood: 'energetic', season: 'any', tags: ['skyline', 'monas', 'traffic', 'dusk'],
-    svg: () => {
-      const s1 = U(), g1 = U(), f1 = U();
-      let roofs = '', roofs2 = '';
-      const r = rnd(33);
-      for (let x = -160; x < 1760; x += 40 + r() * 30) { const w = 50 + r() * 40, y = R(796 + r() * 20); roofs += `<path d="M${R(x)} 900V${y}l${R(w / 2)} -22l${R(w / 2)} 22V900z"/>`; }
-      for (let x = -140; x < 1760; x += 60 + r() * 40) { const w = 60 + r() * 50, y = R(852 + r() * 14); roofs2 += `<path d="M${R(x)} 900V${y}l${R(w / 2)} -26l${R(w / 2)} 26V900z"/>`; }
-      return `<defs>${lin(s1, [[0, '#4a3f86'], [0.35, '#b0638f'], [0.62, '#ff8a6a'], [0.85, '#ffc07a'], [1, '#ffe0a0']])}${lin(g1, [[0, '#6a5a64'], [1, '#2f2838']])}${radU(f1, [[0, '#ffc07a', 0.55], [1, '#ffc07a', 0]], 800, 520, 600)}</defs>`
-        + full(`url(#${s1})`) + stars(8, 26, 200) + rays(1180, 600, 900, '#ffd69a', 0.1) + sun(1180, 600, 50, '#fff0c4', '#ff9660')
-        + streak(260, 180, 320, '#ffa8b4', 0.5) + streak(1340, 280, 300, '#ff9a90', 0.5, 66) + cloud(470, 320, 1.3, '#cc6f98', 0.85, 62, 6, '#ff9e88') + cloud(1200, 400, 1.1, '#d0739a', 0.85, 56, 28, '#ffb090') + cloud(880, 190, 0.9, '#bf6597', 0.8, 52, 12, '#ff9690')
-        + `<rect width="1600" height="900" fill="url(#${f1})"/>`
-        + mv('uspar', { ad: '50s', dx: '8px' }, city(61, -160, 1760, 650, 70, 220, 28, 64, '#9a6a9a', 0.2)) + haze(520, 120, '#ffc89c', 0.55)
-        + mv('uspar', { ad: '36s', dx: '14px' }, city(62, -160, 560, 690, 130, 330, 40, 80, '#6f4f84', 0.45) + city(63, 1040, 1760, 690, 130, 300, 40, 80, '#6f4f84', 0.45)
-          + `<g fill="#6a4a80"><rect x="220" y="320" width="70" height="370"/><path d="M220 320l35 -40l35 40z"/><rect x="1260" y="280" width="76" height="410"/><path d="M1260 280h76l-14 -34h-48z"/></g>` + win(228, 340, 54, 340, 12, 22) + win(1268, 300, 60, 380, 12, 22)
-          + `<path d="M255 280V230M1298 246V196" stroke="#6a4a80" stroke-width="4"/>`)
-        + mv('usflicker', { ad: '1.6s', to: '255px 230px' }, '<circle cx="255" cy="228" r="5" fill="#ff5a4a"/>') + mv('usflicker', { ad: '2s', d: '-.6s', to: '1298px 196px' }, '<circle cx="1298" cy="194" r="5" fill="#ff6a50"/>')
-        // the monument: plinth, tall white shaft, platform, gilded flame
-        + `<g><path fill="#c9b4b6" d="M690 690H910V650Q910 640 900 640H700Q690 640 690 650z"/><path fill="#e8d8d4" d="M730 640H870V610H730z"/><path fill="#f2e6de" d="M772 610L788 300H812L828 610z"/><path fill="#cdb8b4" d="M800 300H812L828 610H800z" opacity=".6"/><path fill="#e8d8d4" d="M766 330H834V300H766z"/><path fill="#f6ece4" d="M778 300H822V262H778z"/><path fill="#fff4ea" d="M792 262H808V236H792z"/></g>`
-        + `<path d="M786 560V330M814 560V330" stroke="#b49c9c" stroke-width="2" opacity=".5"/>` + mv('usflicker', { ad: '1.1s', to: '800px 236px' }, '<path fill="#ffc83a" d="M800 150C778 180 770 206 786 232H814C830 206 822 180 800 150z"/><path fill="#fff1a0" d="M800 182C790 202 790 216 800 230C810 216 810 202 800 182z"/>')
-        + mv('usglow', { ad: '3s', to: '800px 200px' }, '<circle cx="800" cy="200" r="46" fill="#ffd060" opacity=".25"/>')
-        + `<path fill="#4a6a46" d="M-160 690H1760V720H-160z"/>` + canopy('#3a5a3e', 690, 28, 66, -160, 1760, 730) + canopy('#2c4a34', 704, 20, 68, -160, 1760, 730)
-        // elevated toll road with moving lights
-        + `<path fill="#4a3f55" d="M-160 730H1760V756H-160z"/><g fill="#5d516a"><rect x="60" y="756" width="30" height="90"/><rect x="460" y="756" width="30" height="90"/><rect x="860" y="756" width="30" height="90"/><rect x="1260" y="756" width="30" height="90"/><rect x="1660" y="756" width="30" height="90"/></g>`
-        + dots('M-160 728H1760', '#fff0c0', 4, 38, 'us-lamps')
-        + mv('usmove', { ad: '16s', dx: '1900px' }, '<g transform="translate(800 740)"><rect x="-26" y="-12" width="40" height="12" rx="3" fill="#b43a3a"/><rect class="us-lit" x="10" y="-8" width="6" height="4"/></g>') + mv('usmove', { ad: '22s', d: '-8s', dx: '1900px' }, '<g transform="translate(900 746) scale(-1 1)"><rect x="-30" y="-12" width="44" height="12" rx="3" fill="#e0b040"/><rect class="us-lit" x="10" y="-8" width="6" height="4"/></g>') + mv('usmove', { ad: '28s', d: '-14s', dx: '1900px' }, '<g transform="translate(700 740)"><rect x="-34" y="-16" width="50" height="16" rx="3" fill="#2f6a9a"/></g>')
-        // kampung roofs and a bridge walkway
-        + `<rect y="756" width="1600" height="144" fill="url(#${g1})"/>` + `<g fill="#4a3a48">${roofs}</g><g fill="#6a4a50">${roofs2}</g>`
-        + `<g class="">` + [140, 380, 620, 1000, 1240, 1480].map((x, i) => lit(x, 872 + (i % 2) * 8, 14, 12)).join('') + `</g>`
-        + puffs(480, 800, 4, '#d9c0b8', 14, -50, 5, -140, 3.4) + puffs(1100, 810, 4, '#d9c0b8', 12, 60, 6, -150, 3.4)
-        + birds(20, 6, 520, 300, '#4a3560', 1, 700) + finish(0.34);
-    } });
+    svg: () => '' });
 
   /* ---------- Surabaya: the cable-stayed bridge across the strait at sunrise ---------- */
   asiaSceneAdd({ key: 'place:surabaya', label: 'Suramadu-style bridge at sunrise', site: 'The strait bridge at sunrise', colour: 'blue', mood: 'focused', season: 'any', tags: ['bridge', 'strait', 'sunrise', 'ships'],
@@ -277,43 +248,7 @@
 
   /* ---------- Kuala Lumpur: the twin towers and the broadcast tower at blue hour ---------- */
   asiaSceneAdd({ key: 'place:kuala-lumpur', label: 'Twin towers at blue hour', site: 'The twin towers at blue hour', colour: 'indigo', mood: 'proud', season: 'any', tags: ['towers', 'skybridge', 'blue hour', 'skyline'],
-    svg: () => {
-      const s1 = U(), g1 = U(), t1 = U(), p1 = U();
-      const B = 700;
-      const tower = (cx, flip) => {
-        const w = 62, body = (hw, y0, y1) => `M${cx - hw} ${y0}H${cx + hw}V${y1}H${cx - hw}z`;
-        // stepped, tapering tower of tiers with a rounded cap and spire
-        const tiers = [[w, 700, 560], [w - 8, 560, 450], [w - 16, 450, 360], [w - 26, 360, 290], [w - 36, 290, 240], [w - 44, 240, 210]];
-        let o = '', ribs = '';
-        for (const [hw, y0, y1] of tiers) { o += `<path d="${body(hw, y1, y0)}"/>`; for (let x = cx - hw + 10; x < cx + hw; x += 22) ribs += `M${x} ${y0}V${y1}`; }
-        let lights = '';
-        for (const [hw, y0, y1] of tiers) lights += win(cx - hw + 10, y1 + 12, hw * 2 - 20, y0 - y1 - 24, 20, 26, '#3a4c6e');
-        return `<g fill="url(#${t1})">${o}</g><path d="${ribs}" stroke="#cfe0f2" stroke-width="3" opacity=".45" fill="none"/>`
-          + `<path fill="#e6f0fa" d="M${cx - 18} 210Q${cx - 18} 176 ${cx} 160Q${cx + 18} 176 ${cx + 18} 210z"/><path d="M${cx} 160V78" stroke="#e6f0fa" stroke-width="4"/><path d="M${cx} 118V92" stroke="#fff" stroke-width="2"/>`
-          + `<path fill="#aebfd6" d="M${cx + 8} 700H${cx + 62}V560H${cx + 54}V450H${cx + 46}V360H${cx + 36}V290H${cx + 26}V240H${cx + 18}V210H${cx + 8}z" opacity=".35"/>`
-          + lights;
-      };
-      const kl = `<path fill="#c9c4d2" d="M232 ${B}L240 360H262L270 ${B}z"/><path fill="#a8a2b8" d="M254 ${B}L262 360H270V${B}z" opacity=".5"/><path fill="#d6d0e0" d="M214 360H288L296 336Q296 316 251 310Q206 316 206 336z"/><rect x="210" y="318" width="82" height="18" fill="#7a82b0"/><path d="M251 310V190" stroke="#c9c4d2" stroke-width="5"/>` + lit(214, 322, 74, 8);
-      return `<defs>${lin(s1, [[0, '#26306a'], [0.35, '#4a5a9e'], [0.62, '#a06aa0'], [0.85, '#f0907a'], [1, '#ffc88a']])}${lin(g1, [[0, '#2f6a4a'], [1, '#143a2a']])}${lin(t1, [[0, '#dfe8f4'], [0.5, '#b8c8de'], [1, '#8a9cc0']])}${lin(p1, [[0, '#6a8ab8'], [1, '#2a3a68']])}</defs>`
-        + full(`url(#${s1})`) + stars(31, 70, 360) + sun(1240, 700, 38, '#ffe6c0', '#ff9a78') + streak(300, 220, 320, '#c89ac8', 0.35) + streak(1280, 170, 300, '#d8a0c8', 0.35, 66)
-        + cloud(420, 340, 1.3, '#7a6aa8', 0.85, 66, 6, '#d88aa8') + cloud(1180, 260, 1.2, '#7a6ca8', 0.85, 58, 28, '#d68ea8') + cloud(820, 120, 0.9, '#5f5a98', 0.8, 52, 14, '#b27aa8')
-        + mv('uspar', { ad: '55s', dx: '8px' }, city(81, -160, 1760, B, 80, 260, 28, 60, '#5f6aa0', 0.18)) + haze(560, 150, '#e690a0', 0.4)
-        + mv('uspar', { ad: '40s', dx: '12px' }, city(82, -160, 520, B, 120, 320, 40, 80, '#4a5488', 0.3) + city(83, 1080, 1760, B, 120, 300, 40, 80, '#4a5488', 0.3)) + kl
-        + mv('usflicker', { ad: '1.5s', to: '251px 190px' }, '<circle cx="251" cy="188" r="5" fill="#ff5a4a"/>')
-        + tower(695) + tower(905)
-        // skybridge
-        + `<path fill="#d6e2f0" d="M755 470H845V484L835 496H765L755 484z"/><path d="M770 496L800 450L830 496" stroke="#c0d0e4" stroke-width="5" fill="none"/>` + lit(768, 474, 64, 6)
-        + mv('usflicker', { ad: '1.8s', to: '695px 78px' }, '<circle cx="695" cy="76" r="5" fill="#ff6a50"/>') + mv('usflicker', { ad: '2.2s', d: '-.7s', to: '905px 78px' }, '<circle cx="905" cy="76" r="5" fill="#ff6a50"/>')
-        // plaza: pond, fountain, palms
-        + `<rect y="${B}" width="1600" height="${900 - B}" fill="url(#${g1})"/><path fill="url(#${p1})" d="M420 760Q800 730 1180 760L1260 840Q800 800 340 840z"/>` + reflect(760, '<rect x="640" y="640" width="320" height="90" fill="#cfe0f2"/>', 0.2)
-        + shimmer(9, 24, 420, 1180, 764, 830, '#e8f0ff', 60)
-        + [620, 700, 800, 900, 980].map((x, i) => mv('uspuff', {}, '').replace('<g class="x-uspuff"></g>', '') + `<path d="M${x} 790Q${x + (i - 2) * 12} 730 ${x + (i - 2) * 22} 790" stroke="#e8f4ff" stroke-width="3" fill="none" opacity=".7"/>`).join('')
-        + dots('M300 700H1300', '#fff1c0', 5, 44, 'us-lamps') + dots('M-160 860H1760', '#ffd890', 5, 48, 'us-lamps')
-        + palm(110, 880, 360, '#10281c', 24, 1.5, 6) + palm(1500, 880, 400, '#10281c', -26, 1.6, 7) + palm(260, 860, 240, '#1a3a28', -12, 1.1, 5) + palm(1380, 860, 260, '#1a3a28', 14, 1.2, 8)
-        + canopy('#0f2a20', 840, 30, 87, -160, 1760, 900)
-        + mv('usglide', { ad: '22s', dx: '900px', dy: '-60px' }, '<circle cx="500" cy="200" r="3" fill="#fff"/>') + mv('usflicker', { ad: '1s', to: '1100px 300px' }, '<circle cx="1100" cy="300" r="3" fill="#ff7a6a"/>')
-        + finish(0.32);
-    } });
+    svg: () => '' });
 
   /* ---------- Singapore: the three-tower resort with its sky deck and the supertree grove ---------- */
   asiaSceneAdd({ key: 'place:singapore', label: 'Bay skyline and supertrees at dusk', site: 'Marina Bay at dusk', colour: 'violet', mood: 'energetic', season: 'any', tags: ['skyline', 'bay', 'supertrees', 'dusk'],

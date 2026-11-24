@@ -9,8 +9,6 @@
   const K = usSceneKit();
   const { U, R, rnd, lin, linU, radU, mv, full, ridge, canopy, cloud, streak, haze, rays, sun, stars, birds, shimmer, puffs, dots, lit, finish } = K;
 
-  /** A closed polygon from [x,y] points. */
-  const poly = (fill, pts, extra) => `<path fill="${fill}"${extra || ''} d="M${pts.map((p) => R(p[0]) + ' ' + R(p[1])).join('L')}z"/>`;
   /** Blades of grass that sway: n tufts between x0..x1 around y. */
   const grass = (seed, n, x0, x1, y, h, cols, cls) => {
     const r = rnd(seed); let o = '';
@@ -107,36 +105,7 @@
 
   /* ---------- Armenia: Mount Ararat above the monastery on the plain ---------- */
   asiaSceneAdd({ key: 'country:AM', label: 'Mount Ararat over a monastery', site: 'Khor Virap and Mount Ararat', colour: 'amber', mood: 'proud', season: 'any', tags: ['monastery', 'mountain', 'apricot'],
-    svg: () => {
-      const s1 = U(), a1 = U(), p1 = U(), v1 = U();
-      return `<defs>${lin(s1, [[0, '#6a78b6'], [0.38, '#d79bb8'], [0.66, '#ffbc90'], [1, '#ffe0a6']])}${lin(a1, [[0, '#f6dbe6'], [0.35, '#d99aaa'], [1, '#8a6078']])}${lin(p1, [[0, '#c9a36a'], [1, '#7a5a3c']])}${lin(v1, [[0, '#b58c52'], [1, '#6a5a2c']])}</defs>`
-        + full(`url(#${s1})`) + stars(11, 30, 220) + rays(380, 600, 1000, '#ffd8a0', 0.1) + sun(380, 600, 46, '#fff0c8', '#ffb872', true)
-        + streak(1200, 160, 320, '#ffc8c0', 0.5) + cloud(700, 250, 0.9, '#e0a0b0', 0.8, 60, 5, '#ffd9bc') + cloud(1380, 330, 0.7, '#e8a8b0', 0.75, 52, 22, '#ffddc0')
-        // Ararat: the great peak and the lesser one
-        + mv('uspar', { ad: '90s', dx: '8px' }, `<path fill="url(#${a1})" d="M520 620L760 330Q820 250 880 214Q920 190 960 214Q1040 260 1100 330L1360 620z"/>`
-          + `<path fill="#fff4f2" d="M834 276Q880 214 920 200Q960 196 1004 250Q1050 290 1070 330L1030 322L1000 346L972 318L940 350L906 322L878 346L850 316z" opacity=".95"/>`
-          + `<path fill="#8a5a78" opacity=".45" d="M960 214Q1040 260 1100 330L1360 620H1120Q1060 450 990 330z"/>`
-          + `<path fill="#c88aa6" d="M1180 620L1330 470Q1380 430 1420 450Q1470 480 1560 620z"/><path fill="#fff0ee" d="M1360 455Q1390 436 1420 452Q1440 462 1450 490L1420 482L1398 500L1376 482L1350 492z"/>`)
-        + haze(560, 90, '#ffd6b0', 0.6)
-        + mv('uspar', { ad: '50s', dx: '12px' }, ridge('#c98e7a', 640, 30, 12, 8) + ridge('#b0765f', 670, 30, 10, 13))
-        // plain with fields
-        + `<path fill="url(#${p1})" d="M-160 900V690Q400 660 800 676T1760 670V900z"/>`
-        + `<path fill="#9a8a50" opacity=".6" d="M-160 720Q300 700 700 716T1760 710V740Q1000 730 600 746T-160 750z"/><path fill="url(#${v1})" opacity=".8" d="M900 740l800-8v60L860 800z"/>`
-        + (() => { let o = ''; for (let i = 0; i < 14; i++) o += `M${940 + i * 54} 748L${900 + i * 64} 800`; return `<path fill="none" stroke="#e0b862" stroke-width="3" opacity=".6" d="${o}"/>`; })()
-        // monastery on its mound
-        + `<path fill="#a8825a" d="M360 760Q420 700 520 688Q620 690 700 750V780H360z"/><path fill="#6a4a38" opacity=".5" d="M580 690Q660 700 700 750V780H620Q630 730 580 690z"/>`
-        + `<g><path fill="#c9a37a" d="M410 744V698H700V744z"/><path fill="#a98462" d="M410 698h290l-8 8H418z"/>`
-        + `<rect x="494" y="644" width="104" height="62" fill="#d4ae84"/><path fill="#b08a66" d="M570 644h28v62h-28z"/>`
-        + `<rect x="514" y="606" width="64" height="40" fill="#d8b48a"/><path fill="#a98462" d="M510 608L546 566L582 608z"/><path fill="#a98462" d="M546 566L560 596L582 608L546 580z" opacity=".5"/>`
-        + `<rect x="620" y="640" width="46" height="60" fill="#cfa97e"/><path fill="#a98462" d="M616 642L643 616L670 642z"/><path fill="#4a3228" d="M536 706v-30a10 10 0 0 1 20 0v30zM637 696v-22a6 6 0 0 1 12 0v22z"/>${lit(430, 714, 10, 18)}${lit(460, 714, 10, 18)}${lit(646, 728, 8, 12)}</g>`
-        + mv('uspuff', { ad: '6s', dx: '60px', dy: '-90px', sc: '2.4' }, '<circle cx="660" cy="630" r="4" fill="#fff" opacity=".35"/>')
-        // poplars and apricot trees
-        + `<g fill="#6a7a36"><path d="M200 800q-22-10-18-60q4-70 18-110q14 40 18 110q4 50-18 60z"/><path d="M250 810q-20-10-16-54q4-60 16-96q12 36 16 96q4 44-16 54z"/><path d="M1110 760q-18-8-14-46q4-50 14-80q10 30 14 80q4 38-14 46z"/></g>`
-        + mv('ussway', { ad: '5s', to: '200px 800px' }, `<g fill="#e88a3a"><circle cx="1280" cy="780" r="40"/><circle cx="1340" cy="796" r="34"/><circle cx="1230" cy="800" r="30"/></g><g fill="#ffb25a"><circle cx="1270" cy="768" r="16"/><circle cx="1340" cy="790" r="14"/></g>`)
-        + `<path fill="#5a4030" d="M1274 820v-30M1340 830v-26" stroke="#5a4030" stroke-width="7"/>`
-        + grass(4, 36, -100, 1700, 900, 56, ['#7a6a3a', '#8a7a46', '#665a30'], 'ussway2')
-        + birds(5, 5, 600, 400, '#5a3a58', 1.1, 560) + finish(0.34);
-    } });
+    svg: () => '' });
 
   /* ---------- Azerbaijan: the Flame Towers over the Caspian at dusk ---------- */
   asiaSceneAdd({ key: 'country:AZ', label: 'The flame-shaped towers over the Caspian', site: 'Baku Flame Towers', colour: 'violet', mood: 'energetic', season: 'any', tags: ['skyline', 'towers', 'caspian'],

@@ -181,66 +181,11 @@
 
   /* ---------- Shanghai: the Pudong skyline across the river at blue hour ---------- */
   asiaSceneAdd({ key: 'place:shanghai', label: 'Pudong across the Huangpu', site: 'Pudong skyline from the Bund', colour: 'indigo', mood: 'energetic', season: 'any', tags: ['skyline', 'river', 'night'],
-    svg: () => {
-      const s1 = U(), w1 = U(), g1 = U(), r = rnd(88), base = 640;
-      const pearl = `<path d="M440 ${base}V470M470 ${base}V470" stroke="#9aa4cc" stroke-width="10"/><path d="M455 470V200" stroke="#8a94bc" stroke-width="8"/><circle cx="455" cy="450" r="54" fill="#d86a98"/><circle cx="455" cy="450" r="54" fill="none" stroke="#fff" stroke-width="3" opacity=".5"/><circle cx="455" cy="330" r="34" fill="#c85a90"/><circle cx="455" cy="262" r="18" fill="#d86a98"/><path d="M455 200V120" stroke="#8a94bc" stroke-width="3"/><circle cx="455" cy="450" r="22" class="us-lit"/><circle cx="455" cy="330" r="14" class="us-lit"/>`
-        + `<path fill="#9aa4cc" d="M405 ${base}L430 540h50l25 100z" opacity=".9"/><circle cx="455" cy="560" r="20" fill="#d86a98"/>`;
-      const jin = `<path fill="#aeb4d4" d="M610 ${base}V330l14-16V290l12-12V256l14-14h30l14 14v22l12 12v24l14 16V${base}z"/><path fill="#7c84ae" d="M690 242l14 14v22l12 12v24l14 16V${base}h-40z" opacity=".5"/><path d="M660 242V190" stroke="#7c84ae" stroke-width="3"/>` + win(618, 340, 120, 290, 11, 17, '#3a4a78');
-      const swfc = `<path fill="#a6acd0" d="M800 ${base}V210l36-24l36 24V${base}z"/><path fill="#161a38" d="M825 232l22-14l22 14v34h-44z"/><rect x="838" y="226" width="20" height="30" class="us-lit"/><path fill="#7c84ae" d="M860 210V${base}h12V210z" opacity=".5"/>` + win(808, 270, 56, 360, 9, 17, '#3a4a78');
-      const sht = `<path fill="#b4bae0" d="M930 ${base}C922 520 940 400 958 260C968 180 980 120 996 70C1010 120 1022 180 1030 260C1046 400 1060 520 1056 ${base}z"/><path fill="#8a92be" d="M996 70C1010 120 1022 180 1030 260C1046 400 1060 520 1056 ${base}H996z" opacity=".5"/><path fill="none" stroke="#e8eaff" stroke-width="2" opacity=".6" d="M960 ${base}C950 480 975 330 996 70M1030 ${base}C1040 480 1016 330 996 70"/>` + win(950, 150, 90, 480, 10, 15, '#3a4a78');
-      let refl = '';
-      for (let i = 0; i < 24; i++) refl += `<rect class="x-usshim" style="--ad:${(2 + r() * 2.4).toFixed(1)}s;--d:-${(r() * 3).toFixed(1)}s" x="${R(380 + r() * 760)}" y="${R(660 + r() * 200)}" width="${R(18 + r() * 60)}" height="${R(3 + r() * 5)}" rx="2" fill="${['#ff8ab0', '#ffd27a', '#8ad0ff'][i % 3]}"/>`;
-      return `<defs>${lin(s1, [[0, '#1f2766'], [0.4, '#5a4a9a'], [0.68, '#c86a9a'], [0.88, '#ffa27a'], [1, '#ffc58a']])}${lin(w1, [[0, '#8a5aa0'], [0.2, '#3a3a82'], [1, '#161c4a']])}${lin(g1, [[0, '#262b4e'], [1, '#12162e']])}</defs>`
-        + full(`url(#${s1})`) + stars(22, 60, 340) + sun(1400, 600, 30, '#ffe6c8', '#ff9a8a') + cloud(300, 240, 1.4, '#a864a8', 0.85, 80, 6, '#e08ab0') + cloud(1150, 180, 1.8, '#9a60a8', 0.85, 90, 26, '#e8a0b0') + streak(900, 330, 380, '#ffa0c0', 0.4, 70)
-        + mv('usglide', { ad: '30s', dx: '900px', dy: '-10px' }, `<path fill="#2a2f50" d="M1200 160l20 -4l22 4l-8 8h-30z"/><circle class="x-usflicker us-lit" cx="1210" cy="164" r="3"/>`)
-        + birds(3, 3, 1250, 300, '#2a2048', 1.0, 600)
-        + mv('uspar', { ad: '50s', dx: '8px' }, city(2, -160, 1760, base, 40, 160, 24, 54, '#7c76b0', '#52508a', 0.2))
-        + haze(560, 100, '#ffa8a0', 0.45)
-        + mv('uspar', { ad: '36s', dx: '12px' }, city(6, -160, 380, base, 80, 200, 30, 60, '#6c68a0', '#48467e', 0.3) + city(7, 1080, 1760, base, 80, 220, 30, 60, '#6c68a0', '#48467e', 0.3) + jin + swfc + sht + pearl)
-        + mv('usflicker', { ad: '1.5s', to: '455px 120px' }, `<circle cx="455" cy="118" r="5" fill="#ff5a5a"/>`)
-        + `<rect x="-160" y="${base}" width="1920" height="260" fill="url(#${w1})"/>` + `<rect x="-160" y="${base - 2}" width="1920" height="10" fill="#ffc0a0" opacity=".5"/>` + dots(`M-160 ${base + 4}H1760`, '#ffd27a', 5, 22, 'us-lamps')
-        + shimmer(7, 22, -100, 1700, 680, 880, '#ffb8c8', 70) + refl
-        + mv('usmove', { ad: '75s', dx: '1500px' }, ship(700, 770, 220, '#1c2040', '#e9dede') + `<path d="M690 786H950" stroke="#fff" stroke-width="3" class="x-usshim" opacity=".4"/>`)
-        + mv('usmove', { ad: '90s', d: '-30s', dx: '1500px' }, ship(900, 725, 130, '#2c2a52', '#d8d0e0'))
-        + `<path fill="url(#${g1})" d="M-160 900V840Q400 826 800 840T1760 830V900z"/>` + `<path d="M-160 840Q400 826 800 840T1760 830" stroke="#ffd27a" stroke-width="3" fill="none"/>` + dots('M-160 846Q400 832 800 846T1760 836', '#ffd27a', 9, 44, 'us-lamps')
-        + finish(0.34);
-    } });
+    svg: () => '' });
 
   /* ---------- Guangzhou: the Canton Tower over the Pearl River ---------- */
   asiaSceneAdd({ key: 'place:guangzhou', label: 'Canton Tower and the Pearl River', site: 'Canton Tower on the Pearl River', colour: 'teal', mood: 'dreamy', season: 'any', tags: ['tower', 'river', 'skyline'],
-    svg: () => {
-      const s1 = U(), w1 = U(), r = rnd(19), base = 660, cx = 800;
-      // hyperboloid lattice: waist at y 470, base 660, top 130
-      const half = (y) => { const t = (y - 470) / (y < 470 ? 340 : 190); return 34 + 70 * t * t; };
-      let lat = '', rings = '', body = '';
-      const ys = []; for (let y = 160; y <= base; y += 30) ys.push(y);
-      const lp = (y, k) => R(cx - half(y) + k * half(y) * 2 / 9), up = (y, k) => R(cx - half(y) + k * half(y) * 2 / 9);
-      for (let k = 0; k <= 9; k++) { let d = `M${R(cx - half(150) + k * half(150) * 2 / 9)} 150`; for (const y of ys) d += `L${R(cx - half(y) + ((k + (y - 150) / 60) % 9.0 + 9) % 9 * half(y) * 2 / 9)} ${y}`; lat += d; }
-      let sil = `M${cx - half(150)} 150`; for (const y of ys) sil += `L${R(cx - half(y))} ${y}`; sil += `L${cx - half(base)} ${base}H${cx + half(base)}`; for (const y of ys.slice().reverse()) sil += `L${R(cx + half(y))} ${y}`;
-      for (const y of ys) rings += `M${R(cx - half(y))} ${y}H${R(cx + half(y))}`;
-      let towers = ''; towers += tower(1060, base, 74, 330, '#8fb8c0', '#5a8a9c', true) + tower(1150, base, 90, 250, '#9cc2c8', '#6a9aa6', true) + tower(1260, base, 80, 380, '#86b0ba', '#5a8a9c', true) + tower(1380, base, 110, 200, '#9cc2c8', '#6a9aa6', true) + tower(520, base, 80, 300, '#8fb8c0', '#5a8a9c', true) + tower(420, base, 90, 220, '#9cc2c8', '#6a9aa6', true) + tower(300, base, 100, 180, '#a4c8cc', '#6a9aa6', true);
-      let refl = ''; for (let i = 0; i < 36; i++) refl += `<rect class="x-usshim" style="--ad:${(2 + r() * 2.4).toFixed(1)}s;--d:-${(r() * 3).toFixed(1)}s" x="${R(560 + r() * 480)}" y="${R(680 + r() * 190)}" width="${R(14 + r() * 40)}" height="${R(3 + r() * 5)}" rx="2" fill="${['#ff8ac0', '#ffd27a', '#8affd8', '#ffffff'][i % 4]}"/>`;
-      return `<defs>${lin(s1, [[0, '#2a5a8a'], [0.4, '#5a9ab0'], [0.7, '#e6b0a0'], [0.9, '#ffd0a0'], [1, '#ffe2b0']])}${lin(w1, [[0, '#7ab8b8'], [0.3, '#2f7a90'], [1, '#143e56']])}</defs>`
-        + full(`url(#${s1})`) + stars(14, 30, 260) + sun(1300, 500, 38, '#fff0d0', '#ffb08a') + cloud(300, 230, 1.5, '#e8a8b0', 0.85, 80, 6, '#ffd8c8') + cloud(1100, 150, 1.7, '#d8a0b0', 0.8, 100, 24, '#ffd8c8') + cloud(1450, 340, 1.0, '#e8b0a8', 0.8, 66, 10, '#ffe0c8')
-        + birds(8, 4, 500, 300, '#2a4058', 1.2, 700)
-        + mv('uspar', { ad: '60s', dx: '8px' }, ridge('#82aeb6', 570, 60, 7, 13) + city(4, -160, 1760, base, 60, 150, 26, 56, '#8cb4bc', '#5f8c9c', 0.3)) + haze(520, 120, '#ffd0b0', 0.55)
-        + mv('uspar', { ad: '40s', dx: '12px' }, towers)
-        // the tower
-        + `<path fill="#e8f4f6" fill-opacity=".35" d="${sil}z"/><path fill="none" stroke="#f2fbfc" stroke-width="2.5" d="${lat}"/><path fill="none" stroke="#c8e4ea" stroke-width="5" d="${rings}"/>`
-        + `<path d="M${cx} 150V20" stroke="#c8e4ea" stroke-width="6"/><path d="M${cx} 100V40" stroke="#f2fbfc" stroke-width="3"/>`
-        + `<path class="us-lamps" fill="none" stroke="#7affd8" stroke-width="3" d="${lat}"/>` + `<path class="us-lamps" fill="none" stroke="#ff8ad0" stroke-width="5" d="${rings}"/>`
-        + `<ellipse cx="${cx}" cy="470" rx="${R(half(470) + 14)}" ry="9" fill="#eaf6f8"/>`
-        + mv('usflicker', { ad: '1.4s', to: cx + 'px 20px' }, `<circle cx="${cx}" cy="20" r="6" fill="#ff5a5a"/>`)
-        + `<rect x="-160" y="${base}" width="1920" height="260" fill="url(#${w1})"/>` + `<rect x="-160" y="${base - 2}" width="1920" height="8" fill="#ffd0b0" opacity=".5"/>`
-        + shimmer(3, 26, 100, 1500, 690, 880, '#ffe0c0', 70) + refl
-        + mv('usmove', { ad: '80s', dx: '1500px' }, `<g transform="translate(700 790)"><path fill="#a63a2a" d="M-70 0Q-50 22 0 22Q60 22 80 -4L74 -10H-64z"/><rect x="-28" y="-34" width="64" height="26" fill="#f2d8a0"/><path fill="#c85a30" d="M-36 -34H44L30 -50H-22z"/>${lit(-20, -28, 14, 14)}${lit(2, -28, 14, 14)}</g>`)
-        + mv('usbob', { ad: '4s', dy: '3px' }, `<g transform="translate(1180 840)"><path fill="#7a3a2a" d="M-60 0Q-40 18 0 18Q40 18 56 -2L52 -8H-54z"/><path fill="#d8b070" d="M-24 -8V-30H30V-8z"/>${lit(-14, -24, 12, 12)}</g>`)
-        // bridge arch
-        + `<path d="M1000 ${base - 2}Q1250 520 1500 ${base - 2}" stroke="#e8f0f4" stroke-width="7" fill="none"/>` + dots(`M1000 ${base - 2}Q1250 520 1500 ${base - 2}`, '#ffe0a0', 5, 24, 'us-lamps')
-        + `<path fill="#183a48" d="M-160 900V850Q400 830 800 850T1760 840V900z"/>` + dots('M-160 852Q400 832 800 852T1760 842', '#ffd27a', 8, 40, 'us-lamps')
-        + `<g fill="#2a6a50">${[0, 1, 2, 3].map((i) => `<path d="M${100 + i * 90} 900Q${90 + i * 90} 800 ${60 + i * 90} 760Q${130 + i * 90} 800 ${150 + i * 90} 900z"/>`).join('')}</g>` + `<g fill="#2a6a50">${mv('ussway', { ad: '5s', to: '1500px 900px' }, `<path d="M1450 900Q1440 810 1410 770Q1480 810 1510 900zM1520 900Q1530 800 1570 760Q1590 820 1580 900z"/>`)}</g>`
-        + finish(0.34);
-    } });
+    svg: () => '' });
 
   /* ---------- Shenzhen: the bay, a morning skyline and its tallest spire ---------- */
   asiaSceneAdd({ key: 'place:shenzhen', label: 'The bay skyline in the morning', site: 'Futian skyline from Shenzhen Bay', colour: 'teal', mood: 'energetic', season: 'any', tags: ['skyline', 'bay', 'modern'],
