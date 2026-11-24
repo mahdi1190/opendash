@@ -503,6 +503,7 @@ function _gsMusic(c, t, s) {
   G.mTr.gain.setTargetAtTime((s.room ? 0.6 : 1) * (s.rain ? 0.8 : 1), t, 0.8);
   if ((s.room && s.room.music) || s.band || _gsBandOn()) { _gsMusicHold(false); return; }   // the music room and the band play their own
   if (!M.list) { _gsMusicList(); return; }
+  if (M.cur && M.cur.c !== c) _gsTrackDrop(M.cur);   // (a new sound context: the song starts again on it)
   const pool = _gsPool(M.list, gardenMusicSlot(), s.season), T = M.cur;
   if (T && T.held) { if (T.key === pool.key && !T.el.ended && !T.el.error) { _gsTrackPlay(T, 2.5); return; } _gsTrackDrop(T); }
   else if (T) {
