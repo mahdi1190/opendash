@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.75.5] - 2026-11-24
+
+### Changed
+
+- The garden music is in sync: you and a friend in the same garden hear the same song at the same moment, and someone arriving mid-song joins where everyone else is. It works from the clock alone, so nothing extra is sent between you.
+
 ## [2.75.4] - 2026-11-24
 
 ### Changed
