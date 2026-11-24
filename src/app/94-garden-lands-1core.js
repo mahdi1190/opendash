@@ -291,7 +291,7 @@ function _gldSpotOk(m, x, y) { if (String(gardenAreaAt(x, y, m.level.level)).sta
 /** Today's dig spot: {x, y}, or null once it is dug. */
 function gardenLandDigSpot(m) {
   if (_gdG().seen[_gldKey('dig')] === m.today || m.visit) return null;
-  const cells = _gldFindCells(), rnd = gardenRand('ld-dig|' + m.today);
+  const cells = _gldFindCells(), rnd = gardenRand('ld-dig|' + m.today); if (!cells || !cells.length) return null;
   for (let i = 0; i < 60; i++) { const [x, y] = cells[Math.floor(rnd() * cells.length)]; if (_gldSpotOk(m, x, y)) return { x, y }; }
   return null;
 }
@@ -316,12 +316,12 @@ function gardenLandDig() {
 /** Today's forage (two at most, only in wild land of your own): [{i, x, y, item, name}]. */
 function gardenLandForageSpots(m) {
   if (m.visit || m.level.level < 3) return [];
-  const wild = GARDEN_LAND_SECTIONS.filter(s => m.areas.includes(s.id) && GARDEN_LAND_WILD.includes(s.kind)); if (!wild.length) return [];
-  const st = _gdG().seen[_gldKey('forage')], taken = st && st.d === m.today ? st.n || [] : [], F = GARDEN_LAND_FORAGE[m.season], out = [];
+  const F = GARDEN_LAND_FORAGE[m.season], wild = GARDEN_LAND_SECTIONS.filter(s => m.areas.includes(s.id) && GARDEN_LAND_WILD.includes(s.kind) && s.cells && s.cells.length); if (!wild.length || !F) return [];
+  const st = _gdG().seen[_gldKey('forage')], taken = st && st.d === m.today ? st.n || [] : [], out = [];
   for (let i = 0; i < 2; i++) {
     if (taken.includes(i)) continue;
     const rnd = gardenRand('ld-forage|' + m.today + '|' + i), s = wild[Math.floor(rnd() * wild.length)];
-    for (let t = 0; t < 8; t++) { const [x, y] = s.cells[Math.floor(rnd() * s.cells.length)]; if (_gldSpotOk(m, x, y)) { out.push({ i, x, y, item: F.item, name: F.name }); break; } }
+    for (let t = 0; t < 8; t++) { const c = s.cells[Math.floor(rnd() * s.cells.length)]; if (!c) continue; const [x, y] = c; if (_gldSpotOk(m, x, y)) { out.push({ i, x, y, item: F.item, name: F.name }); break; } }
   }
   return out;
 }
