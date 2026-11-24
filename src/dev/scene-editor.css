@@ -1,6 +1,6 @@
 /* ============================================================
    SCENE EDITOR (docs/dev/SCENE_ENGINE_V2.md 23.3; builder H): the developer editor over the animation gallery
-   (78-scene-editor.js). A full-window dialog: the 16:9 stage (the scene through the normal host, plus the
+   (src/dev/scene-editor.js, loaded on demand). A full-window dialog: the 16:9 stage (the scene through the normal host, plus the
    overlay canvas of the ground grid, surfaces, lanes and placement handles) and the side panels.
    ============================================================ */
 .sced {

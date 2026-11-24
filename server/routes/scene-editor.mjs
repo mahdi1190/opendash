@@ -255,6 +255,19 @@ export default function register(app) {
     } catch { return false; }
   }
 
+  // The editor itself is not in the page (it is a developer tool): src/app/78-scene-editor.js loads these on first use.
+  for (const [name, type] of [['editor.js', 'text/javascript; charset=utf-8'], ['editor.css', 'text/css; charset=utf-8']]) {
+    app.route({
+      path: '/api/scene-editor/' + name, method: 'GET', methodError: 'GET only',
+      handler: (c) => {
+        const f = join(root, 'src', 'dev', 'scene-' + name);
+        if (!existsSync(f)) return c.json(404, { error: 'not found' });
+        c.send(200, readFileSync(f, 'utf8'), type, { 'Cache-Control': 'no-store' });
+        return undefined;
+      },
+    });
+  }
+
   app.route({
     path: '/api/scene-editor/status', method: 'GET', methodError: 'GET only',
     handler: async (c) => {
