@@ -325,6 +325,14 @@ function gardenDepthHostIntent(ev, put) {
   }
   return 'kind';
 }
+/* the host said no (or an older relay does not know the intent): what you opened there is shut again on your screen */
+if (typeof _glvResult === 'function') {
+  const _gdsRes0 = _glvResult;
+  _glvResult = function (b) {   // eslint-disable-line no-func-assign
+    try { if (b && !b.ok && b.t === 'tunnel' && typeof _glv !== 'undefined' && _glv.pending && _glv.pending.has(b.i)) { const P = _glv.pending.get(b.i); if (P && P.f && P.f.p) { _gds.echo.delete(_gdsEcho(String(P.f.p), 2)); _gds.echo.delete(_gdsEcho(String(P.f.p), 8)); _gdsForget(); } } } catch (e) { /* as it was */ }
+    return _gdsRes0(b);
+  };
+}
 if (typeof _glhLand === 'function') {
   const _gdsLand0 = _glhLand;
   _glhLand = function (ev, put, m) { if (ev && ev.t === 'tunnel') return gardenDepthHostIntent(ev, put, m); return _gdsLand0(ev, put, m); };   // eslint-disable-line no-func-assign
