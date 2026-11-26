@@ -779,9 +779,17 @@ export const OPS = [
       retagElsewhere(ctx, from, into);
       registryEdit(ctx, (list, kind) => {
         let l = list;
+        // The page's tglMerge rule: if any merged tag was pinned, the tag they go into is pinned (B16).
+        const pinned = kind === 'object' ? from.some(f => list[f] && typeof list[f] === 'object' && list[f].pinned)
+          : list.some(x => x && typeof x === 'object' && from.includes(regName(x)) && x.pinned);
         for (const f of from) l = regRemove(l, kind, f);
-        if (kind === 'object') { if (!(into in l)) l[into] = (list[from[0]] || {}); return l; }
+        if (kind === 'object') {
+          if (!(into in l)) l[into] = (list[from[0]] || {});
+          if (pinned && l[into] && typeof l[into] === 'object' && !l[into].pinned) l[into] = { ...l[into], pinned: true };
+          return l;
+        }
         if (!l.some(x => regName(x) === into) && (list.some(x => from.includes(regName(x))))) l.push(typeof list[0] === 'string' || !list.length ? into : { id: into });
+        if (pinned) l = l.map(x => (x && typeof x === 'object' && regName(x) === into && !x.pinned ? { ...x, pinned: true } : x));
         return l;
       });
       return { summary: `Merge #${from.join(', #')} into #${into} (${ch.length} task${ch.length === 1 ? '' : 's'})`, changes: ch };
