@@ -2,6 +2,8 @@
    bottle writer, the pebble pits board, the spotter card, the league's chalk board and the journal's shore pages. The world's own
    bubbles stay cream in either theme, as the act prompt does; the cards follow the app's theme. */
 .gt-quick-on .ga-prompt:not(.gt-quick), .gt-quick-on .ga-choose { visibility: hidden; }
+/* the tide card's last line: the world's bubbles are paper now, so it takes the ink, as the gates' cards do (it was cream on cream) */
+.gd-bubble.gt-table .gd-bub-foot { color: var(--gu-ink, #3b2a1a); opacity: .78; }
 .gt-cheer .gt-beat { position: absolute; inset: -5px; border-radius: 999px; border: 2px solid rgba(255, 214, 110, .95); opacity: 0; pointer-events: none; }
 .gt-cheer.is-beat .gt-beat { animation: gt-beat .34s ease-out; }
 @keyframes gt-beat { from { opacity: .95; transform: scale(.92); } to { opacity: 0; transform: scale(1.2); } }
