@@ -95,9 +95,12 @@ function _gtqQuick(st, id) {
   const box = typeof _gw !== 'undefined' && _gw.box; if (!box) return;
   const el = document.createElement('button'); el.type = 'button'; el.className = 'ga-prompt gt-quick'; el.innerHTML = '<kbd>E</kbd><span>Quick, scoop it up!</span>'; el.setAttribute('aria-label', 'Quick, scoop it up! (E)');
   box.appendChild(el);
+  // (while it shows, it is the only prompt: the usual one and its chooser stand aside)
+  if (!document.getElementById('gt-quick-css')) { const css = document.createElement('style'); css.id = 'gt-quick-css'; css.textContent = '.gt-quick-on .ga-prompt:not(.gt-quick),.gt-quick-on .ga-choose{visibility:hidden}.gt-quick{z-index:7}'; document.head.appendChild(css); }
+  box.classList.add('gt-quick-on');
   const place = () => { const s = typeof _ghProject === 'function' ? _ghProject(_gw.px, _gw.py - 2.3) : null; if (s) el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, -100%)`; };
   place();
-  const motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(), ms = motion ? 1150 : 2400, Q = _gtq.quick = { el, st, id, done: false };
+  const motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(), ms = motion ? 1500 : 2600, Q = _gtq.quick = { el, st, id, done: false };
   Q.critter = _gtqCritter(st, id, ms, motion);
   const win = (ev) => { if (Q.done) return; if (ev && ev.type === 'keydown' && !(ev.key === 'e' || ev.key === 'E' || ev.key === ' ')) return; if (ev) { ev.preventDefault(); ev.stopPropagation(); } Q.done = true; Q.caught = true; _gtqQuickEnd(); _gtqCatch(st, id); };
   el.addEventListener('click', win); el.addEventListener('pointerdown', (ev) => ev.stopPropagation());
@@ -106,7 +109,7 @@ function _gtqQuick(st, id) {
   Q.timer = setTimeout(() => { if (Q.done) return; Q.done = true; _gtqQuickEnd(); const d = gardenFishDef(id); try { gardenMessage((d ? 'The ' + d.name.toLowerCase() : 'It') + ' was too quick for you, and scuttled off under the weed.', { icon: 'waves', ms: 4000 }); } catch (e) { /* fine */ } }, ms);
   Q.iv = setInterval(place, 120);
 }
-function _gtqQuickEnd() { const Q = _gtq.quick; if (!Q) return; _gtq.quick = null; clearTimeout(Q.timer); clearInterval(Q.iv); if (Q.off) Q.off(); if (Q.el) Q.el.remove(); if (Q.critter) { const c = Q.critter; setTimeout(() => c.remove(), Q.done && !Q.caught ? 700 : 0); } }
+function _gtqQuickEnd() { const Q = _gtq.quick; if (!Q) return; _gtq.quick = null; if (Q.el && Q.el.parentNode) Q.el.parentNode.classList.remove('gt-quick-on'); clearTimeout(Q.timer); clearInterval(Q.iv); if (Q.off) Q.off(); if (Q.el) Q.el.remove(); if (Q.critter) { const c = Q.critter; setTimeout(() => c.remove(), Q.done && !Q.caught ? 700 : 0); } }
 /** The creature itself, out from under the stone and making for the pool (its own Field Journal picture, small, on the ground). */
 function _gtqCritter(st, id, ms, motion) {
   const box = typeof _gw !== 'undefined' && _gw.box; if (!box || typeof gardenCatchSvg !== 'function' || typeof _ghProject !== 'function') return null;

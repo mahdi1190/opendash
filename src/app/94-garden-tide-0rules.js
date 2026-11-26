@@ -509,10 +509,10 @@ function gardenTideScatter(w, o) {
   for (const z of zones) {
     const list = F.bandZ.get(z), r = gardenRand(gardenHash('tide|' + seed + '|' + w + '|' + z)), cells = list.length / 7;
     const n = Math.max(3, Math.min(10, Math.round(cells / 7))) + rich, ns = storm >= 0 ? 2 : 0, mine = [];
-    for (let k = 0; k < (n + ns) * 10 && mine.length < n + ns; k++) {
+    for (let k = 0; k < Math.max(90, (n + ns) * 14) && mine.length < n + ns; k++) {
       const at = list[Math.floor(r() * list.length)], tx = at % F.FW, ty = (at - tx) / F.FW, x = ((tx + .5) * F.P + (r() - .5) * F.P) / W.cellW, y = ((ty + .5) * F.P + (r() - .5) * F.P - W.sky) / W.cellH;
       const h = gardenTideH(x, y); if (!(h >= 4 && h <= reachHigh * .9)) continue;
-      if (mine.some(p => Math.hypot(p.x - x, (p.y - y) * 1.3) < 1.4) || _gtdCrowded(x, y)) continue;
+      if (mine.some(p => Math.hypot(p.x - x, (p.y - y) * 1.3) < 1.4) || !gardenTideOpenSand(x, y)) continue;
       const kind = F.K[at] || 1, stormy = mine.length >= n;
       mine.push({ x, y, h, kind, find: gardenTideFindPick(kind, r, big, stormy), ph: r() });
     }
@@ -523,11 +523,31 @@ function gardenTideScatter(w, o) {
   return out;
 }
 
+const _gtdPlazas = { d: null, boxes: null };
+/** Is (x, y) at the foot of a plaza's face (a quay's wall is painted down from its lowest edge, a cell deep, across its width)? */
+function _gtdPlazaFace(x, y) {
+  const D = gardenIslandData();
+  if (_gtdPlazas.d !== D) { _gtdPlazas.d = D; _gtdPlazas.boxes = (D.routes || []).filter(r => r.tier === 'plaza' && !GT_SHORE_SURFACE.has(r.surface) && r.shape && r.shape.length > 2).map(r => { const xs = r.shape.map(q => q[0]), ys = r.shape.map(q => q[1]); return [Math.min(...xs), Math.max(...ys), Math.max(...xs)]; }); }
+  for (const b of _gtdPlazas.boxes) if (x > b[0] - .4 && x < b[2] + .4 && y > b[1] - .4 && y < b[1] + 1.45) return true;
+  return false;
+}
 /** Is (x, y) too close to a path, a standing thing, a plot or a painted thing's foot for something lying on the sand? */
 function _gtdCrowded(x, y) {
-  for (const [dx, dy] of [[0, 0], [-.45, 0], [.45, 0], [0, -.35], [0, .35]]) { const c = gardenIslandBaseCell(x + dx, y + dy); if (!c || !c.land || c.freshwater || c.route || c.staticId || c.solid || c.reservation) return true; }
+  if (!gardenIslandLandContains(x, y)) return true;
+  for (const [dx, dy] of [[0, 0], [-.45, 0], [.45, 0], [0, -.35], [0, .35]]) { const c = gardenIslandBaseCell(x + dx, y + dy); if (!c || c.freshwater || c.route || c.staticId || c.solid || c.reservation === 'apron' || c.reservation === 'landform') return true; }   // (the sea's cells round the waterline, the space behind a building and a pier's future place are still open sand)
   try { const V = typeof GardenPaintVale !== 'undefined' && GardenPaintVale.feet ? GardenPaintVale.feet() : []; for (const f of V) if (x > f.x0 - .45 && x < f.x1 + .45 && y > f.y0 - .4 && y < f.y1 + .4) return true; } catch (e) { /* no painted feet */ }
+  // (below a plaza, a quay's wall face is painted down towards the water: nothing lies at its foot)
+  if (_gtdPlazaFace(x, y)) return true;
+  try { if (typeof gardenIslandHarbourThings === 'function') for (const t of gardenIslandHarbourThings()) { const f = t.foot; if (x > f[0] - .5 && x < f[2] + .5 && y > f[1] - .6 && y < f[3] + .45) return true; } } catch (e) { /* no harbour */ }   // (the drying net, the boat on the sand, the crates: by the harbour's own rule, the same on every screen)
   return false;
+}
+
+/** Open beach at (x, y): clear of paths and standing things (_gtdCrowded), and the sand's own height there (not ground that rises
+ *  to a quay or a path: a thing lying there would sit on a wall's face). Mud by a river mouth is measured from the river instead. */
+function gardenTideOpenSand(x, y, wide) {
+  if (_gtdCrowded(x, y) || wide && (_gtdCrowded(x - .55, y) || _gtdCrowded(x + .55, y) || _gtdCrowded(x, y + .9))) return false;
+  const h = gardenTideH(x, y); if (!Number.isFinite(h)) return false;
+  return gardenTideFieldKind(x, y) === 3 || Math.abs(h - gardenIslandCoastDistance(x, y)) < 14;
 }
 
 /* ---------- storms ---------- */

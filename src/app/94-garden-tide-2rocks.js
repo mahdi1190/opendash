@@ -9,13 +9,33 @@
    barnacles and a limpet or two, a fringe of weed on the sea side, and the pool itself with the sky in it, a red anemone, a
    few pebbles on its floor. The stones that wobble at low water are live sprites (94-garden-tide-4pools.js).
    ============================================================ */
-const _gtp = { key: '', list: [] };
+const _gtp = { key: '', list: [], drawn: null, drawnKey: '' };
 const GT_ROCK = Object.freeze({ rockDk: '#5e584c', rockLo: '#857c6a', rock: '#a49b88', rockHi: '#cbc4b0', lichen: '#b8b46a', wet: '#6a6458', weed: ['#4f6a34', '#6a7e3e', '#8a8a4a'], pool: '#5f9296', poolDk: '#3e6e76', sky: '#d6ecea', anem: '#c8484a', anemHi: '#f08a7a', star: '#e0885a', barn: '#ece6d6' });
-/** Where the pools are: rocky tidal cells in the lower half of the beach, clear of paths and standing things, a few cells apart. */
-function gardenTidePools() {
+/** The pools as drawn: the rule's places (gardenTidePoolPlaces) less any the vale had already stood something on when it was
+ *  painted (a drying net, a boat on the sand, a boulder). Empty until the vale has painted, so nothing is offered that is not drawn. */
+function gardenTidePools() { return _gtp.drawn && _gtp.drawnKey === _gtp.key ? _gtp.drawn : []; }
+/** Where the pools may go: rocky tidal cells in the lower half of the beach, clear of paths and standing things, a few cells apart.
+ *  clear(p): a further test (the vale's own things); a place it refuses leaves room for its neighbour. */
+function gardenTidePoolPlaces(clear) {
   let S = null; try { S = gardenTideShore(); } catch (e) { return []; }
-  if (_gtp.key === S.lay) return _gtp.list;
-  const W = GARDEN_WORLD, D = gardenIslandData(), statics = D.static || [], cands = [], out = [];
+  if (_gtp.key !== S.lay || !_gtp.cands) _gtp.cands = _gtpCands(S);
+  _gtp.key = S.lay;
+  const out = [];
+  for (const c of _gtp.cands) {
+    if (out.some(p => Math.hypot(p.x - c.x - .5, (p.y - c.y - .5) * 1.3) < 2.6)) continue;
+    const p = _gtpPlace(c, out.length); if (clear && !clear(p)) continue;
+    out.push(p); if (out.length >= 24) break;
+  }
+  return out;
+}
+function _gtpPlace(c, n) {
+  const r = gardenRand(c.h), x = c.x + .5 + (r() - .5) * .36, y = c.y + .5 + (r() - .5) * .24;
+  // the way to the sea from here (a few coast distances round it): the shelf leans that way, the weed is on that side
+  const e = .4, gx = gardenIslandCoastDistance(x + e, y) - gardenIslandCoastDistance(x - e, y), gy = gardenIslandCoastDistance(x, y + e) - gardenIslandCoastDistance(x, y - e), gl = Math.hypot(gx, gy) || 1;
+  return Object.freeze({ id: 'tp' + c.x + '-' + c.y, n, x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100, rx: 19 + r() * 8, seed: c.h, zone: c.zone, d: c.d, sx: -gx / gl, sy: -gy / gl, stones: 1 + (c.h % 3 === 0 ? 1 : 0) });
+}
+function _gtpCands(S) {
+  const D = gardenIslandData(), statics = D.static || [], cands = [];
   for (const c of S.list) {
     if (c.k !== 2) continue;
     const b = gardenIslandBaseCell(c.x, c.y); if (!b || b.route || b.staticId || b.reserved || b.solid) continue;
@@ -24,17 +44,7 @@ function gardenTidePools() {
     const d = Math.max(gardenIslandCoastDistance(c.x + .5, c.y + .5), gardenTideRaiseAt(c.x + .5, c.y + .5)); if (d < 8 || d > 66) continue;   // (low enough on the shore that the sea fills it: the lower ones go under at high water, the upper ones only at a big tide or in a storm)
     cands.push({ x: c.x, y: c.y, d, zone: c.zone, h: gardenHash('tide-pool|' + c.x + ',' + c.y) });
   }
-  cands.sort((a, b) => a.h - b.h);
-  for (const c of cands) {
-    if (out.some(p => Math.hypot(p.x - c.x - .5, (p.y - c.y - .5) * 1.3) < 2.6)) continue;
-    const r = gardenRand(c.h), x = c.x + .5 + (r() - .5) * .36, y = c.y + .5 + (r() - .5) * .24;
-    // the way to the sea from here (a few coast distances round it): the shelf leans that way, the weed is on that side
-    const e = .4, gx = gardenIslandCoastDistance(x + e, y) - gardenIslandCoastDistance(x - e, y), gy = gardenIslandCoastDistance(x, y + e) - gardenIslandCoastDistance(x, y - e), gl = Math.hypot(gx, gy) || 1;
-    out.push(Object.freeze({ id: 'tp' + c.x + '-' + c.y, n: out.length, x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100, rx: 19 + r() * 8, seed: c.h, zone: c.zone, d: c.d, sx: -gx / gl, sy: -gy / gl, stones: 1 + (c.h % 3 === 0 ? 1 : 0) }));
-    if (out.length >= 24) break;
-  }
-  _gtp.key = S.lay; _gtp.list = out;
-  return out;
+  return cands.sort((a, b) => a.h - b.h);
 }
 /** The rock shelf and its pool, into a 2D context at world px (B: the paint kit's brush). */
 function _gtpPaint(B, kit, p, W) {
@@ -78,8 +88,12 @@ function _gtpPaint(B, kit, p, W) {
   for (let k = 0; k < 12; k++) { const t = (k / 11 - .5) * 1.6, ex = cx + (sx * Math.cos(t) - sy * Math.sin(t)) * rx * 1.55, ey = cy + (sx * Math.sin(t) + sy * Math.cos(t)) * ry * 1.45 + ry * .3; B.s('M' + ex + ' ' + ey + 'q' + ((r() - .5) * 4) + ' ' + (2 + r() * 3) + ' ' + ((r() - .5) * 6) + ' ' + (4 + r() * 4), P.weed[k % 3], 1.5 + r(), .85); }
 }
 if (window.GardenPaintVale) GardenPaintVale.parts.push({ id: 'tide-rocks', compose(C) {
-  const pools = gardenTidePools(); if (!pools.length) return;
-  const W = C.W, kit = C.kit;
+  const W = C.W, kit = C.kit, stood = typeof C.things === 'function' ? C.things() : [];
+  // (nothing overlaps: a pool and its shelf keep a stride clear of every thing the vale's other parts have stood up)
+  const clear = (p) => { const cx = p.x * W.cellW, cy = W.sky + p.y * W.cellH, rx = p.rx * 2.1 + 10, ry = p.rx * 1.25 + 8; for (const o of stood) { if (!o || !Number.isFinite(o.x) || !Number.isFinite(o.y) || o.depth != null && o.depth < -1000) continue;   /* (a flat piece of ground, the cove's shingle, is not a thing standing there) */ const b = Array.isArray(o.box) ? o.box : [-24, -40, 24, 6]; if (o.x + b[2] > cx - rx && o.x + b[0] < cx + rx && o.y + Math.max(b[3], 4) > cy - ry && o.y + Math.min(b[1], -6) * .35 < cy + ry) return false; } return true; };
+  const pools = gardenTidePoolPlaces(clear);
+  _gtp.drawn = pools; _gtp.drawnKey = _gtp.key;
+  if (!pools.length) return;
   for (const p of pools) {
     const cx = p.x * W.cellW, cy = W.sky + p.y * W.cellH, R = p.rx * 2.4;
     C.add([cx - R, cy - R * .8, cx + R, cy + R * .8], 41, (B) => _gtpPaint(B, kit, p, W));
