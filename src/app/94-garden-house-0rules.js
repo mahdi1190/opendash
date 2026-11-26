@@ -67,6 +67,13 @@ const HOUSE_PLAN = _hsF([
   _hsF({ s: 3, id: 'guest', name: 'The guest room', from: 2, cost: _hsF({ c: 500, t: 8, st: 8 }), via: 'door', blurb: 'Off the loft: a little room for a friend, with their name on the door.', use: 'Name it for a friend: their name goes on the door, and they get a key.' }),
 ]);
 const HOUSE_PLAN_OF = new Map(HOUSE_PLAN.map(r => [r.s, r]));
+/** What the builders leave in a room they finish (free, like the first things: put away, it goes in your things), so it is a room
+ *  from its first day: where it stands is clear of the room's doors, window and fire. */
+const HOUSE_ROOM_START = _hsF({
+  1: _hsF([_hsF({ d: 'hf-rocking-chair', x: 560, y: 478, r: 1, said: 'a rocking chair by the fire' })]),
+  2: _hsF([_hsF({ d: 'hf-oak-chest', x: 640, y: 452, said: 'an oak chest under the eaves' })]),
+  3: _hsF([_hsF({ d: 'hf-cottage-bed', x: 702, y: 470, said: 'a bed, made up' })]),
+});
 const HOUSE_ROOM_NAMES = _hsF({ 0: 'The kitchen', 1: 'The parlour', 2: 'The loft', 3: 'The guest room' });
 /** The other rooms' shells, as they are with nothing built beyond them (houseShellFor adds the way on). */
 const _HS_SHELLS = _hsF({
@@ -362,7 +369,7 @@ function houseOpShape(op) {
     case 'lift': case 'use': return id(op.u) ? '' : 'id';
     case 'wall': case 'floor': return _hsInt(op.s, 0, HOUSE_SLOTS - 1) && typeof op.d === 'string' ? '' : 'finish';
     case 'jar': return HOUSE_PLAN_OF.has(op.s) && px(op.c || 0, 99999) && px(op.t || 0, 999) && px(op.st || 0, 999) && (op.c || 0) + (op.t || 0) + (op.st || 0) > 0 ? '' : 'jar';
-    case 'help': case 'ready': return HOUSE_PLAN_OF.has(op.s) && px(op.seed || 0, 9999) ? '' : 'room';
+    case 'help': case 'ready': return HOUSE_PLAN_OF.has(op.s) && px(op.seed || 0, 9999) && (op.us == null || Array.isArray(op.us) && op.us.length <= 4 && op.us.every(id)) ? '' : 'room';
     case 'guest': return HOUSE_PLAN_OF.has(op.s) && typeof (op.n == null ? '' : op.n) === 'string' && String(op.n || '').length <= 22 ? '' : 'guest';
     case 'banner': return typeof op.b === 'string' && HOUSE_BANNER_RE.test(op.b) ? '' : 'banner';
     case 'dye': return id(op.u) && px(op.v, 7) && (op.k == null || /^crop:[a-z0-9-]{1,32}$/.test(String(op.k))) ? '' : 'dye';
@@ -457,7 +464,7 @@ function houseOpTouches(op, g) {
     case 'wall': case 'floor': rows.push(['hr', String(op.s)]); if (op.lk) rows.push(['led', op.lk]); break;
     case 'jar': rows.push(['hs', 'jar'], ['hr', String(op.s)]); if (op.lk) rows.push(['led', op.lk]); break;
     case 'help': case 'ready': {
-      rows.push(['hr', String(op.s)], ['hs', 'hw'], ['hs', 'hands'], ['hs', 'made']);
+      rows.push(['hr', String(op.s)], ['hs', 'hw'], ['hs', 'hands'], ['hs', 'made']); for (const u of op.us || []) rows.push(['hf', u]);
       const row = HOUSE_PLAN_OF.get(op.s), plan = row ? houseMakeWayPlan(g, row.from, houseShellFor(row.from, _hsRoomsDone(g, op.s))) : { moves: [], away: [] };
       for (const m of plan.moves) rows.push(['hf', m.u]); for (const u of plan.away) piece(u);
       break;
@@ -525,6 +532,7 @@ function houseOpApply(g, op, who, W) {
       for (const m of plan.moves) { const r = map('hf')[m.u]; if (r) { r.x = m.x; r.y = m.y; r.at = now; touch('hf', m.u); } }
       for (const u of plan.away) away(u);
       hr[String(op.s)] = { st: 2, w: HOUSE_WALL0, f: HOUSE_FLOOR0, at: now, d: today }; touch('hr', String(op.s));
+      (HOUSE_ROOM_START[op.s] || []).forEach((p, i) => { const u = op.us && op.us[i]; if (!u || _hsOwn(map('hf'), u) || !_hsDecor(p.d)) return; g.hf[u] = { d: p.d, s: op.s, x: p.x, y: p.y, z: 0, r: p.r || 0, v: 0, l: 0, at: now }; touch('hf', u); });   // (what the builders left)
       const hs = map('hs'); hs.hw = { s: op.s, d: today, seed: op.seed | 0 }; touch('hs', 'hw');
       if (who && op.o === 'help') { const L = Array.isArray(hs.hands) ? hs.hands.slice(-11) : []; L.push([String(op.i || '?').slice(0, 1).toUpperCase(), (op.col | 0) % 16, op.s]); hs.hands = L; touch('hs', 'hands'); }
       if (plan.moves.length || plan.away.length) { hs.made = { s: row.from, n: plan.moves.length, a: plan.away.length, d: today }; touch('hs', 'made'); }

@@ -93,9 +93,10 @@ function _hsPostRead(L) {
   return foot;
 }
 function _hsItemWords(it, n) {
-  if (it === 'mat:stone') return n === 1 ? 'a good stone' : `${n} good stones`;
-  if (it === 'mat:timber') return n === 1 ? 'a length of timber' : `${n} lengths of timber`;
-  if (it.startsWith('seed:')) { const p = gardenPlant(it.slice(5)); return `${n} packet${n === 1 ? '' : 's'} of ${p ? p.name.toLowerCase() : 'seeds'}`; }
+  const num = ['no', 'a', 'two', 'three', 'four', 'five', 'six'][n] || String(n);
+  if (it === 'mat:stone') return n === 1 ? 'a good stone' : `${num} good stones`;
+  if (it === 'mat:timber') return n === 1 ? 'a length of timber' : `${num} lengths of timber`;
+  if (it.startsWith('seed:')) { const p = gardenPlant(it.slice(5)); return `${num} packet${n === 1 ? '' : 's'} of ${p ? p.name.toLowerCase().replace(/ tree$/, '') : ''} seeds`.replace('  ', ' '); }
   if (it.startsWith('decor:')) { const d = gardenDecor(it.slice(6)); return d && typeof _gscA === 'function' ? _gscA(houseLowName(d)) : 'a present'; }
   return 'something';
 }

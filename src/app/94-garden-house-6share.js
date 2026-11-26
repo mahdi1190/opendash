@@ -31,7 +31,7 @@ function _hsOpOfIntent(ev) {
     case 'use': return { o: 'use', u: String(ev.u || '') };
     case 'wall': case 'floor': return { o: ev.item, s: slot, d: String(ev.p || ''), lk: 'hfw.' + slot + '.' + String(ev.i || '').slice(0, 24) };
     case 'jar': return { o: 'jar', s: slot, c: ev.p === 'coin' ? ev.fx | 0 : 0, t: ev.p === 'timber' ? 1 : 0, st: ev.p === 'stone' ? 1 : 0 };   // (what they put in came out of their own purse, on their page)
-    case 'help': { const n = typeof _glhByName === 'function' ? _glhByName(ev.f) : ''; return { o: 'help', s: slot, seed: Math.floor(Math.random() * 9999), i: String(n || '?').charAt(0), col: gardenHash(String(ev.f || '')) % 16 }; }
+    case 'help': { const n = typeof _glhByName === 'function' ? _glhByName(ev.f) : ''; return { o: 'help', s: slot, seed: Math.floor(Math.random() * 9999), i: String(n || '?').charAt(0), col: gardenHash(String(ev.f || '')) % 16, us: (HOUSE_ROOM_START[slot] || []).map(() => _gdUid('h')) }; }
     case 'dye': return Object.assign({ o: 'dye', u: String(ev.u || ''), v: ev.fx | 0 }, ev.fx ? { k: 'crop:' + String(ev.p || '') } : {});
   }
   return null;

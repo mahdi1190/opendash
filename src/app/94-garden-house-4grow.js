@@ -93,7 +93,8 @@ function _hsPlanBody(el, again) {
       put.title = any ? 'Put in ' + _hsCostWords(can) : 'Coins come from real work, timber from focus time, stone from finished tasks';
       put.onclick = () => { if (_hsJarPut(row, can)) setTimeout(again, 60); };
       card.appendChild(put);
-      card.appendChild(gpEl('p', 'muted hs-plan-need', `Still needed: ${_hsCostWords(need)}. You have ${P.c >= 1e9 ? 'all the' : P.c} coins, ${P.t} timber and ${P.st} stone.`));
+      const n = x => Number(x).toLocaleString();
+      card.appendChild(gpEl('p', 'muted hs-plan-need', `Still needed: ${_hsCostWords(need)}. You have ${P.c >= 1e9 ? 'all the' : n(P.c)} coins, ${n(P.t)} timber and ${n(P.st)} stone.`));
     } else {
       const from = HOUSE_PLAN_OF.get(row.from); card.appendChild(gpEl('p', 'muted hs-plan-need', `${_hsCostWords(row.cost)}, after ${from ? from.name.replace(/^The /, 'the ') : 'the room before'}.`));
     }
@@ -159,7 +160,7 @@ function _hsGrowTick() {
   const g = _gdG(), hr = g.hr || {}, today = _gdToday();
   for (const row of HOUSE_PLAN) {
     const me = hr[String(row.s)]; if (!me || Number(me.st) !== 3 || (me.d && String(me.d) > today)) continue;
-    const r = houseDo({ o: 'ready', s: row.s, seed: Math.floor(Math.random() * 9999) }, '', { noUndo: true });
+    const r = houseDo({ o: 'ready', s: row.s, seed: Math.floor(Math.random() * 9999), us: (HOUSE_ROOM_START[row.s] || []).map(() => _gdUid('h')) }, '', { noUndo: true });
     if (r.ok) _hsBuiltNow(row.s, '');
   }
 }
@@ -168,7 +169,8 @@ function _hsBuiltNow(slot, by) {
   const row = HOUSE_PLAN_OF.get(slot); if (!row) return;
   const g = _gdG(), made = g.hs && g.hs.made && g.hs.made.s === row.from && g.hs.made.d === _gdToday() ? g.hs.made : null;
   const who = by && typeof _glhByName === 'function' ? _glhByName(by) : '';
-  const line = `${row.name} is finished${who ? `: ${who} lent the builders a hand` : ''}! ${row.via === 'ladder' ? 'There is a ladder up to it from the parlour.' : row.via === 'door' ? 'Its door is in the loft.' : 'Its doorway is at the end of the kitchen.'}` + (made && made.n + made.a ? ` The builders moved ${made.n + made.a === 1 ? 'one thing' : 'a few things'} out of the way${made.a ? ' (what had nowhere to go is in your chest)' : ''}.` : '');
+  const left = (HOUSE_ROOM_START[slot] || []).map(p => p.said).filter(Boolean).join(' and ');
+  const line = `${row.name} is finished${who ? `: ${who} lent the builders a hand` : ''}! ${row.via === 'ladder' ? 'There is a ladder up to it from the parlour.' : row.via === 'door' ? 'Its door is in the loft.' : 'Its doorway is at the end of the kitchen.'}${left ? ` The builders left ${left}.` : ''}` + (made && made.n + made.a ? ` The builders moved ${made.n + made.a === 1 ? 'one thing' : 'a few things'} out of the way${made.a ? ' (what had nowhere to go is in your chest)' : ''}.` : '');
   try { gardenToast(line, { icon: 'house', kind: 'ok' }); } catch (e) { /* only words */ }
   if (_hsInside()) { _grmSay(line, 10000); try { GardenNativeRooms.burst(); } catch (e) { /* fine */ } }
   try { if (typeof _fxSound === 'function') _fxSound('fanfare'); } catch (e) { /* no sound */ }
@@ -177,95 +179,128 @@ function _hsBuiltNow(slot, by) {
 }
 
 /* ---------- outside: the cottage as it grows ---------- */
-const _hso = { sprites: new Map(), key: '', at: 0, soon: false };
+const _hso = { sprites: new Map(), key: '', at: 0, soon: false, ms: 0, roofs: new Map() };
 function _hsOutsideSoon() { _hso.soon = true; _hso.key = ''; }
 /** The house's drawn picture in the world: { cx, foot, x0, x1, top, w, h } in world px, or null (not drawn yet, or not a painted building). */
 function _hsOutBox(id) {
   try {
     const W = _gw.nativeWorld, rec = W && W.entities && W.entities.get('prop:' + id); if (!rec || !rec.bounds) return null;
     const b = rec.bounds, f = rec.metadata && rec.metadata.foot; if (!f || !Number.isFinite(f.x) || !Number.isFinite(f.y) || !(b.width > 20)) return null;
-    return { cx: f.x, foot: f.y, x0: b.x, x1: b.x + b.width, top: b.y, w: b.width, h: f.y - b.y };
+    return { cx: f.x, foot: f.y, x0: b.x, x1: b.x + b.width, top: b.y, w: b.width, h: f.y - b.y, rec };
   } catch (e) { return null; }
 }
-/** What the outside shows: the rooms' states, the banner, the mailbox flag (one string: drawn again only when it changes). */
+/**
+ * The top edge of the house's own drawn picture (its roof, its chimney), read once from the picture's pixels: { at(dx) -> dy } in world px
+ * from the foot point, or null. So what stands on the roof (a chimney, the banner's pole) stands on it, whatever the house is.
+ */
+function _hsOutRoof(B) {
+  try {
+    const inner = B.rec && B.rec.node && B.rec.node._inner; if (!inner || !inner.list) return null;
+    let main = null; for (const o of inner.list) if (o && o.type === 'Image' && o.frame && (!main || o.displayWidth * o.displayHeight > main.displayWidth * main.displayHeight)) main = o;
+    if (!main) return null;
+    const key = main.texture.key + '|' + main.frame.name + '|' + Math.round(main.x) + '|' + Math.round(main.y) + '|' + Math.round(main.displayWidth);
+    if (_hso.roofs.has(key)) return _hso.roofs.get(key);
+    const src = main.texture.getSourceImage(), f = main.frame, N = 64, M = 80, c = document.createElement('canvas'); c.width = N; c.height = M;
+    const cx = c.getContext('2d', { willReadFrequently: true }); cx.drawImage(src, f.cutX, f.cutY, f.cutWidth, f.cutHeight, 0, 0, N, M);
+    const data = cx.getImageData(0, 0, N, M).data, tops = [];
+    for (let i = 0; i < N; i++) { let y = M; for (let j = 0; j < M; j++) if (data[(j * N + i) * 4 + 3] > 150) { y = j; break; } tops.push(y); }
+    const x0 = main.x - main.displayWidth * main.originX, y0 = main.y - main.displayHeight * main.originY, sx = main.displayWidth / N, sy = main.displayHeight / M;
+    const R = { at(dx) { const i = Math.floor((B.cx + dx - x0) / sx); if (i < 0 || i >= N || tops[i] >= M) return null; return y0 + (tops[i] + .5) * sy - B.foot; } };
+    _hso.roofs.set(key, R); if (_hso.roofs.size > 8) _hso.roofs.delete(_hso.roofs.keys().next().value);
+    return R;
+  } catch (e) { return null; }
+}
+/** What the outside shows: the rooms' states, the banner, the mailbox flag, day or night (one string: drawn again only when it changes). */
 function gardenHouseOutsideKey() {
   const v = _hsView(); if (!v) return '';
   const r = HOUSE_PLAN.map(p => Number((v.rooms[String(p.s)] || {}).st) || 0).join(''), flag = typeof _hsPostUnread === 'function' && !gpVisiting() ? _hsPostUnread() : 0;
-  return v.home + '|' + r + '|' + (v.bn || HOUSE_BANNER0) + '|' + (flag ? 1 : 0);
+  return v.home + '|' + r + '|' + (v.bn || HOUSE_BANNER0) + '|' + (flag ? 1 : 0) + '|' + (_hsNight() ? 'n' : 'd');
 }
+function _hsNight() { try { const t = gardenHere().tod; return t === 'dusk' || t === 'night'; } catch (e) { return false; } }
 /** One part as a world sprite: anchored (ax, ay) world px from the house's foot point, drawn round that anchor (svg in world px), and
- *  sorted with the house (z just in front of its foot). lift: how high the anchor stands above the ground (for what hangs on the walls). */
+ *  sorted just in front of the house's own row (z: its foot row and a hair), behind anyone who stands in front of it. lift: how high the
+ *  anchor is above the ground. */
 function _hsOutSprite(key, B, ax, ay, svg, dz, o) {
-  const W = GARDEN_WORLD, x = (B.cx + ax) / W.cellW, y = (B.foot - W.sky) / W.cellH, lift = -ay;
+  const W = GARDEN_WORLD, x = (B.cx + ax) / W.cellW, y = (B.foot + 2 - W.sky) / W.cellH, lift = -ay, z = y + (dz || .02);
   let S = _hso.sprites.get(key);
   if (S && S.node && !S.node.isConnected) { try { S.remove(); } catch (e) { /* gone */ } _hso.sprites.delete(key); S = null; }
-  if (!S) { S = wdSprite(Object.assign({ id: 'hs-out-' + key, x, y, z: y + (dz || .02), lift, still: true, svg }, o || {})); _hso.sprites.set(key, S); }
-  else { if (S.x !== x || S.y !== y || S.lift !== lift) { S.x = x; S.y = y; S.z = y + (dz || .02); S.lift = lift; S.tf = null; } wdArt(S, svg); }
+  if (!S) { S = wdSprite(Object.assign({ id: 'hs-out-' + key, x, y, z, lift, still: true, svg }, o || {})); _hso.sprites.set(key, S); }
+  else { if (S.x !== x || S.y !== y || S.lift !== lift || S.z !== z) { S.x = x; S.y = y; S.z = z; S.lift = lift; S.tf = null; S.zk = null; } wdArt(S, svg); }
   return S;
 }
 function _hsOutClear(keep) { for (const [k, S] of _hso.sprites) if (!keep.has(k)) { try { S.remove(); } catch (e) { /* gone */ } _hso.sprites.delete(k); } }
-/** Draw what the house shows outside, from its rooms (yours, or your friend's snapshot). */
+/** Draw what the house shows outside, from its rooms (yours, or your friend's snapshot). Placed by its drawn picture: its box and foot,
+ *  and the top edge of its roof read from the picture itself. */
 function _hsOutsidePaint() {
-  const H = gardenHouseMine(), keep = new Set();
+  const t0 = performance.now(), H = gardenHouseMine(), keep = new Set();
   if (!H || !H.moved) { _hsOutClear(keep); return; }
   const B = _hsOutBox(H.id); if (!B) { _hsOutClear(keep); _hso.key = ''; return; }
   const v = _hsView(); if (!v) { _hsOutClear(keep); return; }
-  const st = s => Number((v.rooms[String(s)] || {}).st) || 0;
-  // the scaffold while the builders work: poles, boards and a ladder on the right of the front, timber and stone at its foot
-  if (HOUSE_PLAN.some(p => st(p.s) === 3)) { keep.add('scaffold'); _hsOutSprite('scaffold', B, B.w * .28, 0, _hsScaffoldSvg(B, -B.w * .28), .03, { hit: .9, hitUp: 30, label: 'The builders are at work', cursor: 'hand', onClick: () => _hsPlanOpen() }); }
-  // what each room added: the parlour window boxes, the loft a little dormer in the roof, the guest room a chimney of its own
-  for (const p of HOUSE_PLAN) if (st(p.s) === 2) { const svg = _hsAddSvg(p.id, B); if (svg) { keep.add('add-' + p.id); _hsOutSprite('add-' + p.id, B, 0, 0, svg, .015); } }
-  // your banner on its bracket at the corner, and the mailbox by the door
-  const fx = -B.w * .45 - 22, fy = -B.h * .3 - 20;
-  keep.add('banner'); _hsOutSprite('banner', B, fx, fy, _hsBannerOutSvg(B, v.bn || HOUSE_BANNER0, 22, 20), .025, { hit: .45, hitUp: 0, label: H.visit ? 'Their banner' : 'Your banner', cursor: 'hand', onClick: () => { if (typeof _hsBannerOpen === 'function') _hsBannerOpen(); } });
-  if (typeof _hsMailboxSvg === 'function') { const mx = -B.w * .2; keep.add('mailbox'); _hsOutSprite('mailbox', B, mx, 6, _hsMailboxSvg(B), .04, { hit: .55, hitUp: 24, label: H.visit ? 'Their mailbox' : 'Your mailbox', cursor: 'hand', onClick: () => { if (typeof _hsPostOpen === 'function') _hsPostOpen(); } }); }
+  const st = s => Number((v.rooms[String(s)] || {}).st) || 0, night = _hsNight(), roof = _hsOutRoof(B), w = B.w, h = B.h;
+  // what each room added, in the cottage's own picture: the parlour a bay window, the loft a dormer in the thatch, the guest room a chimney of its own
+  if (st(1) === 2) { keep.add('add-parlour'); _hsOutSprite('add-parlour', B, w * .235, 0, _hsBaySvg(B, night), .012); }
+  if (st(2) === 2) { keep.add('add-loft'); _hsOutSprite('add-loft', B, 0, -h * .62, _hsDormerSvg(B, night), .011); }
+  if (st(3) === 2 && roof) { const dx = -w * .3, top = roof.at(dx); if (top != null && top < -h * .35) { keep.add('add-guest'); _hsOutSprite('add-guest', B, dx, top, _hsChimneySvg(B, v.hw), .01); } }
+  // the scaffold while the builders work: in front of the right of the house, up to its eaves
+  if (HOUSE_PLAN.some(p => st(p.s) === 3)) { keep.add('scaffold'); _hsOutSprite('scaffold', B, w * .25, 0, _hsScaffoldSvg(B), .03, { hit: .9, hitUp: 24, label: 'The builders are at work', cursor: 'hand', onClick: () => _hsPlanOpen() }); }
+  // your banner on a pole from the roof, and the mailbox by the door
+  if (roof) { const dx = -w * .14, top = roof.at(dx); if (top != null) { keep.add('banner'); _hsOutSprite('banner', B, dx, top + 3, _hsBannerOutSvg(v.bn || HOUSE_BANNER0), .013, { hit: .5, hitUp: 30, label: H.visit ? 'Their banner' : 'Your banner', cursor: 'hand', onClick: () => { if (typeof _hsBannerOpen === 'function') _hsBannerOpen(); } }); } }
+  if (typeof _hsMailboxSvg === 'function') { keep.add('mailbox'); _hsOutSprite('mailbox', B, -w * .148, 2, _hsMailboxSvg(B), .04, { hit: .5, hitUp: 18, label: H.visit ? 'Their mailbox' : 'Your mailbox', cursor: 'hand', onClick: () => { if (typeof _hsPostOpen === 'function') _hsPostOpen(); } }); }
   _hsOutClear(keep);
+  _hso.ms = Math.round((performance.now() - t0) * 10) / 10;
 }
-/** Scaffold: two bays of poles and boards across the right of the front, a ladder, a tarpaulin, the materials stacked at its foot. */
-function _hsScaffoldSvg(B, ox) {
-  const x0 = ox + B.w * .1, x1 = ox + B.w * .46, top = -B.h * .66, mid = -B.h * .34, wood = '#9a7448', dk = '#6a4a2a';
-  let s = `<ellipse cx="${(x0 + x1) / 2}" cy="2" rx="${(x1 - x0) * .6}" ry="3.4" fill="#2a2418" opacity=".22"/>`;
-  for (const x of [x0, (x0 + x1) / 2, x1]) s += `<rect x="${x - 1.4}" y="${top}" width="2.8" height="${-top + 1}" fill="${wood}"/><rect x="${x - 1.4}" y="${top}" width="1" height="${-top}" fill="#c8a070" opacity=".6"/>`;
-  for (const y of [mid, top + 6]) s += `<rect x="${x0 - 4}" y="${y - 2}" width="${x1 - x0 + 8}" height="4" rx="1" fill="${dk}"/><rect x="${x0 - 4}" y="${y - 2}" width="${x1 - x0 + 8}" height="1.2" fill="#b8905a" opacity=".7"/>`;
-  s += `<path d="M${x0} ${mid}L${(x0 + x1) / 2} ${top + 6}M${(x0 + x1) / 2} ${mid}L${x1} ${top + 6}" stroke="${wood}" stroke-width="1.6" opacity=".85"/>`;
-  // a ladder up the front to the lower boards
-  const lx = x1 - 10; s += `<path d="M${lx - 4} 0L${lx - 2} ${mid}M${lx + 4} 0L${lx + 6} ${mid}" stroke="#b8905a" stroke-width="1.6"/>`; for (let y = -6; y > mid; y -= 7) s += `<path d="M${lx - 4 + (y / mid) * 2} ${y}H${lx + 4 + (y / mid) * 2}" stroke="#b8905a" stroke-width="1.2"/>`;
-  // a tarpaulin over the top boards, tied down
-  s += `<path d="M${x0 - 6} ${top + 4}Q${(x0 + x1) / 2} ${top - 8} ${x1 + 6} ${top + 4}L${x1 + 8} ${top + 18}Q${(x0 + x1) / 2} ${top + 12} ${x0 - 8} ${top + 18}Z" fill="#5a7a8a" opacity=".92"/><path d="M${x0 + 4} ${top + 2}V${top + 14}M${x1 - 4} ${top + 2}V${top + 16}" stroke="#3a5a6a" stroke-width="1"/>`;
-  // timber and stone at the foot
-  const px = x0 - 22; s += `<ellipse cx="${px + 6}" cy="1.5" rx="13" ry="2.6" fill="#2a2418" opacity=".25"/>`;
-  for (let i = 0; i < 3; i++) s += `<rect x="${px - 6}" y="${-4 - i * 3.2}" width="22" height="3" rx="1" fill="${i % 2 ? '#a87c4f' : '#8a6238'}"/><ellipse cx="${px + 16}" cy="${-2.5 - i * 3.2}" rx="1.4" ry="1.5" fill="#d8b480"/>`;
-  for (const [dx, dy, r] of [[18, -2.4, 3.4], [23, -2.2, 2.8], [20.5, -6, 2.6]]) s += `<ellipse cx="${px + dx}" cy="${dy}" rx="${r}" ry="${r * .8}" fill="#a8a296"/><ellipse cx="${px + dx - .8}" cy="${dy - .8}" rx="${r * .5}" ry="${r * .35}" fill="#d0ccc2" opacity=".7"/>`;
+/** Scaffold round its own anchor: three poles, two boards, braces, a ladder, a tarpaulin over the eaves, timber and stone at its foot. */
+function _hsScaffoldSvg(B) {
+  const hw = B.w * .15, eave = -B.h * .25, x0 = -hw, x1 = hw, top = eave - 8, wood = '#9a7448', dk = '#6a4a2a';
+  let s = `<ellipse cx="0" cy="2" rx="${hw * 1.2}" ry="3.2" fill="#2a2418" opacity=".24"/>`;
+  for (const x of [x0, 0, x1]) s += `<rect x="${x - 1.3}" y="${top}" width="2.6" height="${-top + 1}" fill="${wood}"/><rect x="${x - 1.3}" y="${top}" width=".9" height="${-top}" fill="#c8a070" opacity=".6"/><ellipse cx="${x}" cy="1" rx="2.6" ry="1" fill="#3a2a1a" opacity=".5"/>`;
+  for (const y of [eave * .45, eave + 1]) s += `<rect x="${x0 - 4}" y="${y - 2}" width="${x1 - x0 + 8}" height="3.6" rx="1" fill="${dk}"/><rect x="${x0 - 4}" y="${y - 2}" width="${x1 - x0 + 8}" height="1.1" fill="#b8905a" opacity=".7"/><rect x="${x0 - 4}" y="${y + 1.6}" width="${x1 - x0 + 8}" height="1.6" fill="#000" opacity=".18"/>`;
+  s += `<path d="M${x0} ${eave * .45}L0 ${eave + 1}M0 ${eave * .45}L${x1} ${eave + 1}" stroke="${wood}" stroke-width="1.3" opacity=".85"/>`;
+  const lx = x1 - 5; s += `<path d="M${lx - 3.5} 0L${lx - 2} ${eave * .45}M${lx + 3.5} 0L${lx + 5} ${eave * .45}" stroke="#b8905a" stroke-width="1.4"/>`; for (let y = -5; y > eave * .45; y -= 5.5) s += `<path d="M${lx - 3.4} ${y}H${lx + 3.6}" stroke="#b8905a" stroke-width="1.1"/>`;
+  s += `<path d="M${x0 - 6} ${top + 3}Q0 ${top - 5} ${x1 + 6} ${top + 3}L${x1 + 7} ${top + 12}Q0 ${top + 7} ${x0 - 7} ${top + 12}Z" fill="#4e6e7e" opacity=".95"/><path d="M${x0 - 6} ${top + 3}Q0 ${top - 5} ${x1 + 6} ${top + 3}" fill="none" stroke="#7a9aa8" stroke-width="1"/><path d="M${x0 + 3} ${top + 2}V${top + 12}M${x1 - 3} ${top + 2}V${top + 13}" stroke="#2e4a58" stroke-width=".9"/>`;
+  const px = x1 + 10; s += `<ellipse cx="${px + 3}" cy="1.6" rx="10" ry="2.4" fill="#2a2418" opacity=".25"/>`;
+  for (let i = 0; i < 3; i++) s += `<rect x="${px - 7}" y="${-3.6 - i * 2.8}" width="16" height="2.6" rx="1" fill="${i % 2 ? '#a87c4f' : '#8a6238'}"/><ellipse cx="${px + 9}" cy="${-2.3 - i * 2.8}" rx="1.2" ry="1.3" fill="#d8b480"/>`;
+  for (const [dx, dy, r] of [[12, -2.2, 2.8], [16, -2, 2.3], [14, -5.2, 2.2]]) s += `<ellipse cx="${px + dx}" cy="${dy}" rx="${r}" ry="${r * .8}" fill="#a8a296"/><ellipse cx="${px + dx - .7}" cy="${dy - .7}" rx="${r * .5}" ry="${r * .35}" fill="#d0ccc2" opacity=".7"/>`;
   return s;
 }
-/** What a finished room adds to the cottage's own picture, in proportion to it (fractions of its drawn box). */
-function _hsAddSvg(id, B) {
-  const w = B.w, h = B.h, eave = -h * .3;
-  if (id === 'parlour') {   // window boxes of flowers along the front, one under each window
-    let s = '';
-    for (const fx of [-.27, .27]) { const x = w * fx, y = -h * .07; s += `<ellipse cx="${x}" cy="${y + 3}" rx="13" ry="2" fill="#2a2418" opacity=".2"/><rect x="${x - 12}" y="${y - 4}" width="24" height="6" rx="1" fill="#7a5232"/><rect x="${x - 12}" y="${y - 4}" width="24" height="1.6" fill="#a87c4f"/>`; for (let i = 0; i < 7; i++) { const fx2 = x - 10 + i * 3.4, c = ['#e84a5a', '#f4c040', '#c870d8', '#ffffff'][i % 4]; s += `<circle cx="${fx2}" cy="${y - 6 - (i % 2) * 2}" r="2.6" fill="#4a8a3a"/><circle cx="${fx2 + .6}" cy="${y - 8 - (i % 3)}" r="1.5" fill="${c}"/>`; } }
-    return s;
-  }
-  if (id === 'loft') {   // a little gabled dormer in the roof, over the door, its window lit
-    const x = 0, y = eave - h * .2, dw = Math.max(16, w * .12), dh = dw * .9;
-    return `<path d="M${x - dw / 2 - 3} ${y - dh * .55}L${x} ${y - dh * 1.15}L${x + dw / 2 + 3} ${y - dh * .55}Z" fill="#8a6a3a"/><path d="M${x - dw / 2 - 3} ${y - dh * .55}L${x} ${y - dh * 1.15}L${x + dw / 2 + 3} ${y - dh * .55}" fill="none" stroke="#c8a464" stroke-width="1.6"/>`
-      + `<rect x="${x - dw / 2}" y="${y - dh * .58}" width="${dw}" height="${dh * .62}" fill="#efe6d2"/><rect x="${x - dw / 2 + 2.5}" y="${y - dh * .5}" width="${dw - 5}" height="${dh * .46}" fill="#3a4a5a"/><path d="M${x} ${y - dh * .5}V${y - dh * .04}M${x - dw / 2 + 2.5} ${y - dh * .28}H${x + dw / 2 - 2.5}" stroke="#efe6d2" stroke-width="1.2"/>`
-      + `<path d="M${x - dw / 2 - 2} ${y + 1}Q${x} ${y + 5} ${x + dw / 2 + 2} ${y + 1}" fill="#b8945a"/>`;
-  }
-  if (id === 'guest') {   // a second chimney at the other end of the ridge
-    const x = -w * .3, y = -h * .86, cw = Math.max(8, w * .06);
-    return `<rect x="${x - cw / 2}" y="${y}" width="${cw}" height="${h * .2}" fill="#a85a3a"/><rect x="${x - cw / 2}" y="${y}" width="${cw * .35}" height="${h * .2}" fill="#c8704a" opacity=".7"/><rect x="${x - cw / 2 - 1.5}" y="${y - 2}" width="${cw + 3}" height="3" fill="#8a4a32"/><rect x="${x - 2}" y="${y - 6}" width="4" height="4" fill="#7a4a3a"/>`;
-  }
-  return '';
+/** The parlour's bay window, built out over the right-hand window of the front: three lights, a little lead roof, a sill with a pot. */
+function _hsBaySvg(B, night) {
+  const w = Math.max(18, B.w * .13), h = Math.max(14, B.h * .14), y0 = -B.h * .095, top = y0 - h, glass = night ? '#ffd890' : '#3a4a5a', glass2 = night ? '#f4c070' : '#2e3e4e';
+  const side = w * .2;
+  return `<path d="M${-w / 2 - 1} ${y0 + 1}H${w / 2 + 1}L${w / 2 - 1} ${y0 + 4}H${-w / 2 + 1}Z" fill="#2a2418" opacity=".22"/>`
+    + `<rect x="${-w / 2}" y="${top}" width="${w}" height="${h}" fill="#f2ece0"/>`
+    + `<rect x="${-w / 2 + side + 1.4}" y="${top + 2}" width="${w - side * 2 - 2.8}" height="${h - 4}" fill="${glass}"/><rect x="${-w / 2 + 1.2}" y="${top + 2.4}" width="${side - 1.2}" height="${h - 4.8}" fill="${glass2}"/><rect x="${w / 2 - side}" y="${top + 2.4}" width="${side - 1.2}" height="${h - 4.8}" fill="${glass2}"/>`
+    + `<path d="M0 ${top + 2}V${y0 - 2}M${-w / 2 + side + 1.4} ${top + h * .42}H${w / 2 - side - 1.4}" stroke="#f2ece0" stroke-width="1"/>`
+    + (night ? `<rect x="${-w / 2 + side + 1.4}" y="${top + 2}" width="${w - side * 2 - 2.8}" height="${h - 4}" fill="#fff4c8" opacity=".25"/>` : `<path d="M${-w / 2 + side + 3} ${top + 3}l4 ${h * .5}" stroke="#ffffff" stroke-width="1" opacity=".3"/>`)
+    + `<path d="M${-w / 2 - 2} ${top + .5}L${-w / 2 + 2} ${top - 4}H${w / 2 - 2}L${w / 2 + 2} ${top + .5}Z" fill="#5a6470"/><path d="M${-w / 2 + 2} ${top - 4}H${w / 2 - 2}" stroke="#8a949e" stroke-width=".8"/>`
+    + `<rect x="${-w / 2 - 1.5}" y="${y0 - 1}" width="${w + 3}" height="2.4" fill="#d8d0c0"/><rect x="${w * .18}" y="${y0 - 5}" width="4" height="4" fill="#b86a44"/><circle cx="${w * .18 + 2}" cy="${y0 - 6.4}" r="2.6" fill="#4a8a3a"/><circle cx="${w * .18 + 2.8}" cy="${y0 - 7.6}" r="1.2" fill="#e84a5a"/>`;
 }
-/** Your banner flying from a bracket on the house's corner (drawn from the same grid as inside). Round its own anchor: the flag hangs
- *  from the bracket's end there, and the bracket runs back (bx, by) to the corner post. */
-function _hsBannerOutSvg(B, bn, bx, by) {
-  const cols = HOUSE_BANNER.cols, rows = HOUSE_BANNER.rows, cw = 2.6, ch = 2.6;
+/** The loft's dormer in the thatch: a little gable over a window, the thatch curving round it. */
+function _hsDormerSvg(B, night) {
+  const dw = Math.max(16, B.w * .1), dh = dw * .85, glass = night ? '#ffd890' : '#3a4a5a';
+  return `<ellipse cx="0" cy="2" rx="${dw * .75}" ry="3" fill="#5a4220" opacity=".35"/>`
+    + `<path d="M${-dw * .72} 2Q${-dw * .6} ${-dh * .7} 0 ${-dh * 1.28}Q${dw * .6} ${-dh * .7} ${dw * .72} 2Z" fill="#b8945a"/><path d="M${-dw * .72} 2Q${-dw * .6} ${-dh * .7} 0 ${-dh * 1.28}Q${dw * .6} ${-dh * .7} ${dw * .72} 2" fill="none" stroke="#d8b878" stroke-width="1.4"/>`
+    + `<path d="M${-dw * .5} 1Q${-dw * .2} ${-dh * .4} 0 ${-dh * .9}" stroke="#8a6a3a" stroke-width=".8" fill="none" opacity=".6"/>`
+    + `<rect x="${-dw * .36}" y="${-dh * .78}" width="${dw * .72}" height="${dh * .7}" rx="1" fill="#efe6d2"/><rect x="${-dw * .28}" y="${-dh * .7}" width="${dw * .56}" height="${dh * .54}" fill="${glass}"/>`
+    + `<path d="M0 ${-dh * .7}V${-dh * .16}M${-dw * .28} ${-dh * .43}H${dw * .28}" stroke="#efe6d2" stroke-width="1.1"/>`
+    + (night ? `<rect x="${-dw * .28}" y="${-dh * .7}" width="${dw * .56}" height="${dh * .54}" fill="#fff4c8" opacity=".3"/>` : '');
+}
+/** The guest room's chimney, standing on the roof where it is (its foot is the roof's top edge there), a wisp of smoke when it is lit. */
+function _hsChimneySvg(B, hw) {
+  const cw = Math.max(7, B.w * .045), ch = Math.max(14, B.h * .13);
+  return `<rect x="${-cw / 2}" y="${-ch}" width="${cw}" height="${ch + 6}" fill="#a85a3a"/><rect x="${-cw / 2}" y="${-ch}" width="${cw * .35}" height="${ch + 6}" fill="#c8704a" opacity=".7"/><rect x="${cw / 2 - 1.5}" y="${-ch}" width="1.5" height="${ch + 6}" fill="#6a3424" opacity=".6"/>`
+    + `<rect x="${-cw / 2 - 1.4}" y="${-ch - 2.4}" width="${cw + 2.8}" height="3" fill="#8a4a32"/><rect x="${-1.8}" y="${-ch - 6.4}" width="3.6" height="4.2" fill="#6a3a2a"/>`
+    + `<path d="M${-cw / 2} 4Q0 1 ${cw / 2} 4V7H${-cw / 2}Z" fill="#b8945a"/>`
+    + `<path d="M0 ${-ch - 7}q-3 -5 1 -9q4 -4 0 -9" stroke="#e8e8ec" stroke-width="2.2" fill="none" opacity=".45" stroke-linecap="round"/>`;
+}
+/** Your banner flying from a short pole on the roof (drawn from the same grid as inside): the pole's foot at the anchor, in the thatch. */
+function _hsBannerOutSvg(bn) {
+  const cols = HOUSE_BANNER.cols, rows = HOUSE_BANNER.rows, cw = 2.4, ch = 2.2, pole = 30, fy = -pole + 1.5;
   let cells = '';
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { const k = parseInt(bn[r * cols + c], 12) || 0, sag = Math.sin(c / (cols - 1) * Math.PI) * 1.4; cells += `<rect x="${-c * cw - cw}" y="${r * ch + sag + 1}" width="${cw + .25}" height="${ch + .25}" fill="${HOUSE_BANNER.colours[k]}"/>`; }
-  return `<path d="M${bx} ${by}L0 0" stroke="#4a3a2a" stroke-width="1.6" stroke-linecap="round"/><rect x="${bx - 2}" y="${by - 2}" width="4" height="5" rx="1" fill="#3a2a1a"/><circle r="1.4" fill="#d8b45a"/>`
-    + `<g class="hs-flag">${cells}<path d="M0 1V${rows * ch + 2}" stroke="#2a2418" stroke-width=".5" opacity=".4"/></g>`;
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { const k = parseInt(bn[r * cols + c], 12) || 0, wave = Math.sin(c / (cols - 1) * Math.PI * 1.6) * 1.5 + c * .12; cells += `<rect x="${1.4 + c * cw}" y="${fy + r * ch + wave}" width="${cw + .25}" height="${ch + .25}" fill="${HOUSE_BANNER.colours[k]}"/>`; }
+  return `<ellipse cx="0" cy="1" rx="3.5" ry="1.4" fill="#5a4220" opacity=".4"/>`
+    + `<rect x="-1" y="${-pole}" width="2" height="${pole + 2}" fill="#5a4028"/><rect x="-1" y="${-pole}" width=".7" height="${pole}" fill="#a8845a" opacity=".7"/><circle cy="${-pole - 1}" r="1.6" fill="#d8b45a"/>`
+    + `<g class="hs-flag">${cells}<rect x="${1.4}" y="${fy + rows * ch + 1.6}" width="${cols * cw}" height=".8" fill="#000" opacity=".12"/></g>`;
 }
 /** The module that keeps the outside in step (registered on first use: the wonder kit loads after the house's files). */
 function _hsOutsideModDef() {

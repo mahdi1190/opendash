@@ -116,11 +116,14 @@ function _hsPaintPlankDoor(T, P, L, D, o) {
   T.stroke(`M${D.x0 + 6} ${D.y1 - 26}L${D.x1 - 6} ${D.y0 + 24}`, T.shade(col, -.3), 7, .9);
   T.ell(D.x1 - 13, D.y0 + h * .52, 4, 4, '#2a2a2e'); T.stroke(`M${D.x1 - 28} ${D.y0 + h * .52}h15`, '#2a2a2e', 3.2); T.ell(D.x1 - 13.6, D.y0 + h * .52 - .8, 1.4, 1.4, '#8a8a90', .8);
   T.rect(D.x0 + 2, D.y1 - 3, w - 4, 3, '#ffcf80', .35);   // lamp-light under it
-  if (o.plate) {
-    const px = (D.x0 + D.x1) / 2, py = D.y0 + 30, pw = Math.min(w - 10, 14 + o.plate.length * 6.2);
+  if (o.plate) {   // a little brass plate with the name on it, the letters as big as fit (never past its edges)
+    const cx = T.cx, px = (D.x0 + D.x1) / 2, py = D.y0 + 30, max = w - 12;
+    let fs = 12; cx.save(); cx.font = `italic 600 ${fs}px Georgia, serif`; while (fs > 7 && cx.measureText(o.plate).width > max - 8) { fs -= .5; cx.font = `italic 600 ${fs}px Georgia, serif`; }
+    const pw = Math.min(max, cx.measureText(o.plate).width + 10); cx.restore();
     T.soft(px, py + 7, pw * .55, 3, .3); T.rrect(px - pw / 2, py - 8, pw, 16, 3, T.lin(0, py - 8, 0, py + 8, [[0, '#f8e098'], [.5, '#d8a848'], [1, '#8a5e22']]));
     T.rect(px - pw / 2 + 2, py - 7, pw - 4, 2, '#fff4c8', .6);
-    const cx = T.cx; cx.save(); cx.fillStyle = '#3a2410'; cx.font = 'italic 600 11px Georgia, serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(o.plate, px, py + .5); cx.restore();
+    for (const sx of [px - pw / 2 + 3, px + pw / 2 - 3]) T.ell(sx, py, 1, 1, '#6a4a1a', .8);
+    cx.save(); cx.fillStyle = '#3a2410'; cx.font = `italic 600 ${fs}px Georgia, serif`; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(o.plate, px, py + .5); cx.restore();
   }
 }
 /** The parlour's bay window: three lights in a deep recess, a cushioned seat in it, its panelled front below, curtains on a pole. */
@@ -315,7 +318,7 @@ function _hsSpecRoom(P) {
         T.rect(472, 0, 16, 40, T.lin(472, 0, 488, 0, [[0, L.beamLit], [1, L.beam]]));   // the ridge, end on
         T.rect(318, 104, 324, 16, T.lin(0, 104, 0, 120, [[0, L.beamLit], [.4, L.beam], [1, T.shade(L.beam, -.45)]])); T.grain(318, 104, 324, 16, '#120a04', .45, false, 4); T.soft(480, 124, 160, 4, .3);   // the collar beam
         _hsPaintRound(T, P, L); yield;
-        if (SH.way) { _hsPaintPlankDoor(T, P, L, SH.way, { plate: P.guest ? P.guest + '’s room' : '' }); yield; }
+        if (SH.way) { _hsPaintPlankDoor(T, P, L, SH.way, { plate: P.guest || '' }); yield; }
         _hsRoomFloor(T, P, L, null);
         _hsPaintHatch(T, P, L, SH.door); yield;
       } else {   // the guest room
