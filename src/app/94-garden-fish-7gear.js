@@ -35,7 +35,7 @@ function _gplMyGear() {
 /** What hangs on someone's back: nothing while their hands are full of it, and nothing for the starter ones. Feet at 0,0, the walker's units. */
 function _gplSlung(gear, pose) {
   if (!gear || pose === 'fish' || pose === 'hold') return '';
-  if (gear.t === 'rod' || gear.t === 'net') gear = Object.assign({}, gear, gear.t === 'rod' ? { r: '', rk: '', rl: '' } : { n: '', nk: '' });   // (build2) in the hand, so not on the back as well
+  if ((gear.t === 'rod' || gear.t === 'net') && pose === 'idle') gear = Object.assign({}, gear, gear.t === 'rod' ? { r: '', rk: '', rl: '' } : { n: '', nk: '' });   // (build2) in the hand while you stand, so not on the back as well
   const rod = gear.r ? gardenGearDef(gear.r) : null, net = gear.n ? gardenGearDef(gear.n) : null;
   let s = '';
   const netSkin = gear.nk && typeof gardenLookNetOnBack === 'function' ? gardenLookNetOnBack(gear.nk) : '';   // a look shows even on the starter one; an id this app does not know is left out

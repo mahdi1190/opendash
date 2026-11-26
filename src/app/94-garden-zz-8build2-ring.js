@@ -6,8 +6,9 @@
    Choosing a tool: tap it, or press its number (1 Hands ... 6 Net), or T for the next one (Shift+T back), or Shift and the mouse wheel.
    The plain wheel still zooms. Choosing the same tool again puts it away (Hands). The can, shears and spade are the page's own tools
    (94-garden-4page.js), so a click on a plant does what they do there. The rod and the net were always ready (click the water, click a bug);
-   chosen, E or Space casts in front of you or nets the bug in reach before anything else, and the tool is in your hand on every screen:
-   friends see it (look `g.t`, lib/friends/live.mjs GEAR: an older app leaves it out).
+   chosen, E or Space casts in front of you or nets the bug in reach before anything else, and the tool is in your hand whenever you stand,
+   on every screen: friends see it (look `g.t`, lib/friends/live.mjs GEAR: an older app leaves it out). Walking, the figure's drawings are
+   the same whatever the tool, so a change of tool never makes the walker draw itself again.
    X puts back what is in your hand; B or I opens your pockets.
 
      gardenB2Tools()              the ring's tools you have            gardenB2RingTool()   the one chosen ('hands' while a pocket's thing is held)
@@ -56,10 +57,15 @@ function gardenB2PutBack() {
   _gb2.tool = 'hands'; _gb2GearChanged(); _gb2RingPaint();
   return true;
 }
-/** Your figure and friends' screens learn of the change now, not in a second. */
+/** Your figure and friends' screens learn of the change: the ring answers at once, the figure is drawn again in the next quiet moment
+ *  (a new standing drawing is 20 to 40 ms of work: not in the frame of the click), friends within a second and a half. */
 function _gb2GearChanged() {
   try { if (typeof _gplGearMemo !== 'undefined') _gplGearMemo.at = -1e9; } catch (e) { /* fine */ }
-  try { if (typeof _gwBody === 'function' && typeof _gw !== 'undefined' && _gw.on) _gwBody(); } catch (e) { /* the next frame */ }
+  if (!_gb2.bodySoon) {
+    _gb2.bodySoon = true;
+    const redraw = () => { _gb2.bodySoon = false; try { if (typeof _gplGearMemo !== 'undefined') _gplGearMemo.at = -1e9; if (typeof _gwBody === 'function' && typeof _gw !== 'undefined' && _gw.on) _gwBody(); } catch (e) { /* the next frame */ } };
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(redraw, { timeout: 300 }); else setTimeout(redraw, 60);
+  }
   try { _gdEmit('tool', { tool: gardenB2RingTool() }); } catch (e) { /* fine */ }
 }
 function _gb2RingPaint() { try { const box = _ghBox(); if (box) { _gh.bar = ''; _ghBar(box, gardenHere()); } } catch (e) { /* no stage */ } }
@@ -158,8 +164,10 @@ const _GB2_IN_HAND = Object.freeze({
   net: (gear) => { let hoop = '#8a6a3a'; try { const d = gear && gear.n ? gardenGearDef(gear.n) : null; if (d && d.kind === 'net' && typeof GARDEN_NET_HOOP !== 'undefined') hoop = GARDEN_NET_HOOP[d.tier - 1] || hoop; } catch (e) { /* plain */ } return `<path d="M0 3L12.4 -31" stroke="#6a4a2a" stroke-width="1.9" stroke-linecap="round"/><path d="M.6 2L12 -29.6" stroke="#b08a5a" stroke-width=".6" opacity=".8"/><g transform="rotate(22 15 -38)"><ellipse cx="15" cy="-38" rx="5.6" ry="7" fill="#f4f0e6" fill-opacity=".42"/><path d="M10.6 -40q4.4 6 8.8 0M10 -36q5 4 10 0M15 -45v14" stroke="#e8e2d0" stroke-width=".5" opacity=".8" fill="none"/><ellipse cx="15" cy="-38" rx="5.6" ry="7" fill="none" stroke="${hoop}" stroke-width="1.4"/></g>`; },
   rod: (gear) => { if (gear && gear.rk && typeof gardenLookRodInHand === 'function' && typeof gardenLookDef === 'function' && gardenLookDef(gear.rk)) return gardenLookRodInHand(gear.rk); let L = { c: '#7a5a34', w: 1.7 }; try { if (gear && gear.r && typeof gardenRodLook === 'function') L = gardenRodLook(gear.r); } catch (e) { /* plain */ } return `<path d="M0 3L19 -30" stroke="${L.c}" stroke-width="${L.w}" stroke-linecap="round"/><path d="M.4 2L18 -28.4" stroke="#ffffff" stroke-width=".5" opacity=".35"/><circle cx="1.2" cy="1" r="2.4" fill="#4a3a2a"/><path d="M19 -30Q21 -18 20.4 -8" stroke="#e8e8e0" stroke-width=".4" fill="none" opacity=".7"/>`; },
 });
-function gardenB2HeldTool(t, gear) {
-  if (!t || t === 'hands') return null;
+/** pose: only standing ('idle') shows it in the hand. Walking keeps the same drawings whatever tool is chosen, so the walker's drawings,
+ *  made once (20 to 40 ms each), are never made again after a change of tool (speed: no frame over 33 ms while walking). */
+function gardenB2HeldTool(t, gear, pose) {
+  if (!t || t === 'hands' || (pose && pose !== 'idle')) return null;
   let art = '';
   try {
     if (t === 'can' || t === 'spade') { const T = _gplTools(); art = t === 'can' ? T.can() : T.spade(); if (t === 'can' && gear && gear.c && typeof GARDEN_CAN_LOOK !== 'undefined' && GARDEN_CAN_LOOK[gear.c]) art = art.split('#6f9ab0').join(GARDEN_CAN_LOOK[gear.c]); }
