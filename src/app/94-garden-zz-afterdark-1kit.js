@@ -195,11 +195,23 @@ function adHidden(x, y, near) {
   for (const t of adTrees()) { const dy = t.y - y, fruit = t.kind === 'fruit-tree'; if (dy > 0.1 && dy < (fruit ? 3.5 : 6) && Math.abs(t.x - x) < (fruit ? Math.min(R, 1.3) : R)) return true; }
   // what a painter planted that stands up (the village's trees and shrubs), by its own drawn height (as 94-garden-zz-7act-1core.js gartActGroundClear reads it)
   try { const tall = window.GardenNativePainted && GardenNativePainted.tall ? GardenNativePainted.tall() : []; for (const t of tall) { const tx = t.x / W.cellW, ty = (t.y - W.sky) / W.cellH, hw = (t.w || 30) / 2 / W.cellW; if (Math.abs(tx - x) < hw + 0.4 && ty - y > 0.05 && ty - y < Math.max(0.6, (t.h || 0) / W.cellH)) return true; } } catch (e) { /* no planting list */ }
-  // what stands up that is not a tree, by how far its picture rises over the ground behind its foot: the layout's own height `tall`, in
-  // cells, read as 94-garden-1core.js reads it (max of its depth and its height); with none, a house-sized building 5.5 cells, another
-  // big structure 4, a small thing of the building kind (a bench, a statue) 2.2, a flat thing nothing. (Read as yes or no, a reed bank and
-  // a bench hid as much as the tower, and places all round the village were "behind" something: the named moons' finds had nowhere to be.)
-  try { for (const o of gardenAffordThings()) { if (o.src === 'decor') continue; const w = o.w || 1, h = o.h || 1, t = Number(o.tall), big = w >= 2 && h >= 2, reach = t > 0 ? Math.max(h, t) + 0.3 : o.kind === 'building' && big ? 5.5 : big ? 4 : o.kind === 'building' ? 2.2 : 0; if (!reach) continue; const dy = o.y - y; if (dy > 0.05 && dy < reach && Math.abs(o.x - x) < w / 2 + 0.6) return true; } } catch (e) { /* nothing found yet */ }
+  // what stands up that is not a tree, by how far its picture rises over the ground behind its foot, the way 94-garden-1stored.js
+  // _gardenPictureBox reads a picture: the painter's own art box where there is one, else the layout's `tall` in steps of 56 world px. A big
+  // footprint counts 1.8 times that (the buildings grew in the scale pass and their `tall` did not: the land office stands about 7.7 cells,
+  // its `tall` says 4.5), at most 12 cells; a `tall` of 1 is the layout's default, so a big thing then goes by its size (a house-sized
+  // building 6, another big structure 4) and a small one of the building kind (a bench, a statue) 2.2. (Read as yes or no, a reed bank, a
+  // bench and a lectern hid as much as a house, and places all round the village were "behind" something.)
+  try {
+    const A = window.GardenPaintedMarks && GardenPaintedMarks.ART;
+    for (const o of gardenAffordThings()) {
+      if (o.src === 'decor') continue;
+      const w = o.w || 1, h = o.h || 1, t = Number(o.tall), big = w >= 2 && h >= 2, b = A && A[o.id] && A[o.id].box;
+      const up = b ? -b[1] * 0.92 / W.cellH : t > 1 ? Math.min(12, t * 56 / W.cellH * (big ? 1.8 : 1)) : big ? (o.kind === 'building' ? 6 : 4) : o.kind === 'building' ? 2.2 : t > 0 ? t * 56 / W.cellH : 0;
+      if (!(up > 0)) continue;
+      const half = b ? Math.max(-b[0], b[2]) * 0.9 / W.cellW : w / 2, dy = o.y - y;
+      if (dy > 0.05 && dy < Math.max(h, up) + 0.2 && Math.abs(o.x - x) < half + 0.5) return true;
+    }
+  } catch (e) { /* nothing found yet */ }
   return false;
 }
 /** Can a small thing lie on the ground here: grass or snow (or a slope), open land, nothing standing on it, not hidden behind anything, and

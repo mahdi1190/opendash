@@ -510,8 +510,8 @@ const GARDEN_DECOR = _gdRows([
   _gD('star-lantern', 'Star lantern', 'light', { craft: 1, price: 0, look: { c: '#2f3438', c2: '#d8c8ff', h: 1.6 }, effect: { kind: 'light' }, blurb: 'A stone from a fallen star, in a lantern. It glows all night.' }),
   _gD('moon-lantern', 'Moon lantern', 'light', { craft: 1, price: 0, look: { c: '#2f3438', c2: '#e8eefc', h: 1.6 }, effect: { kind: 'light' }, blurb: 'For three named moons seen: a little moon of your own on a crook.' }),
   _gD('moon-dial', 'Moon dial', 'ornament', { craft: 1, price: 0, look: { c: '#b4b0a6', c2: '#c8a05a', h: 0.95 }, effect: { kind: 'play', game: 'ad-moons' }, blurb: 'For twelve named moons. The moon’s eight shapes, and which one is next.' }),
-  _gD('rainbow-arch', 'Rainbow arch', 'structure', { craft: 1, price: 0, w: 2, look: { c: '#f6f2e6', c2: '#e8504e', h: 2.2 }, blurb: 'Seven scales from where the rainbow really touched the ground.' }),
-  _gD('bandstand', 'Bandstand', 'structure', { craft: 1, price: 0, w: 3, h: 2, glow: 1, look: { c: '#f4efe2', c2: '#3e6a52', h: 3 }, blurb: 'For the night all four places at a band’s pitch were played at once. Bunting, and lanterns that light at dusk.' }),
+  _gD('rainbow-arch', 'Rainbow arch', 'structure', { craft: 1, price: 0, w: 2, col: 'none', look: { c: '#f6f2e6', c2: '#e8504e', h: 2.2 }, blurb: 'Seven scales from where the rainbow really touched the ground.' }),
+  _gD('bandstand', 'Bandstand', 'structure', { craft: 1, price: 0, w: 3, h: 2, col: 'full', glow: 1, look: { c: '#f4efe2', c2: '#3e6a52', h: 3 }, blurb: 'For the night all four places at a band’s pitch were played at once. Bunting, and lanterns that light at dusk.' }),
 ]);
 const _GD_DECOR = new Map(GARDEN_DECOR.map(d => [d.id, d]));
 
