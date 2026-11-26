@@ -310,6 +310,8 @@ function _gtkWater(B) {
 }
 const GardenTideCastleSprites = {
   id: 'castles',
+  /** A castle's old picture, let go once no castle on screen shows it (its images are gone first). */
+  drop(key) { const scene = this.scene; if (!scene || !key || !key.startsWith('gt-cc|')) return; for (const q of this.imgs.values()) if (q.bodyKey === key) return; try { if (scene.textures.exists(key)) scene.textures.remove(key); } catch (e) { /* kept */ } },
   paint(scene, root) { this.scene = scene; this.root = root; this.objs = typeof GardenPaintTide !== 'undefined' ? GardenPaintTide.objects() : null; this.t = 0; this.imgs = new Map(); },
   clear() { for (const o of (this.imgs || new Map()).values()) for (const im of [o.body, o.base, o.water]) { try { if (im) im.destroy(); } catch (e) { /* gone */ } } this.imgs = new Map(); this.scene = null; },
   tick(time, view, T, vis) {
@@ -323,7 +325,7 @@ const GardenTideCastleSprites = {
       const bodyKey = 'gt-cc|' + (c.look & 1048575) + '|' + (gardenHash(c.uid) % 7), baseKey = 'gt-cb|' + (_gtkHas(c.look, 18) ? 1 : 0);
       if (!gardenShoreBake(scene, bodyKey, GT_CBOX, (B) => _gtkPaint(B, c.look, gardenHash(c.uid) % 7 + 11), K) || !gardenShoreBake(scene, baseKey, GT_CBASE, (B) => _gtkBase(B, _gtkHas(c.look, 18)), 2) || !gardenShoreBake(scene, 'gt-cw', GT_CBASE, _gtkWater, 2)) continue;
       if (!o) { o = { uid: c.uid }; this.imgs.set(c.uid, o); }
-      if (o.bodyKey !== bodyKey) { if (o.body) o.body.destroy(); o.body = gardenShoreImage(scene, this.objs || this.root, bodyKey, GT_CBOX, x, y, K); o.body.setDepth(y); o.bodyKey = bodyKey; if (this.objs && this.objs.sort) this.objs.sort('depth'); }
+      if (o.bodyKey !== bodyKey) { const was = o.bodyKey; if (o.body) o.body.destroy(); o.body = gardenShoreImage(scene, this.objs || this.root, bodyKey, GT_CBOX, x, y, K); o.body.setDepth(y); o.bodyKey = bodyKey; if (this.objs && this.objs.sort) this.objs.sort('depth'); if (was) this.drop(was); }   // (the old look's picture goes once nothing shows it: texture memory stays at one picture a castle)
       if (o.baseKey !== baseKey) { if (o.base) o.base.destroy(); o.base = gardenShoreImage(scene, this.root, baseKey, GT_CBASE, x, y, 2); o.base.setDepth(-9345.12); o.baseKey = baseKey; if (!o.water) { o.water = gardenShoreImage(scene, this.root, 'gt-cw', GT_CBASE, x, y, 2); o.water.setDepth(-9345.11); } if (this.root.sort) this.root.sort('depth'); }
       // the moat fills as the water comes near
       const h = gardenTideH(c.x, c.y), near = Number.isFinite(h) && _gtkHas(c.look, 18) ? Math.max(0, Math.min(1, 1 - (h - T.line - 2) / 14)) : 0;
@@ -337,6 +339,7 @@ const GardenTideCastleSprites = {
       if (washed) _gtkSplash(o, view);
       for (const im of [o.body, o.base, o.water]) { try { if (im) im.destroy(); } catch (e) { /* gone */ } }
       this.imgs.delete(uid);
+      if (washed && o.bodyKey) this.drop(o.bodyKey);
     }
   },
 };
