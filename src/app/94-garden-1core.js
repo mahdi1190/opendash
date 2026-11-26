@@ -1294,6 +1294,9 @@ function gardenPriceOf(item, mArg) {
   }
   if (kind === 'decor') { const d = gardenDecor(id); if (!d) return { price: null, why: 'Unknown' }; if (d.craft) return { price: null, why: 'Made at the crafting bench' }; return { price: d.price, why: gardenLockOf(d, uc) }; }
   const t = gardenTool(id); if (!t) return { price: null, why: 'Unknown' };
+  // (what the shop never shows is not sold anywhere, the assistant's shop too: compost is made in the bin, and watering is free now)
+  if (t.noShop) return { price: null, why: 'Made in the compost bin, never sold' };
+  if (t.kind === 'can') return { price: null, why: 'Watering is free now: the cans are not sold' };
   if (t.kind !== 'consumable' && _gdOwnsTool(t.id)) return { price: null, why: 'Yours already' };
   if (t.needs && !_gdOwnsTool(t.needs)) return { price: t.price, why: 'Needs the ' + gardenTool(t.needs).name.toLowerCase() };
   return { price: t.price, why: (t.lv || 1) > m.level.level ? 'Garden level ' + t.lv : '' };
@@ -1336,6 +1339,7 @@ function gardenBuyLand(id) {
 function gardenBuy(item, n) {
   if (!gardenWorldReady()) return _gdNo('The garden update needs to finish before you can buy anything');
   n = Math.max(1, Math.min(20, Math.floor(Number(n) || 1)));
+  item = String(item).replace(/^tool:/, '');   // ('tool:hose', as the bag spells it, is the hose: one, by its own name)
   const m = gardenModel(), pr = gardenPriceOf(item, m);
   if (pr.price == null) return _gdNo(pr.why || 'Not for sale');
   if (pr.why) return _gdNo(pr.why);
