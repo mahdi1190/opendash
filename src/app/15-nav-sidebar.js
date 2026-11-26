@@ -182,8 +182,8 @@ function renderSidebar() {
   const stub = document.createElement('div'); stub.className = 'sidebar-footer'; stub.hidden = true;
   sb.appendChild(stub);
   sb.scrollTop = keepScroll;
-  // Motion: gliding active indicator.
-  if (window.Motion) Motion.decorateSidebar(sb);
+  // Motion: gliding active indicator (it measures the active row: once the page is written, 80-main-render.js).
+  if (window.Motion) { if (typeof renderMeasureLater === 'function') renderMeasureLater('sb-ind', () => Motion.decorateSidebar(sb)); else Motion.decorateSidebar(sb); }
 }
 
 /* ---------- Tasks: the views, calmer (2.18, NAVIGATION_PLAN.md 2.4) ----------

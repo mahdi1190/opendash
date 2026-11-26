@@ -661,7 +661,7 @@ function renderTopbarWidgets() {
     if (!el) { el = document.createElement('div'); el.id = 'tbw-' + w.id; el.className = 'tb-widget'; host.appendChild(el); }
     try { const r = w.render(el); el.hidden = r === false; } catch (e) { console.error('[topbar widget ' + w.id + ']', e); el.hidden = true; }
   }
-  _fitTopbarWidgets();
+  if (typeof renderMeasureLater === 'function') renderMeasureLater('tbw-fit', _fitTopbarWidgets); else _fitTopbarWidgets();   // (once the page is written: 80-main-render.js)
 }
 // Hide whole widgets (from the end) that would be clipped, instead of cutting one in half.
 function _fitTopbarWidgets() {
