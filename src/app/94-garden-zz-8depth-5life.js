@@ -358,8 +358,9 @@ function _gdlfInsideFrame(C, now) {
     _gdlf.inside.set(C.T.id, set);
   }
   const t = now / 1000;
+  if (!set.flagT || now - set.flagT > 1000) { set.flagT = now; for (const q of set.items) q.today = _gdlfToday(q.p.L, C.T.id + ':' + q.p.c.i, here); }   // (asked once a second: nothing made each frame)
   for (const q of set.items) {
-    const on = a > 0.02 && _gdlfToday(q.p.L, C.T.id + ':' + q.p.c.i, here);
+    const on = a > 0.02 && q.today;
     if (q.im.visible !== on) q.im.setVisible(on);
     if (!on) continue;
     if (Math.abs(q.im.alpha - a) > 0.02) q.im.setAlpha(a);

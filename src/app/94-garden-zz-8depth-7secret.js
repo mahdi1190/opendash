@@ -185,11 +185,14 @@ function _gdsAlcoveTex(sc, A, open, seed) {
   const w = 34, h = 46, K = 2, cv = document.createElement('canvas'); cv.width = w * K; cv.height = h * K; const x = cv.getContext('2d'); x.scale(K, K); x.translate(w / 2, h - 6);
   let s = (seed >>> 0) % 2147483647 || 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
   const col = A.brick ? ['#8e5a40', '#6a412e', '#b07a58', '#5a4636'] : ['#6e665a', '#4e483f', '#948a7a', '#3e3a33'];
-  if (!open) {   // stones (bricks) a little proud of the wall, dark cracks round them, a pale line of dust where the draught comes through
-    for (let i = 0; i < 6; i++) {
-      const bx = -9 + (i % 3) * 7 + (r() - 0.5) * 1.6, by = -30 + Math.floor(i / 3) * 9 + (r() - 0.5) * 1.4, bw = A.brick ? 6.6 : 5.6 + r() * 2.4, bh = A.brick ? 4.4 : 5.4 + r() * 2;
-      x.fillStyle = 'rgba(10,8,6,.75)'; x.fillRect(bx - 0.9, by - 0.9, bw + 1.8, bh + 1.8);
-      x.fillStyle = col[Math.floor(r() * 3)]; x.fillRect(bx + 0.4, by + 0.4, bw, bh); x.fillStyle = 'rgba(255,255,255,.14)'; x.fillRect(bx + 0.4, by + 0.4, bw, 1.2);
+  if (!open) {   // stones (bricks, the size of the wall's own) a little proud of the wall, dark cracks round them, a pale line of dust where the draught comes through
+    const n = A.brick ? 6 : 6;
+    for (let i = 0; i < n; i++) {
+      const row = Math.floor(i / 2), bw = A.brick ? 11.4 : 7 + r() * 3, bh = A.brick ? 4.6 : 6 + r() * 2.4;
+      const bx = A.brick ? -11.6 + (i % 2) * 12.2 + (row % 2) * 3 + (r() - 0.5) * 0.8 : -10 + (i % 2) * 10 + (r() - 0.5) * 2, by = A.brick ? -33 + row * 6.2 + (r() - 0.5) * 0.6 : -34 + row * 8.4 + (r() - 0.5) * 1.6;
+      x.fillStyle = 'rgba(10,8,6,.8)'; x.fillRect(bx - 0.9, by - 0.9, bw + 1.8, bh + 1.8);   // (the gap round it: it has come loose)
+      x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(bx + 1.2, by + 1.2, bw, bh);
+      x.fillStyle = col[Math.floor(r() * 3)]; x.fillRect(bx, by, bw, bh); x.fillStyle = 'rgba(255,255,255,.16)'; x.fillRect(bx, by, bw, 1.1); x.fillRect(bx, by, 1.1, bh);
     }
     x.strokeStyle = 'rgba(228,220,200,.45)'; x.lineWidth = 0.7; x.beginPath(); x.moveTo(-11, -12.6); x.lineTo(11, -12.6); x.stroke();
     x.fillStyle = 'rgba(20,16,12,.5)'; for (let i = 0; i < 4; i++) { x.beginPath(); x.ellipse(-8 + r() * 16, -2 + r() * 2, 1.6 + r() * 1.6, 1, 0, 0, Math.PI * 2); x.fill(); }   // (grit fallen at its foot)
@@ -221,9 +224,10 @@ function _gdsInsideFrame(C, now) {
     _gds.inside.set(C.T.id, set);
   }
   const t = now / 1000;
+  if (!set.flagT || now - set.flagT > 1000) { set.flagT = now; for (const q of set.items) q.had = !!(q.A.find && _gdfHas(q.A.find)); }   // (once a second: nothing made each frame)
   for (const q of set.items) {
     const on = a > 0.02; if (q.im.visible !== on) q.im.setVisible(on); if (on && Math.abs(q.im.alpha - a) > 0.02) q.im.setAlpha(a);
-    if (q.glint) { const g = on && q.A.find && !_gdfHas(q.A.find); if (q.glint.visible !== g) q.glint.setVisible(g); if (g) { const k = 0.5 + 0.5 * Math.max(0, Math.sin(t * 2.1 + q.ph)) ** 3; q.glint.setAlpha(a * (0.3 + 0.7 * k)).setScale(0.3 + 0.3 * k); } }
+    if (q.glint) { const g = on && q.A.find && !q.had; if (q.glint.visible !== g) q.glint.setVisible(g); if (g) { const k = 0.5 + 0.5 * Math.max(0, Math.sin(t * 2.1 + q.ph)) ** 3; q.glint.setAlpha(a * (0.3 + 0.7 * k)).setScale(0.3 + 0.3 * k); } }
   }
 }
 if (typeof gardenTunnelStageFrame === 'function') {

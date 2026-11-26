@@ -287,8 +287,9 @@ function _gdfInsideFrame(C, now) {
     _gdf.inside.set(C.T.id, set);
   }
   const t = now / 1000, motion = typeof gardenMotionOn !== 'function' || gardenMotionOn();
+  if (!set.flagT || now - set.flagT > 1000 || set.sig === '') { set.flagT = now; set.sig = 'k'; for (const q of set.items) q.had = _gdfHas(q.s.find); }   // (asked once a second, or at once after a find: nothing made each frame)
   for (const q of set.items) {
-    const on = a > 0.05 && !_gdfHas(q.s.find);
+    const on = a > 0.05 && !q.had;
     if (q.im.visible !== on) q.im.setVisible(on);
     if (!on) continue;
     const k = motion ? 0.5 + 0.5 * Math.max(0, Math.sin(t * 2.3 + q.ph)) ** 3 : 0.7;
