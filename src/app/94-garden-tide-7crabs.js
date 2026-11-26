@@ -16,7 +16,7 @@ const GT_CRABS = Object.freeze([
   Object.freeze({ id: 'wrong', name: 'Sidle', how: 'goes its own way', c: '#d89a3a', c2: '#9a6a1e', c3: '#f0c870' }),
   Object.freeze({ id: 'show', name: 'Strut', how: 'a bit of a show-off', c: '#6a6a9a', c2: '#44446a', c3: '#a0a0cc' }),
 ]);
-const GT_RACE = Object.freeze({ lenPx: 120, laneW: 7.5, beat: 0.9, win: 0.2, pickMs: 5000, coins: 8, cup: 5, cupDecor: 'crab-cup', rosette: 'shore-rosette' });
+const GT_RACE = Object.freeze({ lenPx: 120, laneW: 10, beat: 0.9, win: 0.2, pickMs: 5000, coins: 8, cup: 5, cupDecor: 'crab-cup', rosette: 'shore-rosette' });
 const _gtcr = { R: null, tracks: new Map(), el: null, tok: 0, heard: null };
 
 /* ---------- the track: clear sand beside a pool, along the shore, by rule ---------- */
@@ -26,12 +26,15 @@ function gardenTideRaceTrack(p, T) {
   const key = p.id + '|' + (T.level < .2 ? 0 : 1), was = _gtcr.tracks.get(key); if (was !== undefined) return was;
   const W = GARDEN_WORLD, P = { x: p.x * W.cellW, y: W.sky + p.y * W.cellH };
   let sx = (Number.isFinite(p.sx) ? p.sx : 0) * W.cellW, sy = (Number.isFinite(p.sy) ? p.sy : 1) * W.cellH; const sl = Math.hypot(sx, sy) || 1; sx /= sl; sy /= sl;   // (towards the sea)
-  let ux = -sy, uy = sx; if (ux < 0 || (Math.abs(ux) < .2 && uy < 0)) { ux = -ux; uy = -uy; }   // (along the shore, left to right on the screen)
-  const vx = -uy, vy = ux, L = GT_RACE.lenPx, LW = GT_RACE.laneW * 4, clearR = (p.rx || 22) * 1.9 + 8;
+  let ax = -sy, ay = sx; if (ax < 0 || (Math.abs(ax) < .2 && ay < 0)) { ax = -ax; ay = -ay; }   // (along the shore, left to right on the screen)
+  const L = GT_RACE.lenPx, LW = GT_RACE.laneW * 4, clearR = (p.rx || 22) * 1.9 + 8;
   const cell = (x, y) => ({ x: x / W.cellW, y: (y - W.sky) / W.cellH });
   // (a sample on a path, a standing thing, the pool's rock or the sea never; up to two on the grass at the top of the beach)
   const open = (x, y) => { const q = cell(x, y), c = gardenIslandBaseCell(q.x, q.y); if (!c || !c.land || c.freshwater) return 2; const h = gardenTideH(q.x, q.y); if (Number.isFinite(h) && h < T.line + 3) return 2; if (_gtdCrowded(q.x, q.y) || Math.hypot(x - P.x, (y - P.y) * 1.6) < clearR) return 2; return Number.isFinite(h) || c.beach ? 0 : 1; };
   let out = null;
+  // straight across the screen if there is room (the lanes one under another: the easiest race to follow), else along the shore
+  for (const [ux, uy] of [[1, 0], [ax, ay]]) {
+  const vx = -uy, vy = ux;
   for (const along of [clearR + 6, -clearR - 6 - L, -L / 2, -L / 2 + 40, -L / 2 - 40]) {
     for (const across of [-LW - 24, 20, -LW - 40, 34, -LW / 2 - 52, 52, -LW - 64, 66, -LW / 2 - 80, 80]) {
       const ox = P.x + ux * along + vx * across, oy = P.y + uy * along + vy * across;
@@ -48,6 +51,8 @@ function gardenTideRaceTrack(p, T) {
       break;
     }
     if (out) break;
+  }
+  if (out) break;
   }
   if (_gtcr.tracks.size > 60) _gtcr.tracks.clear();
   _gtcr.tracks.set(key, out); return out;
@@ -193,7 +198,7 @@ function _gtrFrame(time, dt) {
   else if (!R.done) { for (const c of R.crabs) { c.s += (c.to - c.s) * Math.min(1, dt * 6); } }
   const el = _gtcr.el;
   if (el && typeof _ghProject === 'function') {
-    const s = _ghProject(_gw.px, _gw.py - 2.3); if (s) el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, -100%)`;
+    const s = _ghProject(_gw.px, _gw.py - 2.3); if (s) el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(Math.max(s.y, 150))}px) translate(-50%, -100%)`;   // (never under the message strip)
     if (R.t >= 0 && !R.done) { const k = Math.floor((performance.now() - R.beat0) / (GT_RACE.beat * 1000)); if (k !== R.beatK) { R.beatK = k; el.classList.remove('is-beat'); void el.offsetWidth; el.classList.add('is-beat'); } }
   }
   if (!R.done && typeof _gw !== 'undefined' && Math.hypot(_gw.px - R.tr.stand.x, _gw.py - R.tr.stand.y) > 3.5 && R.t > 0) { _gtrCheerButton(false); if (!R.remote) _gtrEnd(R.crabs.slice().sort((a, b) => b.s - a.s)[0].i); }   // (you walked off: it finishes without you)
@@ -300,7 +305,7 @@ const GardenTideRaceSprites = {
       const moving = !R.done && R.t >= 0 && Math.abs(c.v || (c.to != null ? c.to - c.s : 0)) > .001 && !(c.wave > 0) && !(c.nap > 0);
       const f = c.wave > 0 ? 2 : moving && motion ? step : 0, key = 'gt-crab|' + c.i + '|' + f;
       if (im._k !== key) { im.setTexture(key); im._k = key; }
-      im.setPosition(x, y + (c.nap > 0 ? 1 : 0)).setDepth(y);
+      im.setPosition(x, y + (c.nap > 0 ? 1 : 0)).setDepth(y).setScale(.85 / K);
       if (c.i === R.me && this.mark) this.mark.setPosition(x, y - 15 - (motion ? Math.abs(Math.sin(time / 260)) * 1.5 : 0)).setDepth(y + .01);
     }
     if (this.mark) this.mark.setVisible(R.me >= 0);

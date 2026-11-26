@@ -55,7 +55,7 @@ function _gtskGauge(spot) {
   box.appendChild(el); box.classList.add('gt-quick-on'); _gtsk.el = el;
   const mark = el.querySelector('.gtsk-mark'), t0 = performance.now(), motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(), sweep = GT_SKIM.sweepMs * (motion ? 1 : 1.8);
   let pos = 0;
-  const place = () => { const s = typeof _ghProject === 'function' ? _ghProject(_gw.px, _gw.py - 2.6) : null; if (s) el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, -100%)`; };
+  const place = () => { const s = typeof _ghProject === 'function' ? _ghProject(_gw.px, _gw.py + .5) : null; if (s) el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, 0)`; };   // (under your feet: the water you throw at is ahead, and the message strip is up top)
   const step = () => { if (_gtsk.el !== el) return; const u = ((performance.now() - t0) / sweep) % 2; pos = u < 1 ? u : 2 - u; mark.style.left = (pos * 100).toFixed(1) + '%'; place(); _gtsk.raf = requestAnimationFrame(step); };
   step();
   const go = (ev) => {
