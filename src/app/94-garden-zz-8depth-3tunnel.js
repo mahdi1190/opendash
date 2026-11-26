@@ -330,8 +330,9 @@ function _gdtRoute(T, a, b) {
   const cells = []; for (let k = e; k !== s; k = prev[k]) cells.push(k); cells.reverse();
   const pts = cells.map(k => { const i = k % nx, j = (k - i) / nx; return { x: x0 + (i + 0.5) * q, y: y0 + (j + 0.5) * q }; });
   pts.push({ x: b.x, y: b.y });
-  // straight wherever the feet can go straight
-  const los = (p, r) => { const n = Math.max(1, Math.ceil(Math.hypot((r.x - p.x) * W.cellW, (r.y - p.y) * W.cellH) / 4)); for (let k = 1; k <= n; k++) { const t = k / n; if (!_gdtFree(p.x + (r.x - p.x) * t, p.y + (r.y - p.y) * t, 0)) return false; } return true; };
+  // straight wherever the feet can go straight (on this tunnel's own floor: the host routes a friend's walk in a tunnel it is not in itself,
+  // where your own tunnel, _gdt.cur, is another one or none; and the mouths worked out once above, not again for every point)
+  const los = (p, r) => { const n = Math.max(1, Math.ceil(Math.hypot((r.x - p.x) * W.cellW, (r.y - p.y) * W.cellH) / 4)); for (let k = 1; k <= n; k++) { const t = k / n; if (!gardenTunnelFree(T, (p.x + (r.x - p.x) * t) * W.cellW, W.sky + (p.y + (r.y - p.y) * t) * W.cellH, GARDEN_TUNNEL.foot, open)) return false; } return true; };
   const out = []; let from = a;
   for (let i = 0; i < pts.length;) { let j = pts.length - 1; while (j > i && !los(from, pts[j])) j--; out.push(pts[j]); from = pts[j]; i = j + 1; }
   return out;
