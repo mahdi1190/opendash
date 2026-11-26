@@ -458,7 +458,7 @@ const GARDEN_DECOR = _gdRows([
   /* the catching overhaul: bugs come to these (effect.what: their shape), and what the lake gives you. Drawn by gartDefine in 94-garden-fish-9world.js */
   _gD('log-pile', 'Log pile', 'wildlife', { price: 30, lv: 3, look: { c: '#7a5636', c2: '#a87c4f', h: 0.5 }, effect: { kind: 'habitat', what: ['beetle', 'stag', 'ladybird', 'spider', 'snail'] }, blurb: 'Beetles move in. So do things that eat beetles.' }),
   _gD('butterfly-bush', 'Butterfly bush', 'wildlife', { price: 45, lv: 4, look: { c: '#5a8a4a', c2: '#a86ad8', h: 1.1 }, effect: { kind: 'habitat', what: ['butterfly', 'bee'] }, blurb: 'Long purple spikes. Butterflies come from all over.' }),
-  _gD('moth-sheet', 'Moth sheet', 'wildlife', { price: 40, lv: 5, look: { c: '#f4f0e6', c2: '#8a6a3a', h: 1.2 }, effect: { kind: 'habitat', what: ['moth', 'firefly', 'cicada'] }, blurb: 'A white sheet and a lamp. What flies at night comes to look.' }),
+  // (2.76) the moth sheet is after dark's now, with the night things further down (it was here too, and the shop showed it twice); it still draws moths, fireflies and cicadas (its habitat)
   _gD('firefly-jar', 'Firefly jar', 'angling', { craft: 1, price: 0, look: { c: '#d8ecd8', c2: '#ffe25a', h: 0.7 }, blurb: 'Dark all day. At dusk it wakes up.' }),
   _gD('boot-planter', 'Boot planter', 'angling', { craft: 1, price: 0, look: { c: '#7a5a3a', c2: '#e8607a', h: 0.8 }, blurb: 'Somebody lost this. Now it has daisies.' }),
   _gD('can-chimes', 'Tin can chimes', 'angling', { craft: 1, price: 0, look: { c: '#b8bcc0', c2: '#6a4426', h: 1.3 }, blurb: 'They clink in the wind. Not badly.' }),
@@ -579,7 +579,7 @@ const GARDEN_DECOR = _gdRows([
   // (build2) home storage: every chest of the kind `chest` opens the same storage (94-garden-build2-1pockets.js). The first one is a gift
   _gD('storage-chest', 'Storage chest', 'ornament', { price: 40, look: { c: '#8a5a34', c2: '#b8862e', h: 0.6 }, blurb: 'Your storage at home. Open it to take things from your pockets or put them away. Every chest opens the same storage.' }),
   /* after dark (94-garden-zz-afterdark-*.js), painted in 94-garden-native-painted-decor-afterdark.js */
-  _gD('moth-sheet', 'Moth sheet', 'light', { w: 2, price: 7, lv: 3, glow: 1, look: { c: '#f6f2e8', c2: '#ffd36a', h: 1.8 }, effect: { kind: 'play', game: 'moth-sheet' }, blurb: 'A white sheet and a lantern. On a warm night the moths come to it, a few at first, then more.' }),
+  _gD('moth-sheet', 'Moth sheet', 'light', { w: 2, price: 7, lv: 3, glow: 1, look: { c: '#f6f2e8', c2: '#ffd36a', h: 1.8 }, effect: { kind: 'play', game: 'moth-sheet' }, habitat: _gdF(['moth', 'firefly', 'cicada']), blurb: 'A white sheet and a lantern. On a warm night the moths come to it, a few at first, then more.' }),
   _gD('weathervane', 'Weathervane', 'ornament', { price: 6, lv: 2, look: { c: '#2f3438', c2: '#c8a24a', h: 2 }, effect: { kind: 'play', game: 'weather-vane' }, blurb: 'A cockerel on a post. Tell it what tomorrow will be, and find out if you were right.' }),
   _gD('star-lantern', 'Star lantern', 'light', { craft: 1, price: 0, look: { c: '#2f3438', c2: '#d8c8ff', h: 1.6 }, effect: { kind: 'light' }, blurb: 'A stone from a fallen star, in a lantern. It glows all night.' }),
   _gD('moon-lantern', 'Moon lantern', 'light', { craft: 1, price: 0, look: { c: '#2f3438', c2: '#e8eefc', h: 1.6 }, effect: { kind: 'light' }, blurb: 'For three named moons seen: a little moon of your own on a crook.' }),

@@ -417,7 +417,7 @@ function gardenChestLanded(plan) {
 
 /* ---------- bugs: habitats, the lantern, sugar ---------- */
 function gardenBugHabitat(b, m) {
-  let n = 0; for (const d of m.decor) if (d.def.effect && d.def.effect.kind === 'habitat' && d.def.effect.what && d.def.effect.what.includes(b.shape)) n++;
+  let n = 0; for (const d of m.decor) if (d.def.effect && d.def.effect.kind === 'habitat' && d.def.effect.what && d.def.effect.what.includes(b.shape) || d.def.habitat && d.def.habitat.includes(b.shape)) n++;   // (habitat: a thing that does something else too, the moth sheet)
   return 1 + 2 * Math.min(2, n);
 }
 function gardenLanternHere(rnd) {
