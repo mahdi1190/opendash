@@ -348,6 +348,7 @@ function addCustomTask(title, dueDate, priority, tags, stream, recurrence, extra
     createdAt: Date.now(), createdVia: extra.via === 'template' || extra.via === 'wrapup' || extra.via === 'bulk' ? extra.via : (extra.inbox ? 'capture' : 'ui'),
   };
   if (extra.dueTime && item.dueDate) item.dueTime = extra.dueTime;
+  if (item.recurrence === 'monthly') repeatAnchorFollow(item);   // the series' day from the start, so a snoozed first one keeps it (DASH-05)
   if (extra.estimate) item.estimate = extra.estimate;
   if (extra.plannedFor) item.plannedFor = extra.plannedFor;
   // Contexts and energy (20-task-contexts.js), the Inbox (24-quick-capture.js), names in the title left unlinked.
@@ -436,12 +437,14 @@ function qaApplyTitleEdit(id, text, ignore) {
   const p = qaTitleParse(text, oldTitle, ignore);
   if (!p.tokens.length || !p.title) return false;
   const did = [];
+  const oldDue = item.dueDate || null, oldRec = item.recurrence || 'none';
   if (p.title !== oldTitle) { logActivity(id, 'title', { from: oldTitle, to: p.title }); item.title = p.title; }
   if (p.dueDate && p.dueDate !== (item.dueDate || null)) { logActivity(id, 'date', { from: item.dueDate || null, to: p.dueDate, reason: 'title' }); item.dueDate = p.dueDate; did.push(_qaFmtDay(new Date(p.dueDate + 'T00:00:00'))); }
   if (p.dueTime && p.dueTime !== item.dueTime) { logActivity(id, 'dueTime', { from: item.dueTime || null, to: p.dueTime }); item.dueTime = p.dueTime; did.push(p.dueTime); }
   if (p.priority && p.priority !== 'p0' && p.priority !== effPriority(item)) { logActivity(id, 'priority', { from: effPriority(item), to: p.priority }); item.priority = p.priority; did.push(p.priority.toUpperCase()); }
   if (p.stream && p.stream !== item.stream) { logActivity(id, 'stream', { from: item.stream, to: p.stream }); item.stream = p.stream; did.push(STREAMS[p.stream] ? STREAMS[p.stream].label : p.stream); }
   if (p.recurrence && p.recurrence !== (item.recurrence || 'none')) { logActivity(id, 'recurrence', { from: item.recurrence || 'none', to: p.recurrence }); item.recurrence = p.recurrence; did.push(recurrenceLabel(p.recurrence)); }
+  if ((item.dueDate || null) !== oldDue || (item.recurrence || 'none') !== oldRec) repeatAnchorFollow(item);   // a new date or repeat moves the month anchor (DASH-05)
   if (p.estimate && p.estimate !== item.estimate) { logActivity(id, 'estimate', { from: item.estimate || null, to: p.estimate }); item.estimate = p.estimate; did.push(fmtEstimate(p.estimate)); }
   const tags = effTags(item), addTags = p.tags.filter(t => !tags.includes(t));
   if (addTags.length) { logActivity(id, 'tags', { added: addTags, removed: [] }); item.tags = [...tags, ...addTags]; did.push(addTags.map(t => '#' + t).join(' ')); }

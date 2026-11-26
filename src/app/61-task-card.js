@@ -618,7 +618,7 @@ function _tcSnoozeMenu(anchor, id) {
   const go = (iso) => {
     const it = getItem(id); if (!it) return;
     // The date and the plan as ONE undo step (two saves made Undo take back only the plan).
-    const run = () => { setDateWithReason(id, iso, 'Snoozed'); if (it.plannedFor && it.plannedFor < iso) setPlanned(id, null); };
+    const run = () => { setDateWithReason(id, iso, 'Snoozed', { keepRepeatDay: true }); if (it.plannedFor && it.plannedFor < iso) setPlanned(id, null); };
     if (typeof selUndoGroup === 'function') selUndoGroup(run); else run();
     toast(`Snoozed to ${typeof dueMoveLabel === 'function' ? dueMoveLabel(iso) : dueLabel(iso)}`, { kind: 'ok', icon: 'alarm-clock', action: { label: 'Undo', run: () => undo() } });
   };

@@ -61,7 +61,12 @@ function recurrenceStep(iso, rec, anchorDay) {
   if (rec === 'daily') return _isoAddDays(iso, 1);
   if (rec === 'weekly') return _isoAddDays(iso, 7);
   if (rec === 'biweekly') return _isoAddDays(iso, 14);
-  if (rec === 'monthly') return _isoAddMonths(iso, 1, anchorDay);
+  if (rec === 'monthly') {
+    // A date moved before its series day (a snooze or a sweep past the month's end): the series' own day
+    // that month comes next, so no month is skipped (30 Nov snoozed to 2 Dec -> 30 Dec, not 30 Jan) (DASH-05).
+    if (anchorDay) { const same = _isoAddMonths(iso, 0, anchorDay); if (same > iso) return same; }
+    return _isoAddMonths(iso, 1, anchorDay);
+  }
   if (rec === 'weekdays') {
     let d = _isoAddDays(iso, 1);
     for (let i = 0; i < 3 && [0, 6].includes(new Date(d + 'T00:00:00').getDay()); i++) d = _isoAddDays(d, 1); // clock-ok: wall date
@@ -80,6 +85,18 @@ function nextOccurrence(fromIso, rec, today, anchorDay) {
   let next = recurrenceStep(fromIso || today, rec, anchorDay);
   for (let i = 0; next <= today && i < 2000; i++) next = recurrenceStep(next, rec, anchorDay);
   return next;
+}
+
+/**
+ * The month anchor (repeatDay) follows the due date the user sets (DASH-05): a monthly task with a date keeps
+ * the day of that date; any other repeat, or no date, has none. Called when the repeat changes, when a task is
+ * made, and when the user sets a new due date. A snooze and the sweeps keep the anchor (recurrenceStep then
+ * brings the series back to its own day). Mirrored in server/actions/model.mjs repeatAnchorFollow.
+ */
+function repeatAnchorFollow(item) {
+  if (!item) return;
+  const day = effRecurrence(item) === 'monthly' && /^\d{4}-\d{2}-\d{2}$/.test(String(item.dueDate || '')) ? Number(item.dueDate.slice(8, 10)) : 0;
+  if (day >= 1 && day <= 31) item.repeatDay = day; else delete item.repeatDay;
 }
 
 /** Roll a repeating task to its next date: subtasks reset, plan cleared, history logged. */
@@ -200,12 +217,14 @@ function logActivity(taskId, type, details) {
   });
   if (typeof inboxOnActivity === 'function') inboxOnActivity(taskId, type);   // a captured task given a home leaves the Inbox (24-quick-capture.js)
 }
-function setDateWithReason(id, date, reason) {
+/** o: {keepRepeatDay} (a snooze: a monthly series keeps its day; any other new date moves it, DASH-05). */
+function setDateWithReason(id, date, reason, o) {
   const item = getItem(id); if (!item) return;
   const oldDate = item.dueDate || null;
   if (oldDate !== (date || null)) logActivity(id, 'date', { from: oldDate, to: date || null, reason: reason || null });
   item.dueDate = date || null;
   if (!item.dueDate) delete item.dueTime;
+  if (oldDate !== item.dueDate && !(o && o.keepRepeatDay)) repeatAnchorFollow(item);
   saveData(); render();
 }
 // Fields whose changes are logged in the task history.
@@ -221,6 +240,7 @@ function setOverride(id, field, value) {
     const was = new Map((Array.isArray(oldValue) ? oldValue : []).map(s => [s && s.id, !!(s && s.done)]));
     item.subtasks = value.map(s => (!s || typeof s !== 'object') ? s : s.done && !was.get(s.id) ? { ...s, doneAt: Date.now() } : !s.done && s.doneAt ? (({ doneAt, ...r }) => r)(s) : s);
   }
+  if (field === 'recurrence' && oldValue !== value) repeatAnchorFollow(item);   // monthly: anchored on its due date; other repeats: none (DASH-05)
   if (_LOGGED_FIELDS.includes(field) && oldValue !== value) {
     logActivity(id, field, { from: oldValue ?? null, to: value ?? null });
   } else if (field === 'tags' || field === 'people') {

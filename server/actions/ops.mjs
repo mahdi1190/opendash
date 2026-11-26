@@ -14,7 +14,7 @@
 
 import {
   ActionError, STATUSES, PRIORITY_INPUTS, PRIORITY_LABELS, RECURRENCES, LIMITS,
-  cleanLine, cleanText, normTag, slug, isIsoDate, dateError, addDaysIso, advanceByRecurrence,
+  cleanLine, cleanText, normTag, slug, isIsoDate, dateError, addDaysIso, advanceByRecurrence, repeatAnchorFollow,
   newTaskId, newSubtaskId, newNoteId, newCountdownId, resolveStream, defaultStream, normPriority,
   resolvePerson, tagCounts, tagRegistry, closest, truncate, clone,
 } from './model.mjs';
@@ -103,6 +103,7 @@ function setRecurrence(ctx, t, v) {
   const nv = v ?? 'none';
   if (nv === (t.recurrence ?? 'none')) return [];
   const from = t.recurrence ?? 'none'; t.recurrence = nv; ctx.log(t.id, 'recurrence', { from, to: nv });
+  repeatAnchorFollow(t);   // monthly: anchored on its due date; other repeats: none (DASH-05)
   return [change(t, 'recurrence', from, nv)];
 }
 function setTags(ctx, t, tags, createTag) {
@@ -164,7 +165,7 @@ function applyFields(ctx, t, p) {
   if (p.detail !== undefined) ch.push(...setDetail(ctx, t, p.detail));
   if (p.stream !== undefined) ch.push(...setStream(ctx, t, p.stream));
   if (p.priority !== undefined) ch.push(...setPriority(ctx, t, p.priority));
-  if (p.dueDate !== undefined) ch.push(...setDue(ctx, t, p.dueDate, p.reason));
+  if (p.dueDate !== undefined) { const c = setDue(ctx, t, p.dueDate, p.reason); if (c.length) repeatAnchorFollow(t); ch.push(...c); }   // a new date moves a monthly series' day (DASH-05)
   if (p.recurrence !== undefined) ch.push(...setRecurrence(ctx, t, p.recurrence));
   if (p.tags !== undefined) ch.push(...setTags(ctx, t, p.tags, p.createTag));
   if (p.people !== undefined) ch.push(...setPeople(ctx, t, p.people));
@@ -315,6 +316,7 @@ export const OPS = [
         createdVia: ctx.source,
       };
       for (const [i, ref] of (p.people || []).entries()) { const hit = resolvePerson(s, ref, `people[${i}]`); if (!t.people.includes(hit.id)) t.people.push(hit.id); }
+      if (t.recurrence === 'monthly') repeatAnchorFollow(t);   // the series' day from the start (DASH-05)
       s.custom.push(t);
       ctx.log(id, 'created', { text: 'Created' });
       if (p.status && p.status !== 'todo') { s.statuses = s.statuses || {}; s.statuses[id] = p.status; }
@@ -446,6 +448,7 @@ export const OPS = [
         target = addDaysIso(t.dueDate, p.shiftDays);
       }
       const ch = setDue(ctx, t, target, p.reason);
+      if (ch.length && !hasShift) repeatAnchorFollow(t);   // a new date moves a monthly series' day; a push back keeps it (DASH-05)
       return { summary: ch.length ? `Reschedule "${label(t)}": ${fmt(ch[0].from)} -> ${fmt(ch[0].to)}` : `"${label(t)}" is already due ${fmt(target)}`, changes: ch };
     },
   },

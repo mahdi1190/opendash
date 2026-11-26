@@ -399,6 +399,7 @@ function _bdApply(kind, id, to, from, board, o) {
     logActivity(id, 'date', { from: cur || null, to: d, reason: 'board' });
     it.dueDate = d;
     if (!d) delete it.dueTime;
+    if (typeof repeatAnchorFollow === 'function') repeatAnchorFollow(it);   // a new date moves a monthly series' day (DASH-05)
     return d ? 'due ' + (typeof dueLabel === 'function' ? dueLabel(d) : d) : 'date cleared';
   }
   return null;
