@@ -584,7 +584,7 @@ function _gdpBindStage(box) {
       if (pp && pp.thirsty && !pp.ripe && pp.def.thirst && !m0.rain.now) _gdp.sweep = { done: new Set(), n: 0, undo0: _gd.undo.length, tool: 'water', last: '' };
     }
     // pressing bare ground: you start walking there at once, and keep walking to the pointer for as long as the button is down
-    if (!_gdp.sweep && !_gdp.moving && mode !== 'decorate' && tool !== 'seed' && !_gdpPopOpen() && typeof gardenHoldStart === 'function' && typeof gardenWorldPick === 'function') {
+    if (!_gdp.sweep && !_gdp.moving && mode !== 'decorate' && tool !== 'seed' && !_gdpPopOpen() && typeof gardenHoldStart === 'function' && typeof gardenWorldPick === 'function' && !(typeof gardenB2Holding === 'function' && gardenB2Holding())) {
       const k = gardenWorldPick(it, cell, ev, gardenHere());
       if (k.kind === 'ground' && gardenHoldStart(ev)) _gdp.press.hold = true;
     }
@@ -618,6 +618,7 @@ function _gdpClick(it, cell, ev) {
   // A card that just closed by itself (the level-up card) swallows the click that was on its way to its button.
   if (_gdp.swallowUntil && performance.now() < _gdp.swallowUntil) return;   // clock-ok: a short input guard
   if (ev && ev.clientX != null && gardenUiSwallow(ev.clientX, ev.clientY)) return;
+  if (typeof gardenB2Click === 'function' && gardenB2Click(it, cell, ev)) return;   // (build2) something in your hands: it goes where you click, or you walk there
   const m = gardenHere(), mode = _gdpMode(), tool = _gdpTool();
   const at = ev && ev.clientX != null ? { x: ev.clientX, y: ev.clientY } : null;
   // something carried: it goes down here, or it says no
@@ -680,7 +681,7 @@ function _gdpActOn(uid) {
     case 'water': r = gardenWater(p.uid); if (!r.ok) gameDenyOf(r, node, { kind: /can is empty/i.test(r.msg) ? 'water' : 'tool' }); break;
     case 'feed': r = gardenFeed(p.uid); if (!r.ok) gameDenyOf(r, node, { kind: 'tool' }); break;
     case 'trim': r = gardenPrune(p.uid); if (!r.ok) gameDenyOf(r, node, { kind: 'tool' }); break;
-    case 'dig': r = gardenDig(p.uid); if (!r.ok) gameDenyOf(r, node, { kind: 'tool' }); else _gdp.sel = ''; break;
+    case 'dig': if (typeof gardenB2LiftWhole === 'function' && gardenB2LiftWhole(p.uid)) { _gdp.sel = ''; break; } r = gardenDig(p.uid); if (!r.ok) gameDenyOf(r, node, { kind: 'tool' }); else _gdp.sel = ''; break;   // (build2: your own plant comes up whole, into your pockets)
     default: _gdpSmartPlant(p, m);
   }
 }

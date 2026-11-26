@@ -21,10 +21,24 @@ function _gb2El(tag, cls, text) { const e = document.createElement(tag); if (cls
  *  own tab, and go back out with the garden's own placing (gardenMoveStart, 94-garden-world-2hud.js). Your own garden only. */
 function _gb2Kept0() { try { return gardenStoredIndex(gardenHere()); } catch (e) { return { rows: [], signature: '' }; } }
 function _gb2PutOut(kind, uid) {
-  const box = _ghBox(); _gh.bag = false; _ghBag();
-  if (typeof gardenMoveStart !== 'function' || !gardenMoveStart(uid, kind)) { gameDeny(null, { say: 'That cannot go out just now. Try again in a moment.' }); return; }
-  try { gardenMessage('Click where it should go. Esc puts it back in your storage.', { icon: 'move', ms: 5000 }); } catch (e) { /* quiet */ }
-  if (box) { _gh.bar = ''; _ghBar(box, gardenHere()); }
+  // (build2, hands) into your pockets, kept whole; from there you hold it and put it down with the square in front of you
+  const v = gardenB2View(), m = kind === 'plant' ? 'plants' : 'decor';
+  if (v.slots.some(e => e && e.u === uid)) return { ok: true, msg: 'It is in your pockets already.' };
+  const i = v.slots.indexOf(null); if (i < 0) return _gdNo('Your pockets are full. Put something away first.');
+  const slots = v.slots.slice(); slots[i] = { u: uid, m }; _gb2Write(slots);
+  return { ok: true, msg: 'In your pockets, kept whole. Hold it to put it out in the garden.' };
+}
+/** A whole thing kept in a pocket: its name, its picture and what can be done with it. */
+function _gb2RecOf(e) {
+  if (!e || !e.u) return null;
+  const kind = e.m === 'plants' ? 'plant' : 'decor'; let it = null; try { it = gardenPlacementItem(gardenModel(), kind, e.u); } catch (err) { it = null; }
+  if (!it || !it.packed) return null;
+  return { kind, it, name: kind === 'plant' ? `${it.def.name} (in a pot)` : `${it.def.name} (kept whole)`, sub: kind === 'plant' ? 'Still growing, roots and all' : 'Just as it was', svg: (px) => { try { return gardenIconSvg(it.def.id, { kind, stage: it.stage, variant: it.variant, r: it.r, v: it.v, px }); } catch (err) { return _gb2Pic('parcel', px); } } };
+}
+function _gb2RecActs(e, s) {
+  const R = _gb2RecOf(e); if (!R) return [];
+  return [{ id: 'hold', go: true, icon: R.kind === 'plant' ? 'sprout' : 'move', label: R.kind === 'plant' ? 'Plant it' : 'Put it down', run: () => (typeof gardenB2HoldRec === 'function' && gardenB2HoldRec(e, s) ? { ok: true } : _gdNo('That cannot go out just now.')) },
+    { id: 'home', icon: 'house', label: 'Send home', run: () => gardenB2SendHome(s) }];
 }
 /** Is any chest yours standing in your garden (not packed away)? */
 function _gb2ChestOut() {
@@ -61,6 +75,12 @@ function gardenB2Pockets(box) {
     box.appendChild(el); _gb2Bind(el); _gb2.popKey = '';
     if (typeof gardenBubbleClose === 'function') gardenBubbleClose();
   }
+  if (_gb2.panel === 'build' && typeof gardenB2BuildDraw === 'function') {   // Build: the tools, things to make, your plans (94-garden-zz-8build2-land.js)
+    const k = gardenB2BuildKey(); if (!fresh && el.firstChild && _gb2.popKey === k) return true;
+    _gb2.popKey = k; el.className = 'gd-bagpop gb2-pop gb2-build'; gardenB2BuildDraw(el, box);
+    if (fresh) { const f = el.querySelector('.gb2-tab[aria-selected="true"]'); if (f) f.focus({ preventScroll: true }); }
+    return true;
+  }
   const v = gardenB2View(), store = _gb2.panel === 'store';
   if (fresh && !store) { const hand = _gb2HandSlot(v.slots), chest = v.slots.findIndex(e => e && e.i === 'decor:storage-chest'); _gb2.sel = hand != null ? hand : !_gb2ChestOut() && chest >= 0 ? chest : v.slots.findIndex(Boolean); }
   if (_gb2.sel >= v.size) _gb2.sel = -1;
@@ -75,7 +95,7 @@ function gardenB2Pockets(box) {
   }
   _gb2.popKey = st.base; _gb2.popSel = st.sel;
   const focusKey = el.contains(document.activeElement) ? document.activeElement.dataset.gb2k || '' : '';
-  el.textContent = ''; el.classList.toggle('gb2-store', store); el.classList.toggle('gb2-pockets', !store);
+  el.textContent = ''; el.classList.remove('gb2-build'); el.classList.toggle('gb2-store', store); el.classList.toggle('gb2-pockets', !store);
   const head = _gb2El('div', 'gb2-head'), pic = _gb2El('span', 'gb2-head-pic'), title = _gb2El('h2', '', store ? 'Your storage' : 'Your pockets'), cap = _gb2El('span', 'gb2-cap', `${v.used} of ${v.size} pockets used`), x = _gb2El('button', 'gb2-x');
   pic.innerHTML = store ? gardenIconSvg('storage-chest', { kind: 'decor', px: 40 }) : _GH_GLYPH.bag; pic.setAttribute('aria-hidden', 'true');
   title.id = 'gb2-title'; x.type = 'button'; x.dataset.gb2k = 'close'; x.setAttribute('aria-label', store ? 'Close your storage' : 'Close your pockets'); x.innerHTML = icon('x');
@@ -93,6 +113,13 @@ function _gb2Close(box) {
 /** One pocket as a button: the thing's picture and how many (a fish's stars), or an empty pocket. */
 function _gb2SlotBtn(v, s, store) {
   const e = v.slots[s], b = _gb2El('button', 'gb2-slot' + (e ? '' : ' is-empty')); b.type = 'button'; b.dataset.s = String(s); b.dataset.gb2k = 'p:' + s;
+  const R = e && e.u ? _gb2RecOf(e) : null;
+  if (R) {   // a whole thing, kept: its own picture, with a little pot or a ribbon
+    b.innerHTML = R.svg(40) + `<i class="gb2-keptmark${R.kind === 'plant' ? ' is-pot' : ''}" aria-hidden="true"></i>`;
+    b.setAttribute('aria-label', R.name + (store ? '. Put it away' : '')); b.setAttribute('data-tip', store ? `${R.name}: put it away` : R.name); b.classList.add('is-kept');
+    if (!store) b.setAttribute('aria-selected', String(_gb2.sel === s));
+    return b;
+  }
   if (!e || !e.i) { b.setAttribute('aria-label', 'An empty pocket'); if (!store) b.setAttribute('aria-selected', String(_gb2.sel === s)); return b; }
   const name = gardenB2Name(e.i), stars = _gb2Stars(e.i), hand = !store && _gb2HandItem() === e.i && _gb2HandSlot(v.slots) === s;
   b.innerHTML = gardenB2Svg(e.i, 40) + (e.n > 1 ? `<i class="gb2-n">${e.n}</i>` : '') + (stars ? `<i class="gb2-star" aria-hidden="true">${stars}</i>` : '') + (hand ? '<i class="gb2-inhandmark" aria-hidden="true"></i>' : '');
@@ -114,7 +141,15 @@ function _gb2DrawPockets(el, v) {
 }
 /** The strip under your pockets: the chosen thing, how many, and what you can do with it. */
 function _gb2Detail(det, v) {
-  const e = v.slots[_gb2.sel];
+  const e = v.slots[_gb2.sel], R = e && e.u ? _gb2RecOf(e) : null;
+  if (R) {
+    const p = _gb2El('span', 'gb2-detail-pic'); p.innerHTML = R.svg(52); p.setAttribute('aria-hidden', 'true');
+    const t = _gb2El('div', 'gb2-detail-t'); t.append(_gb2El('b', '', R.name), _gb2El('small', '', R.sub));
+    const acts = _gb2El('div', 'gb2-acts'), s = _gb2.sel;
+    _gb2RecActs(e, s).forEach((r, i) => { const a = _gb2El('button', 'gb2-act' + (i === 0 ? ' is-go' : '')); a.type = 'button'; a.dataset.gb2k = 'a:' + r.id; a.innerHTML = icon(r.icon) + '<span></span>'; a.lastChild.textContent = r.label; a.onclick = (ev) => { ev.stopPropagation(); const res = r.run(); if (res && res.ok === false) gameDenyOf(res, a); else if (res && res.msg && r.id === 'home') gardenMessage(res.msg, { icon: 'house', ms: 3500 }); _gb2.popKey = ''; if (_gh.bag) _ghBag(); }; acts.appendChild(a); });
+    det.append(p, t, acts);
+    return;
+  }
   if (e && e.i) {
     const name = gardenB2Name(e.i), stars = _gb2Stars(e.i), atHome = v.home[e.i] || 0, ctx = gardenB2SlotCtx(e, false);
     const p = _gb2El('span', 'gb2-detail-pic'); p.innerHTML = gardenB2Svg(e.i, 52); p.setAttribute('aria-hidden', 'true');
@@ -228,11 +263,12 @@ function _gb2Bind(el) {
     if (t.classList.contains('gb2-tab')) { _gb2.tab = t.dataset.tab; _gb2.page = 0; _gb2.popKey = ''; _ghBag(); try { gardenSfx('tab'); } catch (e) { /* quiet */ } return; }
     if (t.classList.contains('gb2-pg')) { _gb2.page += Number(t.dataset.gb2k.slice(3)) || 0; _gb2.popKey = ''; _ghBag(); return; }
     if (t.dataset.gb2k === 'all') { const r = gardenB2PutAway(_gb2.tab); if (!r.ok) gameDenyOf(r, t); else { try { gardenSfx('place'); } catch (e) { /* quiet */ } } return; }
-    if (t.classList.contains('gb2-kepttile')) { _gb2PutOut(t.dataset.kind, t.dataset.uid); return; }
+    if (t.classList.contains('gb2-kepttile')) { const r = _gb2PutOut(t.dataset.kind, t.dataset.uid); if (!r.ok) gameDenyOf(r, t); else { try { gardenSfx('place'); } catch (e) { /* quiet */ } if (r.msg) gardenMessage(r.msg, { icon: 'package', ms: 3500 }); } return; }
     if (t.classList.contains('gb2-hometile')) { const r = gardenB2Take(t.dataset.item); if (!r.ok) { gameDenyOf(r, t); return; } try { gardenSfx('place'); } catch (e) { /* quiet */ } if (r.msg) gardenMessage(r.msg, { icon: 'package', ms: 3000 }); return; }
     if (t.classList.contains('gb2-slot') && t.dataset.s != null) {
       const s = Number(t.dataset.s), v = gardenB2View(), e = v.slots[s];
-      if (store) { if (e && e.i) { const r = gardenB2SendHome(s); if (!r.ok) gameDenyOf(r, t); else { try { gardenSfx('place'); } catch (err) { /* quiet */ } } } return; }
+      if (store) { if (e && (e.i || e.u)) { const r = gardenB2SendHome(s); if (!r.ok) gameDenyOf(r, t); else { try { gardenSfx('place'); } catch (err) { /* quiet */ } } } return; }
+      if (_gb2.sel === s && e && e.u) { const first = _gb2RecActs(e, s)[0]; if (first) { const r = first.run(); if (r && r.ok === false) gameDenyOf(r, t); } return; }   // a whole thing: the second tap holds it
       if (_gb2.sel === s && e && e.i) { const first = gardenB2SlotActs(e, gardenB2SlotCtx(e, false))[0]; if (first) _gb2DoAct(first, s, t); return; }   // a second tap: the first thing it does
       _gb2.sel = s; _ghBag();   // (only the choice changed: the light path in gardenB2Pockets)
     }
@@ -290,6 +326,9 @@ function _gb2StoreWalk() {
 }
 /** The chest's prompt: any thing of a kind that stores, in reach, in your own garden ("E Open your storage"). */
 function gardenB2ActRows(px, py, rows) {
+  if (typeof gardenB2HandRows === 'function') { const own = gardenB2HandRows(); if (own) return own; }   // something in your hands: the prompt is only about where it goes (94-garden-zz-8build2-hands.js)
+  if (typeof gardenB2LandRows === 'function') { const own = gardenB2LandRows(px, py, rows); if (own) return own; }   // laying a path or a bed, the stakes, the spade on a path (94-garden-zz-8build2-land.js)
+  if (gardenB2On() && typeof gardenB2HandPickRows === 'function') { let t = 'hands'; try { t = gardenB2RingTool(); } catch (e) { t = 'hands'; } gardenB2HandPickRows(px, py, rows, t); }
   if (typeof gardenMuseumActRows === 'function') gardenMuseumActRows(px, py, rows);   // any museum's door, yours or a friend's (94-garden-build2-3museum.js)
   if (!gardenB2On() || typeof gardenAffordThings !== 'function') return;
   let m = null; try { m = gardenHere(); } catch (e) { return; }

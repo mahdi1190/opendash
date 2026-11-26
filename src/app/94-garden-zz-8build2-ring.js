@@ -28,7 +28,7 @@ function gardenB2RingTool() {
   let t = 'hand'; try { t = _gdpTool(); } catch (e) { t = 'hand'; }
   const by = GB2_TOOLS.find(r => r.page === t && r.id !== 'hands' && r.id !== 'rod' && r.id !== 'net');
   if (by) return by.id;
-  if (t === 'hand' && (_gb2.tool === 'rod' || _gb2.tool === 'net')) return _gb2.tool;
+  if (t === 'hand' && _gb2.tool && _gb2.tool !== 'hands' && GB2_TOOLS.some(r => r.id === _gb2.tool && r.page === 'hand')) return _gb2.tool;   // (the rod, the net, the path kit, the hoe, the stakes: the page's hand)
   return 'hands';
 }
 function _gb2ToolName(id) {
@@ -38,6 +38,8 @@ function _gb2ToolName(id) {
 function gardenB2PickTool(id, o) {
   const tools = gardenB2Tools(); let T = tools.find(t => t.id === id); if (!T) return false;
   if (o && o.toggle && gardenB2RingTool() === id && id !== 'hands' && !_gb2HandItem()) T = tools[0];   // the same tool again: put it away
+  if (typeof gardenB2HandsEsc === 'function') gardenB2HandsEsc();   // (what was in your hands goes back: a tool needs both of them)
+  if (typeof gardenB2LandStop === 'function') gardenB2LandStop();
   _gb2.tool = T.id;
   try { _gdp.seed = ''; _gdp.decor = ''; _gdpPickTool(T.page); } catch (e) { /* no page */ }
   _gb2.tagT = performance.now() + 2400; clearTimeout(_gb2.tagTimer);
@@ -52,6 +54,7 @@ function gardenB2Step(d) {
   return gardenB2PickTool(tools[(i + (d < 0 ? tools.length - 1 : 1)) % tools.length].id);
 }
 function gardenB2PutBack() {
+  if (typeof gardenB2HandsBack === 'function' && gardenB2HandsBack()) return true;   // (your hands: 94-garden-zz-8build2-hands.js)
   if (!_gb2HandItem()) return false;
   try { _gdp.seed = ''; _gdp.decor = ''; _gdpPickTool('hand'); } catch (e) { /* no page */ }
   _gb2.tool = 'hands'; _gb2GearChanged(); _gb2RingPaint();
@@ -80,7 +83,16 @@ function gardenB2Key(ev, k) {
   if (!gardenB2On() || ev.ctrlKey || ev.metaKey || ev.altKey) return false;
   if (k === 't' || k === 'T') { if (!ev.repeat) gardenB2Step(ev.shiftKey ? -1 : 1); return true; }
   if (k === 'i' || k === 'I') { if (!ev.repeat) gardenSlotPick('bag', true); return true; }
-  if ((k === 'x' || k === 'X') && _gb2HandItem()) { gardenB2PutBack(); return true; }
+  if ((k === 'x' || k === 'X') && (_gb2HandItem() || (typeof gardenB2Holding === 'function' && gardenB2Holding()))) { if (!ev.repeat) gardenB2PutBack(); return true; }
+  if ((k === 'r' || k === 'R') && !ev.shiftKey) {   // R: turn what you hold, or the next stones and ground for the path kit and the hoe
+    if (typeof gardenB2Holding === 'function' && gardenB2Holding()) { if (!ev.repeat) gardenB2Turn(); return true; }
+    if (typeof gardenB2LandStyle === 'function' && gardenB2LandStyle(1)) return true;
+    return false;
+  }
+  if (k === 'Escape') {
+    if (typeof gardenB2LandEsc === 'function' && gardenB2LandEsc()) return true;
+    if (typeof gardenB2HandsEsc === 'function' && gardenB2HandsEsc()) return true;
+  }
   return false;
 }
 let _gb2WheelAt = 0;
@@ -108,17 +120,24 @@ function _gb2ToolSvg(id) {
     if (id === 'spade') return _GH_GLYPH.dig;
     if (id === 'rod') return gardenCatchSvg('rod', gardenRod().id, 36);
     if (id === 'net') return gardenCatchSvg('net', gardenNet().id, 36);
+    if (_GB2_GLYPH[id]) return _GB2_GLYPH[id];
   } catch (e) { /* the hand */ }
   return _GH_GLYPH.hand;
 }
+/* the building tools on the ring, painted like the rest of it (lit from the upper left) */
+const _GB2_GLYPH = Object.freeze({
+  paths: '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 12c-2 4-3 8-3 11a4 4 0 0 0 4 4h16a4 4 0 0 0 4-4c0-3-1-7-3-11z" fill="#a8824e" stroke="#5e4224" stroke-width="1.400"/><path d="M8 12c4-2 12-2 16 0" fill="none" stroke="#5e4224" stroke-width="2.200" stroke-linecap="round"/><ellipse cx="11.500" cy="9.800" rx="3.400" ry="2.400" fill="#c9c2b1" stroke="#77726a" stroke-width="1"/><ellipse cx="17.500" cy="8.600" rx="3.600" ry="2.600" fill="#d8d2c2" stroke="#77726a" stroke-width="1"/><ellipse cx="22" cy="10.200" rx="2.800" ry="2.100" fill="#bdb6a4" stroke="#77726a" stroke-width="1"/><path d="M9 19h14M10 23h12" stroke="#8a6638" stroke-width="1" stroke-dasharray="2 2"/></svg>',
+  hoe: '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M24 4L9 23" stroke="#a8743e" stroke-width="3" stroke-linecap="round"/><path d="M24.500 3.500l1.200 1.200" stroke="#6a4a24" stroke-width="2" stroke-linecap="round"/><path d="M9.500 21.500L4 20l-1 4.500 8.500 2.500 1.500-3z" fill="#aab4ba" stroke="#5a646c" stroke-width="1.400" stroke-linejoin="round"/><path d="M5 25.500l6 1.800" stroke="#6b4a30" stroke-width="2.400" stroke-linecap="round" opacity=".8"/><path d="M14 29q5-3 12-1" stroke="#6b4a30" stroke-width="2" fill="none" stroke-linecap="round" opacity=".7"/></svg>',
+  stakes: '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 27V9M24 27V9" stroke="#a8743e" stroke-width="3" stroke-linecap="round"/><path d="M8 9l-1.600-3h3.200zM24 9l-1.600-3h3.200z" fill="#a8743e" stroke="#6a4a24" stroke-width="1"/><path d="M8 13Q16 17 24 13" fill="none" stroke="#e8e2d0" stroke-width="1.600"/><path d="M8 13Q16 17 24 13" fill="none" stroke="#c0453a" stroke-width="1.600" stroke-dasharray="3 3"/><path d="M4 28h24" stroke="#6b8a3a" stroke-width="2.400" stroke-linecap="round" opacity=".7"/></svg>',
+});
 /** How many of a thing are in your pockets. */
 function _gb2InPockets(v, item) { let n = 0; for (const e of v.slots) if (e && e.i === item) n += e.n; return n; }
 function gardenB2Bar(box, m) {
   if (!gardenB2On()) return false;
   const v = gardenB2View(), cur = gardenB2RingTool(), held = _gb2HandItem(), tools = gardenB2Tools(), tag = _gb2.tagT > performance.now();
   let rid = '', nid = ''; try { rid = gardenRod().id; nid = gardenNet().id; } catch (e) { /* none */ }
-  const heldN = held ? _gb2InPockets(v, held) : 0;
-  const key = ['gb2', cur, held, heldN, v.used, v.size, tools.map(t => t.id).join(','), tag ? 1 : 0, rid, nid, m && m.visit ? 1 : 0, _gh.bag ? 1 : 0, gardenHas('tool:golden-shears') > 0 ? 1 : 0, typeof _gdp !== 'undefined' && _gdp.moving ? _gdp.moving.uid : '', v.slots.some(e => e && e.i === 'decor:storage-chest') && typeof _gb2ChestOut === 'function' && !_gb2ChestOut() ? 'c' : ''].join('|');
+  const heldN = held ? _gb2InPockets(v, held) : 0, H = typeof gardenB2Held === 'function' ? gardenB2Held() : null, Ls = typeof gardenB2LandSlot === 'function' ? gardenB2LandSlot() : null;
+  const key = ['gb2', cur, held, heldN, H ? (H.uid || H.id || H.k) + ':' + (H.r || 0) : '', Ls ? Ls.key : '', v.used, v.size, tools.map(t => t.id).join(','), tag ? 1 : 0, rid, nid, m && m.visit ? 1 : 0, _gh.bag ? 1 : 0, gardenHas('tool:golden-shears') > 0 ? 1 : 0, typeof _gdp !== 'undefined' && _gdp.moving ? _gdp.moving.uid : '', v.slots.some(e => e && e.i === 'decor:storage-chest') && typeof _gb2ChestOut === 'function' && !_gb2ChestOut() ? 'c' : ''].join('|');
   const el = _ghHost(box, 'gd-toolbar gd-hotbar');
   if (_gh.bar === key && el.firstChild && el.classList.contains('gb2-on')) return true;
   _gh.bar = key;
@@ -136,8 +155,14 @@ function gardenB2Bar(box, m) {
   }
   if (held) {
     const name = gardenB2Name(held);
-    html += `<button type="button" class="gd-slot gb2-held" data-gb2="putback" aria-pressed="true" aria-label="${escAttr(name)} in your hand, ${heldN} in your pockets. Put it back (X)" data-tip="${escAttr(name + ' in your hand. X puts it back')}"><kbd>X</kbd>${gardenB2Svg(held, 34)}<i class="gd-slotn">${heldN}</i></button>`;
+    html += `<button type="button" class="gd-slot gb2-held" data-gb2="putback" aria-pressed="true" aria-label="${escAttr(name)} in your hand, ${heldN} in your pockets. Put it back (X)" data-tip="${escAttr(name + ' in your hand. E puts it down, X puts it back')}"><kbd>X</kbd>${gardenB2Svg(held, 34)}<i class="gd-slotn">${heldN}</i></button>`;
+  } else if (H) {   // a thing you carry that is not from your pockets: a bench you picked up, a plant in its pot, a sign you made
+    let art = ''; try { art = H.icon ? H.icon : gardenIconSvg(H.id, { kind: H.m === 'plants' || H.k === 'seed' ? 'plant' : 'decor', stage: H.stage, r: H.r, v: H.v, px: 34 }); } catch (e) { art = ''; }
+    const back = H.backWords || (H.placed && !H.visit ? 'X puts it in your pockets' : 'X puts it back');
+    html += `<button type="button" class="gd-slot gb2-held" data-gb2="putback" aria-pressed="true" aria-label="${escAttr((H.name || 'It') + ' in your arms. ' + back)}" data-tip="${escAttr((H.name || 'It') + ': E puts it down, ' + back)}"><kbd>X</kbd>${art || icon('move')}</button>`;
   }
+  if (H && ((H.def && H.def.rot && (H.k === 'decor' || H.m === 'decor')) || H.turn)) html += `<button type="button" class="gd-slot gb2-turn" data-gb2="turn" aria-label="Turn it (R)" data-tip="Turn it (R)"><kbd>R</kbd>${icon('rotate-cw')}</button>`;
+  if (Ls && !H) html += `<button type="button" class="gd-slot gb2-held gb2-style" data-gb2="style" aria-label="${escAttr(Ls.name + '. R for the next')}" data-tip="${escAttr(Ls.name + ': R for the next one')}"><kbd>R</kbd>${Ls.svg}</button>`;
   const full = v.free <= 0, fill = v.size ? v.used / v.size : 0;
   const chestWaits = v.slots.some(e => e && e.i === 'decor:storage-chest') && typeof _gb2ChestOut === 'function' && !_gb2ChestOut() && !(m && m.visit);   // (your chest is still in your pockets: a little dot until it is down)
   html += `<button type="button" class="gd-slot gd-slot-bag gb2-bagbtn${full ? ' is-full' : fill >= 0.85 ? ' is-nearly' : ''}" data-slot="bag" aria-pressed="${_gh.bag ? 'true' : 'false'}" aria-label="Your pockets: ${v.used} of ${v.size} used (B)${chestWaits ? '. Your storage chest is in them' : ''}" data-tip="Your pockets (B): ${v.used} of ${v.size} used"><kbd>B</kbd><span class="gb2-bagart">${_GH_GLYPH.bag}</span><span class="gb2-bagcap"><b>${v.used}</b>/${v.size}</span><i class="gb2-bagfill" style="--f:${fill.toFixed(3)}"></i>${chestWaits ? '<i class="gb2-newdot" aria-hidden="true"></i>' : ''}</button>`;
@@ -149,6 +174,8 @@ function gardenB2Bar(box, m) {
     el.addEventListener('click', (ev) => {
       const t = ev.target.closest('[data-gb2-tool]'); if (t) { ev.stopPropagation(); gardenB2PickTool(t.dataset.gb2Tool, { toggle: true }); return; }
       const p = ev.target.closest('[data-gb2="putback"]'); if (p) { ev.stopPropagation(); gardenB2PutBack(); return; }
+      const tn = ev.target.closest('[data-gb2="turn"]'); if (tn) { ev.stopPropagation(); if (typeof gardenB2Turn === 'function') gardenB2Turn(); return; }
+      const st = ev.target.closest('[data-gb2="style"]'); if (st) { ev.stopPropagation(); if (typeof gardenB2LandStyle === 'function') gardenB2LandStyle(1); return; }
       const mv = ev.target.closest('[data-gb2="stopmove"]'); if (mv) { ev.stopPropagation(); if (typeof gardenMoveEnd === 'function') gardenMoveEnd(); return; }
       const b = ev.target.closest('[data-slot="bag"]'); if (b) { ev.stopPropagation(); gardenSlotPick('bag'); }
     });
@@ -181,6 +208,8 @@ function gardenB2HeldTool(t, gear, pose) {
 
 /* ---------- E or Space with the rod or the net out ---------- */
 function gardenB2Interact() {
+  if (typeof gardenB2Holding === 'function' && gardenB2Holding()) return gardenB2Put();   // (your hands: put it down where the square is)
+  if (typeof gardenB2LandInteract === 'function' && gardenB2LandInteract()) return true;   // (the path kit and the hoe: start, and finish)
   const t = gardenB2On() ? gardenB2RingTool() : 'hands';
   if ((t !== 'rod' && t !== 'net') || typeof _gw === 'undefined' || !_gw.on) return false;
   if (t === 'net') {

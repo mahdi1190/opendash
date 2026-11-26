@@ -58,6 +58,10 @@ const GB2_TOOLS = Object.freeze([
   Object.freeze({ id: 'spade', name: 'Spade', page: 'dig', says: 'Dig a plant up' }),
   Object.freeze({ id: 'rod', name: 'Fishing rod', page: 'hand', says: 'Face the water and press E, or click the water, to cast' }),
   Object.freeze({ id: 'net', name: 'Bug net', page: 'hand', says: 'Press E near a bug, or click it, to net it' }),
+  // building in the game (94-garden-zz-8build2-land.js): what the garden designer did, now done where you stand
+  Object.freeze({ id: 'paths', name: 'Path kit', page: 'hand', says: 'Stand on a path, a plaza or by a door and press E, walk, then press E again. R changes the stones' }),
+  Object.freeze({ id: 'hoe', name: 'Hoe', page: 'hand', says: 'Press E, walk over the ground to make a bed or lay moss, sand or bark, then press E again. R changes what you lay' }),
+  Object.freeze({ id: 'stakes', name: 'Moving stakes', page: 'hand', says: 'Face a bench, a lamp, a stall or a shop and press E to move it' }),
 ]);
 const GB2_SIZE = Object.freeze({ base: 20, max: 40, more: Object.freeze([Object.freeze(['tool:satchel', 30]), Object.freeze(['tool:big-bag', 40])]) });
 const GB2_FIRST = Object.freeze({ lead: Object.freeze(['decor:storage-chest', 'fertiliser']), kinds: Object.freeze([Object.freeze(['seed', 6]), Object.freeze(['decor', 5]), Object.freeze(['catch', 4])]) });

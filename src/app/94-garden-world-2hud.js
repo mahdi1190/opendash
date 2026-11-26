@@ -88,7 +88,7 @@ const _GH_MENU = Object.freeze([
   ['play', 'Play', 'gamepad-2'],
   ['graphics', 'Graphics', 'monitor'],
   ['lands', 'Buy land', 'map-pin'],
-  ['design', 'Design', 'paintbrush'],
+  ['design', 'Build', 'paintbrush'],
   ['shop', 'Shop', 'store'], ['basket', 'Market stall', 'shopping-basket'], ['craft', 'Crafting', 'hammer'], ['tricks', 'Pet tricks', 'wand-sparkles'], ['almanac', 'Notice board', 'clipboard-list'], ['journal', 'Field Journal (J)', 'book-open'], ['catch', 'Bag & tackle', 'fish'], ['friends', 'Friends', 'users'], ['help', 'Help', 'circle-help'],
 ]);
 function _ghMenu(box, m) {
@@ -127,7 +127,7 @@ function _ghMenu(box, m) {
       if (id === 'graphics') { gardenGraphicsOpen(); return; }
       if (id === 'sound') { gardenSoundOpen(); return; }
       if (id === 'collide') { if (typeof gardenCollideToggle === 'function') gardenCollideToggle(); return; }
-      if (id === 'design') { gardenDesignEnter(); return; }
+      if (id === 'design') { if (typeof gardenB2BuildOpen === 'function' && gardenB2BuildOpen()) return; gardenDesignEnter(); return; }   // (build2: building is done in the game, with the tools on the ring)
       gardenPopupOpen(id);
     });
   }
@@ -486,7 +486,8 @@ function gardenPlantBubble(p, m) {
   if (def.thirst) items.push({ svg: _GH_GLYPH.water, label: p.thirsty ? 'Water: it is thirsty' : 'Water', cls: p.thirsty ? 'is-go' : '', run: () => _ghDoTo(p.uid, gardenWater(p.uid)) });
   items.push({ svg: _GH_GLYPH.feed, label: 'Compost: half a day of growth', n: gardenHas('fertiliser'), cls: gardenHas('fertiliser') ? '' : 'is-off', run: (b) => { const r = gardenFeed(p.uid); if (r && !r.ok) gameDenyOf(r, b); } });
   if (p.stage >= 3) items.push({ svg: _GH_GLYPH.trim, label: 'Trim', cls: p.overgrown ? 'is-go' : '', run: () => _ghDoTo(p.uid, gardenPrune(p.uid)) });
-  items.push({ ic: 'move', label: 'Move', run: () => gardenMoveStart(p.uid, 'plant') });
+  if (typeof gardenB2LiftWhole === 'function' && !m.visit && !(_gdG().plants[p.uid] || {}).by) items.push({ svg: _GH_GLYPH.dig, label: 'Lift it whole: into your pockets, still growing', run: () => { gardenB2LiftWhole(p.uid); _gdp.sel = ''; } });   // (build2: the spade lifts it whole, Animal Crossing's way)
+  else items.push({ ic: 'move', label: 'Move', run: () => gardenMoveStart(p.uid, 'plant') });
   items.push({ svg: _GH_GLYPH.dig, label: 'Dig up', run: () => { _ghDoTo(p.uid, gardenDig(p.uid)); _gdp.sel = ''; } });
   const a = gardenStageName(def, p.stage);
   gardenBubbleOpen({ x: p.x + p.fp / 2, y: p.y - 0.4 - 0.5 * p.stage / 4 }, { title: def.name, sub: m.visit ? gardenVisitPlantLine(p, a) : p.ripe ? 'Ready' : p.nextIn ? `${a} · ${_gdHoursLabel(p.nextIn)}` : a, items });
@@ -501,8 +502,9 @@ function gardenDecorBubble(d, m) {
   if (def.effect && def.effect.kind === 'show') items.push({ ic: 'eye', label: 'See your catches', run: () => gardenCatchOpen('show') });
   if (def.rot) items.push({ ic: 'rotate-cw', label: 'Turn', run: () => _ghDoTo(d.uid, gardenRotateDecor(d.uid)) });
   if (def.v > 1) items.push({ ic: 'palette', label: 'Restyle', run: () => _ghDoTo(d.uid, gardenStyleDecor(d.uid)) });
-  items.push({ ic: 'move', label: 'Move', run: () => gardenMoveStart(d.uid, 'decor') });
-  items.push({ svg: _GH_GLYPH.bag, label: 'Back in the bag', run: () => { _ghDoTo(d.uid, gardenRemoveDecor(d.uid)); _gdp.sel = ''; } });
+  if (typeof gardenB2PickUp === 'function') items.push({ svg: _GH_GLYPH.hand, label: 'Pick up: carry it somewhere else', cls: 'is-go', run: () => gardenB2PickUp(d.uid) });   // (build2: in your hands, with the square in front of you)
+  else items.push({ ic: 'move', label: 'Move', run: () => gardenMoveStart(d.uid, 'decor') });
+  items.push({ svg: _GH_GLYPH.bag, label: typeof gardenB2PickUp === 'function' ? 'Into your pockets' : 'Back in the bag', run: () => { _ghDoTo(d.uid, gardenRemoveDecor(d.uid)); _gdp.sel = ''; } });
   gardenBubbleOpen({ x: d.x + (def.w || 1) / 2, y: d.y - 0.5 }, { title: def.name, items });
 }
 /** An empty spot in a bed: the seeds that would grow right here. */

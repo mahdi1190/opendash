@@ -78,6 +78,7 @@ function _gb2FirstRun(g) {
 /* ---------- what comes in, what goes out ---------- */
 /** The pocket in your hand: the seed, decoration or compost the page's tool holds. */
 function _gb2HandItem() {
+  if (typeof gardenB2HeldItem === 'function') { const it = gardenB2HeldItem(); if (it) return it; }   // (your hands, 94-garden-zz-8build2-hands.js)
   try { const t = _gdpTool(); if (t === 'seed' && _gdp.seed) return 'seed:' + _gdp.seed; if (t === 'decorate' && _gdp.decor) return 'decor:' + _gdp.decor; if (t === 'feed') return 'fertiliser'; } catch (e) { /* no page */ }
   return '';
 }
@@ -86,6 +87,7 @@ function _gb2HandSlot(slots) { const it = _gb2HandItem(); if (!it) return null; 
 function _gb2HandCheck() {
   const it = _gb2HandItem(); if (!it) return;
   const v = gardenB2View(); if (v.slots.some(e => e && e.i === it)) return;
+  if (typeof gardenB2HeldItem === 'function' && gardenB2HeldItem() === it) gardenB2HandsEmpty();
   try { _gdp.seed = ''; _gdp.decor = ''; _gdpPickTool('hand'); } catch (e) { /* no page */ }
   if (v.home[it] > 0) _gb2Say('hand:' + it, `That was the last ${gardenB2Name(it).toLowerCase()} in your pockets. There are more at home: take some from your chest.`, 'package');
 }
@@ -159,7 +161,9 @@ function _gb2Bump(full) {
 
 /* ---------- moving things between your pockets and home ---------- */
 function gardenB2SendHome(s) {
-  const v = gardenB2View(), e = v.slots[s]; if (!e || !e.i) return _gdNo('That pocket is empty');
+  const v = gardenB2View(), e = v.slots[s];
+  if (e && e.u) { const slots = v.slots.slice(); slots[s] = null; _gb2Write(slots); if (typeof gardenB2Held === 'function' && gardenB2Held() && gardenB2Held().uid === e.u) gardenB2HandsEmpty(); return { ok: true, msg: 'It is safe at home, kept whole: in your storage, under Kept whole.' }; }   // (a whole thing: it waits in your storage)
+  if (!e || !e.i) return _gdNo('That pocket is empty');
   const slots = v.slots.slice(); slots[s] = null; _gb2Write(slots); _gb2HandCheck();
   return { ok: true, msg: `${gardenB2Name(e.i)} ${e.n > 1 ? 'are' : 'is'} safe at home.`, item: e.i };
 }
@@ -257,6 +261,9 @@ function gardenB2SlotActs(e, ctx) { if (!e || !e.i) return []; return GB2_SLOT_A
 /** Hold a thing from your pockets for the page's own tool: a seed plants where you click a bed, a decoration goes down where you click,
  *  compost feeds the plant you click. X or Esc puts it back. */
 function _gb2Hold(kind, id) {
+  // (build2, hands) in your hands, Animal Crossing's way: a square in front of your feet shows where it goes (94-garden-zz-8build2-hands.js).
+  // The page's old "click the garden to place it" mode is not reached any more.
+  if (typeof gardenB2Hold === 'function') return gardenB2Hold(kind === 'seed' ? 'seed:' + id : kind === 'decor' ? 'decor:' + id : 'fertiliser') ? { ok: true } : _gdNo('That cannot be held just now. Try again in a moment.');
   try { if (typeof _gh !== 'undefined' && _gh.bag) { _gh.bag = false; _ghBag(); } } catch (e) { /* no panel */ }
   const g = _gdG(), first = !g.seen['b2.h.' + kind];
   if (kind === 'seed') { _gdp.seed = id; _gdpPickTool('seed'); }

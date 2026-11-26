@@ -339,3 +339,48 @@ html[data-theme="dark"] .gd-catchcard .gb2-ccnew { color: #f2c860; }
 @media (prefers-reduced-motion: reduce) {
   .gmu-swim, .gmu-perch, .gmu-weed, .gmu-bub, .gmu-say.is-new, .gmu-ex.is-new .gmu-case { animation: none; }
 }
+
+/* ---------- build2, builder 3: your hands and the building tools (94-garden-zz-8build2-hands.js, -land.js) ---------- */
+/* a whole thing kept in a pocket: a little clay pot (a plant) or a ribbon (a decoration kept with its look) */
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-keptmark { position: absolute; right: 3px; bottom: 3px; width: 15px; height: 13px; pointer-events: none; background: #c87a4a; border: 1.5px solid #7a4424; border-radius: 2px 2px 6px 6px / 2px 2px 7px 7px; box-shadow: inset 0 3px 0 rgba(255, 220, 180, .35); }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-keptmark:not(.is-pot) { width: 13px; height: 13px; background: var(--gu-gold-2); border-color: #a87a1c; border-radius: 50%; }
+/* the turn button and the stones or ground the path kit and the hoe will lay */
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on .gd-slot.gb2-turn { width: 46px; height: 46px; border-radius: 15px; background: var(--gu-card); border: 2px solid var(--gu-line); box-shadow: var(--gu-shadow-sm); transform: none; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on .gd-slot.gb2-turn .i { width: 22px; height: 22px; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on .gd-slot.gb2-style { border-color: var(--gu-wood-2); }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on .gd-slot.gb2-held > svg { width: 40px; height: 40px; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on .gd-slot.gb2-style kbd { background: var(--gu-wood-2); color: var(--gu-wood-ink); }
+/* Build: the tools, things to make, your plans */
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox > .gd-bagpop.gb2-pop.gb2-build { width: min(700px, calc(100% - 24px)); }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-build > .gb2-tabs { flex: none; display: flex; gap: 6px; padding: 0 14px 8px; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-buildbody { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 4px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-toollist, .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-planlist { display: flex; flex-direction: column; gap: 8px; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox :is(.gb2-toolrow, .gb2-planrow) { display: flex; align-items: center; gap: 12px; padding: 9px 10px; background: var(--gu-card); border: 1.5px solid var(--gu-line); border-radius: 15px; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-planrow.is-cur { border-color: var(--gu-leaf); box-shadow: 0 0 0 2px rgba(74, 115, 48, .22); }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-toolpic { flex: none; display: grid; place-items: center; width: 48px; height: 48px; background: radial-gradient(circle at 36% 30%, #fffdf7 0%, var(--gu-card) 55%, #eedfbd 100%); border: 2px solid var(--gu-wood-2); border-radius: 50%; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-toolpic svg { width: 32px; height: 32px; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-makekinds { display: flex; gap: 10px; flex-wrap: wrap; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-swatch { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 120px; padding: 6px 6px 8px; color: var(--gu-ink); background: var(--gu-card); border: 2px solid var(--gu-line); border-radius: 15px; cursor: pointer; font: 750 13.5px/1.25 Inter, system-ui, sans-serif; text-align: center; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-swatch svg { width: 64px; height: 76px; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-swatch.is-on { border-color: var(--gu-gold-2); box-shadow: 0 0 0 3px rgba(246, 201, 74, .5); }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-swatch.is-locked { opacity: .62; cursor: default; font-weight: 600; font-size: 12px; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-makerow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-makerow > b { min-width: 70px; font-size: 14.5px; font-weight: 800; color: var(--gu-ink); }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-pair { width: 40px; height: 40px; padding: 0; border: 2px solid var(--gu-line); border-radius: 50%; cursor: pointer; background: linear-gradient(135deg, var(--a) 0 55%, var(--b) 55% 100%); }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-pair.is-on { border-color: var(--gu-gold-2); box-shadow: 0 0 0 3px rgba(246, 201, 74, .55); }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox :is(.gb2-pair, .gb2-chip):disabled { opacity: .4; cursor: default; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-chip { min-height: 36px; padding: 0 12px; color: var(--gu-ink); background: var(--gu-card); border: 1.5px solid var(--gu-line); border-radius: 999px; cursor: pointer; font: 700 13.5px/1 Inter, system-ui, sans-serif; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-chip.is-on { border-color: var(--gu-leaf); background: var(--gu-paper-2); box-shadow: 0 0 0 2px rgba(74, 115, 48, .25); }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-signwords { flex: 1 1 200px; min-width: 0; height: 40px; padding: 0 12px; color: var(--gu-ink); background: var(--gu-card); border: 1.5px solid var(--gu-line); border-radius: 12px; font: 650 15px/1 Inter, system-ui, sans-serif; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-signwords:focus { outline: 3px solid rgba(246, 201, 74, .6); border-color: var(--gu-gold-2); }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-makefoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; background: var(--gu-paper-2); border-radius: 15px; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-makeprev { flex: none; width: 92px; height: 100px; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-makeprev svg { width: 92px; height: 100px; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-plancopy { align-self: flex-start; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-archive { display: flex; flex-direction: column; gap: 8px; padding-top: 6px; border-top: 1.5px dashed var(--gu-line); }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-archive h3 { margin: 4px 0 0; font-size: 15px; font-weight: 800; color: var(--gu-ink); }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-archthings { display: flex; flex-wrap: wrap; gap: 6px; }
+@media (max-width: 560px) {
+  .gd-page .gd-stagebox.gd-stagebox.gd-stagebox :is(.gb2-toolrow, .gb2-planrow) { flex-wrap: wrap; }
+  .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-swatch { width: calc(33% - 8px); }
+}
