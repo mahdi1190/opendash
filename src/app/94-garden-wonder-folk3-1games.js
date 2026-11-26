@@ -237,7 +237,12 @@ function _vgPodiumAt(p, avoid) {
   const C = typeof _vfr !== 'undefined' && _vfr.ctx ? _vfr.ctx : null, things = C ? C.things : (typeof gardenAffordThings === 'function' ? gardenAffordThings() : []);
   const ok = (x, y) => {
     for (const q of avoid || []) if (Math.abs(q.x - x) < 1.8 && q.y - y < 1.3 && y - q.y < 2.4) return false;   // (a flag a little behind the crates stood out of the winner's head)
-    for (const k of [-1, 0, 1]) for (const ex of [-0.32, 0, 0.32]) if (typeof _gwFree === 'function' && !_gwFree(x + k * 0.62 + ex, y)) return false;
+    for (const k of [-1, 0, 1]) for (const ex of [-0.32, 0, 0.32]) {
+      const cx = x + k * 0.62 + ex;
+      if (typeof _gwFree === 'function' && !_gwFree(cx, y)) return false;
+      if (typeof gardenTerrainAt === 'function' && !/^(open-grass|path|sand|snow)$/.test(gardenTerrainAt(cx, y))) return false;   // (on open ground: never a bed, a building's yard or the water)
+      if (typeof _vfpBedAt === 'function' && _vfpBedAt(cx, y)) return false;
+    }
     for (const t of things) { if (!t.kind || VG_FLAT_RE.test(t.kind)) continue; const B = C ? C.base(t) : t, hw = (B.w || t.w || 1) / 2 + 1.25; if (Math.abs(B.x - x) < hw && y > B.y - Math.max(1.2, (B.h || 1.2) + 0.4) && y < B.y + 1.1) return false; }
     if (typeof _vfrFigures === 'function' && _vfrFigures().some(F => Math.abs(F.x - x) < 1.6 && F.y - y < 1.0 && y - F.y < 2.4)) return false;   // (nobody just behind it: the folk stood on it cover them)
     return !(typeof gardenTerrainAt === 'function' && /water|deep/.test(gardenTerrainAt(x, y)));
