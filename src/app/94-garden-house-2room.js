@@ -312,7 +312,8 @@ function _hsRoomRefresh(R, S, first) {
   S.shell = houseShellFor(R.slot, (v && v.rooms) || {});
   if (S.carry && S.carry.u && !S.pieces.some(p => p.u === S.carry.u) && typeof _hsMoveDrop === 'function') _hsMoveDrop(R, S, 'gone');
   S.blocks = _hsBlocksFor(S, S.pieces.filter(p => !(S.carry && S.carry.u === p.u)));
-  if (S.native) _hsSync(R, S); else if (!first) _grmPaint();
+  if (S.native) { if (first) { clearTimeout(S.syncT); S.syncT = setTimeout(() => { if (_grm.S === S && _hsNative()) _hsSync(R, S); }, 0); } else _hsSync(R, S); }   // (coming in: the pieces in a task of their own, after the room's own opening; they fade in under its picture anyway)
+  else if (!first) _grmPaint();
   if (!first && R.paintKey !== S.keyNow) _hsShellSwap(R, S);
   if (typeof _hsBagPaint === 'function') _hsBagPaint(R, S);
 }
@@ -589,7 +590,7 @@ function _hsGoRoom(slot, via) {
     const native = !!(window.GardenNative && GardenNative.inRoom && GardenNative.inRoom());
     _hs.swapping = true;
     try {
-      if (native) { GardenNative.leaveRoom(); gardenRoomEnter(R); return; }
+      if (native) { GardenNative.leaveRoom(); setTimeout(() => { if (!_grm.on && !_grm.closing && _gw.on) { _hs.arrive = { slot, via }; gardenRoomEnter(R); } }, 0); return; }   // (the room behind you closes in one task and the next opens in the following one, both under the closed iris)
       gardenRoomLeave(); setTimeout(() => { _hs.arrive = { slot, via }; gardenRoomEnter(R); }, 470);   // (the standard room needs its close to finish)
     } finally { _hs.swapping = false; }
   };
@@ -627,7 +628,7 @@ function _hsEnd(R, S) {
   if (typeof _hsMoveEnd === 'function') _hsMoveEnd(R, S);
   if (S.warm && typeof _hsWarmEnd === 'function') _hsWarmEnd(S);
   if (typeof _hsStringsEnd === 'function') _hsStringsEnd(S);
-  _hst.onReady = null;
+  _hst.onReady = null; clearTimeout(S.syncT);
   if (S.swap) { try { S.swap.old.destroy(); } catch (e) { /* gone with the room */ } S.swap = null; }
   S.imgs = new Map(); S.lamps = new Map(); S.clocks = new Map(); S.prompt = null; S.hands = null;
   if (S.dirty && _hs.swapping) _hs.dirty = true;   // (on to another room of the house: the garden outside is drawn once, when you go out)
