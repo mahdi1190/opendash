@@ -1,0 +1,15 @@
+/* AFTER DARK (94-garden-zz-afterdark-*.js): named moons, big skies, moth sheets, falling stars, mushrooms, the rainbow's foot, weather
+   sayings, glow trails. Motion here is transform and opacity only; with reduced motion everything stands still (the last rule). */
+.ad-twinkle { animation: ad-twinkle 1.3s ease-in-out infinite alternate; }
+@keyframes ad-twinkle { from { transform: scale(0.72) rotate(-8deg); opacity: 0.55; } to { transform: scale(1.12) rotate(8deg); opacity: 1; } }
+.ad-glow-b { animation: ad-glow-b 3.8s ease-in-out infinite; }
+@keyframes ad-glow-b { 0%, 100% { opacity: 0.16; } 50% { opacity: 0.32; } }
+.ad-blink { animation: ad-blink 2.6s ease-in-out infinite; }
+@keyframes ad-blink { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } 60% { opacity: 0.9; } }
+.ad-bob { animation: ad-bob 2.4s ease-in-out infinite alternate; }
+@keyframes ad-bob { from { transform: translate(0, 0); } to { transform: translate(0, -2px); } }
+.ad-sway { animation: ad-sway 3.2s ease-in-out infinite alternate; }
+@keyframes ad-sway { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .ad-twinkle, .ad-glow-b, .ad-blink, .ad-bob, .ad-sway { animation: none !important; }
+}

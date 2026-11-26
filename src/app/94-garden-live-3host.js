@@ -229,6 +229,7 @@ function _glhEvent(ev) {
       if (typeof gardenRoomTell === 'function') gardenRoomTell(ev.f);
       if (typeof _glcJoin === 'function') _glcJoin(ev.f);
       if (typeof gardenContestJoin === 'function') gardenContestJoin(ev.f);
+      if (typeof gardenNightJoin === 'function') gardenNightJoin(ev.f);   // after dark: a rainbow's foot still on the ground (94-garden-zz-afterdark-1kit.js)
       if (typeof _glgJoin === 'function') _glgJoin(ev.f);
       _glhResendDrops(ev.f);
       if (typeof gardenDropTell === 'function') gardenDropTell(ev.f, true);   // (build phase 1: where things lie, and who carries what)

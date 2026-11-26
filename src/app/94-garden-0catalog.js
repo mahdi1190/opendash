@@ -1057,6 +1057,14 @@ function gardenSnapshotClean(raw) {
     if (Object.keys(rf).length) out.rf = rf;
   }
   if (raw.dz && typeof gardenDesignClean === 'function') { const dz = gardenDesignClean(raw.dz); if (dz) out.dz = dz; }   // their garden design (94-garden-design-0rules.js); an older app drops the field
+  if (raw.nt && typeof raw.nt === 'object' && !Array.isArray(raw.nt)) {   // after dark (94-garden-zz-afterdark-1kit.js gardenNightWire, the same bounds): the last rain day, lanterns floated, stars named together, the weathervane's guess
+    const nt = {}, n = raw.nt, iv = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+    if (iv(n.w, 0, 99999)) nt.w = n.w;
+    if (Array.isArray(n.l)) { const l = n.l.slice(0, 5).filter(r => Array.isArray(r) && iv(r[0], 0, 7) && iv(r[1], 0, 3) && iv(r[2], 0, 99999)).map(r => r.slice(0, 3)); if (l.length) nt.l = l; }
+    if (Array.isArray(n.s)) { const s = n.s.slice(0, 12).filter(r => Array.isArray(r) && typeof r[0] === 'string' && /^[a-z0-9-]{1,32}$/.test(r[0]) && iv(r[1], 0, 15) && iv(r[2], 0, 63) && iv(r[3], 0, 63) && typeof r[4] === 'string' && /^[0-9a-z]{1,14}$/.test(r[4])).map(r => r.slice(0, 5)); if (s.length) nt.s = s; }
+    if (Array.isArray(n.g) && iv(n.g[0], 0, 99999) && iv(n.g[1], 0, 3)) nt.g = [n.g[0], n.g[1]];
+    if (Object.keys(nt).length) out.nt = nt;
+  }
   return out;
 }
 /** What a garden tells friends about what you share (docs/dev/GARDEN_TOGETHER.md section 24). Ids and numbers, every one in bounds; anything else is dropped. */
