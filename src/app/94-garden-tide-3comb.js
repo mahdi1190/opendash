@@ -256,7 +256,7 @@ function gardenTideShelf(left) {
 setTimeout(() => {
   if (typeof wdMod !== 'function') return;
   wdMod({ id: 'tide', visit: true, fun: false,
-    begin() { this.lastLow = null; this.said = 0; },
+    begin() { this.lastLow = null; this.lastTurn = null; this.said = 0; },
     tick(m) {
       if (!window.GardenTide || !GardenTide.ready() || typeof _gw === 'undefined' || !_gw.on) return;
       const T = gardenTideNow(), low = T.level < .25 && !T.rising;
@@ -265,6 +265,12 @@ setTimeout(() => {
         this.lastLow = T.w;
         const k = gardenTideKindAt(_gw.px, _gw.py) || gardenTideKindAt(_gw.px, _gw.py + 2) || gardenTideKindAt(_gw.px, _gw.py - 2);
         if (k && Date.now() - this.said > 60000) { this.said = Date.now(); try { gardenMessage('The tide is going out. Things glint on the wet sand.', { icon: 'waves', ms: 5000 }); } catch (e) { /* fine */ } }   // clock-ok: spacing
+      }
+      // and when it turns after low water (once per low water, near the shore)
+      if (T.rising && T.level > .04 && T.level < .2 && this.lastTurn !== T.w && !m.visit) {
+        this.lastTurn = T.w;
+        const k = gardenTideKindAt(_gw.px, _gw.py) || gardenTideKindAt(_gw.px, _gw.py + 2) || gardenTideKindAt(_gw.px, _gw.py - 2);
+        if (k && Date.now() - this.said > 60000) { this.said = Date.now(); try { gardenMessage('The tide has turned. It comes in slowly.', { icon: 'waves', ms: 5000 }); } catch (e) { /* fine */ } }   // clock-ok: spacing
       }
     },
   });
