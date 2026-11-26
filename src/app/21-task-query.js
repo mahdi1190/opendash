@@ -395,7 +395,8 @@ function todayProgress() {
   // Repeating tasks done today rolled forward and are open again: count the completion.
   for (const [id, log] of Object.entries(state.completionLog || {})) {
     const it = getItem(id);
-    if (!it || statusOf(id) === 'done' || !Array.isArray(log)) continue;
+    // Only repeating ones: a one-off task reopened after a tick keeps its completion in the log, but is not done (DASH-07).
+    if (!it || statusOf(id) === 'done' || effRecurrence(it) === 'none' || !Array.isArray(log)) continue;
     if (log.some(ts => Clock.parts(Number(ts)).iso === today)) done++;
   }
   return { done, total: done + open, open, overdue, doing };
