@@ -29,11 +29,11 @@ function gardenNightBugsNow(m) {
     if (!m || !m.decor || !adOn() || (m.tod !== 'dusk' && m.tod !== 'night')) return [];
     if (m.rain && (m.rain.now || m.rain.snow)) return [];   // (they stay in when it rains)
     const sheets = m.decor.filter(d => d.def.id === 'moth-sheet').sort((a, b) => a.y - b.y || a.x - b.x);
-    if (!sheets.length) return [];
-    const g = _gdG(), win = _gcWindow(m.now), min = adDuskMin(m), caught = new Set((g.fd[m.today] && g.fd[m.today].k) || []);
-    const sig = win + '|' + Math.floor(min / AD_SHEET.every) + '|' + m.tod + '|' + m.season + '|' + sheets.map(d => d.x + ',' + d.y).join(';') + '|' + (m.visit ? m.visit.fid : 'o') + '|' + m.plants.length + '|' + _ad.devV;
+    const g = _gdG(), win = _gcWindow(m.now), caught = new Set((g.fd[m.today] && g.fd[m.today].k) || []), tb = typeof adTrailBug === 'function' ? adTrailBug(m, win) : null;   // (and the glow trail's moth ring: 7trails)
+    if (!sheets.length) return tb && !caught.has(tb.key) ? [tb] : [];
+    const min = adDuskMin(m), sig = win + '|' + Math.floor(min / AD_SHEET.every) + '|' + m.tod + '|' + m.season + '|' + sheets.map(d => d.x + ',' + d.y).join(';') + '|' + (m.visit ? m.visit.fid : 'o') + '|' + m.plants.length + '|' + _ad.devV;
     if (_adw.sig !== sig) { _adw.sig = sig; _adw.memo = _adwRows(m, sheets, win, min); }
-    return _adw.memo.filter(b => !caught.has(b.key));
+    return (tb ? _adw.memo.concat([tb]) : _adw.memo).filter(b => !caught.has(b.key));
   } catch (e) { console.error('[after dark] moths', e); return []; }
 }
 function _adwRows(m, sheets, win, min) {

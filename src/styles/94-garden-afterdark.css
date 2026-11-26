@@ -82,3 +82,7 @@
   .ad-aurora { animation: none; opacity: 1; }
   .ad-ripple { opacity: 0.5; }
 }
+/* glow trails (7trails): moths dancing round the ring */
+.ad-orbit { animation: ad-orbit 5.2s linear infinite; }
+@keyframes ad-orbit { 0% { transform: translate(18px, 0); } 12.5% { transform: translate(12.7px, 4.2px); } 25% { transform: translate(0, 6px); } 37.5% { transform: translate(-12.7px, 4.2px); } 50% { transform: translate(-18px, 0); } 62.5% { transform: translate(-12.7px, -4.2px); } 75% { transform: translate(0, -6px); } 87.5% { transform: translate(12.7px, -4.2px); } 100% { transform: translate(18px, 0); } }
+@media (prefers-reduced-motion: reduce) { .ad-orbit { animation: none !important; } }
