@@ -308,6 +308,13 @@ function _gduPlaceFromSnap(A, snap) {
   if (pw[0] === 'o') { const lv = (typeof gardenLevels === 'function' ? gardenLevels() : []).find(l => l.id === pw[1] && (l.li || 0) === pw[2]); const w = lv && lv.ways[0]; if (w) _ghtRemoteState(A, { e: GA_WIRE + 'onlevel', x: w.foot.x, y: w.foot.y }); }
   else if (pw[0] === 'u' && Number.isFinite(A.x) && Number.isFinite(A.y)) _ghtRemoteState(A, { e: GA_WIRE + 'inwater', x: A.x, y: A.y });
 }
+if (typeof _gllStep === 'function') {   // (the garden's snapshot can come after the host's figure: placed when it does)
+  const _gduStep0 = _gllStep;
+  _gllStep = function (A, dt, quiet) {   // eslint-disable-line no-func-assign
+    if (A && A.w === 0 && typeof _glv !== 'undefined' && _glv.snap && _glv.snap.pw && A._gduPw !== _glv.snap.pw) { try { _gduPlaceFromSnap(A, _glv.snap); } catch (e) { A._gduPw = _glv.snap.pw; } }
+    return _gduStep0(A, dt, quiet);
+  };
+}
 if (typeof _glvActorAdd === 'function') {
   const _gduAdd0 = _glvActorAdd;
   _glvActorAdd = function (ev) {   // eslint-disable-line no-func-assign
