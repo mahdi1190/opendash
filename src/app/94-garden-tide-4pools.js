@@ -30,7 +30,7 @@ function _gtqVisit() { try { return typeof gardenVisitOn === 'function' && garde
 function gardenTideStones() {
   const out = [];
   for (const p of gardenTidePools()) for (let j = 0; j < p.stones; j++) {
-    const a = (gardenHash('tide-stone|' + p.id + '|' + j) % 628) / 100, W = GARDEN_WORLD, d = p.rx * 1.25 + 4;
+    const a = (gardenHash('tide-stone|' + p.id) % 628) / 100 + j * 2.3, W = GARDEN_WORLD, d = p.rx * 1.45 + 3;
     out.push({ k: p.n * 2 + j, pool: p, x: Math.round((p.x + Math.cos(a) * d / W.cellW) * 100) / 100, y: Math.round((p.y + Math.abs(Math.sin(a)) * d * .5 / W.cellH + .05) * 100) / 100, ph: (a * 13) % 1 });
   }
   return out;
@@ -152,8 +152,8 @@ const GardenTideStoneSprites = {
       this.listT = time; const m = 100, list = [];
       if (vis && T.level < .5) for (const st of gardenTideStones()) { const x = st.x * W.cellW, y = W.sky + st.y * W.cellH; if (x < view.x - m || x > view.x + view.w + m || y < view.y - m || y > view.y + view.h + m) continue; if (!_gtqExposed(st.pool, T)) continue; list.push(st); if (list.length >= 16) break; }
       this.list = list;
-      while (_gtq.imgs.length < list.length) { const im = scene.add.image(0, 0, 'gt-stones', 's0').setDepth(-9345.18).setOrigin(.5, .66); this.root.add(im); _gtq.imgs.push(im); if (this.root.sort) this.root.sort('depth'); }
-      _gtq.imgs.forEach((im, k) => { const st = list[k]; im.setVisible(!!st); if (st) { im.setFrame('s' + (st.k % 4)).setPosition(st.x * W.cellW, W.sky + st.y * W.cellH).setScale(.72); im._st = st; } else im._st = null; });
+      while (_gtq.imgs.length < list.length) { const im = scene.add.image(0, 0, 'gt-stones', 's0').setDepth(-9345.18).setOrigin(.5, .66); this.root.add(im); _gtq.imgs.push(im); if (this.root.sort) this.root.sort('depth'); }   // (a stone you could lift, about a third of your height)
+      _gtq.imgs.forEach((im, k) => { const st = list[k]; im.setVisible(!!st); if (st) { im.setFrame('s' + (st.k % 4)).setPosition(st.x * W.cellW, W.sky + st.y * W.cellH).setScale(1); im._st = st; } else im._st = null; });
     }
     const t = time / 1000, motion = typeof gardenMotionOn !== 'function' || gardenMotionOn();
     for (const im of _gtq.imgs) {

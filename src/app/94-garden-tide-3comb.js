@@ -56,8 +56,8 @@ function _gtcOpenZone(z) { try { const m = gardenHere(); return !z || (m.areas |
 /** What shows now: glints of this low water on open ground, not taken by you, with the water below them. */
 function gardenTideGlintsShown() {
   const T = gardenTideNow(), list = gardenTideGlints(); if (!list.length) return [];
-  const taken = _gtcTakenSet(T.w), out = [];
-  for (const g of list) if (!taken.has(g.i) && g.h > T.line + 2 && _gtcOpenZone(g.zone)) out.push(g);
+  const taken = _gtcTakenSet(T.w), out = []; let areas = []; try { areas = gardenHere().areas || []; } catch (e) { areas = []; }
+  for (const g of list) if (!taken.has(g.i) && g.h > T.line + 2 && (!g.zone || areas.includes('zn-' + g.zone))) out.push(g);
   return out;
 }
 
@@ -154,15 +154,16 @@ function gardenTideBoards() {
   let list = []; try { list = gardenAffordThings(); } catch (e) { return []; }
   const S = gardenTideShore(), key = S.lay + '|' + list.length;
   if (_gtc.boards && _gtc.boardsKey === key) return _gtc.boards;
-  const W = GARDEN_WORLD, out = [];
+  const W = GARDEN_WORLD, out = [], cards = list.filter(t => GT_CARD_KINDS.has(t.kind));
+  // one card for each region's part of each stretch of shore: the nearest board, sign, milestone, lamp or post within five cells
   for (const st of S.stretches) {
-    // the stretch's own cells; the nearest thing of a card kind within four cells of any of them
-    let best = null, bd = 4.2;
-    for (const t of list) {
-      if (!GT_CARD_KINDS.has(t.kind)) continue;
-      for (let k = 0; k < st.cells.length; k += 2) { const i = st.cells[k], x = i % W.cols + .5, y = (i - i % W.cols) / W.cols + .5, d = Math.hypot(t.x - x, (t.y - y) * 1.3); if (d < bd) { bd = d; best = t; } }
+    const byZone = new Map(); for (const i of st.cells) { const c = gardenIslandBaseCell(i % W.cols, (i - i % W.cols) / W.cols), z = c ? c.regionZone || 0 : 0; let l = byZone.get(z); if (!l) byZone.set(z, l = []); l.push(i); }
+    for (const [z, cells] of byZone) {
+      if (cells.length < 6) continue;
+      let best = null, bd = 5.2;
+      for (const t of cards) for (let k = 0; k < cells.length; k += 2) { const i = cells[k], x = i % W.cols + .5, y = (i - i % W.cols) / W.cols + .5, d = Math.hypot(t.x - x, (t.y - y) * 1.3); if (d < bd) { bd = d; best = t; } }
+      if (best && !out.some(q => q.t === best)) out.push({ t: best, stretch: st.id, zone: z, x: best.x, y: best.y });
     }
-    if (best && !out.some(b => b.t === best)) out.push({ t: best, stretch: st.id, x: best.x, y: best.y });
   }
   _gtc.boards = out; _gtc.boardsKey = key; return out;
 }

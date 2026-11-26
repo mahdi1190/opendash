@@ -312,6 +312,27 @@ function _gtdFieldJob(lay) {
   };
   return J;
 }
+/** How much the ground rises at one point (cells) towards a path, a plaza, a standing thing or a solid landform: the same rule as the
+ *  field, asked for one point (the pools are placed by it before the field is built). The flood height there is at least this. */
+function gardenTideRaiseAt(x, y) {
+  const W = GARDEN_WORLD, D = gardenIslandData(), wx = x * W.cellW, wy = W.sky + y * W.cellH;
+  let db = Infinity;
+  for (const r of D.routes || []) {
+    if (!r.points || r.points.length < 2 || GT_SHORE_SURFACE.has(r.surface)) continue;
+    if (r.shape && r.shape.length > 2 && gardenIslandInPolygon(x, y, r.shape.map(q => ({ x: q[0], y: q[1] })))) return GARDEN_TIDE.hMax;
+    const pts = gardenIslandRoutePath(r).points, hw = (typeof gardenIslandRouteWidthAt === 'function' ? gardenIslandRouteWidthAt(r, x, y) : r.widthCells || 2) * .5 * (W.cellW + W.cellH) / 2;
+    for (let k = 1; k < pts.length; k++) { const a = pts[k - 1], b = pts[k]; if (Math.abs(a.x - x) > 4 && Math.abs(b.x - x) > 4) continue; const v = _gtdSegDist(wx, wy, { ax: a.x * W.cellW, ay: W.sky + a.y * W.cellH, bx: b.x * W.cellW, by: W.sky + b.y * W.cellH }) - hw; if (v < db) db = v; }
+  }
+  for (const s of D.static || []) {
+    if (_gtdWetFoot(s)) continue;
+    for (const b of [s, s.apron].filter(Boolean)) { const x0 = b.x * W.cellW, y0 = W.sky + b.y * W.cellH, x1 = (b.x + (b.w || 1)) * W.cellW, y1 = W.sky + (b.y + (b.h || 1)) * W.cellH, dx = Math.max(x0 - wx, 0, wx - x1), dy = Math.max(y0 - wy, 0, wy - y1); db = Math.min(db, Math.hypot(dx, dy)); }
+  }
+  for (const f of D.landforms || []) if (f.col === 'full' && f.polygon && f.polygon.length > 2) {
+    const loop = f.polygon.map(q => ({ x: q[0], y: q[1] })); if (gardenIslandInPolygon(x, y, loop)) return GARDEN_TIDE.hMax;
+    for (const sg of _gtdLoopSegs(f.polygon, W)) { const v = _gtdSegDist(wx, wy, sg); if (v < db) db = v; }
+  }
+  return db < 60 ? Math.max(0, GARDEN_TIDE.hMax - GARDEN_TIDE.ramp * (db - 6)) : 0;
+}
 /** The flood height (px above low water) at (x, y) in cells, bilinear: Infinity where no tide ever comes, -Infinity out at sea. */
 function gardenTideH(x, y) {
   const F = _gtd.field; if (!F) return Infinity;
@@ -491,7 +512,7 @@ function gardenTideScatter(w, o) {
     for (let k = 0; k < (n + ns) * 10 && mine.length < n + ns; k++) {
       const at = list[Math.floor(r() * list.length)], tx = at % F.FW, ty = (at - tx) / F.FW, x = ((tx + .5) * F.P + (r() - .5) * F.P) / W.cellW, y = ((ty + .5) * F.P + (r() - .5) * F.P - W.sky) / W.cellH;
       const h = gardenTideH(x, y); if (!(h >= 4 && h <= reachHigh * .9)) continue;
-      if (mine.some(p => Math.hypot(p.x - x, (p.y - y) * 1.3) < 1.4)) continue;
+      if (mine.some(p => Math.hypot(p.x - x, (p.y - y) * 1.3) < 1.4) || _gtdCrowded(x, y)) continue;
       const kind = F.K[at] || 1, stormy = mine.length >= n;
       mine.push({ x, y, h, kind, find: gardenTideFindPick(kind, r, big, stormy), ph: r() });
     }
@@ -500,6 +521,13 @@ function gardenTideScatter(w, o) {
   if (_gtd.scatter.size > 12) _gtd.scatter.clear();
   _gtd.scatter.set(key, out);
   return out;
+}
+
+/** Is (x, y) too close to a path, a standing thing, a plot or a painted thing's foot for something lying on the sand? */
+function _gtdCrowded(x, y) {
+  for (const [dx, dy] of [[0, 0], [-.45, 0], [.45, 0], [0, -.35], [0, .35]]) { const c = gardenIslandBaseCell(x + dx, y + dy); if (!c || !c.land || c.freshwater || c.route || c.staticId || c.solid || c.reservation) return true; }
+  try { const V = typeof GardenPaintVale !== 'undefined' && GardenPaintVale.feet ? GardenPaintVale.feet() : []; for (const f of V) if (x > f.x0 - .45 && x < f.x1 + .45 && y > f.y0 - .4 && y < f.y1 + .4) return true; } catch (e) { /* no painted feet */ }
+  return false;
 }
 
 /* ---------- storms ---------- */
