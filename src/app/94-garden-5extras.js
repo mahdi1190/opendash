@@ -236,6 +236,7 @@ function gardenAlmanacTab(el, m) {
   el.appendChild(top);
   const cards = _gdpEl('div', 'gpg-cards'); el.appendChild(cards);
   if (typeof gardenLakeTab === 'function') gardenLakeTab(cards, m);
+  if (typeof gardenNightBoard === 'function') { try { gardenNightBoard(cards, m); } catch (e) { /* the night sky's card is optional */ } }   // after dark: tonight's sky, what is coming, Wick's weather (94-garden-zz-afterdark-apages.js)
 }
 
 /* ---------- the basket ---------- */

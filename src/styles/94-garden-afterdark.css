@@ -86,3 +86,9 @@
 .ad-orbit { animation: ad-orbit 5.2s linear infinite; }
 @keyframes ad-orbit { 0% { transform: translate(18px, 0); } 12.5% { transform: translate(12.7px, 4.2px); } 25% { transform: translate(0, 6px); } 37.5% { transform: translate(-12.7px, 4.2px); } 50% { transform: translate(-18px, 0); } 62.5% { transform: translate(-12.7px, -4.2px); } 75% { transform: translate(0, -6px); } 87.5% { transform: translate(12.7px, -4.2px); } 100% { transform: translate(18px, 0); } }
 @media (prefers-reduced-motion: reduce) { .ad-orbit { animation: none !important; } }
+/* the pages (apages): the notice board's moon row, Wick's lines */
+.ad-board-moon { display: flex; gap: 10px; align-items: center; margin: 2px 0 8px; }
+.ad-board-moon svg { flex: none; border-radius: 50%; background: #1a2238; }
+.ad-board-moon span { display: flex; flex-direction: column; gap: 2px; }
+.ad-wick { font-style: italic; }
+.ad-gj .gj-acts { margin-top: 6px; }

@@ -320,6 +320,7 @@ function _gjPlaces(left, right, m) {
   const sg = sky.appendChild(_gjEl('div', 'gj-skylist'));
   for (const r of stars) { const k = typeof _wdSkyKnown === 'function' && _wdSkyKnown(r.id); sg.appendChild(_gjEl('span', 'gj-star' + (k ? ' is-on' : ''), k ? r.name : '· · ·')); }
   if (!stars.length) sg.appendChild(_gjEl('small', null, 'Look up on a clear night.'));
+  if (typeof gardenNightJournal === 'function') { try { gardenNightJournal(right, m); } catch (e) { /* the night pages are optional */ } }   // after dark: the named moons, big skies, falling stars (94-garden-zz-afterdark-apages.js)
   // round 3: the little things you have done round the vale, in your own hand, the first time each (94-garden-zz-7act-1core.js)
   if (typeof gartActDiary === 'function') {
     const done = gartActDiary(), dd = right.appendChild(_gjEl('div', 'gj-done'));
