@@ -49,7 +49,7 @@ function gardenB2HoldThing(H) {
   if (typeof _gb2 !== 'undefined') _gb2.tool = 'hands';
   H.fw = Math.max(1, H.fw || 1); H.fh = Math.max(1, H.fh || 1); H.r = (Number(H.r) || 0) & 3;
   Object.assign(_gb2h, { held: H, dirty: true, pcx: -1e9, gkey: null, gart: '', none: false, at: null, aimed: false });
-  if (!_gb2h.sim) _gb2h.sim = gardenWorldAdd({ id: 'gb2-hands', simulationOnly: true, x: 0, y: 0, update: () => _gb2hTick() });
+  if (!_gb2h.sim) _gb2h.sim = gardenWorldAdd({ id: 'gb2-hands', simulationOnly: true, x: 0, y: 0, update: () => { try { _gb2hTick(); } catch (e) { if (!_gb2h.said) { _gb2h.said = true; console.error('[garden hands]', e); } } } });
   if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop();
   _gb2hRing();
   try { gardenSfx('tab'); } catch (e) { /* quiet */ }
@@ -107,10 +107,22 @@ function _gb2hAim(fw, fh, pcx, pcy, dir) {
 function _gb2hWhy(H, x, y, m) {
   const W = GARDEN_WORLD;
   if (x < 0 || y < 0 || x + H.fw > W.cols || y + H.fh > W.rows) return 'That is off the edge of the garden';
-  if (H.k === 'decor') return _gdPlaceOk(m, H.def, x, y, 'decor');
+  if (H.k === 'decor') return _gdPlaceOk(m, H.def, x, y, 'decor') || _gb2hGapWhy(m, H.def, x, y, H.fw, H.fh, '');
   if (H.k === 'seed') return _gdPlaceOk(m, H.def, x, y, 'plant');
-  if (H.k === 'move') { const why = _gdPlaceOk(m, H.def, x, y, H.m === 'plants' ? 'plant' : 'decor', H.uid); return why || (H.placed && x === H.ox && y === H.oy ? 'It is there already' : ''); }
+  if (H.k === 'move') { const why = _gdPlaceOk(m, H.def, x, y, H.m === 'plants' ? 'plant' : 'decor', H.uid) || (H.m === 'decor' ? _gb2hGapWhy(m, H.def, x, y, H.fw, H.fh, H.uid) : ''); return why || (H.placed && x === H.ox && y === H.oy ? 'It is there already' : ''); }
   if (typeof H.why === 'function') return H.why(x, y, m) || '';
+  return '';
+}
+/** Rule 12, nothing overlaps: a thing that stands keeps a step clear of every other standing decoration (a lantern right in front of a
+ *  bench stood over its picture). Fences, kerbs and paths go in rows on purpose (GDZ_STRICT.freeCats, the designer's own list). */
+function _gb2hGapWhy(m, def, x, y, fw, fh, self) {
+  const free = (d) => !d || d.layer === 'ground' || (typeof GDZ_STRICT !== 'undefined' && GDZ_STRICT.freeCats.includes(d.cat));
+  if (free(def)) return '';
+  for (const d of m.decor) {
+    if (d.uid === self || free(d.def)) continue;
+    const w = d.def.w || 1, h = d.def.h || 1, gap = Math.max(d.x - (x + fw), x - (d.x + w), d.y - (y + fh), y - (d.y + h));
+    if (gap < 1) return 'Too close to ' + _gb2hThe(d.def.name) + ': leave a step between them';
+  }
   return '';
 }
 /** The square itself and the spot it lands on now (a slide of up to two squares when the spot ahead is nearly right). */

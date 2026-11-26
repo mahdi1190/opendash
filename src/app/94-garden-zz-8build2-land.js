@@ -245,7 +245,7 @@ function _gb2lStart(kind) {
     _gb2l.lay = { kind, st: _gb2l.groundSt, cells: _gb2lDec(d.g), added: new Set(), done: new Set(), n: 0, why: '', full: false, mask: gardenDesignPathMask(d, m), lv: m.level.level, d, pd: '', cx: -1, cy: -1, dirty: true };
     _gb2lSay(_gb2l.groundSt < 0 ? 'Walk over ground you laid to take it up, then press E. Esc stops.' : `Laying ${_gb2lStyleName('ground', _gb2l.groundSt).toLowerCase()}. Walk over the ground it should cover (five squares or more), then press E. Esc stops.`, 'sprout', 9000);
   }
-  if (!_gb2l.sim) _gb2l.sim = gardenWorldAdd({ id: 'gb2-land', simulationOnly: true, x: 0, y: 0, update: () => _gb2lTick() });
+  if (!_gb2l.sim) _gb2l.sim = gardenWorldAdd({ id: 'gb2-land', simulationOnly: true, x: 0, y: 0, update: () => { try { _gb2lTick(); } catch (e) { if (!_gb2l.said) { _gb2l.said = true; console.error('[garden build]', e); } } } });
   _gb2lTick();
   try { gardenSfx('tab'); if (typeof _gb2RingPaint === 'function') _gb2RingPaint(); } catch (e) { /* quiet */ }
   if (typeof _ga !== 'undefined') { _ga.t = 0; _ga.list = null; }
@@ -579,7 +579,7 @@ function _gb2lDrawMake(body, box) {
   if (def.id === 'sign') {
     const row = _gb2lE('label', 'gb2-makerow'), inp = _gb2lE('input', 'gb2-signwords'); row.appendChild(_gb2lE('b', '', 'Words'));
     inp.type = 'text'; inp.maxLength = GDZ_STRICT.signText; inp.placeholder = 'Up to 16 letters'; inp.value = M.text || ''; inp.autocomplete = 'off'; inp.spellcheck = false;
-    inp.addEventListener('input', () => { M.text = gardenDesignText(inp.value).slice(0, GDZ_STRICT.signText); });
+    inp.addEventListener('input', () => { M.text = gardenDesignText(inp.value).slice(0, GDZ_STRICT.signText); const pv = body.querySelector('.gb2-makeprev'); if (pv) { const c2 = c.slice(); c2[6] = M.text; gardenDesignPainted(pv, { c: [c2] }); } });   // (the words on the little sign below, as you type)
     inp.addEventListener('keydown', (ev) => { ev.stopPropagation(); if (ev.key === 'Enter') { ev.preventDefault(); go.click(); } });
     row.appendChild(inp); body.appendChild(row);
   }

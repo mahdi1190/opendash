@@ -26,7 +26,7 @@ function gardenB2Tools() {
 }
 function gardenB2RingTool() {
   let t = 'hand'; try { t = _gdpTool(); } catch (e) { t = 'hand'; }
-  const by = GB2_TOOLS.find(r => r.page === t && r.id !== 'hands' && r.id !== 'rod' && r.id !== 'net');
+  const by = t !== 'hand' && GB2_TOOLS.find(r => r.page === t && r.id !== 'hands');   // (the can, the shears, the spade: the page's own tools; every other is the page's hand, below)
   if (by) return by.id;
   if (t === 'hand' && _gb2.tool && _gb2.tool !== 'hands' && GB2_TOOLS.some(r => r.id === _gb2.tool && r.page === 'hand')) return _gb2.tool;   // (the rod, the net, the path kit, the hoe, the stakes: the page's hand)
   return 'hands';
@@ -141,10 +141,10 @@ function gardenB2Bar(box, m) {
   const el = _ghHost(box, 'gd-toolbar gd-hotbar');
   if (_gh.bar === key && el.firstChild && el.classList.contains('gb2-on')) return true;
   _gh.bar = key;
-  const mid = (tools.length - 1) / 2;
+  const mid = (tools.length - 1) / 2, bend = mid > 2.5 ? 2.5 / mid : 1;   // (a longer ring bends no deeper than six tools do: its ends stay on the screen)
   let html = '<div class="gb2-ring" role="group" aria-label="Your tools">';
   tools.forEach((t, i) => {
-    const on = !held && cur === t.id, name = _gb2ToolName(t.id), a = (i - mid).toFixed(2);
+    const on = !held && cur === t.id, name = _gb2ToolName(t.id), a = ((i - mid) * bend).toFixed(2);
     html += `<button type="button" class="gd-slot gb2-tool" data-gb2-tool="${t.id}" data-tool="${t.page}" style="--a:${a}" aria-pressed="${on ? 'true' : 'false'}" aria-label="${escAttr(name)} (${i + 1})" data-tip="${escAttr(name + ' (' + (i + 1) + '): ' + t.says)}"><kbd>${i + 1}</kbd><span class="gb2-tool-art">${_gb2ToolSvg(t.id)}</span></button>`;
   });
   html += '</div>';

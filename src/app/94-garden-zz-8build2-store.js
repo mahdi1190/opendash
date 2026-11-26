@@ -173,7 +173,7 @@ function _gb2Detail(det, v) {
 }
 /** The line at the foot of your pockets: where your storage is (and your chest, should it have gone home). */
 function _gb2Foot(el, v) {
-  const chestIn = v.slots.some(x => x && x.i === 'decor:storage-chest'), out = _gb2ChestOut(), keptN = _gb2Kept0().rows.length;
+  const chestIn = v.slots.some(x => x && x.i === 'decor:storage-chest'), out = _gb2ChestOut(), inPk = new Set(v.slots.filter(x => x && x.u).map(x => x.u)), keptN = _gb2Kept0().rows.filter(r => !inPk.has(r.uid)).length;   // (a whole thing in your pockets is not waiting at home)
   const keptLine = keptN ? ` ${keptN === 1 ? 'A plant or decoration you kept whole waits' : keptN + ' plants and decorations you kept whole wait'} there too.` : '';
   const homeChest = !out && !chestIn ? _gb2ChestAtHome(v) : '';   // (your only chest went home: it could never be opened to take itself out)
   const foot = _gb2El('p', 'gb2-foot', (out ? 'Your storage chest at home keeps everything else: open it to take things out or put them away.' : chestIn ? 'Your storage chest is in your pockets. Choose it and Put it down: it opens your storage.' : homeChest ? 'Your storage chest is at home, packed away.' : 'A storage chest (in the shop) opens your storage at home.') + keptLine);
@@ -326,9 +326,11 @@ function _gb2StoreWalk() {
 }
 /** The chest's prompt: any thing of a kind that stores, in reach, in your own garden ("E Open your storage"). */
 function gardenB2ActRows(px, py, rows) {
-  if (typeof gardenB2HandRows === 'function') { const own = gardenB2HandRows(); if (own) return own; }   // something in your hands: the prompt is only about where it goes (94-garden-zz-8build2-hands.js)
-  if (typeof gardenB2LandRows === 'function') { const own = gardenB2LandRows(px, py, rows); if (own) return own; }   // laying a path or a bed, the stakes, the spade on a path (94-garden-zz-8build2-land.js)
-  if (gardenB2On() && typeof gardenB2HandPickRows === 'function') { let t = 'hands'; try { t = gardenB2RingTool(); } catch (e) { t = 'hands'; } gardenB2HandPickRows(px, py, rows, t); }
+  try {
+    if (typeof gardenB2HandRows === 'function') { const own = gardenB2HandRows(); if (own) return own; }   // something in your hands: the prompt is only about where it goes (94-garden-zz-8build2-hands.js)
+    if (typeof gardenB2LandRows === 'function') { const own = gardenB2LandRows(px, py, rows); if (own) return own; }   // laying a path or a bed, the stakes, the spade on a path (94-garden-zz-8build2-land.js)
+    if (gardenB2On() && typeof gardenB2HandPickRows === 'function') { let t = 'hands'; try { t = gardenB2RingTool(); } catch (e) { t = 'hands'; } gardenB2HandPickRows(px, py, rows, t); }
+  } catch (e) { if (!gardenB2ActRows.said) { gardenB2ActRows.said = true; console.error('[garden build]', e); } }   // (never the walker's frame: a fault here only loses these rows)
   if (typeof gardenMuseumActRows === 'function') gardenMuseumActRows(px, py, rows);   // any museum's door, yours or a friend's (94-garden-build2-3museum.js)
   if (!gardenB2On() || typeof gardenAffordThings !== 'function') return;
   let m = null; try { m = gardenHere(); } catch (e) { return; }
