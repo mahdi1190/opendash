@@ -243,7 +243,7 @@ function _gdsInsideFrame(C, now) {
       const A = _gdsAlcoveOf(C.T, c); if (!A) continue;
       const im = sc.add.image(A.x, A.y, _gdsAlcoveTex(sc, A, open, _gdqHash(C.T.id + c.i))).setOrigin(0.5, 40 / 46).setScale(0.5).setDepth(A.y - 1).setVisible(false);
       L.add(im); if (typeof _gdi !== 'undefined') _gdi.sortDue = true;
-      let glint = null; if (open && A.find && typeof _gdfInsideTex === 'function') { glint = sc.add.image(A.x, A.y - 10, _gdfInsideTex(sc)).setBlendMode(Phaser.BlendModes.ADD).setVisible(false); st.glows.add(glint); }
+      let glint = null; if (open && A.find && typeof _gdfInsideTex === 'function') { glint = sc.add.image(A.x, A.y - 20, _gdfInsideTex(sc)).setBlendMode(Phaser.BlendModes.ADD).setVisible(false).setDepth(A.y - 0.5); L.add(glint); }   // (in the hollow, behind whoever stands in front of it)
       set.items.push({ A, im, glint, ph: (_gdqHash(C.T.id + c.i) % 628) / 100 });
     }
     _gds.inside.set(C.T.id, set);

@@ -201,17 +201,18 @@ gardenDepthActs('dpfind', {
   },
 });
 /* ---------- underground: the chambers ---------- */
-/** What a chamber offers by its piece and its row (the find laid in it), and where (world px): [{ c, act, x, y, find, daily }]. */
+/** What a chamber offers by its piece and its row (the find laid in it), and where (world px): [{ c, act, x, y (where you stand to do it, in
+ *  front of the piece: what the prompt measures from), at (the piece itself: its glint), find, daily }]. */
 function _gdfChamberSpots(T) {
   if (T._gdf) return T._gdf;
   const out = [];
   for (const c of T.ells) {
     const R = GARDEN_CHAMBERS[c.what]; if (!R) continue;
     const back = c.y - c.ry, cx = c.x + (c.pieceDx || 0);
-    if (R.piece === 'crystals') out.push({ c, act: 'dpchip', x: cx + c.rx * 0.1, y: back + 8, at: { x: cx + c.rx * 0.08, y: back - 12 }, find: c.find || 'cave-crystal', daily: true });
-    else if (R.piece === 'tub') out.push({ c, act: 'dpsift', x: cx - 9, y: back + 10, at: { x: cx - 9, y: back - 18 }, find: c.find || '', daily: true });
+    if (R.piece === 'crystals') out.push({ c, act: 'dpchip', x: cx + c.rx * 0.1, y: c.y - c.ry * 0.2, at: { x: cx + c.rx * 0.08, y: back - 12 }, find: c.find || 'cave-crystal', daily: true });
+    else if (R.piece === 'tub') out.push({ c, act: 'dpsift', x: cx - 9, y: c.y - c.ry * 0.2, at: { x: cx - 9, y: back - 18 }, find: c.find || '', daily: true });
     else if (R.piece === 'well' && c.hole) out.push({ c, act: 'dpwish', x: c.hole.x, y: c.hole.y + 14, at: { x: c.hole.x, y: c.hole.y - 6 }, find: '', daily: true });
-    else if (c.find && (R.piece === 'shelves' || R.piece === 'barrels' || R.piece === 'bench')) out.push({ c, act: 'dplookfor', x: cx, y: back + 10, at: { x: cx + (R.piece === 'barrels' ? 17 : 0), y: back - (R.piece === 'shelves' ? 14 : 12) }, find: c.find, piece: R.piece });
+    else if (c.find && (R.piece === 'shelves' || R.piece === 'barrels' || R.piece === 'bench')) out.push({ c, act: 'dplookfor', x: cx, y: c.y - c.ry * 0.2, at: { x: cx + (R.piece === 'barrels' ? 17 : 0), y: back - (R.piece === 'shelves' ? 14 : 12) }, find: c.find, piece: R.piece });
   }
   T._gdf = out; return out;
 }

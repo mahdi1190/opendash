@@ -27,7 +27,7 @@
     const rx = (O.x1 - O.x0) / 2 + 16, ry = (O.y1 - O.y0) / 2 + 12, cx = (O.x0 + O.x1) / 2, cy = (O.y0 + O.y1) / 2 + 3;
     B.cx.save(); B.cx.filter = 'blur(4px)'; B.f(B.ell(cx, cy, rx, ry), paved ? '#6e6250' : '#8a7550', paved ? 0.22 : 0.5); B.cx.filter = 'none'; B.cx.restore();
     for (let i = 0; i < 14; i++) { const a = r() * Math.PI * 2, d = 0.75 + r() * 0.45, x = cx + Math.cos(a) * rx * d, y = cy + Math.sin(a) * ry * d, s = 1 + r() * 2.2; B.f(B.ell(x + 0.6, y + 0.6, s, s * 0.6), '#3e3628', 0.45).f(B.ell(x, y, s, s * 0.6), r() < 0.5 ? STONE[1] : STONE[2], 0.9); }
-    if (!paved) for (let i = 0; i < 9; i++) { const a = r() * Math.PI * 2, x = cx + Math.cos(a) * (rx + 3), y = cy + Math.sin(a) * (ry + 2); B.s(`M${x} ${y}q${(r() - 0.5) * 3} -4 ${(r() - 0.5) * 5} -${5 + r() * 4}`, P.leaf ? P.leaf[1] : '#557e40', 1.2, 0.8).s(`M${x + 2} ${y}q${(r() - 0.5) * 3} -3 ${(r() - 0.5) * 4} -${4 + r() * 3}`, P.leaf ? P.leaf[2] : '#7aa255', 1, 0.8); }
+    if (!paved) for (let i = 0; i < 9; i++) { const a = r() * Math.PI * 2, x = cx + Math.cos(a) * (rx + 3), y = cy + Math.sin(a) * (ry + 2); B.s(`M${x} ${y}q${(r() - 0.5) * 3} -4 ${(r() - 0.5) * 5} -${5 + r() * 4}`, P.lawnLo || '#557e40', 1.2, 0.8).s(`M${x + 2} ${y}q${(r() - 0.5) * 3} -3 ${(r() - 0.5) * 4} -${4 + r() * 3}`, P.lawnHi || '#7aa255', 1, 0.8); }
   }
   /** Steps going down into the dark inside an opening, the way in (fx, fy): each tread a little darker and lower than the last. */
   function treads(B, O, n, col) {
@@ -187,7 +187,7 @@
       B.f(B.poly([{ x: -5.4, y: 0.6 }, { x: -6, y: -h * 0.7 }, { x: -3, y: -h }, { x: 3, y: -h + 1.6 }, { x: 5.6, y: -h * 0.68 }, { x: 5, y: 0.6 }]), '#7a7264');
       B.f(B.poly([{ x: -5.4, y: 0.6 }, { x: -6, y: -h * 0.7 }, { x: -3, y: -h }, { x: -0.6, y: -h + 0.6 }, { x: -1.6, y: 0.6 }]), '#a29a88');
       B.s(`M-1.4 ${-h * 0.72}v${h * 0.34}M1.6 ${-h * 0.72}v${h * 0.34}`, '#3a352e', 0.9, 0.85).s(B.ell(0.1, -h * 0.28, 2.2, 1.7), '#3a352e', 0.8, 0.8);
-      B.f(B.ell(-2, -h + 1.4, 3, 1.1), snowy ? '#f2f4f6' : '#8a9a5a', 0.75).f(B.ell(0, 0.6, 7, 1.6), P.leaf ? P.leaf[1] : '#557e40', 0.7);
+      B.f(B.ell(-2, -h + 1.4, 3, 1.1), snowy ? '#f2f4f6' : '#8a9a5a', 0.75).f(B.ell(0, 0.6, 7, 1.6), P.lawnLo || '#557e40', 0.7);
       void r;
     } });
   }
