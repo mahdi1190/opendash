@@ -390,6 +390,12 @@ function cloneTask(id) {
     detail: effDetail(item),
     subtasks: effSubtasks(item).map(s => ({ ...s, id: _newSubId(), done: false })),
     recurrence: effRecurrence(item),
+    // The estimate, contexts and energy come along, so the copy stays in Do now and in smart lists filtered on them (DASH-15);
+    // a monthly one keeps its series day (DASH-05).
+    ...(Number(item.estimate) > 0 ? { estimate: item.estimate } : {}),
+    ...(Array.isArray(item.contexts) && item.contexts.length ? { contexts: [...item.contexts] } : {}),
+    ...(item.energy === 'low' || item.energy === 'high' ? { energy: item.energy } : {}),
+    ...(effRecurrence(item) === 'monthly' && item.repeatDay ? { repeatDay: item.repeatDay } : {}),
     people: item.people ? [...item.people] : [],
     createdAt: Date.now(), createdVia: 'ui',
   });
