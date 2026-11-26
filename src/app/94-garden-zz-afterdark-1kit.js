@@ -180,8 +180,10 @@ function adOpen(x, y, m) { try { return !gardenZoneLockOf(Math.floor(x), Math.fl
 /** Would something small lying here be drawn over by what stands just south of it (a tree's crown, a building's roof)? Read from the
  *  trunks and the things found standing, any kind, any layout. */
 function adHidden(x, y, near) {
-  const R = near || 2.2;
-  for (const t of adTrees()) { const dy = t.y - y; if (dy > 0.1 && dy < 3.6 && Math.abs(t.x - x) < R) return true; }
+  const R = near || 1.8, W = GARDEN_WORLD;
+  for (const t of adTrees()) { const dy = t.y - y; if (dy > 0.1 && dy < 6 && Math.abs(t.x - x) < R) return true; }   // (a tree is 3.5 to 5 H: its crown reaches six cells up)
+  // what a painter planted that stands up (the village's trees and shrubs), by its own drawn height (as 94-garden-zz-7act-1core.js gartActGroundClear reads it)
+  try { const tall = window.GardenNativePainted && GardenNativePainted.tall ? GardenNativePainted.tall() : []; for (const t of tall) { const tx = t.x / W.cellW, ty = (t.y - W.sky) / W.cellH, hw = (t.w || 30) / 2 / W.cellW; if (Math.abs(tx - x) < hw + 0.4 && ty - y > 0.05 && ty - y < Math.max(0.6, (t.h || 0) / W.cellH)) return true; } } catch (e) { /* no planting list */ }
   try { for (const o of gardenAffordThings()) { if (o.src === 'decor') continue; const big = o.kind === 'building' || (o.h || 1) >= 1.5 || o.tall; if (!big) continue; const dy = o.y - y; if (dy > 0.05 && dy < 5.5 && Math.abs(o.x - x) < (o.w || 1) / 2 + 0.6) return true; } } catch (e) { /* nothing found yet */ }
   return false;
 }
