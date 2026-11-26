@@ -30,6 +30,16 @@
 @keyframes ad-shimmer { from { opacity: 0.2; transform: translate(-0.6px, 0); } to { opacity: 0.75; transform: translate(0.6px, -1.4px); } }
 .ad-smoke { animation: ad-smoke 7.5s ease-in-out infinite; }
 @keyframes ad-smoke { 0% { opacity: 0.4; transform: translate(0, 6px) scale(0.8); } 50% { opacity: 1; transform: translate(2px, -6px) scale(1); } 100% { opacity: 0.25; transform: translate(-1px, -18px) scale(1.25); } }
+/* rain things (6rain): the rainbow's foot, gulls on the green, swallows, the weathervane */
+.ad-band { animation: ad-band 2.4s ease-in-out infinite alternate; }
+@keyframes ad-band { from { opacity: 0.18; transform: translate(0, 4px); } to { opacity: 0.42; transform: translate(0, -4px); } }
+.ad-peck { animation: ad-peck 3.4s ease-in-out infinite; }
+@keyframes ad-peck { 0%, 70%, 100% { transform: translate(0, 0); } 78% { transform: translate(1.4px, 2px); } 86% { transform: translate(0.4px, 0.6px); } }
+.ad-swoop { animation: ad-swoop 4.2s ease-in-out infinite; }
+@keyframes ad-swoop { 0% { transform: translate(-14px, 2px); } 25% { transform: translate(-2px, -5px); } 50% { transform: translate(14px, 1px); } 75% { transform: translate(2px, 5px); } 100% { transform: translate(-14px, 2px); } }
+.ad-vane-go { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px; }
+.ad-vane-go .btn { min-width: 92px; }
+.ad-saying { margin: 0 0 6px; padding-left: 10px; border-left: 3px solid rgba(120, 140, 200, 0.5); line-height: 1.45; }
 /* moth sheet nights (4moths): who is on the sheet */
 .ad-moths-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 6px 0 14px; }
 .ad-moth { display: grid; gap: 2px; justify-items: start; padding: 8px 10px; border: 1px solid var(--border, rgba(0, 0, 0, 0.12)); border-radius: 12px; background: var(--surface-2, transparent); font-size: 13px; }
@@ -68,7 +78,7 @@
 .ad-cal-t small { line-height: 1.35; }
 .ad-cal-k { position: absolute; right: 6px; top: 4px; }
 @media (prefers-reduced-motion: reduce) {
-  .ad-twinkle, .ad-glow-b, .ad-blink, .ad-bob, .ad-sway, .ad-flicker, .ad-box, .ad-ripple, .ad-fall, .ad-steam, .ad-owl, .ad-au, .ad-aur-s, .ad-shimmer, .ad-smoke { animation: none !important; }
+  .ad-twinkle, .ad-glow-b, .ad-blink, .ad-bob, .ad-sway, .ad-flicker, .ad-box, .ad-ripple, .ad-fall, .ad-steam, .ad-owl, .ad-au, .ad-aur-s, .ad-shimmer, .ad-smoke, .ad-band, .ad-peck, .ad-swoop { animation: none !important; }
   .ad-aurora { animation: none; opacity: 1; }
   .ad-ripple { opacity: 0.5; }
 }
