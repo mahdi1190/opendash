@@ -1,6 +1,6 @@
 /* ============================================================
    THE TIDE (FUN-ROADMAP phase 2, "The tide comes in"). The rules, pure: nothing here touches the page at load, so Node can
-   evaluate it with the layout (C:/tmp/r3/lanes/tide/check-rules.mjs prints a day's tide table and the shore's counts).
+   evaluate it with the layout (a small Node script can print a day's tide table and the shore's counts from it).
 
    A CLOCK, NOT A SIMULATION (the owner chose a simple tide): low water at 07:30 and 19:30, high water at 01:30 and 13:30, every
    day, in the garden owner's own time (a friend's screen uses the owner's time zone from the snapshot, as the light does). The
