@@ -184,7 +184,7 @@ const HOUSE_PLAY = {
     S.spawn = HOUSE_SHELL.spawn; S.native = !!_hsNative(); S.t = 0; S.lightAt = 0; S.keyNow = R.paintKey; S.near = null; S.nearAt = 0;
     S.leave = () => _hsEnd(R, S);
     if (!gpVisiting()) _hsMoveIn(R, S);
-    { const s = _hsNative(); if (s && s.doorMark && s.doorMark.root) s.doorMark.root.setPosition(0, -92); }   // (the way-out badge on the wall over the front door, not on its panels)
+    { const s = _hsNative(); if (s && s.doorMark && s.doorMark.root) s.doorMark.root.setPosition(0, -62); }   // (the way-out badge on the wall over the front door, not on its panels)
     _hsRoomRefresh(R, S, true);
     _hsUi(R, S);
     try { if (typeof _fxSound === 'function') _fxSound('pop'); } catch (e) { /* no sound */ }
@@ -276,7 +276,7 @@ function _hsGlowKey(scene) {
   g.addColorStop(0, 'rgba(255,240,200,1)'); g.addColorStop(.35, 'rgba(255,214,140,.45)'); g.addColorStop(1, 'rgba(255,200,120,0)'); cx.fillStyle = g; cx.fillRect(0, 0, 64, 64);
   scene.textures.addCanvas(key, c); return key;
 }
-const _HS_FLAME = Object.freeze({ 'hf-candlestick': [0, -36, 150], 'hf-oil-lamp': [0, -34, 210], 'hf-standard-lamp': [0, -118, 280] });
+const _HS_FLAME = Object.freeze({ 'hf-candlestick': [0, -30, 150], 'hf-oil-lamp': [0, -27, 210], 'hf-standard-lamp': [0, -96, 280] });   // (room px over the foot, at HOUSE_ART_K)
 /** Make the room's pictures match its pieces: one image each (created when its texture is baked), lamps and their light, clocks' hands. */
 function _hsSync(R, S) {
   const s = _hsNative(); if (!s) return;
@@ -299,10 +299,11 @@ function _hsSync(R, S) {
   for (const p of S.pieces) {
     if (!_hsLitKey(p) || (S.carry && S.carry.u === p.u)) continue;
     const f = _HS_FLAME[p.d] || [0, -30, 160], x = p.x + f[0] * (p.r ? -1 : 1), y = p.y - (p.z || 0) + f[1];
-    lit.add(p.u); base.push({ id: 'hs-lamp-' + p.u, x, y, radius: f[2], height: 60, color: '#ffcf80', intensity: .5, flicker: p.d !== 'hf-standard-lamp' });
+    const dark = tod === 'night' ? 1 : tod === 'dusk' || tod === 'dawn' ? .7 : .4;   // (a lamp in daylight only warms what is near it)
+    lit.add(p.u); base.push({ id: 'hs-lamp-' + p.u, x, y, radius: f[2], height: 60, color: '#ffcf80', intensity: .42 * dark + .08, flicker: p.d !== 'hf-standard-lamp' });
     let L = S.lamps.get(p.u);
-    if (!L || !L.glow.active) { const glow = scene.add.image(x, y, _hsGlowKey(scene)).setBlendMode(Phaser.BlendModes.ADD); s.root.add(glow); L = { glow, a: .55, ph: Math.random() * 6 }; S.lamps.set(p.u, L); }
-    L.glow.setPosition(x, y).setScale(f[2] / 150).setDepth(_hsDepth(p, S) + .05);
+    if (!L || !L.glow.active) { const glow = scene.add.image(x, y, _hsGlowKey(scene)).setBlendMode(Phaser.BlendModes.ADD); s.root.add(glow); L = { glow, a: .4, ph: Math.random() * 6 }; S.lamps.set(p.u, L); }
+    L.a = .14 + .3 * dark; L.glow.setPosition(x, y).setScale(f[2] / 220).setAlpha(L.a).setDepth(_hsDepth(p, S) + .05);
   }
   for (const [u, L] of S.lamps) if (!lit.has(u)) { if (L.glow.active) L.glow.destroy(); S.lamps.delete(u); }
   S.lampList = [...S.lamps.values()];
@@ -312,7 +313,7 @@ function _hsSync(R, S) {
   for (const p of S.pieces) {
     if (p.d !== 'hf-wall-clock' || !S.imgs.has(p.u)) continue; clocks.add(p.u);
     let C = S.clocks.get(p.u); if (!C || !C.g.active) { const gr = scene.add.graphics(); s.root.add(gr); C = { g: gr, min: -1 }; S.clocks.set(p.u, C); }
-    C.g.setPosition(p.x, p.y - 50).setDepth(_hsDepth(p, S) + .02); C.min = -1;
+    C.g.setPosition(p.x, p.y - 41).setDepth(_hsDepth(p, S) + .02); C.min = -1;
   }
   for (const [u, C] of S.clocks) if (!clocks.has(u)) { if (C.g.active) C.g.destroy(); S.clocks.delete(u); }
   _hsClocks(S);
@@ -322,7 +323,7 @@ function _hsClocks(S) {
   for (const C of S.clocks.values()) {
     if (!C.g.active || C.min === h * 60 + mi) continue; C.min = h * 60 + mi;
     const am = (mi / 60) * Math.PI * 2 - Math.PI / 2, ah = ((h % 12) / 12 + mi / 720) * Math.PI * 2 - Math.PI / 2;
-    C.g.clear().lineStyle(2.4, 0x2a1a10, 1).lineBetween(0, 0, Math.cos(ah) * 9, Math.sin(ah) * 9).lineStyle(1.5, 0x2a1a10, 1).lineBetween(0, 0, Math.cos(am) * 14, Math.sin(am) * 14).fillStyle(0x2a1a10, 1).fillCircle(0, 0, 2);
+    C.g.clear().lineStyle(2, 0x2a1a10, 1).lineBetween(0, 0, Math.cos(ah) * 7.4, Math.sin(ah) * 7.4).lineStyle(1.3, 0x2a1a10, 1).lineBetween(0, 0, Math.cos(am) * 11.5, Math.sin(am) * 11.5).fillStyle(0x2a1a10, 1).fillCircle(0, 0, 1.7);
   }
 }
 /** Bake the room's pieces ahead, while you walk to the door. */
@@ -338,10 +339,11 @@ function _hsShellSwap(R, S) {
   const s = _hsNative(); S.keyNow = R.paintKey;
   if (!s || !s.paintSpec || !window.GardenRoomArt) return;
   const spec = GardenRoomArt.spec(R); if (!spec) return;
-  if (S.swap) { try { S.swap.next.destroy(); } catch (e) { /* gone */ } S.swap = null; }
+  let old = s.background;
+  if (S.swap) { old = S.swap.old; try { S.swap.next.destroy(); } catch (e) { /* gone */ } S.swap = null; }   // (a second change while the first still bakes: the first goes, the picture on screen stays until the newest is in)
   const next = GardenRoomArt.create(s, R);
   try { next.root.setDepth(.5); const plate = next.root.list && next.root.list[0]; if (plate && plate.type === 'Rectangle') plate.setVisible(false); } catch (e) { /* the plate shows: still a picture */ }
-  S.swap = { next, old: s.background, t: 0 };
+  S.swap = { next, old, t: 0 };
   s.background = next; s.paintSpec = spec;
   if (S.native) _hsSync(R, S);   // (the room's own lights come from the new painting)
 }

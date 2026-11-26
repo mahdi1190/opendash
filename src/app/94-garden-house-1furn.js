@@ -153,8 +153,9 @@ const HOUSE_ART = {
     T.ell(0, -3, 15, 4, '#3a2814'); T.ell(0, -5, 15, 4, '#6a5038');
     T.stroke('M0 -6V-108', '#5a4028', 4); T.stroke('M-1 -6V-108', '#9a7a58', 1.2, .6); for (const y of [-40, -76]) T.ell(0, y, 4.5, 3, '#7a5a3a');
     const lit = !!o.lit, shade = 'M-14 -138L14 -138L24 -108L-24 -108Z';
-    if (lit) T.glow(0, -116, 70, '#ffd890', .45);
-    T.fill(shade, lit ? T.lin(0, -138, 0, -108, [[0, '#fff4c8'], [1, '#f8d890']]) : T.lin(-24, 0, 24, 0, [[0, '#f0dcb0'], [.6, '#d8c090'], [1, '#a8905e']]));
+    if (lit) T.glow(0, -116, 56, '#ffd890', .28);
+    T.fill(shade, lit ? T.lin(0, -138, 0, -108, [[0, '#f8e4b0'], [1, '#f0c878']]) : T.lin(-24, 0, 24, 0, [[0, '#f0dcb0'], [.6, '#d8c090'], [1, '#a8905e']]));
+    if (lit) T.fill(shade, T.lin(-24, 0, 24, 0, [[0, '#fff8e0', .3], [.5, '#fff8e0', 0], [1, '#7a5020', .25]]));   // (lit from inside, still a shade with a light and a dark side)
     for (let i = 0; i < 12; i++) T.stroke(`M${-23 + i * 4.2} -108v6`, lit ? '#e8b860' : '#b8985a', 1.2, .9);
     T.stroke('M-14 -138L14 -138', '#8a6a3a', 1.6); if (lit) T.ell(0, -108, 18, 4, '#fff8e0', .8);
   } },
@@ -241,13 +242,24 @@ function _hsFinishArt(id) {
     T.stroke('M-30 -30H30L40 0H-40Z', '#000', 1, .2);
   } };
 }
+/** The pieces are painted at a figure of 88 and drawn at the room's real one (about 72 room px: measured in the room, 26 Nov),
+ *  so every piece stands at its true size beside you: a chair's back at your shoulder, the table at your waist. */
+const HOUSE_ART_K = .82;
+const _HS_BOXES = new Map();
 function houseArt(id) { return HOUSE_ART[id] || _hsFinishArt(id); }
-function houseArtBox(id) { const a = houseArt(id); return a ? a.box : [-30, -40, 30, 6]; }
+function houseArtBox(id) {
+  if (_HS_BOXES.has(id)) return _HS_BOXES.get(id);
+  const a = houseArt(id); if (!a) return [-30, -40, 30, 6];
+  const b = HOUSE_ART[id] ? [Math.floor(a.box[0] * HOUSE_ART_K), Math.floor(a.box[1] * HOUSE_ART_K), Math.ceil(a.box[2] * HOUSE_ART_K), Math.ceil(a.box[3] * HOUSE_ART_K)] : a.box;
+  _HS_BOXES.set(id, b); return b;
+}
 /** Paint a piece into a 2D context already set to room units round its foot. */
 function housePaintPiece(cx, id, o) {
   const a = houseArt(id); if (!a || !window.GardenRoomArt) return false;
   const T = GardenRoomArt.kit(cx, 'hsart|' + id + '|' + ((o && o.v) | 0));
-  a.draw(T, o || {}); return true;
+  cx.save(); if (HOUSE_ART[id]) cx.scale(HOUSE_ART_K, HOUSE_ART_K);
+  try { a.draw(T, o || {}); } finally { cx.restore(); }
+  return true;
 }
 
 /* ---------- textures: baked one to a task, kept a while ---------- */
@@ -256,7 +268,7 @@ const _hst = { queue: new Map(), pumping: false, keys: [], onReady: null, ms: []
 const houseTexKey = (id, v, lit) => 'gdhouse-' + id + '-' + ((v | 0) % 8) + (lit ? '-lit' : '');
 function _hsBakeCanvas(id, v, lit, K) {
   const a = houseArt(id); if (!a) return null;
-  const [x0, y0, x1, y1] = a.box, c = document.createElement('canvas');
+  const [x0, y0, x1, y1] = houseArtBox(id), c = document.createElement('canvas');
   c.width = Math.ceil((x1 - x0) * K); c.height = Math.ceil((y1 - y0) * K);
   const cx = c.getContext('2d', { willReadFrequently: true }); cx.setTransform(K, 0, 0, K, -x0 * K, -y0 * K);
   try { housePaintPiece(cx, id, { v, lit }); cx.getImageData(0, 0, 1, 1); } catch (e) { console.error('[house art]', id, e); }   // (reading a pixel makes the canvas pay for its drawing now, not at upload)

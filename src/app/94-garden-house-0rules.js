@@ -33,7 +33,7 @@ const HOUSE_OPS = Object.freeze(['home', 'put', 'move', 'lift', 'use', 'wall', '
 const HOUSE_SHELL = Object.freeze({
   wall: Object.freeze({ x0: 0, x1: 960, y0: 150, y1: 400 }),
   floor: Object.freeze({ x0: 34, x1: 926, y0: 404, y1: 574 }),
-  door: Object.freeze({ x0: 22, x1: 112, y0: 280, y1: 400 }),
+  door: Object.freeze({ x0: 30, x1: 104, y0: 302, y1: 400 }),   // (1.35 times the figure's height)
   stand: Object.freeze({ x: 67, y: 420 }),            // where you stand at the door to go out
   window: Object.freeze({ x0: 294, x1: 466, y0: 202, y1: 330 }),
   hearth: Object.freeze({ x0: 598, x1: 850, y0: 150, y1: 400 }),
@@ -52,9 +52,9 @@ const HOUSE_START = Object.freeze([
   Object.freeze({ d: 'hf-oak-chest', x: 262, y: 494 }),
   Object.freeze({ d: 'hf-dresser', x: 530, y: 434 }),
   Object.freeze({ d: 'hf-kitchen-table', x: 470, y: 522 }),
-  Object.freeze({ d: 'hf-ladder-chair', x: 374, y: 516 }),
-  Object.freeze({ d: 'hf-ladder-chair', x: 566, y: 516, r: 1 }),
-  Object.freeze({ d: 'hf-candlestick', x: 478, y: 520, z: 58 }),
+  Object.freeze({ d: 'hf-ladder-chair', x: 392, y: 516 }),
+  Object.freeze({ d: 'hf-ladder-chair', x: 548, y: 516, r: 1 }),
+  Object.freeze({ d: 'hf-candlestick', x: 478, y: 520, z: 48 }),
   Object.freeze({ d: 'hf-rag-rug', x: 724, y: 502 }),
   Object.freeze({ d: 'hf-armchair', x: 884, y: 474, r: 1 }),
   Object.freeze({ d: 'hf-stool', x: 640, y: 540 }),

@@ -270,7 +270,7 @@ function* _hsPaintHearth(T, P, L) {
   T.rect(H.x0 + 14, my, H.x1 - H.x0 - 28, 12, T.lin(0, my, 0, my + 12, [[0, P.look === 'stone' ? '#f4ece0' : L.beamLit], [1, P.look === 'stone' ? '#b8ac98' : L.beam]]));
   T.rect(H.x0 + 14, my, H.x1 - H.x0 - 28, 2, '#ffffff', .3);
   // the warm light of the fire on the breast and on the floor in front of it (a stove keeps its light behind its little door)
-  if (P.look !== 'timber') T.glow((F.x0 + F.x1) / 2, F.y1 - 20, night ? 260 : 190, '#ff9a4a', night ? .32 : .2);
+  if (P.look !== 'timber') T.glow((F.x0 + F.x1) / 2, F.y1 - 20, night ? 240 : 170, '#ff9a4a', night ? .26 : .13);
 }
 function _hsPaintDoor(T, P, L) {
   const D = HOUSE_SHELL.door, w = D.x1 - D.x0, h = D.y1 - D.y0, col = L.door;
@@ -323,14 +323,14 @@ function houseShellSpec(P) {
   P = Object.assign({ look: 'thatch', wall: HOUSE_WALL0, floor: HOUSE_FLOOR0, tod: 'day', season: 'summer', wx: 0 }, P || {});
   const L = HOUSE_LOOK_PAL[P.look] || HOUSE_LOOK_PAL.thatch, S = HOUSE_SKY[P.tod] || HOUSE_SKY.day, W = HOUSE_SHELL.window, F = HOUSE_SHELL.fire;
   const night = P.tod === 'night', rain = P.wx === 1, fireX = (F.x0 + F.x1) / 2;
-  const fx = { flicker: [{ x: fireX, y: F.y1 - 30, r: 150, c: '#ff8a3a', a: night ? .34 : .24, amt: .32 }, { x: fireX, y: 470, r: 220, c: '#ff9a4a', a: night ? .14 : .08, amt: .22, depth: 60 }] };
+  const fx = { flicker: [{ x: fireX, y: F.y1 - 30, r: 120, c: '#ff8a3a', a: night ? .26 : .15, amt: .32 }, { x: fireX, y: 470, r: 200, c: '#ff9a4a', a: night ? .12 : .06, amt: .22, depth: 60 }] };
   if (S.shaftA > .05 && !rain) fx.motes = [{ x0: W.x0 + 10, x1: W.x1 + 160, y0: W.y1, y1: 560, n: 16, c: '#fff6dc', a: .42, rise: 4 }];
   if (rain) fx.streaks = [{ x: W.x0 + 12, y: W.y0 + 10, w: W.x1 - W.x0 - 24, h: W.y1 - W.y0 - 24, a: .3, speed: 240 }];
   fx.motes = (fx.motes || []).concat([{ x0: fireX - 60, x1: fireX + 60, y0: F.y0 - 30, y1: F.y1 - 20, n: 6, c: '#ffc070', a: .5, rise: 26 }]);   // sparks going up the chimney
   return {
     plate: '#2a1c12', ambient: Math.max(.45, S.amb - (rain ? .08 : 0)),
     lights: [
-      { id: 'hs-fire', x: fireX, y: F.y1 - 40, radius: night ? 380 : 320, height: 50, color: '#ff9a4a', intensity: night ? .6 : .42 },
+      { id: 'hs-fire', x: fireX, y: F.y1 - 40, radius: night ? 360 : 300, height: 50, color: '#ff9a4a', intensity: night ? .5 : .3 },
       { id: 'hs-window', x: (W.x0 + W.x1) / 2, y: W.y1 - 30, radius: 300, height: 140, color: S.shaft, intensity: S.win * (rain ? .6 : 1) },
     ],
     fx,
