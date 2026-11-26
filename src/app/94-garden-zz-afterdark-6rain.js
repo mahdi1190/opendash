@@ -152,7 +152,7 @@ function gardenNightRainbowFoot(e, cfg, W) {
 }
 function _adrBowStart(o) { _adr.bow = { i: o.i, x: o.x, y: o.y, until: performance.now() + o.tt * 1000, t0: performance.now(), tt: o.tt, host: !!o.host, order: [], asked: false, paid: false }; wdSound([[784, 0.5, 'sine', 0.012], [988, 0.6, 'sine', 0.01, 0.12]]); }
 function _adrBowSvg(B) {
-  const cols = ['#e8504e', '#f09a3e', '#f2d44a', '#62b85a', '#4a8ae0', '#5a5ac8', '#9a5ac0'], left = Math.max(0.15, (B.until - performance.now()) / (B.tt * 1000));
+  const cols = ['#e8504e', '#f09a3e', '#f2d44a', '#62b85a', '#4a8ae0', '#5a5ac8', '#9a5ac0'], left = Math.max(0.15, Math.ceil((B.until - performance.now()) / (B.tt * 1000) * 12) / 12);   // (in twelve steps: the drawing changes every twenty seconds, not every second, so its shimmer runs on)
   let s = `<ellipse rx="${(30 * left + 6).toFixed(1)}" ry="${(10 * left + 2).toFixed(1)}" fill="none" stroke="#fff8e0" stroke-width="1.2" opacity="0.7"/>`;
   cols.forEach((c, k) => { s += `<rect class="ad-band" style="animation-delay:${(-k * 0.3).toFixed(1)}s" x="${(-10.5 + k * 3).toFixed(1)}" y="-120" width="3.2" height="120" fill="${c}" opacity="0.32"/>`; });
   for (let k = 0; k < 7; k++) { const a = k / 7 * Math.PI * 2, x = Math.cos(a) * 14, y = Math.sin(a) * 4.6; s += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><g class="ad-twinkle" style="animation-delay:${(-k * 0.19).toFixed(2)}s"><path d="M0 -2.6L0.6 -0.6L2.6 0L0.6 0.6L0 2.6L-0.6 0.6L-2.6 0L-0.6 -0.6Z" fill="${cols[k]}"/></g></g>`; }
@@ -168,7 +168,8 @@ function _adrBowTick(m, want) {
   if (B.host || !adRole() || adRole() === 'host') {   // (your own garden: you rank yourself)
     if (!B.order.includes(0)) { B.order.push(0); if (adHostLive()) _adrBowTell(B); }
     _adrPay(B, B.order.indexOf(0) + 1);
-  } else if (!B.asked) { B.asked = true; adLive('bowin', { i: B.i }); }
+  } else if (!B.asked) { B.asked = true; B.askedAt = performance.now(); adLive('bowin', { i: B.i }); }
+  else if (performance.now() - B.askedAt > 6000) _adrPay(B, 2);   // (no answer from the host: you got there all the same)
 }
 function _adrBowTell(B) { adLive('bowgot', { i: B.i, l: B.order.slice(0, GL_PEOPLE).map((s, k) => [s, k + 1, 0]) }); }
 /** You reached the foot: the first gets a colour they have not got, everyone after a colour too (a second of one: a seed packet); the
