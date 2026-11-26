@@ -153,7 +153,7 @@ function gardenTideBoards() {
   let list = []; try { list = gardenAffordThings(); } catch (e) { return []; }
   const S = gardenTideShore(), key = S.lay + '|' + list.length;
   if (_gtc.boards && _gtc.boardsKey === key) return _gtc.boards;
-  const W = GARDEN_WORLD, out = [], cards = list.filter(t => GT_CARD_KINDS.has(t.kind));
+  const W = GARDEN_WORLD, out = [], cards = list.filter(t => GT_CARD_KINDS.has(t.kind) && t.src !== 'decor');   // (the vale's own signs and lamps, not a lantern you put down)
   // one card for each region's part of each stretch of shore: the nearest board, sign, milestone, lamp or post within five cells
   for (const st of S.stretches) {
     const byZone = new Map(); for (const i of st.cells) { const c = gardenIslandBaseCell(i % W.cols, (i - i % W.cols) / W.cols), z = c ? c.regionZone || 0 : 0; let l = byZone.get(z); if (!l) byZone.set(z, l = []); l.push(i); }
@@ -196,7 +196,7 @@ function gardenTideActRows(px, py) {
   const T = gardenTideNow();
   try {
     for (const g of gardenTideGlintsShown()) { const d = Math.hypot(g.x - px, (g.y - py) * 1.3); if (d > GT_REACH) continue; out.push({ key: 'tide:g:' + T.w + '.' + g.i, act: 'scoop', tide: { kind: 'glint', w: T.w, i: g.i }, words: 'Pick up the ' + g.find.name.replace(/^(.)/, c => c.toLowerCase()), name: g.find.name, x: g.x, y: g.y, stand: { x: g.x, y: g.y + 0.12 }, pri: 0.55 }); }
-    for (const b of gardenTideBoards()) { const d = Math.hypot(b.x - px, (b.y - py) * 1.3); if (d > 2) continue; out.push({ key: 'tide:board:' + b.t.id, act: 'read', tide: { kind: 'board' }, words: 'Read the tide table', name: 'the tide table', x: b.x, y: b.y, pri: 0.2, src: 'tide-board:' + b.t.id }); }
+    for (const b of gardenTideBoards()) { const d = Math.hypot(b.x - px, (b.y - py) * 1.3); if (d > 2) continue; out.push({ key: 'tide:board:' + b.t.id, act: 'read', tide: { kind: 'board' }, words: 'Read the tide table', name: 'the tide table', x: b.x, y: b.y, stand: gardenTideStandFree([{ x: b.x - .35, y: b.y + .55 }, { x: b.x + .4, y: b.y + .55 }], px, py), pri: 0.2, src: 'tide-board:' + b.t.id }); }
     for (const f of GT_ROW_SOURCES) { try { out.push(...f(px, py, T)); } catch (e) { /* that one has nothing now */ } }
   } catch (e) { /* nothing here now */ }
   return out;
@@ -204,7 +204,7 @@ function gardenTideActRows(px, py) {
 /** A tide row was chosen (E, a click on the prompt): walk there, do it, and give what it gives. */
 function gardenTideRun(spot) {
   const t = spot && spot.tide; if (!t) return false;
-  if (t.kind === 'board') { gardenTideTableOpen({ x: spot.x, y: spot.y - 1.2 }); return true; }
+  if (t.kind === 'board') return _gtcDo('read', spot, () => gardenTideTableOpen({ x: spot.x, y: spot.y - 1.2 }), .5) || !!gardenTideTableOpen({ x: spot.x, y: spot.y - 1.2 });   // (walk up and read it, as at any notice board)
   if (t.kind === 'glint') {
     const g = gardenTideGlints().find(q => q.i === t.i); if (!g) return false;
     return _gtcDo('scoop', spot, () => { const r = gardenTideTake(g, t.w); if (r && !r.ok) try { gardenToast(r.msg || 'Gone with the tide.'); } catch (e) { /* fine */ } }, 0.62);

@@ -82,7 +82,7 @@ function gardenTidePoolRun(spot) {
 /** The stone tips back: what was under it runs for it (or a line), and friends see the stone tip on their screen. */
 function _gtqReveal(st, w) {
   if (_gtqLifted(w, st.k)) return;
-  _gtqSetLifted(w, st.k); _wdSave();
+  _gtqSetLifted(w, st.k); _wdSave(); GardenTideStoneSprites.maskW = null;
   const id = gardenTideUnder(st, w);
   _gtq.peek.set(st.k, { t: performance.now(), lift: true, id, w });
   try { if (typeof gardenLiveFx === 'function') gardenLiveFx('tide', 'lift', { n: st.k % 1000, i: id || 'none', x: Math.max(0, Math.min(GARDEN_WORLD.cols - 1, Math.floor(st.x))), y: Math.max(0, Math.min(GARDEN_WORLD.rows - 1, Math.floor(st.y))) }); } catch (e) { /* alone */ }
@@ -169,10 +169,11 @@ const GardenTideStoneSprites = {
       while (_gtq.imgs.length < list.length) { const im = scene.add.image(0, 0, 'gt-stones', 's0').setDepth(-9345.18).setOrigin(.5, .66); this.root.add(im); _gtq.imgs.push(im); if (this.root.sort) this.root.sort('depth'); }   // (a stone you could lift, about a third of your height)
       _gtq.imgs.forEach((im, k) => { const st = list[k]; im.setVisible(!!st); if (st) { im.setFrame('s' + (st.k % 4)).setPosition(st.x * W.cellW, W.sky + st.y * W.cellH).setScale(1); im._st = st; } else im._st = null; });
     }
-    const t = time / 1000, motion = typeof gardenMotionOn !== 'function' || gardenMotionOn();
+    const t = time / 1000, motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(), rev = typeof _gd !== 'undefined' ? _gd.rev : 0;
+    if (this.maskW !== T.w || this.maskRev !== rev) { this.maskW = T.w; this.maskRev = rev; this.mask = Number(_gdG().wd[_gtqMaskKey(T.w)]) || 0; }   // (once when it changes, not every frame)
     for (const im of _gtq.imgs) {
       const st = im._st; if (!st) continue;
-      const lifted = _gtqLifted(T.w, st.k), peek = _gtq.peek.get(st.k), baseY = W.sky + st.y * W.cellH;
+      const lifted = !!(this.mask & (1 << (st.k % 31))), peek = _gtq.peek.get(st.k), baseY = W.sky + st.y * W.cellH;
       if (peek && peek.w !== T.w) _gtq.peek.delete(st.k);
       else if (peek && (peek.lift || performance.now() - peek.t < 2600)) {
         // tipped back: on its edge beside the hollow it lay in (yours stays so; a friend's settles back after a moment)
