@@ -34,6 +34,8 @@ function _adbThing(id) { try { return typeof _gmThing === 'function' ? _gmThing(
 function _adbPitch(t) { return !!t && typeof gmPlaces === 'function' && gmPlaces(t.kind).length > 0; }
 /** A point in front of a thing, laid out for a front facing you (dy > 0 is out in front), turned to the way it really faces. */
 function _adbAt(t, dx, dy) { const v = typeof _gkTurn === 'function' ? _gkTurn(dx, dy, t.front) : [dx, dy]; return { x: t.x + v[0], y: t.y + v[1] }; }
+/** A point in the thing's own frame (the inverse of _adbAt): [across, out in front]. */
+function _adbLocal(t, p) { const a = -((t.front == null ? 90 : t.front) - 90) * Math.PI / 180, dx = p.x - t.x, dy = p.y - t.y; return [dx * Math.cos(a) - dy * Math.sin(a), dx * Math.sin(a) + dy * Math.cos(a)]; }
 function _adbFree(x, y) {
   try {
     if (!adOpen(x, y)) return false;
@@ -90,16 +92,17 @@ function _adbWatchers(t, players) {
 }
 
 /* ---------- the hat ---------- */
-function _adbHatAt(t) { for (const [dx, dy] of [[0, 1.35], [0.3, 1.45], [-0.3, 1.45], [0, 1.7]]) { const p = _adbAt(t, dx, dy); if (_adbFree(p.x, p.y)) return p; } return null; }
+function _adbHatAt(t) { for (const [dx, dy] of [[0, 1.12], [0.3, 1.2], [-0.3, 1.2], [0, 1.45]]) { const p = _adbAt(t, dx, dy); if (_adbFree(p.x, p.y)) return p; } return null; }   // (just in front of the players' places, between the band and whoever stops to listen)
 function _adbHatSvg(n) {
-  let coins = ''; const at = [[-3.2, -3.4], [1.6, -3.9], [-0.6, -4.6], [3.4, -3.2], [-2, -4.9], [0.8, -3.1]];
-  for (let i = 0; i < Math.min(6, n); i++) coins += `<ellipse cx="${at[i][0]}" cy="${at[i][1]}" rx="1.9" ry="0.85" fill="#d8b24a" stroke="#8a6a22" stroke-width="0.3"/>`;
-  return `<ellipse cx="0" cy="0.6" rx="10" ry="2.6" fill="#000000" opacity="0.26"/>`   // its shadow on the ground
-    + `<ellipse cx="0" cy="-0.4" rx="9.4" ry="2.8" fill="#3a3430"/><ellipse cx="0" cy="-0.8" rx="8.6" ry="2.3" fill="#4e4640"/>`   // the brim
-    + `<path d="M-6 -1Q-6.4 -5.6 -5.4 -6.2H5.4Q6.4 -5.6 6 -1Z" fill="#2a2522"/><ellipse cx="0" cy="-5.6" rx="5.5" ry="1.9" fill="#171412"/>`   // the crown, upturned: you see into it
-    + `<path d="M-5.9 -2.6Q0 -1.4 5.9 -2.6" stroke="#8a3a2e" stroke-width="0.9" fill="none"/>`   // its band
-    + coins + (n ? `<g transform="translate(1.6 -6)"><g class="ad-twinkle"><path d="M0 -2.6L.6 -.6L2.6 0L.6 .6L0 2.6L-.6 .6L-2.6 0L-.6 -.6Z" fill="#fff4c8"/></g></g>` : '')
-    + `<path d="M-10 1q1 -3 2 0M8.6 1.2q1 -3 2 0" stroke="#5f7d3e" stroke-width="0.9" fill="none" stroke-linecap="round"/>`;
+  // an old felt hat upturned on the grass: you see into its crown, its band, and the coins in it glint (world px, about 0.3 H across)
+  let coins = ''; const at = [[-3.4, -4.2], [2, -4.6], [-0.4, -5.6], [3.8, -3.8], [-2.4, -6], [1, -3.6]];
+  for (let i = 0; i < Math.min(6, n); i++) coins += `<ellipse cx="${at[i][0]}" cy="${at[i][1]}" rx="2.2" ry="1" fill="#e0b84a" stroke="#8a6a22" stroke-width="0.35"/><ellipse cx="${at[i][0] - 0.6}" cy="${at[i][1] - 0.3}" rx="0.8" ry="0.35" fill="#fff4c8" opacity="0.8"/>`;
+  return `<ellipse cx="0" cy="0.8" rx="12.5" ry="3.2" fill="#000000" opacity="0.28"/>`
+    + `<ellipse cx="0" cy="-0.4" rx="11.6" ry="3.4" fill="#4e3c2e"/><ellipse cx="-1" cy="-1" rx="10.4" ry="2.8" fill="#6a5240"/><path d="M-10.8 -1.4Q-6 -3.6 0 -3.7" stroke="#8a7058" stroke-width="0.8" fill="none" opacity="0.8"/>`
+    + `<path d="M-7.2 -1.4Q-7.8 -6.6 -6.6 -7.4H6.6Q7.8 -6.6 7.2 -1.4Z" fill="#3e2e22"/><path d="M-7.2 -1.4Q-7.8 -6.6 -6.6 -7.4H-3.6Q-4.8 -5 -4.4 -1.4Z" fill="#6a5240" opacity="0.6"/>`
+    + `<ellipse cx="0" cy="-6.8" rx="6.6" ry="2.2" fill="#1e1612"/><path d="M-7.1 -3.2Q0 -1.8 7.1 -3.2" stroke="#9a3a2e" stroke-width="1.2" fill="none"/>`
+    + coins + (n ? `<g transform="translate(2 -7.4)"><g class="ad-twinkle"><path d="M0 -2.8L.6 -.6L2.8 0L.6 .6L0 2.8L-.6 .6L-2.8 0L-.6 -.6Z" fill="#fff4c8"/></g></g>` : '')
+    + `<path d="M-12.6 1.2q1 -3.2 2 0M10.6 1.4q1 -3.2 2 0M-4 2.4q.8 -2.6 1.6 0" stroke="#5f7d3e" stroke-width="0.9" fill="none" stroke-linecap="round"/>`;
 }
 
 /* ---------- busking: the crowd, the hat, the pay ---------- */
@@ -154,7 +157,7 @@ function _adbPay(m, N, t, players, P) {
   const folk = [...P.watched.values()].filter(w => w.folk), names = [...P.watched.values()].map(w => w.name).filter(n => n && n !== 'you');
   const coins = Math.max(0, Math.min(AD_BUSK.coins, P.watched.size + players.length - 1 + P.bonus, AD_BUSK.day - had));
   if (coins > 0) {
-    g.led['adbk.' + today + '.' + P.tune] = { d: today, k: 'wd', c: coins, n: 1 }; _gdSave();
+    g.led['adbk.' + today + '.' + P.tune + '.' + (gardenHash(t.id + '|' + (typeof gardenPlaceKey === 'function' ? gardenPlaceKey() : '')) >>> 0).toString(36)] = { d: today, k: 'wd', c: coins, n: 1 }; _gdSave();   // (the tune, at this pitch in this garden)
     adSet('bkt', (Number(adGet('bkt')) || 0) + coins);
     _adb.hatCoins.set(t.id, Math.min(6, (_adb.hatCoins.get(t.id) || 0) + coins));
     try { _glFx(t.x, t.y + 1.3, 'sparkle', { lift: 6 }); } catch (e) { /* no fx */ }
@@ -239,12 +242,17 @@ function _addFloors() {
     for (let j = 0; j < AD_DANCE.d; j++) for (let i = 0; i < AD_DANCE.w; i++) { const p = _adbAt(t, i - (AD_DANCE.w - 1) / 2, y0 + j); if (_adbFree(p.x, p.y) && !adHidden(p.x, p.y, 1)) cells.push(p); }
     if (cells.length < AD_DANCE.min) continue;
     const use = cells.slice(0, AD_DANCE.cells), cx = use.reduce((s, p) => s + p.x, 0) / use.length, cy = use.reduce((s, p) => s + p.y, 0) / use.length;
-    const edge = [], lamps = [], near = (p, list, r) => list.some(q => Math.hypot(q.x - p.x, q.y - p.y) < r);
-    for (let k = 0; k < 16; k++) {   // round the floor's edge, a little outside it
-      const a = k / 16 * Math.PI * 2, p = { x: cx + Math.cos(a) * (AD_DANCE.w / 2 + 0.9), y: cy + Math.sin(a) * (AD_DANCE.d / 2 + 0.8) };
-      if (!_adbFree(p.x, p.y) || near(p, use, 0.7)) continue;
-      if (k % 3 === 0 && lamps.length < AD_DANCE.lamps && !near(p, lamps, 1.6) && !adHidden(p.x, p.y, 1)) lamps.push(p); else if (!near(p, edge, 1)) edge.push(p);
+    // round the floor's edge, a little outside it (two rings): the lanterns spread as far apart as they will go, the watchers in between
+    const edge = [], lamps = [], near = (p, list, r) => list.some(q => Math.hypot(q.x - p.x, q.y - p.y) < r), ring = [];
+    for (const k of [1, 1.25]) for (let i = 0; i < 24; i++) {
+      const a = i / 24 * Math.PI * 2, p = { x: cx + Math.cos(a) * (AD_DANCE.w / 2 + 0.9) * k, y: cy + Math.sin(a) * (AD_DANCE.d / 2 + 0.8) * k };
+      if (_adbLocal(t, p)[1] < y0 - 0.15) continue;   // (never level with the band or the barn: the floor's three open sides only)
+      if (_adbFree(p.x, p.y) && !near(p, use, 0.7) && !near(p, ring, 0.5)) ring.push(p);
     }
+    const lampOk = ring.filter(p => !adHidden(p.x, p.y, 1));
+    if (lampOk.length) { lampOk.sort((p, q) => q.y - p.y); lamps.push(lampOk[0]); }   // (the first at the front)
+    while (lamps.length < AD_DANCE.lamps) { let best = null, bd = 1.6; for (const p of lampOk) { if (lamps.includes(p)) continue; const d = Math.min(...lamps.map(q => Math.hypot(q.x - p.x, q.y - p.y))); if (d > bd) { bd = d; best = p; } } if (!best) break; lamps.push(best); }
+    for (const p of ring) if (!lamps.includes(p) && !near(p, lamps, 0.9) && !near(p, edge, 1)) edge.push(p);
     out.push({ id: 'f' + (gardenHash('floor|' + t.id) >>> 0).toString(36), t, cells: use, cx, cy, edge, lamps });
   }
   return (_add.floors = out);
@@ -288,16 +296,21 @@ function _addLampSvg(lit, k) {
   const P = AD_LANTERN.papers[k % 5];
   return `<ellipse cx="0" cy="0.6" rx="6" ry="1.8" fill="#000000" opacity="0.26"/><path d="M-1 0V-44" stroke="#5a4028" stroke-width="2.2" stroke-linecap="round"/><path d="M-0.4 -2V-43" stroke="#8a6a44" stroke-width="0.7" opacity="0.7"/>`
     + `<path d="M-1 -43Q4 -46 7 -42" stroke="#5a4028" stroke-width="1.4" fill="none" stroke-linecap="round"/><path d="M7 -42V-38" stroke="#3a2a1a" stroke-width="0.6"/>`
-    + (lit ? `<circle class="ad-glow-b" cx="7" cy="-31" r="15" fill="${P[2]}" opacity="0.26"/>` : '')
     + `<path d="M3.2 -24.6L2.8 -33Q3 -36.6 5 -37.6H9Q11 -36.6 11.2 -33L10.8 -24.6Z" fill="${lit ? P[1] : GART.dk(P[1], 0.38)}"/>`
     + (lit ? `<ellipse cx="7" cy="-30" rx="2.2" ry="3" fill="#fff6d0" opacity="0.85"/>` : '')
     + `<path d="M3.2 -24.6L2.8 -33Q3 -36.6 5 -37.6H6.2Q4.8 -35.6 4.9 -33L5.2 -24.6Z" fill="#ffffff" opacity="${lit ? 0.3 : 0.14}"/><path d="M4.6 -37.7H9.4M4 -24.5H10" stroke="#6a4a2c" stroke-width="0.8"/>`
     + `<path d="M-4.6 1q.8 -3.4 1.6 0M1.6 1.2q.8 -3 1.6 0" stroke="#5f7d3e" stroke-width="0.9" fill="none" stroke-linecap="round"/>`;
 }
+/** A lit lantern's light over the night, and the pool of it on the grass (the glow layer: a glow inside the sprite is a grey disc there). */
+const _AD_LAMP_GLOW = AD_LANTERN.papers.map(P => `<circle cx="7" cy="-31" r="18" fill="${P[2]}" opacity="0.34"/><circle cx="7" cy="-31" r="8" fill="#fff4d0" opacity="0.45"/><ellipse cx="5" cy="0" rx="17" ry="5" fill="${P[2]}" opacity="0.22"/>`);
 function _addLamps(D, lit) {
   const want = new Set();
-  if (D) D.f.lamps.forEach((p, k) => { if (!adInView(p.x, p.y, 3)) return; const id = 'dl-' + D.f.id + '-' + k; want.add(id); adSprite(id, { x: p.x, y: p.y, z: p.y, svg: _addLampSvg(k < lit, k), label: k < lit ? 'A lantern lit for a dancer' : 'A lantern: it lights for each dancer', hit: 0.4, hitUp: 30 }); });
-  for (const id of [..._ad.sprites.keys()]) if (id.startsWith('dl-') && !want.has(id)) adSprite(id, null);
+  if (D) D.f.lamps.forEach((p, k) => {
+    if (!adInView(p.x, p.y, 3)) return; const id = 'dl-' + D.f.id + '-' + k, on = k < lit; want.add(id);
+    adSprite(id, { x: p.x, y: p.y, z: p.y, svg: _addLampSvg(on, k), label: on ? 'A lantern lit for a dancer' : 'A lantern: it lights for each dancer', hit: 0.4, hitUp: 30 });
+    if (on) wdGlow('ad-' + id, _AD_LAMP_GLOW[k % 5], p.x, p.y); else wdGlowOff('ad-' + id);
+  });
+  for (const id of [..._ad.sprites.keys()]) if (id.startsWith('dl-') && !want.has(id)) { adSprite(id, null); wdGlowOff('ad-' + id); }
 }
 /* ---------- the host's folk round the floor ---------- */
 function _addCrowd(m, D) {
@@ -328,7 +341,7 @@ function _addBeatTick() {
   try {
     const k = _addBeatWanted(); _add.beatOn = k > 0;
     const B = typeof gardenSoundBus === 'function' ? gardenSoundBus({ always: true }) : null;
-    if (!k || !B) { if (_add.beat) { try { _add.beat.g.gain.setTargetAtTime(0, _add.beat.c.currentTime, 0.25); } catch (e) { /* gone */ } } _add.beatNext = -1; if (!_add.on) { clearInterval(_add.beatIv); _add.beatIv = 0; } return; }
+    if (!k || !B) { if (_add.beat) { try { _add.beat.g.gain.setTargetAtTime(0, _add.beat.c.currentTime, 0.25); } catch (e) { /* gone */ } } _add.beatNext = -1; clearInterval(_add.beatIv); _add.beatIv = 0; return; }   // (nothing runs while it is not wanted: the dance's tick, once a second while the garden shows, wakes it again)
     const c = B.ac;
     if (!_add.beat || _add.beat.c !== c) { const g = c.createGain(), pan = c.createStereoPanner ? c.createStereoPanner() : null; g.gain.value = 0; if (pan) { g.connect(pan); pan.connect(B.out); } else g.connect(B.out); _add.beat = { c, g, pan }; }
     const D = _add.on, t = c.currentTime, song = gmNow(), cur = Math.floor(song / GM_STEP), until = Math.floor((song + 350) / GM_STEP);
@@ -461,7 +474,7 @@ function _addTick(m, N) {
     if (was) { adDanceStop(); _addLamps(null, 0); _addCrowd(m, null); _ad.picks.delete('dance'); _add.on = null; }
     return;
   }
-  if (!was || was.f !== now.f) { if (was) { adDanceStop(); _addLamps(null, 0); } _add.on = now; if (now.why === 'sat' && !m.visit && !adGet('ds.' + N.nn)) { adSet('ds.' + N.nn, 1); setTimeout(() => { if (_wd.on) wdAmbient(`It is barn dance night, by ${_adbName(now.f.t)}. You can hear the fiddle from here.`, 7000, 'music'); }, 1800); } }
+  if (!was || was.f.id !== now.f.id) { if (was) { adDanceStop(); _addLamps(null, 0); } _add.on = now; /* (by the floor's id: the floors are worked out again as the world settles, and the same floor goes on) */ if (now.why === 'sat' && !m.visit && !adGet('ds.' + N.nn)) { adSet('ds.' + N.nn, 1); setTimeout(() => { if (_wd.on) wdAmbient(`It is barn dance night, by ${_adbName(now.f.t)}. You can hear the fiddle from here.`, 7000, 'music'); }, 1800); } }
   else _add.on = now;
   const D = _add.on;
   _addBeatWake();

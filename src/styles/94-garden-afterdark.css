@@ -122,8 +122,9 @@
 .ad-fold-sw { width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 2px solid rgba(58, 47, 34, 0.25); background: radial-gradient(circle at 38% 34%, rgba(255, 255, 255, 0.55) 0, rgba(255, 255, 255, 0) 46%), var(--sw); cursor: pointer; pointer-events: auto; }
 .ad-fold-sw.is-on { border-color: #3a2f22; box-shadow: 0 0 0 3px rgba(240, 160, 82, 0.35); }
 .ad-fold-sw:focus-visible { outline: 2px solid #3a2f22; outline-offset: 2px; }
-.ad-fold-pat { color: #4a3c2a; border-color: #c8b48a; }
-.ad-fold-pat.is-on { color: #fffdf4; background: #7a5a38; border-color: #7a5a38; }
+.ad-fold .wd-sky-chip.ad-fold-pat { color: #4a3c2a; background: #fffdf4; border-color: #c8b48a; cursor: pointer; pointer-events: auto; }
+.ad-fold .wd-sky-chip.ad-fold-pat.is-on { color: #fffdf4; background: #7a5a38; border-color: #7a5a38; }
+.ad-fold .wd-sky-chip.ad-fold-pat:focus-visible { outline: 2px solid #3a2f22; outline-offset: 2px; }
 /* ---------- music with friends (9music): the busking ring, the barn dance strip ---------- */
 .ad-beat { position: absolute; left: 0; top: 0; z-index: 6; width: 0; height: 0; pointer-events: none; }
 .ad-beat-r, .ad-beat-p { position: absolute; left: -34px; top: -13px; width: 68px; height: 26px; border-radius: 50%; }

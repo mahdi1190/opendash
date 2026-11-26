@@ -89,7 +89,7 @@ function _gscItemName(k, id) {
   if (k === 'seed') { const p = gardenPlant(id); return p ? `${p.name.toLowerCase().replace(/^the /, '')} seed` : 'seed'; }
   const d = gardenDecor(id); return d ? d.name.toLowerCase() : 'decoration';
 }
-function _gscA(name) { return (/^[aeiou]/i.test(name) ? 'an ' : 'a ') + name; }
+function _gscA(name) { const n = String(name); if (/^(a|an|the|some) /i.test(n)) return n.charAt(0).toLowerCase() + n.slice(1); return (/^[aeiou]/i.test(n) ? 'an ' : 'a ') + n; }   // (a name that already has its article, 'A wished-on star': it keeps it, not 'an A wished-on star')
 
 /* ---------- loading ---------- */
 function gardenSocialView() { return _gsc.data; }

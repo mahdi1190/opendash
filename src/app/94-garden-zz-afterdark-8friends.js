@@ -22,7 +22,7 @@
    ad.ly<year> (how many this year); ad.lc (the paper you chose last).
    ============================================================ */
 const AD_SKY = Object.freeze({ hold: 8000, stale: 45000, beat: 15000 });
-const _adg = { them: new Map(), sess: '', done: new Set(), press: new Map(), fin: '', myth: 0, mythFor: '', name: null, note: null, beatT: 0, expT: 0, last: '', sig: '', keep: false, moth: false, lieFor: null };
+const _adg = { them: new Map(), sess: '', sessP: '', done: new Set(), press: new Map(), fin: '', myth: 0, mythFor: '', name: null, note: null, beatT: 0, expT: 0, last: '', sig: '', keep: false, moth: false, lieFor: null };
 
 /* ---------- who is here ---------- */
 function _adgMe() { try { return adRole() === 'visit' ? (typeof _glv !== 'undefined' && Number.isInteger(_glv.w) ? _glv.w : -1) : 0; } catch (e) { return 0; } }
@@ -43,8 +43,11 @@ function _adgWith(pid) {
 }
 /** Halves on or off for the pattern you have open (a session starts empty on every screen): the people, or null when you are alone in it. */
 function _adgSync() {
-  const pid = _adgOpenId(), people = pid ? _adgWith(pid) : [], on = people.length >= 2;
-  if (on && _adg.sess !== pid) { _adg.sess = pid; _adg.done = new Set(); _adg.press = new Map(); _adg.fin = ''; _adg.name = null; }
+  const pid = _adgOpenId(), people = pid ? _adgWith(pid) : [], on = people.length >= 2, who = people.join(',');
+  // a new picture together, or someone else has come to it (the stars are shared out again): every screen starts it afresh, so all of
+  // them end with the same lines (a picture already joined stays joined)
+  if (on && (_adg.sess !== pid || (_adg.sessP !== who && _adg.fin !== pid))) { _adg.sess = pid; _adg.sessP = who; _adg.done = new Set(); _adg.press = new Map(); _adg.fin = ''; _adg.name = null; }
+  else if (on) _adg.sessP = who;
   else if (!on && _adg.sess) {
     const was = _adg.sess; _adg.sess = ''; _adg.press = new Map();
     if (_adg.name && !_adg.name.saved) _adg.name = null;
@@ -116,9 +119,13 @@ function _adgDecorate(people) {
   // a star of this pattern that has a name (yours at home, theirs on a visit): its name beside it
   const nm = _adgNamedOf(row.id, gardenHere());
   if (nm && row.s[nm.star]) {
-    const s = row.s[nm.star], X = 110 + s[0] * 7.8, Y = 40 + s[1] * 7.4, g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    // its name on the side away from the rest of the pattern, so it never runs across another star or a line
+    const s = row.s[nm.star], X = 110 + s[0] * 7.8, Y = 40 + s[1] * 7.4, mx = row.s.reduce((a, p) => a + p[0], 0) / row.s.length, my = row.s.reduce((a, p) => a + p[1], 0) / row.s.length;
+    let dx = s[0] - mx, dy = s[1] - my; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+    const side = Math.abs(dx) >= 0.45, tx = side ? X + Math.sign(dx) * 22 : X, ty = side ? Y + 5 + dy * 10 : Y + (dy >= 0 ? 34 : -22), anchor = side ? (dx > 0 ? 'start' : 'end') : 'middle';
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('class', 'ad-sky-named'); g.setAttribute('aria-hidden', 'true');
-    g.innerHTML = `<circle cx="${X}" cy="${Y}" r="15" fill="none" stroke="#ffe9a8" stroke-width="1" opacity="0.55"/><text x="${X + 20}" y="${Y + 5}" font-size="17" fill="#ffe9a8">${esc(nm.name)}</text>`;
+    g.innerHTML = `<circle cx="${X}" cy="${Y}" r="15" fill="none" stroke="#ffe9a8" stroke-width="1" opacity="0.55"/><text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="${anchor}" font-size="17" fill="#ffe9a8">${esc(nm.name)}</text>`;
     svg.appendChild(g);
   }
   if (people) {
@@ -130,7 +137,7 @@ function _adgDecorate(people) {
     }
     const others = people.filter(w => w !== me).map(_adgName), chips = foot.querySelector('.wd-sky-chips');
     if (chips) { const w = _gdpEl('span', 'ad-sky-with'); w.innerHTML = icon('star', 'i-xs'); w.appendChild(document.createTextNode(' With ' + others.join(' and '))); chips.prepend(w); }
-    if (_adg.fin !== row.id) say.textContent = `${row.name}, together. The bright stars are yours and the faint ones are ${others.length > 1 ? 'theirs' : others[0] + '’s'}. Press one of yours: when the stars at both ends of a line are pressed close together, the line lights.`;
+    if (_adg.fin !== row.id) say.textContent = `${_wdSkyKnown(row.id) ? row.name + ', together' : 'Join this one together'}. The bright stars are yours and the faint ones are ${others.length > 1 ? 'theirs' : others[0] + '’s'}. Press one of yours: when the stars at both ends of a line are pressed close together, the line lights.`;   // (an unknown pattern keeps its name until it is joined, as on its chip)
   }
   if (_adg.note && now < _adg.note.until && !(people && _adg.fin === row.id)) say.textContent = _adg.note.text;
   if (_wdk.told && AD_MYTHS[row.id]) _adgMyth(foot, row);
@@ -183,7 +190,7 @@ function _adgDone(row) {
   if (!_wdSkyKnown(row.id)) { _wdSet('sk.' + row.id, _wdToday()); if (typeof _gdEmit === 'function') _gdEmit('wonder', { what: 'star' }); }   // (the star milestones: GR_ONCE 'star')
   wdSound([[660, 0.9, 'sine', 0.018], [880, 0.9, 'sine', 0.014, 0.14], [1320, 1.1, 'sine', 0.01, 0.28], [1760, 1.3, 'sine', 0.007, 0.44]]);
   try { _wdSkyGlow(gardenHere()); } catch (e) { /* the lake shows it next tick */ }
-  if (!adHas('ad-two-halves')) _adg.keep = true; else adGive('halves.' + row.id, { x: 2 }, 'Two halves of a sky, joined');
+  if (!adHas('ad-two-halves')) _adg.keep = true; else adGive('halves.' + row.id, { x: 2 }, 'A sky in two halves, joined');
   if (adRole() !== 'visit' && typeof gardenLifeSpawn === 'function' && typeof _gw !== 'undefined') { try { if (gardenLifeSpawn('moon-moth', { at: { x: _gw.px + 0.9, y: _gw.py - 0.3, fade: 0 } })) _adg.moth = true; } catch (e) { /* no room just now */ } }
   const people = _adgWith(row.id), me = _adgMe();
   _adg.name = { pid: row.id, star: gardenHash('adname|' + row.id) % row.s.length, w: [-1, -1], pos: people.indexOf(me), with: people.filter(w => w !== me), saved: false };
@@ -194,7 +201,7 @@ adHear('sky', (A, ev) => {
   const pid = String(ev.i || ''), open = Number(ev.n) === 1, was = _adg.them.get(w);
   if (open) _adg.them.set(w, { id: pid, at: performance.now() }); else if (was && was.id === pid) _adg.them.delete(w);
   if (open && (!was || was.id !== pid) && _adgOpenId()) _adgTell();   // (they have just come to it: they hear about you at once)
-  if (typeof _wdk !== 'undefined' && _wdk.el) { if (open && _adgOpenId() === pid && (!was || was.id !== pid)) _adgNote(`${(A && A.n) || 'A friend'} is looking at ${(_wdk.cur && _wdk.cur.name) || 'it'} too. Join it together: half the stars each.`); _wdSkyDraw(); }
+  if (typeof _wdk !== 'undefined' && _wdk.el) { if (open && _adgOpenId() === pid && (!was || was.id !== pid)) _adgNote(`${(A && A.n) || 'A friend'} is looking at ${_wdk.cur && _wdSkyKnown(_wdk.cur.id) ? _wdk.cur.name.replace(/^The /, 'the ') : 'this one'} too. Join it together: half the stars each.`); _wdSkyDraw(); }
 });
 adHear('star', (A, ev) => {
   const w = Number.isInteger(ev.w) ? ev.w : A && A.w, pid = String(ev.i || ''), i = Number(ev.n) || 0; if (!Number.isInteger(w)) return;
@@ -242,7 +249,7 @@ function _adgNameSave(row) {
   const N = _adg.name; if (!N || N.saved || N.w[0] < 0 || N.w[1] < 0 || !row) return;
   N.saved = true;
   adSet('ns.' + row.id, [N.star, N.w[0], N.w[1], _adgPair(N.with[0])]);
-  adGive('name.' + row.id, { x: 3 }, `A star in ${row.name} is the ${AD_STAR_WORDS[N.w[0]]} ${AD_STAR_WORDS[N.w[1]]} now`);
+  adGive('name.' + row.id, { x: 3 }, `A star in ${row.name.replace(/^The /, 'the ')} is the ${AD_STAR_WORDS[N.w[0]]} ${AD_STAR_WORDS[N.w[1]]} now`);
   try { gtgPublishSoon(); } catch (e) { /* the 5-minute one */ }
   wdSound([[660, 0.7, 'sine', 0.014], [990, 0.9, 'sine', 0.01, 0.16]]);
 }
@@ -296,6 +303,7 @@ function _adgScopes(m, N) {
 }
 
 /* ---------- named stars on the still water ---------- */
+const AD_NAMED_GLOW = '<circle cy="-3" r="13" fill="#fff1c0" opacity="0.4"/><ellipse cy="1" rx="14" ry="3.2" fill="#ffe9a8" opacity="0.26"/>';
 /** The largest still water in the vale: where the stars named together shine (by terrain, any layout). */
 function _adgPool() { const S = adStill(); let best = null; for (const s of S) if (!best || s.area > best.area) best = s; return best; }
 function _adgWater(m, N) {
@@ -308,10 +316,11 @@ function _adgWater(m, N) {
       if (!at || !adInView(at.x, at.y, 3)) return;
       const id = 'ns-' + r.pid; want.add(id);
       adSprite(id, { x: at.x, y: at.y, z: at.y - 3, hit: 0.55, hitUp: 4, label: `${r.name[0].toUpperCase() + r.name.slice(1)}, in ${r.row.name.replace(/^The /, 'the ')}: a star named by two friends`,
-        svg: `<ellipse rx="10" ry="2.6" fill="#ffe9a8" opacity="0.16"/><g transform="translate(0 -3)"><g class="ad-twinkle" style="animation-delay:${(-k * 0.37).toFixed(2)}s"><circle r="5.5" fill="#fff4c8" opacity="0.28"/><path d="M0 -7L1.5 -1.5L7 0L1.5 1.5L0 7L-1.5 1.5L-7 0L-1.5 -1.5Z" fill="#fffbe8"/></g></g>` });
+        svg: `<g transform="translate(0 -3)"><g class="ad-twinkle" style="animation-delay:${(-k * 0.37).toFixed(2)}s"><path d="M0 -7L1.5 -1.5L7 0L1.5 1.5L0 7L-1.5 1.5L-7 0L-1.5 -1.5Z" fill="#fffbe8"/></g></g>` });
+      wdGlow('ad-' + id, AD_NAMED_GLOW, at.x, at.y);   // (its shine over the night: in the glow layer, where a pale circle is soft light)
     });
   }
-  for (const id of [..._ad.sprites.keys()]) if (id.startsWith('ns-') && !want.has(id)) adSprite(id, null);
+  for (const id of [..._ad.sprites.keys()]) if (id.startsWith('ns-') && !want.has(id)) { adSprite(id, null); wdGlowOff('ad-' + id); }
 }
 wdMod({
   id: 'ad-stars', pref: 'night', visit: true,
@@ -328,6 +337,7 @@ wdMod({
 /* ============================================================
    LANTERN NIGHT
    ============================================================ */
+const AD_BASKET_GLOW = '<circle cx="22" cy="-16" r="17" fill="#ffd28c" opacity="0.34"/><circle cx="22" cy="-16" r="8" fill="#fff4d0" opacity="0.4"/>';   // (the lit lantern on the basket's crook)
 const _adl = { on: false, list: [], spot: null, spotKey: '', fold: null, foldKeys: null, heard: [], mineAt: -1e9, upKey: '', walking: false };
 /** 94-garden-wonder-9days.js asks this before it puts out its own basket: while After dark is on, lantern night is this file's. */
 function gardenNightLanternsUp() { try { return adOn(); } catch (e) { return false; } }
@@ -357,41 +367,46 @@ function _adlCounts(N) {
   for (const k of Object.keys(_wdG())) if (k.startsWith(pre)) night++;
   return { night, year: Number(adGet('ly' + N.day.slice(0, 4))) || 0 };
 }
-/* a paper lantern on a little raft: lit from inside, its glow and its light on the water part of the drawing (feet on the water at 0,0) */
-function _adlSvg(c, p) {
-  const P = AD_LANTERN.papers[((c % 5) + 5) % 5], paper = P[1], glow = P[2], dk = typeof GART !== 'undefined' ? GART.dk(paper, 0.32) : '#7a5a38';
-  const pat = p === 1 ? `<path d="M-2.6 -10.6l.5 1.2 1.2.4-1.2.4-.5 1.2-.5-1.2-1.2-.4 1.2-.4zM2.4 -7.2l.4 1 1 .3-1 .3-.4 1-.4-1-1-.3 1-.3zM-1 -4.4l.35.8.8.3-.8.3-.35.8-.35-.8-.8-.3.8-.3z" fill="${dk}" opacity="0.7"/>`
-    : p === 2 ? `<path d="M0.6 -11.2A3.4 3.4 0 1 0 0.6 -4.6A2.6 2.6 0 1 1 0.6 -11.2Z" fill="${dk}" opacity="0.62"/>` : `<path d="M-5.6 -6.4H5.6M-5.9 -9.8H5.9" stroke="${dk}" stroke-width="0.5" opacity="0.4"/>`;
-  return `<ellipse cx="0" cy="2" rx="11" ry="2.8" fill="${glow}" opacity="0.26"/><ellipse cx="0" cy="3.6" rx="3" ry="6" fill="${glow}" opacity="0.14"/>`
-    + `<circle class="ad-glow-b" cy="-8" r="16" fill="${glow}" opacity="0.2"/>`
-    + `<path d="M-6.4 0.6H6.4L5.6 2H-5.6Z" fill="#6a4a2c"/><path d="M-6.4 0.6H6.4" stroke="#9a7a52" stroke-width="0.6"/>`
-    + `<path d="M-5.2 0.4L-6 -9.6Q-5.8 -13 -3.6 -14H3.6Q5.8 -13 6 -9.6L5.2 0.4Z" fill="${paper}"/>`
-    + `<ellipse cx="0" cy="-5.6" rx="3" ry="4" fill="#fff6d0" opacity="0.7"/>${pat}`
-    + `<path d="M-5.2 0.4L-6 -9.6Q-5.8 -13 -3.6 -14H-1.4Q-3.2 -12 -3.2 -9.6L-2.8 0.4Z" fill="#ffffff" opacity="0.26"/><path d="M2.8 0.4L3.2 -9.6Q3.2 -12 1.4 -14H3.6Q5.8 -13 6 -9.6L5.2 0.4Z" fill="#000000" opacity="0.13"/>`
-    + `<path d="M-3.8 -14.1H3.8" stroke="#6a4a2c" stroke-width="0.9" stroke-linecap="round"/><path d="M-1.4 -14.4Q0 -16 1.4 -14.4" stroke="#6a4a2c" stroke-width="0.6" fill="none"/>`;
+/* a floating paper lantern on its little raft (feet on the water at 0,0, world px, about 0.4 H tall): the paper lit from its middle out (a
+   gradient of its own, one for each paper), corner posts and rims of dark wood, the pattern in ink, lit on the left and shaded on the right.
+   Its light over the night is a soft glow of its own (_adlLightMk), moved with it a few times a second: a glow drawn inside the sprite would
+   lie under the night's shade as a grey disc. */
+function _adlSvg(c, p, bare) {
+  const i = ((c % 5) + 5) % 5, P = AD_LANTERN.papers[i], paper = P[1], dk = GART.dk(paper, 0.45), gid = 'adl-pp' + i;
+  const pat = p === 1 ? `<path d="M-2.4 -11l.45 1.1 1.1.4-1.1.4-.45 1.1-.45-1.1-1.1-.4 1.1-.4zM2.3 -7.4l.4.9.9.35-.9.35-.4.9-.4-.9-.9-.35.9-.35zM-1.1 -4.6l.32.75.75.3-.75.3-.32.75-.32-.75-.75-.3.75-.3z" fill="${dk}" opacity="0.75"/>`
+    : p === 2 ? `<path d="M0.8 -11.4A3.6 3.6 0 1 0 0.8 -4.4A2.8 2.8 0 1 1 0.8 -11.4Z" fill="${dk}" opacity="0.7"/>` : '';
+  return `<defs><radialGradient id="${gid}" cx="0.5" cy="0.56" r="0.64"><stop offset="0" stop-color="#fff8dc"/><stop offset="0.42" stop-color="${P[2]}"/><stop offset="1" stop-color="${paper}"/></radialGradient></defs>`
+    + (bare ? '' : `<ellipse cx="0" cy="1.6" rx="9.5" ry="2.4" fill="#0e1a2a" opacity="0.35"/><path d="M-1.8 2.4Q0 9.5 1.8 2.4Z" fill="${P[2]}" opacity="0.34"/>`
+    + `<path d="M-7 0.2H7L6 2H-6Z" fill="#4a3020"/><path d="M-7 0.2H7" stroke="#8a6a44" stroke-width="0.7"/>`)
+    + `<path d="M-5.6 0L-5.2 -12.4H5.2L5.6 0Z" fill="url(#${gid})"/>${pat}`
+    + `<path d="M-5.6 0L-5.2 -12.4H-3.1L-3.4 0Z" fill="#ffffff" opacity="0.16"/><path d="M3.4 0L3.1 -12.4H5.2L5.6 0Z" fill="#000000" opacity="0.15"/>`
+    + `<path d="M-5.5 0L-5.1 -12.4M5.5 0L5.1 -12.4" stroke="#4a3020" stroke-width="0.8"/><path d="M0 -12.4V0" stroke="#4a3020" stroke-width="0.5" opacity="0.4"/>`
+    + `<path d="M-6.1 -12.6H6.1M-5.9 -0.2H5.9" stroke="#3e2818" stroke-width="1.1" stroke-linecap="round"/>`;
 }
-/* the basket on the bank: wicker, three folded lanterns in it, a lit one hung on a crook beside it, its foot in the grass */
-function _adlBasketSvg() {
-  const P = AD_LANTERN.papers, folded = (x, y, k, c) => `<g transform="translate(${x} ${y}) scale(${k})"><path d="M-5 0L-5.6 -8Q-5.4 -10.6 -3.4 -11.4H3.4Q5.4 -10.6 5.6 -8L5 0Z" fill="${c}"/><path d="M-5 0L-5.6 -8Q-5.4 -10.6 -3.4 -11.4H-1.2Q-2.8 -9.6 -2.8 -8L-2.6 0Z" fill="#ffffff" opacity="0.25"/><path d="M-5.5 -4.4H5.5" stroke="#000" stroke-width="0.5" opacity="0.14"/></g>`;
+/** A lantern's light over the night (wdGlow: pale circles get a soft edge), and its light on the water round it. */
+function _adlLightMk(c) { const P = AD_LANTERN.papers[((c % 5) + 5) % 5]; return `<circle cy="-7" r="24" fill="${P[2]}" opacity="0.3"/><circle cy="-7" r="10" fill="#fff4d0" opacity="0.42"/><ellipse cy="2.6" rx="17" ry="4.6" fill="${P[2]}" opacity="0.3"/>`; }
+/* the basket on the bank: wicker, three folded lanterns in it, a lit one hung on a crook beside it; grass at its foot when it stands on grass */
+function _adlBasketSvg(grass) {
+  const P = AD_LANTERN.papers, folded = (x, y, k, c) => `<g transform="translate(${x} ${y}) scale(${k})"><path d="M-5 0L-5.4 -9.4H5.4L5 0Z" fill="${c}"/><path d="M-5 0L-5.4 -9.4H-2.8L-3 0Z" fill="#ffffff" opacity="0.25"/><path d="M-5.6 -9.5H5.6M-5.2 -4.6H5.2" stroke="#4a3020" stroke-width="0.6" opacity="0.6"/></g>`;
   let weave = ''; for (let i = 0; i < 6; i++) weave += `<path d="M${-11 + i * 4.4} -9.6Q${-9.6 + i * 4.4} -5 ${-10.4 + i * 4.2} -0.6" stroke="#8a6a40" stroke-width="0.7" fill="none" opacity="0.7"/>`;
   return `<ellipse cx="2" cy="1" rx="17" ry="3.6" fill="#000000" opacity="0.24"/>`
-    + `<path d="M15 1V-27Q15 -32 19 -32Q22 -32 22 -28" stroke="#5a4028" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M22 -28V-25" stroke="#3a2a1a" stroke-width="0.6"/>`
-    + `<path d="M22 -25V-21" stroke="#3a2a1a" stroke-width="0.5"/><g transform="translate(22 -12)"><circle class="ad-glow-b" cy="-3" r="10" fill="${P[0][2]}" opacity="0.22"/><path d="M-3.6 1L-4 -5.4Q-3.8 -7.6 -2.2 -8.4H2.2Q3.8 -7.6 4 -5.4L3.6 1Z" fill="${P[0][1]}"/><ellipse cx="0" cy="-3.2" rx="1.9" ry="2.5" fill="#fff6d0" opacity="0.85"/><path d="M-3.6 1L-4 -5.4Q-3.8 -7.6 -2.2 -8.4H-0.8Q-2 -7 -2 -5.4L-1.8 1Z" fill="#ffffff" opacity="0.28"/><path d="M-2.6 -8.5H2.6M-2.4 1.1H2.4" stroke="#6a4a2c" stroke-width="0.8"/></g>`
+    + `<path d="M15 1V-27Q15 -32 19 -32Q22 -32 22 -28" stroke="#5a4028" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M14.2 1V-26" stroke="#8a6a44" stroke-width="0.5" opacity="0.6"/><path d="M22 -28V-21" stroke="#3a2a1a" stroke-width="0.5"/>`
+    + `<g transform="translate(22 -11.6) scale(0.62)">${_adlSvg(0, 0, true)}</g>`
     + `${folded(-6, -8, 0.85, P[2][1])}${folded(1, -9, 0.9, P[1][1])}${folded(7, -7.5, 0.8, P[4][1])}`
     + `<path d="M-12 -9.6L-10 0H10L12 -9.6Z" fill="#b48a56"/><path d="M-12 -9.6L-10 0H-6L-7.6 -9.6Z" fill="#d0a46a" opacity="0.6"/><path d="M8 -9.6L6.6 0H10L12 -9.6Z" fill="#7a5a34" opacity="0.5"/>${weave}`
     + `<path d="M-12.6 -9.8H12.6" stroke="#7a5a34" stroke-width="1.8" stroke-linecap="round"/><path d="M-11 -4.8H11" stroke="#8a6a40" stroke-width="0.8" opacity="0.8"/>`
-    + `<path d="M-13 1q1 -4 2 0M-8 1.4q.8 -3.4 1.6 0M9 1.2q1 -3.6 2 0M13 1q.8 -3 1.6 0" stroke="#5f7d3e" stroke-width="1" fill="none" stroke-linecap="round"/>`;
+    + (grass ? `<path d="M-13 1q1 -4 2 0M-8 1.4q.8 -3.4 1.6 0M9 1.2q1 -3.6 2 0M13 1q.8 -3 1.6 0" stroke="#5f7d3e" stroke-width="1" fill="none" stroke-linecap="round"/>` : '');
 }
 /** A lantern on the water: it drifts out from its bank and is kept on the water (looked at every half second). Numbers only, each frame. */
 function _adlLaunch(L) {
   if (_adl.list.some(o => o.id === L.id)) return;
-  while (_adl.list.length >= 13) { const old = _adl.list.shift(); adSprite(old.sid, null); }
+  while (_adl.list.length >= 13) { const old = _adl.list.shift(); adSprite(old.sid, null); wdGlowOff(old.gid); }
   const b = L.bank, R = gardenRand('adl|' + L.id);
   let x = b.x + b.nx * 0.9, y = b.y + b.ny * 0.9;
   for (const d of [1.3, 1.8, 2.4]) { if (adStillAt(x, y)) break; x = b.x + b.nx * d; y = b.y + b.ny * d; }
   if (!adStillAt(x, y)) return;
   if (!L.fresh) { for (let i = 0; i < 10; i++) { const a = R() * Math.PI * 2, d = 1 + R() * 5, qx = x + Math.cos(a) * d, qy = y + Math.sin(a) * d * 0.6; if (adStillAt(qx, qy)) { x = qx; y = qy; break; } } }   // (already out on the water a while)
-  const o = { id: L.id, sid: 'lan-' + L.id, a: Math.atan2(b.ny, b.nx) + (R() - 0.5) * 1.1, sp: 0.11 + R() * 0.07, chk: 0.5, ph: R() * 6, mine: !!L.mine };
+  const o = { id: L.id, sid: 'lan-' + L.id, gid: 'adl-' + L.id, gmk: _adlLightMk(L.c), gt: 0, a: Math.atan2(b.ny, b.nx) + (R() - 0.5) * 1.1, sp: 0.11 + R() * 0.07, chk: 0.5, ph: R() * 6, mine: !!L.mine };
   const label = L.who ? `${L.who}’s lantern` : L.mine ? 'Your lantern' : 'A paper lantern';
   adSprite(o.sid, { x, y, z: y - 0.6, svg: _adlSvg(L.c, L.p), label, hit: 0.45, hitUp: 9, still: false, t: 0,
     update(dt, Sp) {
@@ -399,6 +414,7 @@ function _adlLaunch(L) {
       if (o.chk <= 0) { o.chk = 0.5; const nx = Sp.x + Math.cos(o.a) * 0.55, ny = Sp.y + Math.sin(o.a) * 0.36; if (!adStillAt(nx, ny)) { o.a += 1.7 + Math.random() * 1.2; o.sp = Math.max(0.05, o.sp * 0.9); } else o.a += (Math.random() - 0.5) * 0.25; }
       Sp.x += Math.cos(o.a) * o.sp * dt; Sp.y += Math.sin(o.a) * o.sp * dt * 0.62; Sp.z = Sp.y - 0.6;
       Sp.lift = Math.sin(Sp.t * 1.25 + o.ph) * 0.9;
+      o.gt -= dt; if (o.gt <= 0) { o.gt = 0.2; wdGlow(o.gid, o.gmk, Sp.x, Sp.y); }   // (its light, five times a second: the same markup, only its place changes)
     } });
   _adl.list.push(o);
 }
@@ -416,7 +432,7 @@ function _adlUp(m, N) {
     (adTheirs(m).l || []).forEach((r, i) => { if (Array.isArray(r) && r[2] >= N.nn - 7) put({ id: 'h' + i + '-' + r[2], c: r[0], p: r[1], who }); });
   }
 }
-function _adlDown() { _adl.on = false; for (const o of _adl.list) adSprite(o.sid, null); _adl.list = []; adPick('lan-basket', null); _adlFoldClose(); }
+function _adlDown() { _adl.on = false; for (const o of _adl.list) { adSprite(o.sid, null); wdGlowOff(o.gid); } _adl.list = []; adPick('lan-basket', null); wdGlowOff('adl-basket'); _adlFoldClose(); }
 /** Your friends' lanterns of the week, as their snapshots say (nt.l): at most two each, eight in all, named from your own list. */
 function _adlFriends(N) {
   const out = [];
@@ -456,7 +472,7 @@ function _adlFoldOpen() {
   el.addEventListener('pointerdown', (ev) => ev.stopPropagation());
   const draw = () => {
     const P = AD_LANTERN.papers[st.c];
-    el.innerHTML = `<div class="wd-talk-art ad-fold-art" aria-hidden="true"><svg viewBox="-20 -30 40 40" width="84" height="84"><circle cy="-8" r="18" fill="${P[2]}" opacity="0.18"/>${_adlSvg(st.c, st.p)}</svg></div><div class="wd-talk-in"><b class="wd-talk-n">Fold a paper lantern</b><p class="wd-talk-t"></p><div class="ad-fold-row ad-fold-papers" role="radiogroup" aria-label="Paper"></div><div class="ad-fold-row ad-fold-pats" role="radiogroup" aria-label="Pattern"></div><div class="wd-talk-go"></div></div>`;
+    el.innerHTML = `<div class="wd-talk-art ad-fold-art" aria-hidden="true"><svg viewBox="-13 -21 26 26" width="84" height="84"><circle cy="-7" r="12" fill="${P[2]}" opacity="0.2"/>${_adlSvg(st.c, st.p)}</svg></div><div class="wd-talk-in"><b class="wd-talk-n">Fold a paper lantern</b><p class="wd-talk-t"></p><div class="ad-fold-row ad-fold-papers" role="radiogroup" aria-label="Paper"></div><div class="ad-fold-row ad-fold-pats" role="radiogroup" aria-label="Pattern"></div><div class="wd-talk-go"></div></div>`;
     el.querySelector('.wd-talk-t').textContent = `${P[0]} paper${st.p ? ', with ' + (st.p === 1 ? 'stars' : 'a moon') + ' on it' : ''}. ${cnt.night ? `You have floated ${_wdPlural(cnt.night, 'lantern')} tonight.` : 'Choose a paper and a pattern, then set it on the water.'}`;
     const papers = el.querySelector('.ad-fold-papers'), pats = el.querySelector('.ad-fold-pats'), go = el.querySelector('.wd-talk-go');
     AD_LANTERN.papers.forEach((q, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ad-fold-sw' + (i === st.c ? ' is-on' : ''); b.style.setProperty('--sw', q[1]); b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', i === st.c ? 'true' : 'false'); b.setAttribute('aria-label', q[0] + ' paper'); b.setAttribute('data-tip', q[0]); b.onclick = () => { st.c = i; draw(); const n = el.querySelector('.ad-fold-sw.is-on'); if (n) n.focus({ preventScroll: true }); }; papers.appendChild(b); });
@@ -512,7 +528,8 @@ wdMod({
     const up = N.nn + '|' + (m.visit ? m.visit.fid : 'o');
     if (!_adl.on || _adl.upKey !== up) { _adlDown(); _adl.upKey = up; _adlUp(m, N); }
     const s = _adlSpot();
-    if (s) adPick('lan-basket', { x: s.bx, y: s.by, z: s.by, svg: _adlBasketSvg(), words: 'Fold a paper lantern', label: 'Paper lanterns: fold one and set it on the water', hitUp: 12, run: () => _adlFoldOpen() });
+    if (s) wdGlow('adl-basket', AD_BASKET_GLOW, s.bx, s.by); else wdGlowOff('adl-basket');
+    if (s) adPick('lan-basket', { x: s.bx, y: s.by, z: s.by, svg: _adlBasketSvg((() => { try { return gardenTerrainAt(s.bx, s.by) !== 'path'; } catch (e) { return true; } })()), words: 'Fold a paper lantern', label: 'Paper lanterns: fold one and set it on the water', hitUp: 12, run: () => _adlFoldOpen() });
     else adPick('lan-basket', null);
   },
   end() { _adlDown(); },
