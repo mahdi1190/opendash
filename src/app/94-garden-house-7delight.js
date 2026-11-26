@@ -80,7 +80,7 @@ function _hsBannerOpen() {
   const visit = gpVisiting(), B = HOUSE_BANNER;
   let cells = _hsBannerNow().split(''), ink = 1, down = false;
   openDialog({ title: visit ? 'Their banner' : 'Your banner', width: 520, className: 'hs-banner-dlg gd-popup', body(el) {
-    el.appendChild(gpEl('p', 'muted', visit ? 'It flies at the corner of their house.' : 'It flies at the corner of your cottage, and your friends see it there. Pick a colour, then paint the squares: click, or press and drag.'));
+    el.appendChild(gpEl('p', 'muted', visit ? 'It flies from a little pole on their roof.' : 'It flies from a little pole on your cottage’s roof, and your friends see it there. Pick a colour, then paint the squares: click, or press and drag.'));
     const grid = gpEl('div', 'hs-ban-grid'); grid.style.setProperty('--cols', B.cols); grid.setAttribute('role', 'grid'); grid.setAttribute('aria-label', 'Your banner');
     const paint = (i, b) => { cells[i] = ink.toString(12); b.style.background = B.colours[ink]; };
     cells.forEach((c, i) => {
@@ -104,7 +104,7 @@ function _hsBannerOpen() {
       if (!r.ok && !/like that already/.test(r.msg)) { gardenToast(r.msg + '.', { icon: 'flag' }); return; }
       try { closeDialog(); } catch (e) { /* closed */ }
       const first = _hsGrant('hs-banner', { 'decor:hf-banner': 1 });
-      gardenToast(first ? 'Your banner is flying at the corner of the cottage. A framed one for indoors is in your things.' : 'Your banner is flying at the corner of the cottage.', { icon: 'flag', kind: 'ok' });
+      gardenToast(first ? 'Your banner is flying over the cottage. A framed one for indoors is in your things.' : 'Your banner is flying over the cottage.', { icon: 'flag', kind: 'ok' });
       if (typeof _hsOutsideSoon === 'function') _hsOutsideSoon();
       if (_hsInside()) { _grm.S.dirty = true; _hsRoomRefresh(_grm.R, _grm.S, false); }
     };
@@ -115,7 +115,7 @@ function _hsBannerOpen() {
 function _hsPlanExtras(el, v, again) {
   if (typeof _hsStarsRow === 'function') _hsStarsRow(el, v);
   const row = gpEl('div', 'hs-ban-row'), sw = gpEl('span', 'hs-ban-mini'); sw.innerHTML = _hsBannerMini(v.bn || HOUSE_BANNER0, 48);
-  row.appendChild(sw); row.appendChild(gpEl('span', 'hs-ban-t', gpVisiting() ? 'Their banner, at the corner of their house.' : 'Your banner flies at the corner of the cottage.'));
+  row.appendChild(sw); row.appendChild(gpEl('span', 'hs-ban-t', gpVisiting() ? 'Their banner, flying over their house.' : 'Your banner flies over the cottage.'));
   if (!gpVisiting()) { const b = gpEl('button', 'btn btn-secondary btn-sm', 'Change it'); b.type = 'button'; b.onclick = () => { try { closeDialog(); } catch (e) { /* closed */ } setTimeout(_hsBannerOpen, 60); }; row.appendChild(b); }
   el.appendChild(row); void again;
 }

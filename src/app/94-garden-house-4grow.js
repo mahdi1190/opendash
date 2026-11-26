@@ -11,7 +11,7 @@
      the guest room  named for a friend: their name on its door, from the name they show
 
    Outside (wdMod 'house-outside', in a friend's garden too, from their snapshot): the scaffold while the builders work, what each room
-   added to the cottage, the mailbox by the door (94-garden-house-5post.js) and your banner on its bracket. Placed by the building's own
+   added to the cottage, the mailbox by the door (94-garden-house-5post.js) and your banner on a pole on the roof. Placed by the building's own
    drawn picture (its box and foot in the world), never by cells, so any house on any layout gets them.
    No top-level calls.
    ============================================================ */
