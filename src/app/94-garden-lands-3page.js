@@ -220,7 +220,7 @@ function _gldIslandMap(m) {
   for (const gate of data.gates) {
     const shut = !open.has('zn-' + gate.n), region = gardenIslandRegionForZone(gate.n);
     if (shut && !gardenLandGatePresented(gate, open, false)) continue;
-    parts.push('<g><title>' + esc((region && region.name || gardenZone(gate.n).name) + (shut ? ': garden level ' + gardenZone(gate.n).lv : ': open')) + '</title><circle cx="' + (gate.x + .5) + '" cy="' + (gate.y + .5) + '" r="1.4" fill="' + (shut ? '#595f68' : '#f4e7b7') + '" stroke="#fff6de" stroke-width=".35"/></g>');
+    parts.push('<g><title>' + esc((region && region.name || gardenZone(gate.n).name) + (shut ? ': garden level ' + gardenZoneOpenLv(gardenZone(gate.n)) : ': open')) + '</title><circle cx="' + (gate.x + .5) + '" cy="' + (gate.y + .5) + '" r="1.4" fill="' + (shut ? '#595f68' : '#f4e7b7') + '" stroke="#fff6de" stroke-width=".35"/></g>');
   }
   for (const prop of data.static) parts.push('<rect x="' + prop.x + '" y="' + prop.y + '" width="' + prop.w + '" height="' + prop.h + '" rx=".4" fill="#6a7767"/>');
   const me = typeof _gw !== 'undefined' ? _gw : null;

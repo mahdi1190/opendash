@@ -142,7 +142,12 @@ export const TASK_OPS = [
         people: Array.isArray(parent.people) ? [...parent.people] : [], createdAt: ctx.now, createdVia: ctx.source || 'mcp',
       };
       s.custom.push(task);
-      if (st.done) { s.statuses = s.statuses || {}; s.statuses[id] = 'done'; }
+      if (st.done) {
+        s.statuses = s.statuses || {}; s.statuses[id] = 'done';
+        // Done as a subtask: its completion is when it was ticked, so it reaches Finished tasks (DASH-08; the page's promoteSubtask).
+        s.completionLog = s.completionLog || {};
+        (s.completionLog[id] = s.completionLog[id] || []).push(Number(st.doneAt) || ctx.now);
+      }
       parent.subtasks = parent.subtasks.filter(x => x !== st);
       ctx.log(id, 'created', { text: 'From a subtask of: ' + truncate(parent.title, 80) });
       ctx.log(parent.id, 'subtask-promoted', { text: st.title, to: id });

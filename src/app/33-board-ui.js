@@ -483,6 +483,8 @@ function boardMoveMenu(L, id, anchor) {
 }
 document.addEventListener('keydown', (e) => {
   if (e.defaultPrevented || e.ctrlKey || e.metaKey) return;
+  // A task card open over the board owns the keys (M maximises it, Alt+Left goes back), not the board (DASH-02).
+  if ((typeof tcIsOpen === 'function' && tcIsOpen()) || (e.target && e.target.closest && e.target.closest('.tc-root'))) return;
   const L = _bdCurrent;
   const wrap = document.querySelector('#main-body .kanban[data-board]');
   if (!L || !wrap || wrap.dataset.board !== L.board.id) return;

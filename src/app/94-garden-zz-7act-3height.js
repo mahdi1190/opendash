@@ -104,7 +104,7 @@ function _ghtRows() {
   const out = [];
   for (const lv of gardenLevels()) for (const w of lv.ways) {
     if (_ght.lv) { if (_ght.lv.key !== lv.key) continue; out.push({ key: 'lv:' + lv.key + ':down' + w.i, act: 'climbdown', name: w.name, x: w.top.x, y: w.top.y, promptY: w.top.y - (lv.h / GARDEN_WORLD.cellH) - 1.6, stand: { x: w.top.x, y: w.top.y }, deg: 90, lift: 0, src: lv.id, kind: lv.kind, way: w, noProp: true, onLevel: true }); }
-    else out.push({ key: 'lv:' + lv.key + ':up' + w.i, act: 'climbup', name: w.name, x: w.foot.x, y: w.foot.y, top: (w.foot.y - Math.min(lv.h, 140) / GARDEN_WORLD.cellH), stand: { x: w.foot.x, y: w.foot.y }, deg: -90, lift: 0, src: lv.id, kind: lv.kind, way: w, noProp: true, seated: true, pri: 0.5 });   // (pri: the way up before a nap under the tree it is built in)
+    else out.push({ key: 'lv:' + lv.key + ':up' + w.i, act: 'climbup', name: w.name, x: w.foot.x, y: w.foot.y, top: (w.foot.y - Math.min(lv.h, 140) / GARDEN_WORLD.cellH), stand: { x: w.foot.x, y: w.foot.y }, deg: -90, lift: 0, src: lv.id, kind: lv.kind, way: w, noProp: true, pri: 0.5 });   // (pri: the way up before a nap under the tree it is built in)
   }
   return out;
 }
@@ -483,7 +483,13 @@ if (typeof gartActFrame === 'function') {
 }
 if (typeof gartActInteract === 'function') {
   const _ghtE0 = gartActInteract;
-  gartActInteract = function () { if (_ght.climb || (_ght.swim && !_ght.swim.on)) return true; return _ghtE0(); };   // eslint-disable-line no-func-assign   (E on a ladder: you finish the climb)
+  // (E on a ladder: you finish the climb. Swimming, E is nothing: the ground's fallbacks after this, a door, a room, a net or a cast,
+  // were done from mid-water. On a floor only the floor's own moves: beyond their reach E went on to ground doors and casts.)
+  gartActInteract = function () {   // eslint-disable-line no-func-assign
+    if (_ght.climb || _ght.swim) return true;
+    if (_ght.lv) { if (!_ghtE0() && typeof _gh !== 'undefined' && _gh.bubble) { const b = _gh.bubble.el.querySelector('.gd-bub-btn'); if (b) b.click(); } return true; }   // (an open bubble still takes E)
+    return _ghtE0();
+  };
 }
 if (typeof gartActMoved === 'function') {
   const _ghtMoved0 = gartActMoved;

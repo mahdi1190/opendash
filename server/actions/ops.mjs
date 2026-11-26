@@ -14,7 +14,7 @@
 
 import {
   ActionError, STATUSES, PRIORITY_INPUTS, PRIORITY_LABELS, RECURRENCES, LIMITS,
-  cleanLine, cleanText, normTag, slug, isIsoDate, dateError, addDaysIso, advanceByRecurrence,
+  cleanLine, cleanText, normTag, slug, isIsoDate, dateError, addDaysIso, advanceByRecurrence, repeatAnchorFollow,
   newTaskId, newSubtaskId, newNoteId, newCountdownId, resolveStream, defaultStream, normPriority,
   resolvePerson, tagCounts, tagRegistry, closest, truncate, clone,
 } from './model.mjs';
@@ -103,6 +103,7 @@ function setRecurrence(ctx, t, v) {
   const nv = v ?? 'none';
   if (nv === (t.recurrence ?? 'none')) return [];
   const from = t.recurrence ?? 'none'; t.recurrence = nv; ctx.log(t.id, 'recurrence', { from, to: nv });
+  repeatAnchorFollow(t);   // monthly: anchored on its due date; other repeats: none (DASH-05)
   return [change(t, 'recurrence', from, nv)];
 }
 function setTags(ctx, t, tags, createTag) {
@@ -164,7 +165,7 @@ function applyFields(ctx, t, p) {
   if (p.detail !== undefined) ch.push(...setDetail(ctx, t, p.detail));
   if (p.stream !== undefined) ch.push(...setStream(ctx, t, p.stream));
   if (p.priority !== undefined) ch.push(...setPriority(ctx, t, p.priority));
-  if (p.dueDate !== undefined) ch.push(...setDue(ctx, t, p.dueDate, p.reason));
+  if (p.dueDate !== undefined) { const c = setDue(ctx, t, p.dueDate, p.reason); if (c.length) repeatAnchorFollow(t); ch.push(...c); }   // a new date moves a monthly series' day (DASH-05)
   if (p.recurrence !== undefined) ch.push(...setRecurrence(ctx, t, p.recurrence));
   if (p.tags !== undefined) ch.push(...setTags(ctx, t, p.tags, p.createTag));
   if (p.people !== undefined) ch.push(...setPeople(ctx, t, p.people));
@@ -262,12 +263,17 @@ function retagElsewhere(ctx, froms, to) {
   if (Array.isArray(s.pinnedTags) && s.pinnedTags.some(x => froms.includes(x))) { ctx.touch('key:pinnedTags'); s.pinnedTags = map(s.pinnedTags); out.push('pinned'); }
   const refs = new Set();
   if (to) {
-    ctx.touch('key:viewFilter'); ctx.touch('tagRegistry');
+    // Everything tglRenameRefs may change, so an undo puts all of it back (B9); the recorder drops the ones that stay the same.
+    // The open view is where you are, not data: not recorded, so moving about never blocks an undo.
+    for (const k of ['key:viewFilter', 'tagRegistry', 'key:smartLists', 'key:sidebarLayout', 'key:taskViewPrefs', 'key:taskBoards', 'key:boardOrder', 'home']) ctx.touch(k);
     for (const f of froms) for (const r of tglRenameRefs(s, f, to)) refs.add(r);
   }
   if (bin) out.push(`${bin} in the bin`);
   if (tpl) out.push(`${tpl} template${tpl === 1 ? '' : 's'}`);
   if (refs.has('viewFilter') || refs.has('taskViewPrefs') || refs.has('view')) out.push('saved view');
+  if (refs.has('smartLists')) out.push('smart lists');
+  if (refs.has('taskBoards') || refs.has('boardOrder')) out.push('boards');
+  if (refs.has('home')) out.push('Home widgets');
   return out;
 }
 
@@ -315,6 +321,7 @@ export const OPS = [
         createdVia: ctx.source,
       };
       for (const [i, ref] of (p.people || []).entries()) { const hit = resolvePerson(s, ref, `people[${i}]`); if (!t.people.includes(hit.id)) t.people.push(hit.id); }
+      if (t.recurrence === 'monthly') repeatAnchorFollow(t);   // the series' day from the start (DASH-05)
       s.custom.push(t);
       ctx.log(id, 'created', { text: 'Created' });
       if (p.status && p.status !== 'todo') { s.statuses = s.statuses || {}; s.statuses[id] = p.status; }
@@ -446,6 +453,7 @@ export const OPS = [
         target = addDaysIso(t.dueDate, p.shiftDays);
       }
       const ch = setDue(ctx, t, target, p.reason);
+      if (ch.length && !hasShift) repeatAnchorFollow(t);   // a new date moves a monthly series' day; a push back keeps it (DASH-05)
       return { summary: ch.length ? `Reschedule "${label(t)}": ${fmt(ch[0].from)} -> ${fmt(ch[0].to)}` : `"${label(t)}" is already due ${fmt(target)}`, changes: ch };
     },
   },
@@ -771,9 +779,17 @@ export const OPS = [
       retagElsewhere(ctx, from, into);
       registryEdit(ctx, (list, kind) => {
         let l = list;
+        // The page's tglMerge rule: if any merged tag was pinned, the tag they go into is pinned (B16).
+        const pinned = kind === 'object' ? from.some(f => list[f] && typeof list[f] === 'object' && list[f].pinned)
+          : list.some(x => x && typeof x === 'object' && from.includes(regName(x)) && x.pinned);
         for (const f of from) l = regRemove(l, kind, f);
-        if (kind === 'object') { if (!(into in l)) l[into] = (list[from[0]] || {}); return l; }
+        if (kind === 'object') {
+          if (!(into in l)) l[into] = (list[from[0]] || {});
+          if (pinned && l[into] && typeof l[into] === 'object' && !l[into].pinned) l[into] = { ...l[into], pinned: true };
+          return l;
+        }
         if (!l.some(x => regName(x) === into) && (list.some(x => from.includes(regName(x))))) l.push(typeof list[0] === 'string' || !list.length ? into : { id: into });
+        if (pinned) l = l.map(x => (x && typeof x === 'object' && regName(x) === into && !x.pinned ? { ...x, pinned: true } : x));
         return l;
       });
       return { summary: `Merge #${from.join(', #')} into #${into} (${ch.length} task${ch.length === 1 ? '' : 's'})`, changes: ch };

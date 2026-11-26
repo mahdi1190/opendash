@@ -276,14 +276,11 @@ function _qadSuggestions(sigil, q, raw) {
       for (const c of ctxList()) if (q && (starts(c.label) || starts(c.id) || c.aliases.some(starts))) items.push({ kind: 'context', insert: '@' + c.id, label: '@' + c.label, icon: c.icon, hint: 'Context' });
       for (const k of ['low', 'high']) if (q && k.startsWith(q)) items.push({ kind: 'energy', insert: '@' + k, label: TASK_ENERGY[k].label, icon: TASK_ENERGY[k].icon, hint: 'Energy' });
     }
-    const firstCount = {};
-    for (const p of state.people || []) { const f = String(p.name || '').trim().split(/\s+/)[0].toLowerCase(); firstCount[f] = (firstCount[f] || 0) + 1; }
+    const firstCount = _qaFirstNameCounts();
     for (const p of state.people || []) {
       if (!p || !p.name || p.self) continue;
       if (!(starts(p.name) || starts(p.id) || (p.aliases || []).some(starts))) continue;
-      const parts = String(p.name).trim().split(/\s+/);
-      const token = firstCount[parts[0].toLowerCase()] > 1 ? parts.join('_') : parts[0];
-      items.push({ kind: 'person', insert: '@' + token, label: p.name, color: p.color, hint: p.role || '' });
+      items.push({ kind: 'person', insert: '@' + _qaPersonToken(p, firstCount), label: p.name, color: p.color, hint: p.role || '' });   // one token rule with the inline quick add (22-quick-add.js)
     }
     if (q && !items.some(x => x.kind === 'person' || x.kind === 'context')) { const nm = raw || q; items.push({ kind: 'new', insert: '@' + nm, label: `Add “${nm}” as a new person`, hint: '' }); }
   }

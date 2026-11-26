@@ -218,7 +218,11 @@ function _gdSunKept() {
 }
 /** The fallback shower: about one morning in five, the same on every device. */
 function _gdShowerAt(iso) { const h = gardenHash('gd-rain|' + iso); return h % 5 === 0 ? _gdDayMs(iso, 6 * 60 + (h >> 8) % 50) : 0; }
-/** {now: raining, snow, last: when it last rained (ms, 0 = not in 3 days), label} */
+/** {now: raining, snow, last: when it last rained (ms, 0 = not in 3 days), label}
+ *  `last` never goes backwards: the real weather's rows are today's only, so at midnight yesterday's rain was forgotten, plants
+ *  went back a stage and watering then banked a drought that never was. It is the latest of today's wet hours, the gentle
+ *  showers of the last three days (what a device without the weather goes by, so every device agrees) and the last wet time
+ *  kept in the garden (seen.rainAt, written by gardenTick, synced). */
 function _gdRain(now) {
   // the weather the app has is for now: a time-lapse frame in the past uses the gentle showers instead
   const live = Math.abs(now - _gdNow()) < 2 * _GD_H;
@@ -231,12 +235,13 @@ function _gdRain(now) {
     for (const x of (Array.isArray(w.hourly) ? w.hourly : [])) {
       if (x && x.date === today && x.hour <= h && _GD_WET.has(x.cond)) { const t = _gdDayMs(today, x.hour * 60 + 30); if (t <= now && t > out.last) out.last = t; }
     }
-    return out;
   }
   for (let k = 0; k < 3; k++) {
     const d = _gdAddDays(today, -k), t = _gdShowerAt(d);
-    if (t && t <= now) { if (t > out.last) out.last = t; if (now - t < 50 * 60000) { out.now = true; out.label = 'A morning shower'; } break; }
+    if (t && t <= now) { if (t > out.last) out.last = t; if (!w && now - t < 50 * 60000) { out.now = true; out.label = 'A morning shower'; } break; }
   }
+  let kept = 0; try { const g = _gdG(); kept = Number(g && g.seen && g.seen.rainAt) || 0; } catch (e) { kept = 0; }
+  if (kept && kept <= now && kept > out.last) out.last = kept;
   return out;
 }
 /**
@@ -428,25 +433,28 @@ function _gdAddItems(into, items, k) { if (!items) return; for (const [id, n] of
 const _GD_N_KINDS = { p: 'planted', h: 'harvests', q: 'bouquets', s: 'sold', f: 'fed', r: 'pruned', b: 'bought', w: 'wishes', cp: 'collected', hy: 'collected',
   fc: 'fished', bc: 'netted', od: 'traded', gv: 'gifted', cr: 'crafted' };   // 2.22: fish caught, bugs netted, orders filled, catches given
 function _gdSeedPool(pred) { return GARDEN_PLANTS.filter(p => p.price > 0 && !p.unlock && pred(p)).map(p => p.id); }
-/** A reward's items with its wildcards resolved ('seed:*' a common seed, 'seed:*rare' an uncommon or rare one), seeded. */
+/** A reward's items with its wildcards resolved ('seed:*' a common seed, 'seed:*rare' an uncommon or rare one, 'seed:*uncommon' an uncommon one), seeded. */
 function _gdResolve(items, seed) {
   if (!items) return null;
   const out = {};
   for (const [k, n] of Object.entries(items)) {
-    if (k === 'seed:*' || k === 'seed:*rare') {
-      const pool = k === 'seed:*' ? _gdSeedPool(p => p.rarity === 'common' && p.lv <= 3) : _gdSeedPool(p => p.rarity === 'uncommon' || p.rarity === 'rare');
+    if (k === 'seed:*' || k === 'seed:*rare' || k === 'seed:*uncommon') {
+      const pool = k === 'seed:*' ? _gdSeedPool(p => p.rarity === 'common' && p.lv <= 3) : k === 'seed:*uncommon' ? _gdSeedPool(p => p.rarity === 'uncommon') : _gdSeedPool(p => p.rarity === 'uncommon' || p.rarity === 'rare');
       const id = pool[gardenHash(seed + '|' + k) % pool.length];
       out['seed:' + id] = (out['seed:' + id] || 0) + n;
     } else out[k] = (out[k] || 0) + n;
   }
   return out;
 }
+/** Does a ledger row still hold a wildcard? (an order-board gift wrote 'seed:*uncommon' as it was, before _gdResolve knew it:
+ *  the wallet and the fold resolve it by the row's own key, so it becomes the same real seed on every device, for good) */
+function _gdWild(items) { if (!items || typeof items !== 'object') return false; for (const k in items) if (k.startsWith('seed:*')) return true; return false; }
 /** A daily garden task pays half from the 2.18.1 day on (they are clicks). */
 function gardenDailyCoins(def, day) { const ef = _gdEconFrom(_gdG()); return (day || _gdToday()) >= ef ? Math.max(1, Math.round(def.c * GARDEN_ECON.dailyShare)) : def.c; }
 function _gdRewardOf(kind, id, key) {
   if (kind === 'dt') { const t = GARDEN_DAILY.find(x => x.id === id); return t ? { c: gardenDailyCoins(t, key), x: t.x, i: _gdResolve(t.i, 'dt|' + key + '|' + id) } : null; }
   if (kind === 'wq') { const t = GARDEN_QUESTS.find(x => x.id === id); return t ? { c: t.c, x: t.x, i: _gdResolve(t.i, 'wq|' + key + '|' + id) } : null; }
-  if (kind === 'rib') { const r = GARDEN_RIBBONS.find(x => x.id === id); return r ? { c: r.reward.c || 0, x: 25, i: r.reward.i || null } : null; }
+  if (kind === 'rib') { const r = GARDEN_RIBBONS.find(x => x.id === id); return r ? { c: r.reward.c || 0, x: 25, i: _gdResolve(r.reward.i, 'rib|' + id) } : null; }   // (resolved: the bug ribbons' 'seed:*rare' went into the bag as it was)
   return null;
 }
 /** Work coins earned under the original garden rules. */
@@ -491,16 +499,16 @@ function gardenWallet() {
     }
   }
   // the ledger and the bank
-  const take = (e) => {
+  const take = (e, seed) => {
     if (!e || typeof e !== 'object') return;
     coins += Number(e.c) || 0; xp += e.k === 'gl' && !e.ok ? 0 : Number(e.x) || 0;   // (a visit's record that has not been answered: its x is still a cell, not XP)
-    _gdAddItems(items, e.i);
+    _gdAddItems(items, _gdWild(e.i) ? _gdResolve(e.i, seed) : e.i);
     if (e.k === 'gl' && !e.ok) { coins += Number(e.hc) || 0; _gdAddItems(items, e.hi); }   // (asked of a friend's garden, not answered yet: held, so it is not spent twice; paid only when they say yes)
     if (e.k && _GD_N_KINDS[e.k]) n[_GD_N_KINDS[e.k]] += Number(e.n) || 0;
     if (e.nn && typeof e.nn === 'object') for (const [k, v] of Object.entries(e.nn)) if (k in n) n[k] += Number(v) || 0;
   };
-  for (const e of Object.values(g.led)) take(e);
-  for (const e of Object.values(g.bank)) take(e);
+  for (const [k, e] of Object.entries(g.led)) take(e, 'led|' + k);
+  for (const [mo, e] of Object.entries(g.bank)) take(e, 'bank|' + mo);
   // rewards: daily tasks, quests, ribbons; grants; discoveries
   for (const [day, m] of Object.entries(g.dt)) if (m && typeof m === 'object') for (const id of Object.keys(m)) { const r = _gdRewardOf('dt', id, day); if (r) { coins += r.c; xp += r.x; _gdAddItems(items, r.i); n.daily++; } }
   for (const [wk, m] of Object.entries(g.wq)) if (m && typeof m === 'object') for (const id of Object.keys(m)) { const r = _gdRewardOf('wq', id, wk); if (r) { coins += r.c; xp += r.x; _gdAddItems(items, r.i); n.quests++; } }
@@ -809,6 +817,8 @@ function gardenTick() {
     }
     // tidy: keep a week of per-day maps, fold old ledger entries by month
     if (g.seen.tidy !== today) { g.seen.tidy = today; changed = _gdTidy(g, today) || changed; }
+    // the last time it rained, kept for good (once a wet hour at most): tomorrow's weather has no rows for today's rain
+    if (m.rain && m.rain.last > (Number(g.seen.rainAt) || 0) && m.rain.last <= m.now) { g.seen.rainAt = m.rain.last; changed = true; }
     // several rare seeds at once (the first visit after an update): one line, not a queue of toasts
     const grants = moments.filter(x => x.kind === 'grant');
     if (grants.length > 2) { const names = grants.map(x => (gardenPlant(x.id) || {}).name).filter(Boolean); moments.splice(0, moments.length, { kind: 'grant', text: `Rare seeds for you: ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`, icon: 'sparkles' }, ...moments.filter(x => x.kind !== 'grant')); }
@@ -828,6 +838,15 @@ function gardenNoteVisitors(list) {
   }
   if (changed) { _gdSave(); gardenTickSoon(); }
   for (const d of fresh.slice(0, 2)) _gdMoment({ kind: 'visitor', text: `New visitor: ${d.name}. ${d.blurb || ''}`.trim(), icon: 'binoculars', id: d.id });
+}
+/* Ledger lines that are read as "done once, for good" (a gift given once, a way opened for good) keep a mark in `seen`, which
+   the 40-day fold below never touches: [line key's start, the mark's start] (the rest of the key is the same). gpGrant's
+   'plg.' lines and their 'pl.gr.' marks (the starter kit, the alpha boost, every milestone); an orchard shortcut's 'sc.'. */
+const _GD_ONCE_MARKS = Object.freeze([['plg.', 'pl.gr.'], ['sc.', 'sc.']]);
+function _gdOnceMark(g, key, day) {
+  if (!g || !g.seen || typeof key !== 'string') return false;
+  for (const [line, mark] of _GD_ONCE_MARKS) if (key.startsWith(line) && key.length > line.length) { const k = mark + key.slice(line.length); if (g.seen[k]) return false; g.seen[k] = day || _gdToday(); return true; }
+  return false;
 }
 function _gdTidy(g, today) {
   let changed = false;
@@ -850,7 +869,8 @@ function _gdTidy(g, today) {
     if (!e || key === 'mig' || !e.d || e.d >= cut) continue;
     if ((key.startsWith('gl.o.') && (e.t === 'place' || !e.ok)) || (key.startsWith('gl.x.') && !e.ok) || (key.startsWith('gl.t.') && e.d >= _gdAddDays(today, -120))) continue;   // (a trade's hold is released or swapped by the host's word, never by age; the host's record of its decision is what answers a late "what became of it")   // still out in a friend's garden, or never answered: taking it back deletes this
     const nn = {}; if (e.k && _GD_N_KINDS[e.k]) nn[_GD_N_KINDS[e.k]] = Number(e.n) || 0;
-    fold(e.d.slice(0, 7), { c: Number(e.c) || 0, x: Number(e.x) || 0, i: e.i, nn });
+    fold(e.d.slice(0, 7), { c: Number(e.c) || 0, x: Number(e.x) || 0, i: _gdWild(e.i) ? _gdResolve(e.i, 'led|' + key) : e.i, nn });   // (a wildcard folds as the seed the wallet showed for its row)
+    _gdOnceMark(g, key, e.d);   // (a once-only line leaves its mark first: without it a boost was given again, and a shortcut shut again, 40 days on)
     delete g.led[key]; changed = true;
   }
   return changed;
@@ -1280,6 +1300,9 @@ function gardenPriceOf(item, mArg) {
   }
   if (kind === 'decor') { const d = gardenDecor(id); if (!d) return { price: null, why: 'Unknown' }; if (d.craft) return { price: null, why: 'Made at the crafting bench' }; return { price: d.price, why: gardenLockOf(d, uc) }; }
   const t = gardenTool(id); if (!t) return { price: null, why: 'Unknown' };
+  // (what the shop never shows is not sold anywhere, the assistant's shop too: compost is made in the bin, and watering is free now)
+  if (t.noShop) return { price: null, why: 'Made in the compost bin, never sold' };
+  if (t.kind === 'can') return { price: null, why: 'Watering is free now: the cans are not sold' };
   if (t.kind !== 'consumable' && _gdOwnsTool(t.id)) return { price: null, why: 'Yours already' };
   if (t.needs && !_gdOwnsTool(t.needs)) return { price: t.price, why: 'Needs the ' + gardenTool(t.needs).name.toLowerCase() };
   return { price: t.price, why: (t.lv || 1) > m.level.level ? 'Garden level ' + t.lv : '' };
@@ -1322,6 +1345,7 @@ function gardenBuyLand(id) {
 function gardenBuy(item, n) {
   if (!gardenWorldReady()) return _gdNo('The garden update needs to finish before you can buy anything');
   n = Math.max(1, Math.min(20, Math.floor(Number(n) || 1)));
+  item = String(item).replace(/^tool:/, '');   // ('tool:hose', as the bag spells it, is the hose: one, by its own name)
   const m = gardenModel(), pr = gardenPriceOf(item, m);
   if (pr.price == null) return _gdNo(pr.why || 'Not for sale');
   if (pr.why) return _gdNo(pr.why);

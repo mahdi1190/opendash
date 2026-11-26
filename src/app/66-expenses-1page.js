@@ -278,7 +278,7 @@ function _xpMoreItems() {
     { label: 'Payers and deadlines…', icon: 'users', run: () => expPayersDialog() },
     { label: 'Check for payments now', icon: 'refresh-cw', run: () => { EXP.scanAt = 0; expScan(true).then(() => toast(EXP.asks.length ? 'There is one thing to confirm' : 'Looked: nothing new arrived', { dismiss: true, icon: 'search' })); } },
     { label: 'Your signature…', icon: 'pencil', run: () => expSignatureDialog() },
-    { label: 'Download all as CSV', icon: 'download', run: () => expPack({ ids: expItems().map(e => e.id).slice(0, 200) }, 'csv') },
+    { label: 'Download all as CSV', icon: 'download', run: () => expPack({ all: true }, 'csv') },
     { label: 'Paid back this year…', icon: 'calendar-check', run: () => expYearDialog() },
   ];
 }
@@ -325,7 +325,8 @@ function expAddDialog(pre) {
       setTimeout(() => (title.value ? (payer.value ? amount : payer) : title).focus(), 30);
     },
     actions: [{ label: 'Cancel' }, { label: edit ? 'Save' : 'Add expense', primary: true, icon: 'check', run: async (close) => {
-      const fields = { title: title.value, amount: Number(amount.value), date: date.value, payer: payer.value, note: note.value, ...(vat.value ? { vat: Number(vat.value) } : {}) };
+      // An emptied VAT box is sent as null, so an edit takes the old VAT off instead of keeping it.
+      const fields = { title: title.value, amount: Number(amount.value), date: date.value, payer: payer.value, note: note.value, vat: String(vat.value).trim() !== '' ? Number(vat.value) : null };
       if (!fields.title.trim()) { title.focus(); toast('Say what it was.', { kind: 'err' }); return false; }
       if (!(fields.amount > 0)) { amount.focus(); toast('Add the amount.', { kind: 'err' }); return false; }
       if (edit) { const j = await expDo('/update', { id: edit.id, patch: fields }, { done: 'Saved', icon: 'check', what: 'save that' }); return j ? undefined : false; }

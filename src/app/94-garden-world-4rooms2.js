@@ -1,6 +1,8 @@
 /* ============================================================
    HIDDEN ROOMS, part two (the owner: "rooms that we can place stuff and build in too, and find special species or variants, or higher probabilities").
-     Furnishing   a row with `furnish: true`: decorations out of your bag, placed anywhere in the room. One saved entry for each slot (rm.<room>.fu.<n>), so two devices add up. Friends read them from the snapshot's `rf`.
+     Furnishing   a row with `furnish: true`: decorations out of your bag, placed anywhere in the room. One saved entry for each thing placed (rm.<room>.fu.<uid>), so two devices add up
+                  (a first free slot number was the same on both: one placing was lost, and one taken back twice came back twice). Rooms furnished before keep their rm.<room>.fu.<n>
+                  entries; taking a thing back writes a line keyed by that thing, so two devices give it back once. Friends read them from the snapshot's `rf`.
      A water      a row with `water`: the real fishing game (94-garden-world-4rooms3water.js). Its fish have needs.room, so they are in no other water. The book says where (gardenRegionWords, gardenCatchNeedsRows).
      Odds         ctx.room is one more condition for a variant: {room: 'cave'} in its `more`, and gardenVariantHow says it in words.
    ============================================================ */
@@ -13,7 +15,7 @@ function _grmAllSpots(R, S) {
 }
 function _grmExtraAct(id) {
   const k = String(id);
-  if (k.startsWith('fu-')) { _grmFurnTake(_grm.R, Number(k.slice(3))); return true; }
+  if (k.startsWith('fu-')) { _grmFurnTake(_grm.R, k.slice(3)); return true; }
   return false;
 }
 function _grmExtraFrame(ts) {
@@ -26,17 +28,27 @@ function _grmExtraFrame(ts) {
 /* ---------- furnishing ---------- */
 function _grmFurnList(R) {
   if (!R.furnish) return [];
-  if (gpVisiting()) { const m = gardenHere(), l = m.visit && m.visit.snap && m.visit.snap.rf && m.visit.snap.rf[R.id]; return Array.isArray(l) ? l.map((r, i) => ({ i, d: r[0], x: r[1], y: r[2] })) : []; }
-  const out = [];
-  for (let i = 0; i < GRM_FURN.slots; i++) { const v = String(_grmG(R, 'fu.' + i, '') || '').split('|'); if (v.length === 3 && gardenDecor(v[0])) out.push({ i, d: v[0], x: Number(v[1]) || 0, y: Number(v[2]) || 0 }); }
-  return out;
+  if (gpVisiting()) { const m = gardenHere(), l = m.visit && m.visit.snap && m.visit.snap.rf && m.visit.snap.rf[R.id]; return Array.isArray(l) ? l.map((r, i) => ({ i, k: String(i), d: r[0], x: r[1], y: r[2] })) : []; }
+  return _grmFurnOwn(R);
+}
+/** What stands in one of your own rooms: [{i, k (its entry: a slot number from before, or a uid), d, x, y}], the old slots first. */
+function _grmFurnOwn(R) {
+  const S = _gdG().seen, pre = 'pl.rm.' + R.id + '.fu.', out = [];
+  for (const key of Object.keys(S)) {
+    if (!key.startsWith(pre)) continue;
+    const k = key.slice(pre.length), v = String(S[key] || '').split('|');
+    if (v.length === 3 && gardenDecor(v[0])) out.push({ k, d: v[0], x: Number(v[1]) || 0, y: Number(v[2]) || 0 });
+  }
+  const slot = (k) => /^\d+$/.test(k) ? Number(k) : Infinity;
+  out.sort((a, b) => slot(a.k) - slot(b.k) || (a.k < b.k ? -1 : a.k > b.k ? 1 : 0));
+  return out.map((f, i) => Object.assign(f, { i }));
 }
 function _grmFurnArt(id) {
   const c = _grm.icons || (_grm.icons = new Map());
   if (!c.has(id)) c.set(id, `<g transform="translate(${-GRM_FURN.px / 2} ${-GRM_FURN.px + 6})">${gardenIconSvg(id, { kind: 'decor', px: GRM_FURN.px })}</g>`);
   return c.get(id);
 }
-function _grmFurnSpots(R) { return _grmFurnList(R).map(f => ({ id: 'fu-' + f.i, x: f.x, y: f.y, w: 90, h: 100, tip: 'Take this back', art: _grmFurnArt(f.d), still: !_grm.fu })); }
+function _grmFurnSpots(R) { return _grmFurnList(R).map(f => ({ id: 'fu-' + f.k, x: f.x, y: f.y, w: 90, h: 100, tip: 'Take this back', art: _grmFurnArt(f.d), still: !_grm.fu })); }
 function _grmBagRows() {
   const out = [];
   for (const [k, v] of Object.entries(gardenWallet().items)) { if (!k.startsWith('decor:') || !(v >= 1)) continue; const d = gardenDecor(k.slice(6)); if (d && d.cat !== 'path') out.push({ d, n: Math.floor(v) }); }
@@ -64,21 +76,21 @@ function gardenRoomFurnish() {
 function _grmCarryClick(ev) {
   if (!_grm.carry) return false;
   const R = _grm.R, id = _grm.carry; _grm.carry = '';
-  const p = _grmPt(ev), used = new Set(_grmFurnList(R).map(f => f.i));
-  let slot = -1; for (let i = 0; i < GRM_FURN.slots; i++) if (!used.has(i)) { slot = i; break; }
-  if (slot < 0) { _grmSay(`That is ${GRM_FURN.slots} things in here already. Take one back first.`); _grmBagPaint(); return true; }
+  const p = _grmPt(ev);
+  if (_grmFurnList(R).length >= GRM_FURN.slots) { _grmSay(`That is ${GRM_FURN.slots} things in here already. Take one back first.`); _grmBagPaint(); return true; }
   if (gardenHas('decor:' + id) < 1) { _grmBagPaint(); return true; }
   const x = Math.round(Math.max(GRM_FURN.x0, Math.min(GRM_FURN.x1, p.x))), y = Math.round(Math.max(GRM_FURN.y0, Math.min(GRM_FURN.y1, p.y)));
   _gdLed('pl', { i: { ['decor:' + id]: -1 }, n: 1, w: 'room' });
-  _grmP(R, 'fu.' + slot, `${id}|${x}|${y}`);
+  _grmP(R, 'fu.' + _gdUid('u'), `${id}|${x}|${y}`);   // (its own entry: another device placing at the same time adds its own)
   if (_grmOnce(R, 'fu', GRM_FURN.firstGift)) _grmSay('It looks better already. You find a good stone behind where it went.');
   _gdSave(); _grmFurnChanged();
   return true;
 }
-function _grmFurnTake(R, slot) {
-  const f = _grmFurnList(R).find(q => q.i === slot); if (!f || gpVisiting()) return;
-  _gdLed('pl', { i: { ['decor:' + f.d]: 1 }, n: 1, w: 'room' });
-  _grmP(R, 'fu.' + slot, '');
+function _grmFurnTake(R, k) {
+  const f = _grmFurnList(R).find(q => q.k === String(k)); if (!f || gpVisiting()) return;
+  const g = _gdG(), today = _gdToday(), lk = 'rmb.' + R.id + '.' + f.k + '.' + gardenHash(f.d + '|' + f.x + '|' + f.y).toString(36);   // (the same line on every device: taken back twice, it comes back once)
+  if (!g.led[lk]) g.led[lk] = { d: today, k: 'pl', i: { ['decor:' + f.d]: 1 }, n: 1, w: 'room' };
+  _grmP(R, 'fu.' + f.k, '');
   _gdSave(); _grmFurnChanged();
 }
 function _grmFurnChanged() {
@@ -88,7 +100,7 @@ function _grmFurnChanged() {
 /** For the snapshot: {room: [[decor, x, y], ...]}, or null. Ids and numbers (gardenSnapshotClean checks them). */
 function gardenRoomsWire() {
   const out = {};
-  for (const R of GRM_ROOMS) { if (!R.furnish) continue; const l = []; for (let i = 0; i < GRM_FURN.slots; i++) { const v = String(_grmG(R, 'fu.' + i, '') || '').split('|'); if (v.length === 3 && gardenDecor(v[0])) l.push([v[0], Number(v[1]) || 0, Number(v[2]) || 0]); } if (l.length) out[R.id] = l; }
+  for (const R of GRM_ROOMS) { if (!R.furnish) continue; const l = _grmFurnOwn(R).slice(0, GRM_FURN.slots).map(f => [f.d, f.x, f.y]); if (l.length) out[R.id] = l; }
   return Object.keys(out).length ? out : null;
 }
 

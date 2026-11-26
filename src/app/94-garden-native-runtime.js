@@ -319,7 +319,18 @@ window.GardenNative = (function () {
     window.addEventListener('keydown', s.captureKey, true); window.addEventListener('keyup', s.captureKey, true);
     s.scene.input.keyboard.on('keydown', ev => { if (!handledKeys.has(ev)) key(ev, true); }); s.scene.input.keyboard.on('keyup', ev => { if (!handledKeys.has(ev)) key(ev, false); });
   }
+  /* Phaser's loop has no catch: one error escaping a frame stopped the garden for good (nothing moved or drew until it was
+     opened again). A frame that throws is logged, once for each different error, and the next frame runs as usual. */
+  const stepErrors = new Set();
   function step(s, time, delta) {
+    try { stepOnce(s, time, delta); }
+    catch (error) {
+      const said = String(error && error.stack || error); lastError = String(error && error.message || error);
+      if (!stepErrors.has(said)) { if (stepErrors.size > 40) stepErrors.clear(); stepErrors.add(said); console.error('[native garden] a frame went wrong (the next one carries on):', error); }
+      s.frames++; s.time = time;
+    }
+  }
+  function stepOnce(s, time, delta) {
     if (s.dead || !s.world || document.hidden) return;
     if (!s.box.isConnected || !wanted()) { destroy(); return; }
     if (!s.ready) return;

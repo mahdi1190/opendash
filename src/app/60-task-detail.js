@@ -412,9 +412,11 @@ function tdNotesSection(id) {
     txt.textContent = n.text; txt.contentEditable = 'true'; txt.spellcheck = true; txt.dataset.fk = 'note:' + n.id;
     txt.oninput = () => updateNote(id, n.id, txt.textContent);
     txt.onblur = () => {
-      if (_noteSaveTimers[n.id]) { clearTimeout(_noteSaveTimers[n.id]); delete _noteSaveTimers[n.id]; }
+      // Flush, never drop: updateNote has already copied the text, so a pending timer means an unsaved edit.
+      const pending = !!_noteSaveTimers[n.id];
+      if (pending) { clearTimeout(_noteSaveTimers[n.id]); delete _noteSaveTimers[n.id]; }
       const arr = state.notes[id]; const note = arr && arr.find(x => x.id === n.id);
-      if (note && note.text !== txt.textContent) { note.text = txt.textContent; saveData(); }
+      if (note && (pending || note.text !== txt.textContent)) { note.text = txt.textContent; saveData(); }
     };
     const meta = document.createElement('div'); meta.className = 'note-meta'; meta.textContent = formatTimestamp(n.ts);
     const del = document.createElement('button'); del.type = 'button'; del.className = 'note-del btn-icon btn-sm'; del.innerHTML = icon('trash-2');
