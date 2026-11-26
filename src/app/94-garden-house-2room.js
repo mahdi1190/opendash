@@ -365,6 +365,7 @@ function _hsSync(R, S) {
   for (const [u, C] of S.clocks) if (!clocks.has(u)) { if (C.g.active) C.g.destroy(); S.clocks.delete(u); }
   _hsClocks(S);
   if (typeof _hsStringsSync === 'function') _hsStringsSync(R, S);
+  if (R.slot === 0 && typeof _hsHandsDraw === 'function') _hsHandsDraw(R, S, s);   // (friends who lent the builders a hand, pressed into the hearthstone)
 }
 function _hsClocks(S) {
   let h = 12, mi = 0; try { const p = Clock.parts(_gdNow()); h = p.h; mi = p.mi; } catch (e) { const d = new Date(); h = d.getHours(); mi = d.getMinutes(); }
@@ -628,7 +629,7 @@ function _hsEnd(R, S) {
   if (typeof _hsStringsEnd === 'function') _hsStringsEnd(S);
   _hst.onReady = null;
   if (S.swap) { try { S.swap.old.destroy(); } catch (e) { /* gone with the room */ } S.swap = null; }
-  S.imgs = new Map(); S.lamps = new Map(); S.clocks = new Map(); S.prompt = null;
+  S.imgs = new Map(); S.lamps = new Map(); S.clocks = new Map(); S.prompt = null; S.hands = null;
   if (S.dirty && _hs.swapping) _hs.dirty = true;   // (on to another room of the house: the garden outside is drawn once, when you go out)
   else if (S.dirty || _hs.dirty) { _hs.dirty = false; try { gardenRepaintSoon(); gardenTickSoon(); } catch (e) { /* drawn at the next change */ } }
 }

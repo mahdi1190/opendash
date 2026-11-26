@@ -294,3 +294,24 @@ function gardenHouseFacts() {
   let dyed = 0; for (const p of Object.values(g.hf || {})) { const d = p && gardenDecor(p.d); if (d && d.dye && (p.v | 0) > 0) dyed++; }
   return { hsHome: 1, hsRooms: rooms, hsWarm: Number(hs.warms) || 0, hsStars: Number(hs.stars) || 0, hsBanner: typeof hs.bn === 'string' && hs.bn !== HOUSE_BANNER0 ? 1 : 0, hsDyed: dyed };
 }
+
+/* ---------- the helpers' handprints ---------- */
+/** Each friend who lent the builders a hand is pressed into a tile along the front of the kitchen's hearthstone: their colour and
+ *  initial (never a name), a dozen at most. Drawn live over the room's picture (one graphics, redrawn only when the list changes). */
+const HOUSE_HAND_COLS = Object.freeze([0xc8402e, 0xe8893a, 0xf0c040, 0x5e9a44, 0x3a8a8a, 0x4a6aa8, 0x7a4a8a, 0xd86a8a, 0x8a5a32, 0x2e4a7a, 0x9ab84a, 0xc87a3a, 0x6a8ab8, 0xa83a5a, 0x4a7a4a, 0x8a8a9a]);
+function _hsHandsDraw(R, S, s) {
+  const v = S.view, list = ((v && v.hands) || []).filter(h => Array.isArray(h)).slice(-12), sig = JSON.stringify(list);
+  if (S.hands && S.hands.sig === sig && S.hands.g.active) return;
+  if (S.hands) { try { S.hands.g.destroy(); for (const t of S.hands.t) t.destroy(); } catch (e) { /* gone */ } }
+  S.hands = null; if (!list.length) return;
+  const scene = s.context.scene, g = scene.add.graphics().setDepth(106), texts = [], H = (S.shell || HOUSE_SHELL).hearth || { x0: 598, x1: 850 };
+  s.root.add(g);
+  list.forEach(([ini, col], i) => {
+    const x = H.x0 + 22 + i * 19, y = 430, c = HOUSE_HAND_COLS[(col | 0) % 16];
+    g.fillStyle(0x000000, .18).fillRoundedRect(x - 8, y - 5, 17, 12, 2);
+    g.fillStyle(0xb8664a, 1).fillRoundedRect(x - 8.5, y - 6, 17, 12, 2).fillStyle(0xd8865a, .6).fillRect(x - 7.5, y - 5.5, 15, 2);
+    g.fillStyle(c, .9).fillEllipse(x - 2, y + 1.5, 6, 5); for (let k = 0; k < 4; k++) g.fillEllipse(x - 4.4 + k * 1.6, y - 2.4, 1.3, 3); g.fillEllipse(x + 1.2, y + .4, 2.6, 1.4);
+    const t = scene.add.text(x + 5, y + .5, String(ini || '?').slice(0, 1), { fontFamily: 'Georgia, serif', fontSize: '8px', color: '#3a1a0a', resolution: 3 }).setOrigin(.5, .5).setDepth(106.1); s.root.add(t); texts.push(t);
+  });
+  S.hands = { sig, g, t: texts };
+}
