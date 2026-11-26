@@ -104,7 +104,7 @@ function _ghtRows() {
   const out = [];
   for (const lv of gardenLevels()) for (const w of lv.ways) {
     if (_ght.lv) { if (_ght.lv.key !== lv.key) continue; out.push({ key: 'lv:' + lv.key + ':down' + w.i, act: 'climbdown', name: w.name, x: w.top.x, y: w.top.y, promptY: w.top.y - (lv.h / GARDEN_WORLD.cellH) - 1.6, stand: { x: w.top.x, y: w.top.y }, deg: 90, lift: 0, src: lv.id, kind: lv.kind, way: w, noProp: true, onLevel: true }); }
-    else out.push({ key: 'lv:' + lv.key + ':up' + w.i, act: 'climbup', name: w.name, x: w.foot.x, y: w.foot.y, top: (w.foot.y - Math.min(lv.h, 140) / GARDEN_WORLD.cellH), stand: { x: w.foot.x, y: w.foot.y }, deg: -90, lift: 0, src: lv.id, kind: lv.kind, way: w, noProp: true, seated: true, pri: 0.5 });   // (pri: the way up before a nap under the tree it is built in)
+    else out.push({ key: 'lv:' + lv.key + ':up' + w.i, act: 'climbup', name: w.name, x: w.foot.x, y: w.foot.y, top: (w.foot.y - Math.min(lv.h, 140) / GARDEN_WORLD.cellH), stand: { x: w.foot.x, y: w.foot.y }, deg: -90, lift: 0, src: lv.id, kind: lv.kind, way: w, noProp: true, pri: 0.5 });   // (pri: the way up before a nap under the tree it is built in)
   }
   return out;
 }

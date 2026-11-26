@@ -189,6 +189,11 @@ function gartActTaken(r) {
     if (typeof _gll === 'undefined' || !_gll.actors || !_gll.actors.size) return false;
     for (const A of _gll.actors.values()) {
       if (!A || A.me || A.rm || A.away) continue;
+      // (a ladder or a stair is taken only by someone on it, climbing: a friend waiting at the top of the lighthouse or the treehouse
+      // is held a few hundredths of a cell from its foot, and nobody could climb until they walked off. Someone up on a floor stands on
+      // nothing of the ground below it.)
+      if (r.way) { const C = A.ghtClimb && A.ghtClimb.w; if (C && C.i === r.way.i && C.lv && r.way.lv && C.lv.key === r.way.lv.key) return true; continue; }
+      if (A.hLv && !r.onLevel) continue;
       const at = A.actAt || (A.moving || A.tx != null ? null : A);   // (the place they said they took, even while their figure walks there)
       if (at && Math.hypot(at.x - r.stand.x, (at.y - r.stand.y) * 1.3) < GA_TAKEN_R) return true;
     }
@@ -217,6 +222,7 @@ function gartActTakenWords() {
     const r = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src) && gartActTaken(r)).sort((a, b) => d(a) - d(b))[0];
     if (!r) return '';
     const row = GARDEN_ACTS[r.act];
+    if (r.way) return 'Someone is on the ladder: wait for them to reach the top.';
     return row && row.seat == null && !r.seated ? 'Someone is already there.' : 'Someone is already sitting there.';
   } catch (e) { return ''; }
 }
