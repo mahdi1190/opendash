@@ -25,6 +25,17 @@
 @keyframes ad-steam { 0% { opacity: 0; transform: translate(0, 2px); } 40% { opacity: 1; } 100% { opacity: 0; transform: translate(1px, -5px); } }
 .ad-owl { animation: ad-owl 5s ease-in-out infinite; }
 @keyframes ad-owl { 0%, 70%, 100% { transform: translate(0, 0); } 78% { transform: translate(-0.8px, -0.6px); } 88% { transform: translate(0.8px, -0.4px); } }
+/* the vale lights (3sky): one layer over the top of the view, light only (screen), never in the way of a click */
+.ad-aurora { position: absolute; left: 0; right: 0; top: 0; height: 46%; z-index: 1; overflow: hidden; pointer-events: none; mix-blend-mode: screen; opacity: 0; animation: ad-au-in 6s ease-out forwards; -webkit-mask-image: linear-gradient(#000 0%, #000 35%, transparent 100%); mask-image: linear-gradient(#000 0%, #000 35%, transparent 100%); }
+@keyframes ad-au-in { to { opacity: 1; } }
+.ad-au { position: absolute; top: -10%; width: 42%; height: 110%; border-radius: 40% 40% 0 0 / 30% 30% 0 0; background: linear-gradient(rgba(122, 255, 176, 0) 0%, rgba(122, 255, 176, 0.34) 38%, rgba(160, 120, 255, 0.22) 70%, rgba(160, 120, 255, 0) 100%); filter: blur(10px); transform-origin: 50% 0; will-change: transform, opacity; animation: ad-au 17s ease-in-out infinite alternate; }
+.ad-au.a1 { left: -6%; }
+.ad-au.a2 { left: 22%; width: 34%; animation-duration: 23s; animation-delay: -6s; background: linear-gradient(rgba(122, 255, 176, 0) 0%, rgba(150, 255, 190, 0.3) 45%, rgba(190, 130, 255, 0.2) 80%, rgba(190, 130, 255, 0) 100%); }
+.ad-au.a3 { left: 48%; animation-duration: 19s; animation-delay: -11s; }
+.ad-au.a4 { left: 72%; width: 36%; animation-duration: 27s; animation-delay: -3s; }
+@keyframes ad-au { 0% { transform: translateX(-4%) skewX(-8deg) scaleY(0.86); opacity: 0.55; } 50% { transform: translateX(3%) skewX(6deg) scaleY(1); opacity: 1; } 100% { transform: translateX(-2%) skewX(-3deg) scaleY(0.92); opacity: 0.7; } }
+.ad-aur-s { animation: ad-aur-s 9s ease-in-out infinite alternate; }
+@keyframes ad-aur-s { from { opacity: 0.45; } to { opacity: 1; } }
 /* the moon calendar (Play, the Journal, the notice board) */
 .ad-cal-top { display: flex; gap: 16px; align-items: center; margin-bottom: 12px; }
 .ad-cal-moon { flex: none; display: grid; place-items: center; width: 112px; height: 112px; border-radius: 18px; background: radial-gradient(circle at 50% 40%, #26304e, #121a30 72%); }
@@ -45,6 +56,7 @@
 .ad-cal-t small { line-height: 1.35; }
 .ad-cal-k { position: absolute; right: 6px; top: 4px; }
 @media (prefers-reduced-motion: reduce) {
-  .ad-twinkle, .ad-glow-b, .ad-blink, .ad-bob, .ad-sway, .ad-flicker, .ad-box, .ad-ripple, .ad-fall, .ad-steam, .ad-owl { animation: none !important; }
+  .ad-twinkle, .ad-glow-b, .ad-blink, .ad-bob, .ad-sway, .ad-flicker, .ad-box, .ad-ripple, .ad-fall, .ad-steam, .ad-owl, .ad-au, .ad-aur-s { animation: none !important; }
+  .ad-aurora { animation: none; opacity: 1; }
   .ad-ripple { opacity: 0.5; }
 }
