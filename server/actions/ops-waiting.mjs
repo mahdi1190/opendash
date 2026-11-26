@@ -12,13 +12,15 @@
 //                                                add / remove ids, or clear. Loops are refused.
 
 import { ActionError, resolvePerson, truncate } from './model.mjs';
-import { waitTags } from '../../lib/waiting-rules.mjs';
+import { waitTags, isOpenTask } from '../../lib/waiting-rules.mjs';
 
 const obj = (properties, required = [], extra = {}) => ({ type: 'object', properties, required, additionalProperties: false, ...extra });
 const taskId = { type: 'string', minLength: 1, maxLength: 160, description: "task id from list_tasks / search_tasks (never invent one), or '$name' for a task created earlier in the same batch with ref:'name'" };
 const label = (t) => truncate(t.title, 60);
 const change = (t, field, from, to) => ({ entity: 'task', id: t.id, label: label(t), field, from: from ?? null, to: to ?? null });
-const isOpen = (s, id) => ((s.statuses && s.statuses[id]) || 'todo') !== 'done';
+// Still blocking: a live, open task (as the page's rfBlockers: done, binned and missing ones no longer block).
+const isOpen = (s, id) => isOpenTask(s, (s.custom || []).find(x => x && x.id === id));
+const isBinned = (s, id) => !!((s.deleted && s.deleted[id]) || (s.bin && (s.bin.tasks || []).some(b => b && b.id === id)));
 
 function dependsOn(s, a, b, seen = new Set()) {
   if (!a || seen.has(a)) return false;
@@ -80,7 +82,13 @@ export const WAITING_OPS = [
       const t = ctx.task(p.id);
       const before = Array.isArray(t.blockedBy) ? [...t.blockedBy] : [];
       let next = p.clear ? [] : [...before];
-      for (const r of (p.remove || [])) { const id = ctx.task(r, 'remove').id; next = next.filter(x => x !== id); }
+      for (const r of (p.remove || [])) {
+        // A dependency on the list goes without resolving it: a binned or deleted one must be removable too.
+        const rid = String(r ?? '').trim();
+        if (next.includes(rid)) { next = next.filter(x => x !== rid); continue; }
+        if (isBinned(ctx.s, rid)) continue;
+        const id = ctx.task(r, 'remove').id; next = next.filter(x => x !== id);
+      }
       for (const a of (p.add || [])) {
         const dep = ctx.task(a, 'add');
         if (dep.id === t.id) throw new ActionError('BAD_VALUE', 'a task cannot wait for itself', { field: 'add' });

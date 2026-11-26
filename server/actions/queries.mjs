@@ -316,7 +316,13 @@ export const QUERIES = [
         people: linkedPeople(s, t).map(pid => ({ id: pid, name: pm.get(pid) ? pm.get(pid).name : null, ...((t.people || []).includes(pid) ? {} : { via: 'tag' }) })),
         recurrence: t.recurrence || 'none', pinned: !!(s.pinned && s.pinned[id]),
         ...(t.waitingOn || t.waiting === true ? { waitingOn: t.waitingOn ? { id: t.waitingOn, name: pm.get(t.waitingOn) ? pm.get(t.waitingOn).name : null } : 'someone', waitingSince: t.waitingSince || null } : {}),
-        ...(Array.isArray(t.blockedBy) && t.blockedBy.length ? { blockedBy: t.blockedBy.map(bid => { const b = (s.custom || []).find(x => x.id === bid); return { id: bid, title: b ? b.title : null, done: ((s.statuses || {})[bid] || 'todo') === 'done' }; }) } : {}),
+        // A binned or missing dependency no longer blocks (as on the page): it says so rather than look open.
+        ...(Array.isArray(t.blockedBy) && t.blockedBy.length ? { blockedBy: t.blockedBy.map(bid => {
+          const b = (s.custom || []).find(x => x && x.id === bid);
+          if (b && isLive(s, b)) return { id: bid, title: b.title, done: statusOf(s, bid) === 'done' };
+          const bb = binnedTasks(s).find(x => x.id === bid);
+          return bb || b ? { id: bid, title: (bb || b).title || null, binned: true } : { id: bid, title: null, gone: true };
+        }) } : {}),
         detail: t.detail || '',
         subtasks: (t.subtasks || []).map(x => ({ id: x.id, title: x.title, done: !!x.done })),
         // Times on the user's own clock (config.timezone), like every other date here.
