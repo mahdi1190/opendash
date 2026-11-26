@@ -105,7 +105,7 @@ function adGrant(key, items, say) { let ok = false; try { ok = gpGrant('ad.' + k
 function adKeep(id) { try { return gardenLifeFound('k', id, { userAction: true }); } catch (e) { return false; } }
 function adHas(id) { try { return gardenLifeHas('k', id); } catch (e) { return false; } }
 /** A plain item's words and picture in the bag, the market and the crafting bench (94-garden-5extras.js, 94-garden-craft-0rules.js ask). */
-const AD_ITEMS = Object.freeze({ 'star-stone': Object.freeze({ name: 'Star stone', keep: 'ad-star-stone' }) });
+const AD_ITEMS = Object.freeze({ 'star-stone': Object.freeze({ name: 'Star stone', keep: 'ad-star-stone' }), 'craft:reel-step': Object.freeze({ name: 'The reel (a dance move)', keep: 'ad-dance-ribbon' }) });   // (the reel: learned at a barn dance, 9music)
 function gardenNightItemName(k) { const r = AD_ITEMS[k]; return r ? r.name : ''; }
 function gardenNightItemIcon(k, px) { const r = AD_ITEMS[k], d = r && GL_KEEPSAKE.get(r.keep); return d ? `<svg viewBox="-10 -13 20 16" width="${px}" height="${px}" aria-hidden="true">${gardenKeepsakeSvg(d)}</svg>` : ''; }
 

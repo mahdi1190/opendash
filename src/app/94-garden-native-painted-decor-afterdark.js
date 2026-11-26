@@ -1,7 +1,7 @@
 /* Painted decorations, after dark (94-garden-zz-afterdark-*.js): the moth sheet, the weathervane, the star lantern, the moon lantern,
- * the moon dial and the rainbow arch. The family look: weathered ash and black iron, pale linen, a little moss at every foot, lit from
+ * the moon dial, the rainbow arch and the bandstand. The family look: weathered ash and black iron, pale linen, a little moss at every foot, lit from
  * the upper left; at dusk and night a warm core and a pool of light. Sizes against H, the gardener's height (41 world px; these draw at
- * 0.8, so 52 units): the sheet 1.8 H, the vane 2 H, the lanterns 1.5 H, the dial 0.95 H, the arch 2.2 H.
+ * 0.8, so 52 units): the sheet 1.8 H, the vane 2 H, the lanterns 1.5 H, the dial 0.95 H, the arch 2.2 H, the bandstand 4.2 H.
  * Registry: 94-garden-native-painted-decor-0kit.js. */
 GardenPaintedDecor.add('afterdark', (function () {
   const ASH = ['#a8987a', '#7e6e54', '#cfc0a2', '#4e4434'], IRON = ['#2f3438', '#1e2224', '#56606a'], STONE = ['#b4b0a6', '#8e8a82', '#d8d4ca', '#6e6a62'], MOSS = ['#7d8f4e', '#a3b06a'];
@@ -118,5 +118,64 @@ GardenPaintedDecor.add('afterdark', (function () {
       for (const s of [-1, 1]) for (let i = 0; i < 6; i++) { const x = s * 42 + (r() - .5) * 8, y = -4 - i * 10; B.f(o.D.blob(r, x, y, 7, 6, 7, .5), L[0], .95).f(o.D.blob(r, x - 2, y - 2, 4.4, 3.4, 6, .5), L[1], .95); if (o.season !== 'winter' && i % 2 === 0) B.f(B.circ(x + 2, y, 2.4), cols[(i + (s > 0 ? 3 : 0)) % 7], .95); }
       B.tufts(r, -42, 2, 16, 6, o.season).tufts(r, 42, 2, 16, 6, o.season);
     } },
+    /* a bandstand (for all four places at a band's pitch played at once): a raised stone floor with three steps, slender green iron
+       columns, a white railing, a striped roof with a scalloped valance and a little lantern on top; bunting between the side columns
+       and paper lanterns under the eaves that light at dusk. The floor 0.7 H up, 4.2 H to the finial. */
+    bandstand: { box: [-96, -222, 96, 8], glow: { w: 170, halo: -90, radius: 160 }, draw(B, o) {
+      const { r } = o, G = ['#3e6a52', '#2a4a38', '#5f9074', '#1c3326'], CR = ['#f4efe2', '#d6cdb8', '#ffffff', '#a89e86'];
+      const FY = -36, EY = -146, at = (a, k, cy, rx, ry) => [Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k], f1 = (n) => n.toFixed(1);
+      B.shadow(0, 2, 94, 13, .28);
+      // the floor: its front face (lit from the left), its top worn paler where the band stands, moss and grass at its foot
+      B.f(`M-84 ${FY}A84 20 0 0 0 84 ${FY}L84 ${FY + 16}A84 20 0 0 1 -84 ${FY + 16}Z`, B.lin(-84, 0, 84, 0, [[0, STONE[2]], [.4, STONE[0]], [1, STONE[3]]]));
+      for (const x of [-62, -32, 32, 62]) { const y = FY + Math.sqrt(1 - (x / 84) ** 2) * 20; B.s(`M${x} ${f1(y)}v15`, STONE[3], .7, .5); }
+      B.s(`M-84 ${FY + 8}A84 20 0 0 0 84 ${FY + 8}`, STONE[3], .6, .45);
+      B.f(B.ell(0, FY, 84, 20), STONE[1]).f(B.ell(0, FY - 1, 80, 18), STONE[0]).f(B.ell(-10, FY - 3, 46, 9), STONE[2], .45);
+      for (const x of [-72, 50, 76]) B.f(o.D.blob(r, x, -2 - r() * 3, 7, 2.6, 6, .4), MOSS[0], .75);
+      for (let i = 0; i < 3; i++) { const w = 38 + i * 7, y = -14 + i * 5.2; B.f(B.rr(-w / 2, y, w, 5.6, 1.2), STONE[1]).f(B.rect(-w / 2, y, w, 1.8), STONE[2], .85).f(B.rect(w / 2 - 5, y, 5, 5.6), STONE[3], .35); }
+      B.tufts(r, -86, 0, 18, 7, o.season).tufts(r, 86, 0, 18, 7, o.season).tufts(r, -34, 2, 12, 5, o.season).tufts(r, 36, 2, 12, 5, o.season);
+      // a column: an iron foot, the shaft lit on its left, a flared capital under the roof
+      const col = (a) => { const [x, y] = at(a, .9, FY, 84, 20), top = EY + Math.sin(a) * 18.9 + 2; B.f(B.rr(x - 3.4, y - 3, 6.8, 4, 1), G[1]).f(`M${f1(x - 1.9)} ${f1(y - 2)}L${f1(x - 1.6)} ${f1(top + 4)}H${f1(x + 1.6)}L${f1(x + 1.9)} ${f1(y - 2)}Z`, B.lin(x - 2, 0, x + 2, 0, [[0, G[2]], [.5, G[0]], [1, G[3]]])).f(`M${f1(x - 4)} ${f1(top + 4)}Q${f1(x)} ${f1(top + 9)} ${f1(x + 4)} ${f1(top + 4)}L${f1(x + 2)} ${f1(top)}H${f1(x - 2)}Z`, G[1]); };
+      // the far side: its railing, then its columns
+      B.s(`M-80 ${FY - 14}A80 18.4 0 0 1 80 ${FY - 14}`, CR[1], 1.4, .8);
+      for (let i = 1; i < 14; i++) { const [x, y] = at(Math.PI + i / 14 * Math.PI, .97, FY, 84, 20); B.s(`M${f1(x)} ${f1(y)}v-14`, CR[1], .8, .6); }
+      for (const a of [Math.PI * 7 / 6, Math.PI * 11 / 6]) col(a);
+      // the near side: its columns, then its railing, open at the steps
+      for (const a of [Math.PI, 0, Math.PI * 2 / 3, Math.PI / 3]) col(a);
+      const ry = FY - 14 + 19 * Math.sqrt(1 - (22 / 82) ** 2);
+      B.s(`M-82 ${FY - 14}A82 19 0 0 0 -22 ${f1(ry)}M22 ${f1(ry)}A82 19 0 0 0 82 ${FY - 14}`, CR[0], 1.8);
+      for (let i = 1; i < 22; i++) { const [x, y] = at(i / 22 * Math.PI, 1, FY, 82, 19); if (Math.abs(x) < 22) continue; B.s(`M${f1(x)} ${f1(y)}v-14`, CR[0], 1, .95).s(`M${f1(x + .6)} ${f1(y)}v-14`, CR[3], .4, .5); }
+      // the roof: green and cream stripes from the top, light from the left, the valance's scallops along the eave
+      const roof = `M-90 ${EY}Q-74 ${EY - 16} -42 ${EY - 27}Q-12 ${EY - 37} 0 ${EY - 50}Q12 ${EY - 37} 42 ${EY - 27}Q74 ${EY - 16} 90 ${EY}A90 21 0 0 1 -90 ${EY}Z`;
+      B.f(roof, G[0]);
+      const cx = B.cx; cx.save(); cx.clip(new Path2D(roof));
+      for (let k = -6; k <= 6; k += 2) { const p0 = at(Math.PI / 2 + (k - .5) * .2, 1.2, EY + 8, 90, 21), p1 = at(Math.PI / 2 + (k + .5) * .2, 1.2, EY + 8, 90, 21); B.f(B.poly([[0, EY - 52], p0, p1]), CR[0], .92); }
+      B.f(B.rect(-92, EY - 54, 184, 80), B.lin(-90, 0, 90, 0, [[0, 'rgba(255,255,255,.22)'], [.45, 'rgba(255,255,255,0)'], [1, 'rgba(10,30,20,.34)']]));
+      cx.restore();
+      B.s(`M-90 ${EY}A90 21 0 0 0 90 ${EY}`, G[3], 1.4, .9).s(`M-89 ${EY - 2}A89 20 0 0 0 89 ${EY - 2}`, CR[2], .8, .5);
+      for (let i = 0; i <= 18; i++) { const [x, y] = at(.1 + i / 18 * (Math.PI - .2), 1, EY, 90, 21); B.f(`M${f1(x - 4.6)} ${f1(y)}A4.6 4.6 0 0 0 ${f1(x + 4.6)} ${f1(y)}Z`, i % 2 ? CR[0] : G[0]).s(`M${f1(x - 4.6)} ${f1(y)}A4.6 4.6 0 0 0 ${f1(x + 4.6)} ${f1(y)}`, G[3], .5, .6); }
+      // the little lantern on the top and its gilded finial
+      const LY = EY - 62;
+      B.f(B.rr(-6, LY, 12, 10, 1.5), CR[0]).f(B.rect(-4, LY + 2, 3, 6), o.night ? '#ffe2a0' : '#9ab0b8').f(B.rect(1, LY + 2, 3, 6), o.night ? '#ffd27a' : '#7a909a');
+      B.f(`M-8 ${LY}Q0 ${LY - 8} 8 ${LY}Z`, G[1]).f(B.circ(0, LY - 9, 2.4), '#d8b24a').f(B.circ(-.7, LY - 9.7, .9), '#fff4c8', .8);
+      if (o.night) B.f(B.circ(0, LY + 5, 12), B.rad(0, LY + 5, 12, [[0, 'rgba(255,226,150,.5)'], [1, 'rgba(255,226,150,0)']]));
+    }, anim: [
+      { id: 'bunting', x: 0, y: -136, kind: 'sway', speed: .5, amp: .015, box: [-78, -14, 78, 22], draw(B, o) {
+        const cols = ['#d8405a', '#f2d44a', '#4a8ae0', '#62b85a', '#f09a3e', '#9a5ac0'];
+        for (const sg of [-1, 1]) {
+          const x0 = sg * 74, y0 = -8, x1 = sg * 37, y1 = 8.4, mx = (x0 + x1) / 2, my = Math.max(y0, y1) + 8;
+          o.H.cord(B, `M${x0} ${y0}Q${mx} ${my} ${x1} ${y1}`, .8, '#e8dcc0');
+          for (let i = 0; i < 5; i++) { const t = (i + .5) / 5, x = (1 - t) * (1 - t) * x0 + 2 * t * (1 - t) * mx + t * t * x1, y = (1 - t) * (1 - t) * y0 + 2 * t * (1 - t) * my + t * t * y1; B.f(B.poly([[x - 3.4, y], [x + 3.4, y], [x, y + 7]]), cols[(i + (sg > 0 ? 3 : 0)) % cols.length], .95).f(B.poly([[x - 3.4, y], [x - .4, y], [x - 1.6, y + 5]]), '#ffffff', .18); }
+        }
+      } },
+      { id: 'lamps', x: 0, y: -126, kind: 'flicker', speed: 2.4, box: [-34, -4, 34, 32], draw(B, o) {
+        for (const x of [-20, 20]) {
+          const y = 7; B.s(`M${x} -1V${y}`, '#3a2a1a', .6);
+          if (o.night) B.f(B.circ(x, y + 7, 13), B.rad(x, y + 7, 13, [[0, 'rgba(255,214,140,.55)'], [1, 'rgba(255,214,140,0)']]));
+          B.f(`M${x - 4} ${y + 13}L${x - 4.6} ${y + 4}Q${x - 4.2} ${y + 1} ${x - 2.4} ${y}H${x + 2.4}Q${x + 4.2} ${y + 1} ${x + 4.6} ${y + 4}L${x + 4} ${y + 13}Z`, o.night ? '#f4a85a' : '#e88a5a').f(`M${x - 4} ${y + 13}L${x - 4.6} ${y + 4}Q${x - 4.2} ${y + 1} ${x - 2.4} ${y}H${x - 1}Q${x - 2.4} ${y + 2} ${x - 2.4} ${y + 4}L${x - 2} ${y + 13}Z`, '#ffffff', .25);
+          if (o.night) B.f(B.ell(x, y + 7, 2, 3), '#fff4c8', .85);
+          B.s(`M${x - 2.6} ${y}H${x + 2.6}M${x - 2.8} ${y + 13}H${x + 2.8}`, '#6a4a2c', .8);
+        }
+      } },
+    ] },
   };
 })());
