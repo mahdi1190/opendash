@@ -826,6 +826,15 @@ function gardenNoteVisitors(list) {
   if (changed) { _gdSave(); gardenTickSoon(); }
   for (const d of fresh.slice(0, 2)) _gdMoment({ kind: 'visitor', text: `New visitor: ${d.name}. ${d.blurb || ''}`.trim(), icon: 'binoculars', id: d.id });
 }
+/* Ledger lines that are read as "done once, for good" (a gift given once, a way opened for good) keep a mark in `seen`, which
+   the 40-day fold below never touches: [line key's start, the mark's start] (the rest of the key is the same). gpGrant's
+   'plg.' lines and their 'pl.gr.' marks (the starter kit, the alpha boost, every milestone); an orchard shortcut's 'sc.'. */
+const _GD_ONCE_MARKS = Object.freeze([['plg.', 'pl.gr.'], ['sc.', 'sc.']]);
+function _gdOnceMark(g, key, day) {
+  if (!g || !g.seen || typeof key !== 'string') return false;
+  for (const [line, mark] of _GD_ONCE_MARKS) if (key.startsWith(line) && key.length > line.length) { const k = mark + key.slice(line.length); if (g.seen[k]) return false; g.seen[k] = day || _gdToday(); return true; }
+  return false;
+}
 function _gdTidy(g, today) {
   let changed = false;
   const keepFrom = _gdAddDays(today, -8);
@@ -848,6 +857,7 @@ function _gdTidy(g, today) {
     if ((key.startsWith('gl.o.') && (e.t === 'place' || !e.ok)) || (key.startsWith('gl.x.') && !e.ok) || (key.startsWith('gl.t.') && e.d >= _gdAddDays(today, -120))) continue;   // (a trade's hold is released or swapped by the host's word, never by age; the host's record of its decision is what answers a late "what became of it")   // still out in a friend's garden, or never answered: taking it back deletes this
     const nn = {}; if (e.k && _GD_N_KINDS[e.k]) nn[_GD_N_KINDS[e.k]] = Number(e.n) || 0;
     fold(e.d.slice(0, 7), { c: Number(e.c) || 0, x: Number(e.x) || 0, i: e.i, nn });
+    _gdOnceMark(g, key, e.d);   // (a once-only line leaves its mark first: without it a boost was given again, and a shortcut shut again, 40 days on)
     delete g.led[key]; changed = true;
   }
   return changed;
