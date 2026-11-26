@@ -130,7 +130,7 @@ function gardenSpotOpen() {
     card.forEach((s, i) => {
       const who = st.get(s.id) || [], c = gpEl('div', 'gtsp-sq' + (who.length ? ' is-stamped' : '') + (done.has(i) ? ' is-line' : '') + (s.hard ? ' is-hard' : ''));
       c.setAttribute('role', 'gridcell'); c.setAttribute('aria-label', s.t + (who.length ? ': stamped' : ': not yet'));
-      c.innerHTML = `<span class="gtsp-ic">${_gtsIcon(s.ic, 30)}</span><span class="gtsp-t">${esc(s.t)}</span>`;
+      c.innerHTML = `<span class="gtsp-ic">${_gtsIcon(s.ic, 40)}</span><span class="gtsp-t">${esc(s.t)}</span>`;
       if (who.length) {
         const stamp = gpEl('span', 'gtsp-stamp'); stamp.innerHTML = who.some(w => w.wild) && who.length === 1 ? '<b>Wild</b>' : '<b>Spotted</b>'; c.appendChild(stamp);
         const faces = gpEl('span', 'gtsp-faces');

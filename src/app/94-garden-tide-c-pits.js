@@ -70,7 +70,8 @@ function gardenPitsPlay(who) {
   return true;
 }
 function _gtp2Draw(G) {
-  const el = G.el; if (!el || !el.isConnected) return;
+  const el = G.el; if (!el || (G.drawn && !el.isConnected)) return;   // (the first drawing is into the card as it is made, before it is on the page)
+  G.drawn = true;
   el.textContent = '';
   const name = gardenShoreFolkName(G.who);
   el.appendChild(gpEl('p', 'gtp-say', G.msg || (G.turn === 0 ? 'Your turn: pick one of your pits.' : name + ' is thinking…')));
