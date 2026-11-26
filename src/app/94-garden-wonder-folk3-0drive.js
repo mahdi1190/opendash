@@ -39,7 +39,7 @@ function gardenFolkDrive(id, o) {
   D.gait = o.gait === 'r' ? 'r' : 'w';
   D.speed = Number.isFinite(o.speed) && o.speed > 0 ? o.speed : D.gait === 'r' ? VF3_RUN * (V.row.speed || 1) : walk;
   D.pose = o.pose || ''; D.face = o.face == null ? null : o.face; D.view = o.view || '';
-  D.noTalk = !!o.noTalk; D.then = typeof o.then === 'function' ? o.then : null; D.lift = Number(o.lift) || 0; D.z = Number.isFinite(o.z) ? o.z : null;
+  D.noTalk = !!o.noTalk; D.then = typeof o.then === 'function' ? o.then : null; D.lift = Number(o.lift) || 0; D.z = Number.isFinite(o.z) ? o.z : null; D.pass = !!o.pass;
   D.t0 = performance.now(); D.stop = 0; D.failed = false; D.at = 0;
   if (Array.isArray(o.path) && o.path.length) {
     const last = o.path[o.path.length - 1]; D.to = { x: last.x, y: last.y };
@@ -75,7 +75,7 @@ function gardenFolkDriveFrame(V, dt, now, view) {
         if (!V.path || !V.path.length) _vfrAsk(V, D.to, 3);
       }
       if (D.stop && now < D.stop) { /* stopped a moment (a fish in the water): stood, looking */ }
-      else if (V.path && V.path.length) { D.stop = 0; _vfrStep(V, dt, D.speed / (VALE_FOLK_SPEED * (V.row.speed || 1))); moving = !V.waiting; }
+      else if (V.path && V.path.length) { D.stop = 0; if (D.pass) { _vf3Step(V, dt, D.speed); moving = true; } else { _vfrStep(V, dt, D.speed / (VALE_FOLK_SPEED * (V.row.speed || 1))); moving = !V.waiting; } }
     } else {
       V.x = D.to.x; V.y = D.to.y; if (V.path) V.path.length = 0; D.to = null; D.at = now;
       const f = D.then; D.then = null; if (f) { try { f(V); } catch (e) { console.error('[folk drive]', e); } }
@@ -84,6 +84,28 @@ function gardenFolkDriveFrame(V, dt, now, view) {
   if (!moving && D.face != null) { if (D.face === 1 || D.face === -1) V.face = D.face; else if (Number.isFinite(D.face.x) && Math.abs(D.face.x - V.x) > 0.12) V.face = D.face.x > V.x ? 1 : -1; }
   if (V.S) _vf3Draw(V, moving);
 }
+/** A racer's step (D.pass): along the path at full speed, and someone just ahead on the way is passed by veering to the clear side a
+ *  little, never by stopping behind them (the ordinary step waits, then goes round: a racer behind you never got by). No allocation. */
+function _vf3Step(V, dt, speed) {
+  const G = GARDEN_WORLD; let left = speed * dt;
+  while (left > 0 && V.path.length) {
+    const p = V.path[0], dx = (p.x - V.x) * G.cellW, dy = (p.y - V.y) * G.cellH, d = Math.hypot(dx, dy);
+    if (d <= left) { V.x = p.x; V.y = p.y; V.path.shift(); left -= d; continue; }
+    const ux = dx / d, uy = dy / d;
+    let nx = V.x + ux * left / G.cellW, ny = V.y + uy * left / G.cellH, veer = 0;
+    if (typeof _gw !== 'undefined' && Number.isFinite(_gw.px)) veer = _vf3Veer(V, _gw.px, _gw.py, ux, uy);
+    try { if (!veer && typeof _gll !== 'undefined' && _gll.actors && _gll.actors.size) for (const A of _gll.actors.values()) { if (A && !A.me && Number.isFinite(A.x)) veer = _vf3Veer(V, A.x, A.y, ux, uy); if (veer) break; } } catch (e) { /* alone */ }
+    if (veer) {
+      for (const s of [veer, -veer]) { const k = left * 0.75, qx = nx + (-uy) * s * k / G.cellW, qy = ny + ux * s * k / G.cellH; if (typeof _gwFree !== 'function' || _gwFree(qx, qy)) { nx = qx; ny = qy; break; } }
+    }
+    _vfrHeadTo(V, (nx - V.x) * G.cellW, (ny - V.y) * G.cellH, dt);
+    V.x = nx; V.y = ny; left = 0;
+  }
+  V.waiting = false;
+  return !V.path.length;
+}
+/** Someone at px, py just ahead of a racer heading ux, uy: which way to veer (-1, 1) to pass them, 0 when they are not in the way. */
+function _vf3Veer(V, px, py, ux, uy) { const G = GARDEN_WORLD, rx = (px - V.x) * G.cellW, ry = (py - V.y) * G.cellH, along = rx * ux + ry * uy, lat = -rx * uy + ry * ux; return along > -8 && along < 58 && Math.abs(lat) < 30 ? (lat > 0 ? -1 : 1) : 0; }
 function _vf3Draw(V, moving) {
   const S = V.S, D = V.drive;
   const pose = moving ? 'idle' : (D.pose || 'idle'), face = V.face < 0 ? -1 : 1;

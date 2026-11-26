@@ -93,6 +93,17 @@ function _vgrFlagsDraw(list, flags, finish) {
   flags.forEach((f, k) => list.push(wdSprite({ id: 'vg-flag-' + k, x: f.x, y: f.y, hit: 0.25, hitUp: 3, label: 'Flag ' + (k + 1), ground: true, svg: _vgrFlagSvg(k, false), lift: 0, update() { } })));
   if (finish) list.push(wdSprite({ id: 'vg-finish', x: finish.x, y: finish.y, hit: 0.25, hitUp: 3, label: 'The finish', ground: true, svg: _vgrFlagSvg(0, true), lift: 0, update() { } }));
 }
+/** A racer's own line along the course: each point moved a little to one side across the way it runs, where the feet can go there
+ *  (else the course's own point), so two runners side by side never run inside each other. */
+function _vgrLane(C, off) {
+  const P = C.pts, out = [];
+  for (let i = 1; i < P.length; i++) {
+    const a = P[i - 1], b = P[i + 1] || P[i], dx = (b.x - a.x) * GARDEN_WORLD.cellW, dy = (b.y - a.y) * GARDEN_WORLD.cellH, n = Math.hypot(dx, dy) || 1;
+    const q = { x: P[i].x + (-dy / n) * off, y: P[i].y + (dx / n) * off * 0.8 };
+    out.push(typeof _gwFree !== 'function' || _gwFree(q.x, q.y) ? q : { x: P[i].x, y: P[i].y });
+  }
+  return out;
+}
 /** The course's first point nearest where you stand on a lane (within two cells), else where you stand. */
 function _vgrStart(at) {
   for (let r = 0; r <= 2; r += 0.5) for (let k = 0; k < (r ? 8 : 1); k++) { const a = k / 8 * Math.PI * 2, x = at.x + Math.cos(a) * r, y = at.y + Math.sin(a) * r * 0.7; if (typeof gardenFolkTier === 'function' && gardenFolkTier(x, y) === 1 && (typeof _gwFree !== 'function' || _gwFree(x, y))) return { x, y }; }
@@ -150,9 +161,9 @@ valeGameAdd('race', {
   go(R) {
     const C = R.data.course;
     for (const id of R.folk) {
-      const row = VALE_GAME_FOLK[id] || {}, g = row.race || {}, V = _vf3V(id);
-      const path = C.pts.slice(1); path[path.length - 1] = { x: C.stand.x + (R.folk.indexOf(id) - 1) * 0.55, y: C.stand.y + 0.25 };   // (side by side at the end, not on one spot)
-      gardenFolkDrive(id, { path, gait: 'r', speed: VF3_RUN * (g.pace || 1) * (V && V.row.speed || 1), by: 'game', noTalk: true });
+      const row = VALE_GAME_FOLK[id] || {}, g = row.race || {}, V = _vf3V(id), k = R.folk.indexOf(id);
+      const path = _vgrLane(C, (k % 2 ? -1 : 1) * (0.42 + 0.3 * Math.floor(k / 2))); path[path.length - 1] = { x: C.stand.x + (k - 1) * 0.55, y: C.stand.y + 0.25 };   // (each in a lane of their own, side by side at the end, never on one spot)
+      gardenFolkDrive(id, { path, gait: 'r', speed: VF3_RUN * (g.pace || 1) * (V && V.row.speed || 1), by: 'game', noTalk: true, pass: true });
       R.data.st[id] = { pace: g.pace || 1, steady: !!g.steady, stop: g.stop === 'water' && C.wet > 0, fin: 0, along: 0, hint: 0 };
     }
     for (const p of R.people.values()) { p.n = 0; p.fin = 0; p.done = !!p.left; p.score = 0; p.along = 0; }

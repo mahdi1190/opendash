@@ -86,6 +86,17 @@ valeGameAdd('seek', {
     const k = R.folk[0], t = k ? vgLine(k, 'seek', 'yes') : ''; if (t) { try { wdAmbient('“' + t + '”', 3000, 'folk'); } catch (e) { /* quiet */ } }
   },
   readyLine(R, secs) { const n = Math.max(1, R.G.ready - Math.floor(secs)); _vgDim(true, String(n)); return { line: 'Eyes shut! Counting...', big: String(n) }; },
+  /** The last second of the count, while your eyes are shut: anyone still on the way is in their place, crouched (a long way round, a
+   *  friend in the way: nobody is left standing in the open when you look). */
+  readyTick(R, secs) {
+    if (R.data.snapped || secs < R.G.ready - 1.1) return;
+    R.data.snapped = true;
+    for (const id of R.folk) {
+      const s = R.data.spots[id], V = _vf3V(id), D = gardenFolkDriven(id); if (!s || !V || !D) continue;
+      if (Math.hypot(V.x - s.x, V.y - s.y) > 0.3) { V.x = s.x; V.y = s.y; D.to = null; D.then = null; if (V.path) V.path.length = 0; }
+      gardenFolkPose(id, 'crouch', s.tx < s.x ? -1 : 1);
+    }
+  },
   go(R) {
     _vgDim(false);
     const now = performance.now();

@@ -138,6 +138,7 @@ function _vgHostFrame(dt) {
       _vgPhase(R, 'ready');
     }
   } else if (R.phase === 'ready') {
+    if (R.I.readyTick) { try { R.I.readyTick(R, secs); } catch (e) { console.error('[vale games]', e); } }
     if (secs >= R.G.ready) { _vgPhase(R, 'play'); }
   } else if (R.phase === 'play') {
     if (R.tickAcc >= 0.1) { const t = R.tickAcc; R.tickAcc = 0; try { R.I.tick(R, t, now); } catch (e) { console.error('[vale games]', e); } }
@@ -179,7 +180,7 @@ function _vgFolkAfter(R, res) {
   for (const id of R.folk) {
     const placed = (R.podium || []).find(p => p.v === id);
     const pose = first && first.v === id ? 'cheer' : first && first.w != null ? 'clap' : 'clap';
-    if (placed) gardenFolkDrive(id, { to: placed.stand, gait: 'w', by: 'game', noTalk: true, face: 1, then: () => { const D = gardenFolkDriven(id); if (D) { D.lift = placed.lift; D.z = placed.z; D.pose = pose; D.view = 's'; } } });
+    if (placed) gardenFolkDrive(id, { to: placed.stand, gait: 'r', by: 'game', noTalk: true, face: 1, then: () => { const D = gardenFolkDriven(id); if (D) { D.lift = placed.lift; D.z = placed.z; D.pose = pose; D.view = 's'; } } });
     else { const D = gardenFolkDriven(id); if (D) { D.pose = pose; D.to = null; if (_vf3V(id) && _vf3V(id).path) _vf3V(id).path.length = 0; } }
   }
   for (const id of R.helpers) { const D = gardenFolkDriven(id); if (D) D.pose = 'clap'; }
@@ -229,11 +230,18 @@ function _vgCrateSvg(k) {
     + `<text x="0" y="${-h * 0.55 + 2.4}" text-anchor="middle" font-size="6.4" font-weight="700" fill="#4a3420" font-family="Georgia, serif">${num}</text>`
     + `<path d="M${x - 3} 0.8q2 -3.4 4 -0.6M${x + w - 1} 0.8q2 -3 3.6 -0.4" stroke="#6a9a44" stroke-width="1.1" fill="none" opacity=".75"/></g>`;
 }
-/** Where the podium goes: open, free ground beside the place, three crates side by side (second, first, third), never on a figure. */
+/** Where the podium goes: open, free ground beside the place, three crates side by side (second, first, third), never on a figure,
+ *  never in front of or behind anything that stands (its foot, its post: the crates once hid a sign's post), in front first. */
+const VG_FLAT_RE = /^(road|plaza|path|field|plot|pond|crossing|ford|bridge|pier|stepping|leaf-pile|ball|log$)/;
 function _vgPodiumAt(p) {
-  const ok = (x, y) => [-1, 0, 1].every(k => (typeof _gwFree !== 'function' || _gwFree(x + k * 0.62, y)) && (typeof _vfrBodyOk !== 'function' || _vfrBodyOk(x + k * 0.62, y, '', true)))
-    && !_vfrFigures().some(F => Math.abs(F.x - x) < 1.4 && Math.abs(F.y - y) < 0.7);
-  for (let r = 1.2; r <= 5; r += 0.6) for (let a = 0; a < 12; a++) { const t = a / 12 * Math.PI * 2, x = p.x + Math.cos(t) * r, y = p.y + Math.sin(t) * r * 0.6; if (ok(x, y)) return { x, y }; }
+  const C = typeof _vfr !== 'undefined' && _vfr.ctx ? _vfr.ctx : null, things = C ? C.things : (typeof gardenAffordThings === 'function' ? gardenAffordThings() : []);
+  const ok = (x, y) => {
+    for (const k of [-1, 0, 1]) for (const ex of [-0.32, 0, 0.32]) if (typeof _gwFree === 'function' && !_gwFree(x + k * 0.62 + ex, y)) return false;
+    for (const t of things) { if (!t.kind || VG_FLAT_RE.test(t.kind)) continue; const B = C ? C.base(t) : t, hw = (B.w || t.w || 1) / 2 + 1.25; if (Math.abs(B.x - x) < hw && y > B.y - Math.max(1.2, (B.h || 1.2) + 0.4) && y < B.y + 1.1) return false; }
+    if (typeof _vfrFigures === 'function' && _vfrFigures().some(F => Math.abs(F.x - x) < 1.5 && Math.abs(F.y - y) < 0.8)) return false;
+    return !(typeof gardenTerrainAt === 'function' && /water|deep/.test(gardenTerrainAt(x, y)));
+  };
+  for (let r = 1.6; r <= 6.2; r += 0.5) for (let a = 0; a < 16; a++) { const t = Math.PI / 2 + (a % 2 ? 1 : -1) * Math.ceil(a / 2) * Math.PI / 8, x = p.x + Math.cos(t) * r, y = p.y + Math.sin(t) * r * 0.6; if (ok(x, y)) return { x, y }; }
   return null;
 }
 function _vgCratesOff() { for (const S of _vgm.crates) { try { S.remove(); } catch (e) { /* gone */ } } _vgm.crates = []; }
@@ -473,8 +481,8 @@ function _vgKeys() {
 /** The soft dimming while someone counts with their eyes shut (hide and seek): a CSS layer over the world, never a repaint. */
 function _vgDim(on, text) {
   const box = typeof _ghBox === 'function' ? _ghBox() : null; if (!box) return;
-  if (!on) { if (_vgm.dim) { _vgm.dim.classList.remove('is-on'); const d = _vgm.dim; _vgm.dim = null; setTimeout(() => d.remove(), 500); } return; }
-  let d = _vgm.dim; if (!d || !d.isConnected) { d = document.createElement('div'); d.className = 'gvg-dim'; d.setAttribute('aria-hidden', 'true'); d.innerHTML = '<span></span>'; box.appendChild(d); _vgm.dim = d; requestAnimationFrame(() => d.classList.add('is-on')); }
+  if (!on) { box.classList.remove('gvg-counting'); if (_vgm.dim) { _vgm.dim.classList.remove('is-on'); const d = _vgm.dim; _vgm.dim = null; setTimeout(() => d.remove(), 500); } return; }
+  let d = _vgm.dim; if (!d || !d.isConnected) { d = document.createElement('div'); d.className = 'gvg-dim'; d.setAttribute('aria-hidden', 'true'); d.innerHTML = '<span></span>'; box.appendChild(d); _vgm.dim = d; box.classList.add('gvg-counting'); requestAnimationFrame(() => d.classList.add('is-on')); }
   const s = d.firstChild; if (s.textContent !== (text || '')) s.textContent = text || '';
 }
 /* ---------- with friends: the wire ---------- */
