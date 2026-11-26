@@ -925,7 +925,7 @@ function gardenCellOk(def, x, y, level, kind) {
   for (let dy = 0; dy < fh; dy++) for (let dx = 0; dx < fw; dx++) {
     const a = gardenAreaAt(x + dx, y + dy, level);
     if (_GD_ICE.has((x + dx) + ',' + (y + dy))) return 'That is ice, and it will not last';
-    if (a.startsWith('locked:')) { const ar = gardenArea(a.slice(7)); return ar.solid ? 'Too thick to do anything with' : ar.buy ? `${ar.name}: buy this land first` : `${ar.name} opens at garden level ${ar.lv}`; }
+    if (a.startsWith('locked:')) { const ar = gardenArea(a.slice(7)), zn = /^zn-(\d+)$/.exec(ar.id || ''), lv = zn && typeof gardenZoneOpenLv === 'function' ? gardenZoneOpenLv(Number(zn[1])) : ar.lv; return ar.solid ? 'Too thick to do anything with' : ar.buy ? `${ar.name}: buy this land first` : `${ar.name} opens at garden level ${lv}`; }   // (a zone behind a gate opens by itself only its margin past the zone's level: the level the gate says)
     if (typeof gardenLandPathAt === 'function' && gardenLandPathAt(x + dx, y + dy) && !(kind === 'decor' && def.layer === 'ground')) return kind === 'decor' ? 'Keep the path clear' : 'That is a path: plants go in the beds';
     if (kind !== 'decor') {
       if (area && a !== area && !gardenIslandPlantAreasCompatible(def, area, a)) return 'Straddles two areas';

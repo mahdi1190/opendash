@@ -11,6 +11,7 @@
    Dragging or Alt+arrows while sorted another way switches to Custom.
    ============================================================ */
 const _sbListExpanded = {};
+const _sbListSortables = {};   // one live drag per list: the sidebar is redrawn on every render (LEAK-1)
 
 function sbListPrefsFor(key, defaults) {
   const all = state.sidebarLists && typeof state.sidebarLists === 'object' ? state.sidebarLists : {};
@@ -76,7 +77,8 @@ function sbOrderedList(el, o) {
   el.appendChild(box);
   const allIds = ordered.map(x => x.id);
   const commit = (ids, movedId) => {
-    o.saveCustom(ids);
+    // Rows not drawn now (empty streams, pins that cannot show) keep their places in the saved order (DASH-10).
+    o.saveCustom(sbKeepHidden(ids, o.custom));
     if (p.sort !== 'custom') {
       const all = Object.assign({}, state.sidebarLists || {});
       all[o.key] = Object.assign({}, p, { sort: 'custom' });
@@ -99,8 +101,9 @@ function sbOrderedList(el, o) {
     const next = sbMoveId(allIds, id, e.key === 'ArrowUp' ? -1 : 1);
     if (next.join('\u0001') !== allIds.join('\u0001')) commit(next, id);
   });
+  if (_sbListSortables[o.key]) { try { _sbListSortables[o.key].destroy(); } catch (e) { /* already gone */ } _sbListSortables[o.key] = null; }
   if (typeof makeSortable === 'function' && shown.length > 1) {
-    makeSortable(box, {
+    _sbListSortables[o.key] = makeSortable(box, {
       items: '[data-sb-id]', idOf: (n) => n.dataset.sbId,
       onReorder: (ids, movedId) => commit(sbMergeOrder(ids, allIds), movedId),
     });

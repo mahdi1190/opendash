@@ -53,15 +53,17 @@ function _wdLetterArrive(r) {
   if (r.find) W['fa.' + r.find] = today;
   _wdSave();
 }
-/** Read: what was in the envelope comes out once, whichever device opened it, because its ledger key is the letter's. */
+/** Read: what was in the envelope comes out once, whichever device opened it, because its ledger key is the letter's, and only
+ *  the first time it is read: the read mark is for good, while the ledger folds its line into the bank after 40 days (with the
+ *  line alone, reading it again then gave the gift again). */
 function _wdLetterRead(r) {
-  const W = _wdG(), g = _gdG(), today = _wdToday();
-  if (!W['lr.' + r.id]) W['lr.' + r.id] = today;
+  const W = _wdG(), g = _gdG(), today = _wdToday(), first = !W['lr.' + r.id];
+  if (first) W['lr.' + r.id] = today;
   let item = '';
   if (r.gift && r.gift.pear) item = 'seed:pear';
   if (r.back === 'fertiliser') item = 'fertiliser';
   if (r.back === 'seed') { const pool = GARDEN_PLANTS.filter(p => p.price > 0 && !p.unlock && gardenInSeason(p, gardenModel().season)); const p = pool.length ? pool[gardenHash(r.id) % pool.length] : null; if (p) item = 'seed:' + p.id; }
-  if (item && !g.led['wdl.' + r.id]) { g.led['wdl.' + r.id] = { d: today, k: 'wd', i: { [item]: 1 }, n: 1 }; r.got = item; }
+  if (item && first && !g.led['wdl.' + r.id]) { g.led['wdl.' + r.id] = { d: today, k: 'wd', i: { [item]: 1 }, n: 1 }; r.got = item; }
   _gdSave();
   _wdPostFlag();
 }

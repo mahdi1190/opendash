@@ -166,6 +166,7 @@ function applyTemplate(tmplId) {
     people: [...(t.people || [])],
     createdAt: Date.now(), createdVia: 'ui',
   });
+  if (t.recurrence === 'monthly') repeatAnchorFollow(getItem(newId));   // the series' day from the start (DASH-05)
   logActivity(newId, 'created', { text: 'Created from template: ' + (t.name || t.title) });
   saveData(); render();
   toast('Task created from template', { kind: 'ok', action: { label: 'Open', run: () => openTask(newId) } });
