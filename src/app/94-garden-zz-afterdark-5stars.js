@@ -48,13 +48,11 @@ function adStarSpot(iso, N, m) {
   return p;
 }
 function _adfSpotPick(iso, N, m, C) {
-  // nothing overlaps: every place belongs to one of seven groups (by its own seed), and a night uses only the group of its day number,
-  // so any seven nights running use seven different places of the two-cell grid (a crater is under a cell and a half across). Nothing
-  // here depends on any other night, so it is the same whichever day it is asked on, on every screen. (A group with no place: no star.)
-  const grp = gtgDayNum(iso) % 7, open = C.filter(p => (gardenHash('ad-sfg|' + N.key + '|' + p.x + ',' + p.y) % 7) === grp && adOpen(p.x, p.y, m)); if (!open.length) return null;
+  // the night's own order over every place there is (open or not, so opening land does not move an old crater), the first that is
+  // open and can be walked to; nothing here depends on another night, so it is the same whichever day it is asked on, on every screen
   const h = gardenHash('ad-sfp|' + N.key + '|' + gtgDayNum(iso));
-  for (let i = 0; i < Math.min(8, open.length); i++) {
-    const p = open[(h + i * 7919) % open.length];
+  for (let i = 0; i < Math.min(40, C.length); i++) {
+    const p = C[(h + i * 7919) % C.length]; if (!adOpen(p.x, p.y, m)) continue;
     let reach = true; try { if (typeof gardenReachableFromArrival === 'function' && typeof _gw !== 'undefined' && _gw.grid) reach = gardenReachableFromArrival(Math.floor(p.x), Math.floor(p.y)); } catch (e) { reach = true; }
     if (reach) return p;
   }
@@ -69,6 +67,7 @@ function adStarsNow(N, m) {
     const p = adStarSpot(iso, N, m); if (!p) continue;
     const fallen = d > 0 || hN >= _adfHour(iso, N) || (_ad.dev.fall && d === 0);
     if (!fallen) continue;
+    if (out.some(o => Math.hypot(o.x - p.x, o.y - p.y) < 1.6)) continue;   // (nothing overlaps: a newer star came down here, and its crater is the one you see)
     out.push({ iso, nn: gtgDayNum(iso), x: p.x, y: p.y, age: d, fresh: d === 0, hour: _adfHour(iso, N) });
   }
   return out;
