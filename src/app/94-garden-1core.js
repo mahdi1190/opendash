@@ -41,7 +41,8 @@ const _GD_MAPS = ['dz', 'plants', 'decor', 'led', 'bank', 'wl', 'vd', 'disc', 'r
   'sp', 'vl',   // every catch as a record, and the variants found (94-garden-fish-8spec.js)
   'gl', 'gq', 'gv', 'glt',
   'wd',
-  'dr'];  // (build phase 1) where carried things were set down, one row per thing (94-garden-build-0rules.js)
+  'dr',  // (build phase 1) where carried things were set down, one row per thing (94-garden-build-0rules.js)
+  'pk'];  // (build2) which of your things are in which pocket slot, one row per slot (94-garden-build2-0rules.js)
   // what visitors did here, what is still to post to them, what you planted in friends' gardens, what they touched since the visit's copy (`glc`) (94-garden-live-*.js)
 function _gdG() {
   if (typeof state === 'undefined' || !state) { const z = { v: 1 }; for (const k of _GD_MAPS) z[k] = {}; return z; }
