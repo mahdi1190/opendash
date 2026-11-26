@@ -231,9 +231,12 @@ async function expenseTool(name, a) {
   if (name === 'create_split') {
     const thing = { kind: 'split', title: a.title, total: a.total, date: a.date || today, meIn: a.meIn, people: (a.people || []).map(n => ({ name: n })), paidBy: a.paidBy, note: a.note, source: { type: 'mcp' } };
     if (a.dryRun === true) {
-      const r = OW.computeSplit(a.total, thing.people.map(p => ({ key: OW.personKey(p.name) })), { meIn: a.meIn !== false });
-      if (r.error) fail(r.error);
-      return { dryRun: true, wouldCreate: { title: a.title, total: a.total, each: r.lines, yourShare: r.me } };
+      // Worked out exactly as the real one is (someone else paid: you owe them; the same names once), and saved nowhere.
+      const p = await OW.previewThing(DATA_DIR, thing, { today, home });
+      if (p.error) fail(p.error);
+      const t = p.thing;
+      return { dryRun: true, wouldCreate: { title: t.title, total: t.total, kind: t.kind, direction: t.kind === 'iowe' ? `the user owes ${p.names[t.payer] || t.payer}` : 'these people owe the user',
+        each: t.lines.map(l => ({ key: l.key, name: p.names[l.key] || l.key, owes: l.owes })), yourShare: t.myShare, ...(t.others ? { othersShares: t.others.map(o => ({ key: o.key, name: p.names[o.key] || o.key, amount: o.amount })) } : {}) } };
     }
     const r = await OW.createThing(DATA_DIR, thing, { today, home });
     if (r.error) fail(r.error);
