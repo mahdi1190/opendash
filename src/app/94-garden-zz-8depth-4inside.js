@@ -509,7 +509,7 @@ function _gdiStepUpload(rec) {   // into a texture, at its place; the standing p
   }
   // a shut stair: fallen rock with daylight through a crack (steps, a hatch), or an iron gate (an arch, an adit)
   for (const m of T.mouths) {
-    const key = rec.key + '|shut' + m.i, w = 64, h = 64, rock = m.by === 'steps' || m.by === 'hatch';
+    const key = rec.key + '|shut' + m.i, w = 64, h = 64, rock = m.by === 'steps' || m.by === 'hatch' || m.by === 'slab';
     if (!sc.textures.exists(key)) { const cv = document.createElement('canvas'); cv.width = w * 2; cv.height = h * 2; const x = cv.getContext('2d'); x.scale(2, 2); x.translate(w / 2, h - 10); if (rock) _gdiRockfall(x, _gdiRng(rec.seed + m.i * 7)); else _gdiGate(x); sc.textures.addImage(key, cv); rec.keys.push(key); }
     const mx = (m.pin.x + m.pout.x) / 2 + m.fx * 4, my = Math.max(m.pin.y, m.pout.y) + 2;
     const s = sc.add.image(mx, my, key).setOrigin(0.5, (h - 10) / h).setScale(0.5).setVisible(false); s.setDepth(my);

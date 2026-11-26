@@ -191,6 +191,51 @@
       void r;
     } });
   }
+  /** A secret way's mouth (94-garden-zz-8depth-7secret.js): an old flagstone with an iron ring, flush in the turf. Shut (nobody has found it,
+   *  or its land is not open): the slab lies in place, weathered, lichened, the grass grown in over its edges, the ring rusted in its recess:
+   *  part of the ground, it stops nobody. Open: the slab dragged aside on to the turf (a scraped trail where it went), and a stone-lined
+   *  hole with steps going down into the dark, a kerb of rough stones round it; the hole stops the feet, where you stand stays open. */
+  function slab(C, T, m, shut, seed) {
+    const { L, add, thing, kit, P } = C, O = opening(L, m), snowy = C.season === 'winter', leaf = P.leaf || ['#3f6534', '#557e40', '#7aa255', '#a8cc66'];
+    const sw = (O.x1 - O.x0) + 7, sh = (O.y1 - O.y0) + 5.5;
+    // the slab itself, drawn at (cx, cy): a big weathered flag, lit from the upper left, its ring in a worn recess
+    const flag = (B, r, cx, cy, tilt) => {
+      const pts = [[-sw / 2 + 1.4 + r(), -sh / 2 + r()], [sw / 2 - 1 - r(), -sh / 2 + 0.6 + r() * 0.6], [sw / 2 + r() * 0.6, sh / 2 - 1.2], [sw / 2 - 2.2, sh / 2 + r() * 0.5], [-sw / 2 + 1.6, sh / 2 - r() * 0.6], [-sw / 2 - r() * 0.5, -sh / 2 + 2.6]].map(([x, y]) => ({ x: cx + x + y * tilt, y: cy + y }));
+      B.f(B.poly(pts.map(p => ({ x: p.x + 1.6, y: p.y + 2 }))), '#1e1a14', 0.42);   // its lip, the dark crack round it
+      B.f(B.poly(pts), '#8a8476');
+      B.f(B.poly([pts[5], pts[0], pts[1], { x: cx + sw * 0.2, y: cy - sh * 0.1 }, { x: cx - sw * 0.3, y: cy + sh * 0.12 }]), '#a8a292', 0.75);   // lit from the upper left
+      B.f(B.poly([pts[2], pts[3], pts[4], { x: cx - sw * 0.1, y: cy + sh * 0.3 }, { x: cx + sw * 0.32, y: cy + sh * 0.12 }]), '#6c675b', 0.6);
+      for (let i = 0; i < 7; i++) { const lx = cx + (r() - 0.5) * sw * 0.8, ly = cy + (r() - 0.5) * sh * 0.7; B.f(B.ell(lx, ly, 1.4 + r() * 2.2, 0.8 + r() * 1.2), r() < 0.5 ? '#b8b46a' : '#9aa48a', 0.55); }   // lichen
+      B.s(`M${cx - sw * 0.38} ${cy - sh * 0.05}l${sw * 0.18} ${sh * 0.12}l${sw * 0.1} ${-sh * 0.04}`, '#4e4a40', 0.7, 0.6);   // a crack
+      B.f(B.ell(cx + 2, cy + 1, 5.2, 3.2), '#4a463c', 0.8).s(B.ell(cx + 2, cy + 0.6, 3.8, 2.2), '#5a3a24', 1.5, 0.95).s(B.ell(cx + 1.6, cy + 0.2, 3.8, 2.2), '#a06a3a', 0.6, 0.6);   // the ring, rusted in its recess
+    };
+    if (shut) {   // part of the ground: the slab in its bed, the grass grown in over its edges
+      add([O.cx - sw, O.cy - sh, O.cx + sw, O.cy + sh], seed, (B, r) => {
+        B.cx.save(); B.cx.filter = 'blur(2.5px)'; B.f(B.ell(O.cx, O.cy + 1, sw * 0.62, sh * 0.62), '#3e4a2c', 0.22); B.cx.filter = 'none'; B.cx.restore();
+        flag(B, r, O.cx, O.cy, 0);
+        if (snowy) { B.f(B.blob(r, O.cx - 3, O.cy - 2, sw * 0.42, sh * 0.32, 8, 0.4), '#f2f4f6', 0.85); return; }
+        for (let i = 0; i < 16; i++) { const a = r() * Math.PI * 2, x = O.cx + Math.cos(a) * sw * (0.46 + r() * 0.1), y = O.cy + Math.sin(a) * sh * (0.46 + r() * 0.1) + 1; B.tufts(r, x, y, 4, 2 + Math.floor(r() * 2), [leaf[1], leaf[2], leaf[3] || leaf[2]], 4 + r() * 2); }   // grass grown in round it
+        for (let i = 0; i < 3; i++) { const x = O.cx + (r() - 0.5) * sw * 0.7, y = O.cy + (r() - 0.5) * sh * 0.5; B.f(B.blob(r, x, y, 2.4 + r() * 2, 1.4, 6, 0.5), '#5e7a3a', 0.6); }   // moss in its cracks
+      });
+      return;
+    }
+    // open: worn earth round it, the slab dragged aside (a scraped trail), the hole with its steps and kerb
+    const side = m.fx ? 0 : (seed % 2 ? 1 : -1), dx = m.fx ? 0 : side * (sw * 0.95), dy = m.fx ? (sh * 0.95) * (seed % 2 ? 1 : -1) : 3;
+    add([O.x0 - 44, O.y0 - 34, O.x1 + 44, O.y1 + 34], seed, (B, r) => {
+      wear(B, r, O, P, false);
+      B.cx.save(); B.cx.filter = 'blur(1.5px)'; B.f(B.poly([{ x: O.cx - sw * 0.3, y: O.cy - 2 }, { x: O.cx + dx - sw * 0.3, y: O.cy + dy - 2 }, { x: O.cx + dx + sw * 0.3, y: O.cy + dy + 3 }, { x: O.cx + sw * 0.3, y: O.cy + 3 }]), '#6e5a3e', 0.35); B.cx.filter = 'none'; B.cx.restore();   // where it was dragged
+      flag(B, r, O.cx + dx, O.cy + dy, 0.12);
+    });
+    const X0 = O.x0 - (m.fx > 0 ? 0 : 4), X1 = O.x1 + (m.fx < 0 ? 0 : 4), Y0 = O.y0 - 2.8, Y1 = O.y1 + 3.5, ax = (X0 + X1) / 2, ay = Y1 - 2;
+    thing({ key: 'dp-slab|' + T.id + '|' + m.i + '|' + C.season, x: ax, y: ay, depth: Y0 + 0.5, K: 1.6, shade: false, box: [X0 - ax - 10, Y0 - ay - 10, X1 - ax + 10, 10], foot: [X0 - ax, X1 - ax, ay - Y0], draw: (B) => {
+      const r = kit.rng(seed); B.cx.save(); B.cx.translate(-ax, -ay);
+      kerb(B, r, O, ['#6e6a5e', '#8e887a', '#aaa494']);
+      treads(B, O, 6, '#b8b29e');
+      for (let i = 0; i < 5; i++) { const x = O.x0 + r() * (O.x1 - O.x0), y = (m.fy < 0 ? O.y1 : O.y0) + (r() - 0.5) * 2; B.f(B.ell(x, y, 1.4 + r(), 0.8), '#3a342a', 0.6); }   // grit fallen in from the edge
+      if (snowy) B.f(B.ell(O.cx, O.y0 - 2, (O.x1 - O.x0) / 2 + 4, 2.2), '#f2f4f6', 0.85);
+      B.cx.restore();
+    } });
+  }
   function compose(C) {
     if (typeof gardenTunnels !== 'function') return;
     let list = []; try { list = gardenTunnels() || []; } catch (e) { list = []; }
@@ -199,7 +244,7 @@
       let open = null; try { open = typeof _gdtOpen === 'function' ? _gdtOpen(T) : null; } catch (e) { open = null; }
       for (const m of T.mouths) {
         const shut = !!(open && !open[m.i]), seed = (C.kit.hashStr(T.id) + m.i * 101) % 100000 + 7;
-        try { ({ hatch, arch, adit, steps })[m.by](C, T, m, shut, seed); } catch (e) { console.error('[garden depth] mouth', T.id, m.i, e); }
+        try { ({ hatch, arch, adit, steps, slab })[m.by](C, T, m, shut, seed); } catch (e) { console.error('[garden depth] mouth', T.id, m.i, e); }
       }
     }
   }

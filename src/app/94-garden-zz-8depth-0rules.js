@@ -100,7 +100,8 @@ function gardenUnderInZone(z, x, y, W) {
    pw: [k, id, n]  k 'o' up on a floor (id the thing, n the floor's index), 'u' beneath a raised thing (id the crossing's or the thing's id),
                    't' inside a tunnel (id the tunnel's id, n its chamber); omitted on the ground. Never a reason to send the garden again.
    dp: { t: [[tunnelId, bits]], l: [[tunnelId, chamber, colour]] }   the tunnels' state friends must see (the depth lane's tunnels). */
-const GARDEN_DEPTH_WIRE = Object.freeze({ id: /^[a-z0-9-]{1,32}$/, places: Object.freeze(['o', 'u', 't']), tunnels: 16, lamps: 48 });
+const GARDEN_DEPTH_WIRE = Object.freeze({ id: /^[a-z0-9-]{1,32}$/, places: Object.freeze(['o', 'u', 't']), tunnels: 16, lamps: 48, finds: 32,
+  bits: Object.freeze({ walked: 1, opened: 2, lamp: 4, alcove: 8 }) });   // dp.t bits: walked through, its secret way opened, a lamp hung, its hidden alcove opened
 /** Copy the depth fields of a snapshot that pass, into out (gardenSnapshotClean). An older app's snapshot has neither. */
 function gardenDepthClean(raw, out) {
   if (!raw || !out) return out;
@@ -111,7 +112,9 @@ function gardenDepthClean(raw, out) {
   if (dp && typeof dp === 'object' && !Array.isArray(dp)) {
     const t = Array.isArray(dp.t) ? dp.t.filter(r => Array.isArray(r) && r.length === 2 && typeof r[0] === 'string' && W.id.test(r[0]) && int(r[1], 0, 255)).slice(0, W.tunnels).map(r => [r[0], r[1]]) : [];
     const l = Array.isArray(dp.l) ? dp.l.filter(r => Array.isArray(r) && r.length === 3 && typeof r[0] === 'string' && W.id.test(r[0]) && int(r[1], 0, 15) && int(r[2], 0, 15)).slice(0, W.lamps).map(r => [r[0], r[1], r[2]]) : [];
-    if (t.length || l.length) { out.dp = {}; if (t.length) out.dp.t = t; if (l.length) out.dp.l = l; }
+    // k: what the gardener has found under the vale (keepsake ids, 94-garden-zz-8depth-6finds.js): friends read it in the journal's Under the vale page
+    const k = Array.isArray(dp.k) ? [...new Set(dp.k.filter(v => typeof v === 'string' && W.id.test(v)))].slice(0, W.finds) : [];
+    if (t.length || l.length || k.length) { out.dp = {}; if (t.length) out.dp.t = t; if (l.length) out.dp.l = l; if (k.length) out.dp.k = k; }
   }
   return out;
 }
@@ -156,11 +159,11 @@ const GARDEN_CHAMBERS = Object.freeze({
   echo: Object.freeze({ piece: 'none', lamp: false, echo: true, words: 'an echoing chamber' }),
 });
 const GT_FACE = Object.freeze({ n: Object.freeze([0, -1]), s: Object.freeze([0, 1]), e: Object.freeze([1, 0]), w: Object.freeze([-1, 0]) });
-const GT_BY = Object.freeze(['hatch', 'arch', 'adit', 'steps']);
+const GT_BY = Object.freeze(['hatch', 'arch', 'adit', 'steps', 'slab']);   // (slab: an old flagstone with a ring, flush in the turf: a secret way's mouth, 94-garden-zz-8depth-7secret.js)
 /** A tunnel row placed at (x, y) (cells: its first mouth's threshold), in world px. Pure. */
 function gardenTunnelGeom(row, x, y, W) {
   const T = GARDEN_TUNNEL, cw = W.cellW, chh = W.cellH, P = (cx, cy) => ({ x: cx * cw, y: W.sky + cy * chh });
-  const out = { id: String(row && row.id || ''), name: String(row && row.name || 'the tunnel').slice(0, 40), style: GARDEN_TUNNEL_STYLES[row && row.style] ? row.style : 'drift', x, y, mouths: [], segs: [], ells: [], stairs: [], fault: '', box: [0, 0, 0, 0], cbox: [0, 0, 0, 0] };
+  const out = { id: String(row && row.id || ''), name: String(row && row.name || 'the tunnel').slice(0, 40), style: GARDEN_TUNNEL_STYLES[row && row.style] ? row.style : 'drift', x, y, mouths: [], segs: [], ells: [], stairs: [], fault: '', box: [0, 0, 0, 0], cbox: [0, 0, 0, 0], secret: !!(row && row.secret) };   // (secret: its mouths lie hidden until someone finds and opens them, 94-garden-zz-8depth-7secret.js)
   if (!/^[a-z0-9-]{1,32}$/.test(out.id)) { out.fault = 'its id'; return out; }
   if (!Number.isFinite(x) || !Number.isFinite(y)) { out.fault = 'no place'; return out; }
   const width = Math.max(1, Math.min(3, Number(row.width) || 1.5)), r = width * T.pr;
@@ -179,7 +182,9 @@ function gardenTunnelGeom(row, x, y, W) {
   }
   (Array.isArray(row.chambers) ? row.chambers : []).slice(0, 15).forEach((c, i) => {
     const at = pts(c && c.at), rr = Array.isArray(c && c.r) ? c.r : [1.2, 0.8]; if (!at) return;
-    const p = P(at[0], at[1]); out.ells.push({ i, x: p.x, y: p.y, rx: Math.max(30, Math.min(150, (+rr[0] || 1.2) * cw)), ry: Math.max(22, Math.min(80, (+rr[1] || 0.8) * chh)), what: GARDEN_CHAMBERS[c.what] ? c.what : 'echo', cx: at[0], cy: at[1], rect: out.style === 'cellar' || out.style === 'vault' });   // (a built room is square, a cave rounded)
+    const p = P(at[0], at[1]); out.ells.push({ i, x: p.x, y: p.y, rx: Math.max(30, Math.min(150, (+rr[0] || 1.2) * cw)), ry: Math.max(22, Math.min(80, (+rr[1] || 0.8) * chh)), what: GARDEN_CHAMBERS[c.what] ? c.what : 'echo', cx: at[0], cy: at[1], rect: out.style === 'cellar' || out.style === 'vault',
+      // (what lies here to be found, and a hidden alcove in its back wall: 94-garden-zz-8depth-6finds.js, 7secret.js; dx: a share of the chamber's half width)
+      find: typeof c.find === 'string' && /^[a-z0-9-]{1,32}$/.test(c.find) ? c.find : '', alcove: c.alcove && typeof c.alcove === 'object' ? { dx: Math.max(-0.9, Math.min(0.9, Number(c.alcove.dx) || 0)), find: typeof c.alcove.find === 'string' && /^[a-z0-9-]{1,32}$/.test(c.alcove.find) ? c.alcove.find : '' } : null });   // (a built room is square, a cave rounded)
   });
   for (const m of out.mouths) out.stairs.push({ m: m.i, ax: m.pin.x, ay: m.pin.y, bx: m.pout.x, by: m.pout.y, r: T.stairR });
   if (!out.segs.length && !out.ells.length) { out.fault = 'no passage'; return out; }

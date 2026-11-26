@@ -525,7 +525,7 @@ function _glhApply(ev, key) {
       gardenOpApply(g, op, f, W);
       return put(mark, { u: d.uid, noUndo: !!rec.own || !!back, ...(gi ? { gi } : {}) });
     }
-    case 'land': case 'build': case 'gate': case 'solve': return _glhLand(ev, put, m);
+    case 'land': case 'build': case 'gate': case 'solve': case 'tunnel': return _glhLand(ev, put, m);   // (tunnel: the depth lane's ways underground, 94-garden-zz-8depth-7secret.js wraps _glhLand)
     case 'grab': case 'set': return typeof gardenDropIntent === 'function' ? gardenDropIntent(ev, put) : 'kind';   // (build phase 1: 94-garden-build-1do.js)
     case 'give': {
       if (!mine) return 'not-yours';
