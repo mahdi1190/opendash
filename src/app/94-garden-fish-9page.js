@@ -47,6 +47,7 @@ function _gcpTackleCard(d, m) {
 }
 /** On a card in your bag: let it go, give it to the hall. */
 function gardenBagExtras(f, kind, r) {
+  if (typeof gardenB2BagExtras === 'function' && gardenB2BagExtras(f, kind, r)) return;   // (build2) new for the museum, let it go (94-garden-build2-2catch.js)
   if (kind === 'fish' && r.def.cat !== 'fish') return;
   const hall = _gca().hall || {}, given = (kind === 'bug' ? hall.b : hall.f) || {};
   if (!given[r.id]) f.appendChild(_gdpBtn('', { icon: 'landmark', kind: 'btn-ghost', aria: 'Give it to the lake hall', tip: 'Give it to the lake hall', run: () => _gcpSay(gardenHallGive(kind === 'bug' ? 'bug' : 'fish', r.id)) }));
@@ -174,6 +175,7 @@ function _gcpBugKit(el) {
 
 /* ---------- the lake hall ---------- */
 function gardenHallTab(el) {
+  if (typeof gardenMuseumTab === 'function') { gardenMuseumTab(el, typeof gardenModel === 'function' ? gardenModel() : null); return; }   // (build2) the lake hall is part of the Vale Museum now
   const visit = _gcaOnVisit(), ca = gardenCatchHere(), hall = _gca().hall || {};
   const fish = visit ? (ca.hf || []) : Object.keys(hall.f || {}), bugs = visit ? (ca.hb || []) : Object.keys(hall.b || {}), total = visit ? Number(ca.ha) || 0 : fish.length + bugs.length, tier = gardenHallTier(total), next = GARDEN_HALL_TIERS[tier + 1];
   const H = _gdpEl('section', 'card gca-card gca-hall'), art = _gdpEl('div', 'gca-hall-art');

@@ -50,7 +50,7 @@ function gardenPopupOpen(tab, o) {
   // the old books are pages of the Field Journal now: their ways in open it
   if (tab === 'nature' || tab === 'wonder' || tab === 'goals') { if (typeof _gj !== 'undefined') _gj.sec = tab === 'wonder' ? 'stories' : 'creatures'; tab = 'journal'; o = { title: 'Field Journal' }; }
   if (tab === 'catch' && ['fish', 'bugs', 'best', 'map'].includes(o.sub)) { if (typeof _gj !== 'undefined') { _gj.sec = o.sub === 'best' ? 'photos' : 'creatures'; if (o.sub === 'bugs') _gj.kind = 'bug'; else if (o.sub === 'fish') _gj.kind = 'fish'; } tab = 'journal'; o = { title: 'Field Journal' }; }
-  const def = _GDPOP[tab];
+  const def = _GDPOP[tab] || (typeof gardenB2Popup === 'function' ? gardenB2Popup(tab) : null);   // (build2: the museum, 94-garden-build2-3museum.js)
   if (!def) return;
   if (!gardenEnsure()) return;
   if (tab === 'catch' && o.sub) { try { _gdG().prefs.catchTab = o.sub; } catch (e) { /* fine */ } }
@@ -139,9 +139,9 @@ function gardenPopupRefresh() {
   if (P.tab === 'tricks') return;   // the book has its own stage: it paints itself
   const details = [...scroller.querySelectorAll('details')].map(el => ({ key: _gdpopPart(el), open: el.open }));
   if (P.tab !== 'friends' && P.tab !== 'craft' && P.tab !== 'play') scroller.textContent = '';   // Play reconciles its connected keyed cards
-  const def = _GDPOP[P.tab];
+  const def = _GDPOP[P.tab] || (typeof gardenB2Popup === 'function' ? gardenB2Popup(P.tab) : null);
   if (P.tab === 'friends') { if (typeof gardenFriendsTabRepaint === 'function') gardenFriendsTabRepaint(); }
-  else def.fill(scroller, gardenModel());
+  else if (def) def.fill(scroller, gardenModel());
   if (_gdp.pop !== P || !scroller.isConnected) return;
   for (const saved of details) { const el = _gdpopFindPart(scroller, saved.key); if (el && el.open !== saved.open) el.open = saved.open; }
   scroller.scrollTop = y; scroller.scrollLeft = x;

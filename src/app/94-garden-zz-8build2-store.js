@@ -290,6 +290,7 @@ function _gb2StoreWalk() {
 }
 /** The chest's prompt: any thing of a kind that stores, in reach, in your own garden ("E Open your storage"). */
 function gardenB2ActRows(px, py, rows) {
+  if (typeof gardenMuseumActRows === 'function') gardenMuseumActRows(px, py, rows);   // any museum's door, yours or a friend's (94-garden-build2-3museum.js)
   if (!gardenB2On() || typeof gardenAffordThings !== 'function') return;
   let m = null; try { m = gardenHere(); } catch (e) { return; }
   if (!m || m.visit) return;   // (a friend's chest is theirs: a shared chest is for later)

@@ -201,3 +201,141 @@ html[data-theme="dark"] .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-slot.
   .gd-page .gd-stagebox.gd-stagebox.gd-stagebox :is(.gb2-slot, .gb2-act, .gd-hotbar.gb2-on .gd-slot.gb2-tool) { transition: none; }
   .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on :is(.gb2-bagbtn.is-bump, .gb2-bagbtn.is-full-shake, .gb2-tag, .gd-slot.gb2-held) { animation: none; }
 }
+
+/* ============================================================
+   BUILD 2: THE VALE MUSEUM (src/app/94-garden-build2-3museum.js), a pop-up like the journal's. A gallery's own colours: cream walls over
+   a wainscot of oak, brass plates under every case, the wing's keeper in an arched niche. The catch card's choices and the journal's stamp.
+   ============================================================ */
+.modal.gd-popup-museum { --mu-wall: #f7efdc; --mu-wall-2: #ecdfc1; --mu-card: #fffaf0; --mu-line: #dcc59b; --mu-line-2: #c3a574; --mu-ink: #3b2a1a; --mu-ink-2: #6b5236;
+  --mu-wood: #8a5e36; --mu-wood-2: #5e4027; --mu-brass: #c8962e; --mu-brass-2: #f2d27a; --mu-felt: #3e5e4e; --mu-serif: Georgia, "Iowan Old Style", "Palatino Linotype", serif; }
+html[data-theme="dark"] .modal.gd-popup-museum { --mu-wall: #33281e; --mu-wall-2: #2a2118; --mu-card: #3a2d21; --mu-line: #57432f; --mu-line-2: #745a40; --mu-ink: #f5e9d1; --mu-ink-2: #d2bf9c; --mu-wood: #5a3d24; --mu-wood-2: #3e2a18; }
+.gmu { display: flex; flex-direction: column; gap: 12px; color: var(--mu-ink); min-width: 0; }
+.gmu-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.gmu-tab { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px 10px 14px; border-radius: 12px; border: 2px solid var(--mu-line); background: var(--mu-card); color: var(--mu-ink); text-align: left; cursor: pointer; font: inherit; transition: border-color .15s, transform .15s; }
+.gmu-tab:hover { border-color: var(--mu-line-2); transform: translateY(-1px); }
+.gmu-tab[aria-selected="true"] { border-color: var(--mu-brass); background: linear-gradient(180deg, var(--mu-card), var(--mu-wall-2)); box-shadow: 0 2px 0 rgba(94, 64, 39, .22); }
+.gmu-tab svg { flex: none; width: 20px; height: 20px; color: var(--mu-wood); }
+.gmu-tab.is-shut svg { opacity: .55; }
+.gmu-tab-t { min-width: 0; display: flex; flex-direction: column; }
+.gmu-tab-t b { font-family: var(--mu-serif); font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gmu-tab-t small { font-size: .74rem; color: var(--mu-ink-2); }
+.gmu-tab-bar { position: absolute; left: 10px; right: 10px; bottom: 6px; height: 4px; border-radius: 2px; background: rgba(94, 64, 39, .16); overflow: hidden; }
+.gmu-tab-bar::after { content: ''; position: absolute; inset: 0 auto 0 0; width: calc(var(--f, 0) * 100%); background: linear-gradient(90deg, var(--mu-brass), var(--mu-brass-2)); border-radius: 2px; }
+.gmu-tab.is-done { border-color: var(--mu-brass); }
+.gmu-tab.is-done::after { content: '\2605'; position: absolute; top: 4px; right: 8px; color: var(--mu-brass); font-size: .9rem; }
+.gmu-body { display: grid; grid-template-columns: 214px minmax(0, 1fr); gap: 14px; align-items: start; }
+.gmu-guide { position: sticky; top: 0; display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+.gmu-niche { position: relative; height: 158px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden;
+  border-radius: 100px 100px 12px 12px; border: 3px solid var(--mu-line-2);
+  background: radial-gradient(ellipse at 50% 30%, #fff8e6 0%, var(--mu-wall) 50%, var(--mu-wall-2) 100%); box-shadow: inset 0 -26px 0 var(--mu-wood), inset 0 -29px 0 var(--mu-wood-2), inset 0 6px 14px rgba(70, 46, 20, .16); }
+.gmu-keeper { height: 136px; width: auto; margin-bottom: 8px; overflow: visible; }
+.gmu-face { margin: auto; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--mu-wood); color: #fff6e4; font: 700 1.8rem var(--mu-serif); }
+.gmu-who { font-family: var(--mu-serif); font-size: 1.05rem; text-align: center; margin-top: 4px; }
+.gmu-role { text-align: center; color: var(--mu-ink-2); font-size: .78rem; margin-top: -2px; }
+.gmu-say { position: relative; margin-top: 10px; padding: 10px 12px; border-radius: 14px; border: 2px solid var(--mu-line); background: var(--mu-card); font-size: .9rem; line-height: 1.42; box-shadow: 0 2px 0 rgba(94, 64, 39, .16); }
+.gmu-say::before { content: ''; position: absolute; top: -9px; left: 50%; width: 14px; height: 14px; background: var(--mu-card); border-left: 2px solid var(--mu-line); border-top: 2px solid var(--mu-line); transform: translateX(-50%) rotate(45deg); }
+.gmu-say p { margin: 0; }
+.gmu-say-a { font-weight: 600; }
+.gmu-say .gmu-say-b { margin-top: 6px; color: var(--mu-ink-2); }
+.gmu-say.is-new { animation: gmu-pop .5s cubic-bezier(.2, .9, .3, 1.3); }
+@keyframes gmu-pop { from { transform: scale(.92); opacity: .4; } to { transform: none; opacity: 1; } }
+.gmu-hall { min-width: 0; padding: 12px 12px 14px; border-radius: 14px; border: 2px solid var(--mu-line);
+  background: linear-gradient(180deg, var(--mu-wall) 0%, var(--mu-wall) calc(100% - 46px), var(--mu-wood) calc(100% - 46px), var(--mu-wood) calc(100% - 40px), var(--mu-wood-2) calc(100% - 40px), var(--mu-wood-2) 100%); }
+.gmu-hall-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 10px; }
+.gmu-hall-h h3 { margin: 0; font-family: var(--mu-serif); font-size: 1.15rem; }
+.gmu-hall-h p { margin: 0; color: var(--mu-ink-2); font-size: .82rem; }
+.gmu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px 10px; }
+.gmu-ex { display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; text-align: center; }
+.gmu-ex:focus-visible { outline: 3px solid #2c5d94; outline-offset: 3px; border-radius: 8px; }
+.gmu-case { position: relative; display: block; height: 84px; border-radius: 8px; overflow: hidden; transition: transform .15s; }
+.gmu-ex:hover .gmu-case { transform: translateY(-2px); }
+.gmu-ex.is-pick .gmu-case { box-shadow: 0 0 0 3px var(--mu-brass-2), 0 0 0 5px var(--mu-brass); }
+.gmu-ex.is-new .gmu-case { animation: gmu-glow 1.4s ease-out 2; }
+@keyframes gmu-glow { 0% { box-shadow: 0 0 0 0 rgba(242, 210, 122, .9); } 100% { box-shadow: 0 0 0 14px rgba(242, 210, 122, 0); } }
+.gmu-case svg { display: block; }
+/* a tank: an oak frame round the glass, water, gravel, weed that sways, bubbles, and the fish swimming to and fro */
+.gmu-case-tank .gmu-ex.is-on .gmu-case { border: 3px solid #5e4027; border-top-width: 6px; border-bottom-width: 5px; background: #2c5c68; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22), 0 3px 0 rgba(40, 26, 12, .28); }
+.gmu-tankbg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gmu-swim { position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%); animation: gmu-swim 9s ease-in-out infinite; }
+.gmu-swim svg { width: 58px; height: 58px; filter: drop-shadow(0 3px 2px rgba(10, 30, 36, .3)); }
+@keyframes gmu-swim { 0% { transform: translate(-74%, -50%) scaleX(1); } 44% { transform: translate(-26%, -58%) scaleX(1); } 50% { transform: translate(-26%, -58%) scaleX(-1); } 94% { transform: translate(-74%, -50%) scaleX(-1); } 100% { transform: translate(-74%, -50%) scaleX(1); } }
+.gmu-weed { transform-origin: 50% 100%; transform-box: fill-box; animation: gmu-weed 4.6s ease-in-out infinite; }
+.gmu-weed.is-b { animation-duration: 5.8s; animation-delay: -2s; }
+@keyframes gmu-weed { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(6deg); } }
+.gmu-bub { position: absolute; left: 76%; bottom: 14px; width: 4px; height: 4px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .7); animation: gmu-bub 3.2s ease-in infinite; }
+.gmu-bub.is-b { left: 18%; width: 3px; height: 3px; animation-delay: -1.6s; animation-duration: 4.1s; }
+@keyframes gmu-bub { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: .9; } 100% { transform: translateY(-62px); opacity: 0; } }
+/* a glass dome on a stand, a twig inside, the bug on it */
+.gmu-case-jar .gmu-ex.is-on .gmu-case { background: radial-gradient(ellipse at 50% 34%, #fffaec 0%, #efe2c2 70%, #e2d2ac 100%); border: 2px solid var(--mu-line); }
+.gmu-jarbg, .gmu-jarglass { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gmu-jarglass { z-index: 2; pointer-events: none; }
+.gmu-perch { position: absolute; left: 50%; top: 42%; z-index: 1; transform: translate(-50%, -50%); animation: gmu-bob 3.6s ease-in-out infinite; }
+.gmu-perch svg { width: 48px; height: 48px; }
+@keyframes gmu-bob { 0%, 100% { transform: translate(-50%, -50%); } 50% { transform: translate(-50%, -56%) rotate(2deg); } }
+/* a plinth of stone in the gallery, the bone on top; a whole skeleton across two places */
+.gmu-case-plinth .gmu-ex.is-on .gmu-case { background: linear-gradient(180deg, #f2ebda, #e2d6bc); border: 2px solid #cfc3a8; }
+.gmu-on { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); }
+.gmu-on svg { width: 54px; height: 54px; }
+.gmu-plinthbg { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 26px; }
+.gmu-skel { grid-column: span 2; cursor: default; }
+.gmu-skelcase { display: flex !important; align-items: flex-end; justify-content: center; gap: 2px; background: linear-gradient(180deg, #f2ebda, #ddd0b2); border: 2px solid var(--mu-brass); }
+.gmu-skelcase svg { max-height: 82px; width: auto; }
+/* a framed shadow box, the curio pinned on felt */
+.gmu-case-frame .gmu-ex.is-on .gmu-case { padding: 6px; background: linear-gradient(135deg, #9a6a40, #6a4426); box-shadow: inset 0 0 0 1px rgba(255, 220, 170, .3), 0 3px 0 rgba(40, 26, 12, .3); }
+.gmu-frame { display: grid; place-items: center; height: 100%; border-radius: 3px; background: radial-gradient(circle at 50% 40%, #557a68, var(--mu-felt)); box-shadow: inset 0 3px 8px rgba(0, 0, 0, .45); }
+.gmu-felt svg { width: 46px; height: 46px; filter: drop-shadow(0 2px 1px rgba(0, 0, 0, .4)); }
+/* an empty place: a dashed outline, the shape of what goes there once you have found one */
+.gmu-ex.is-empty .gmu-case { border: 2px dashed var(--mu-line-2); background: rgba(255, 250, 236, .5); display: grid; place-items: center; }
+html[data-theme="dark"] .gmu-ex.is-empty .gmu-case { background: rgba(0, 0, 0, .12); }
+.gmu-sil svg { width: 54px; height: 54px; filter: brightness(0); opacity: .18; }
+.gmu-q { font: 700 1.6rem var(--mu-serif); color: var(--mu-line-2); }
+.gmu-plate { display: block; min-width: 0; padding: 3px 6px 4px; border-radius: 4px; background: linear-gradient(180deg, #ecca72, #c8962e); color: #3a2a10; box-shadow: 0 1px 0 rgba(40, 26, 10, .3), inset 0 1px 0 rgba(255, 248, 220, .6); }
+.gmu-plate b { display: block; font-family: var(--mu-serif); font-size: .8rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gmu-plate small { display: block; font-size: .66rem; line-height: 1.2; color: #5a4220; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gmu-ex.is-empty .gmu-plate { background: none; box-shadow: none; color: var(--mu-ink-2); border: 1px dashed var(--mu-line); }
+.gmu-ex.is-empty .gmu-plate small { color: var(--mu-ink-2); }
+.gmu-pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; }
+.gmu-pg { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--mu-line-2); background: var(--mu-card); color: var(--mu-ink); cursor: pointer; }
+.gmu-pg:disabled { opacity: .4; cursor: default; }
+.gmu-pgat { color: #fff6e4; font-size: .82rem; text-shadow: 0 1px 0 rgba(0, 0, 0, .4); }
+.gmu-give { padding: 10px 12px 12px; border-radius: 14px; border: 2px solid var(--mu-line); background: var(--mu-card); }
+.gmu-give h4 { margin: 0 0 8px; font-family: var(--mu-serif); font-size: 1rem; }
+.gmu-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.gmu-chip { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 5px 6px 5px 5px; border-radius: 12px; border: 2px solid var(--mu-line); background: var(--mu-wall); color: var(--mu-ink); font: inherit; cursor: pointer; text-align: left; transition: transform .15s, border-color .15s; }
+.gmu-chip:hover { transform: translateY(-1px); border-color: var(--mu-brass); }
+.gmu-chip:focus-visible { outline: 3px solid #2c5d94; outline-offset: 2px; }
+.gmu-chip-art svg { width: 34px; height: 34px; display: block; }
+.gmu-chip-t { display: flex; flex-direction: column; min-width: 0; }
+.gmu-chip-t b { font-size: .84rem; white-space: nowrap; }
+.gmu-chip-t small { font-size: .7rem; color: var(--mu-ink-2); white-space: nowrap; }
+.gmu-chip-go { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; background: var(--gu-leaf, #4a7330); color: #fffaf0; font-size: .78rem; font-weight: 700; }
+.gmu-chip-go svg { width: 14px; height: 14px; }
+.gmu-chip.is-home .gmu-chip-go { background: #5e7c8a; }
+.gmu-none, .gmu-more { margin: 0; color: var(--mu-ink-2); font-size: .85rem; }
+.gmu-more { margin-top: 6px; }
+.gmu-foot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; color: var(--mu-ink-2); font-size: .85rem; }
+.gmu-foot b { color: var(--mu-ink); font-family: var(--mu-serif); font-size: 1.02rem; }
+@media (max-width: 760px) {
+  .gmu-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gmu-body { grid-template-columns: minmax(0, 1fr); }
+  .gmu-guide { position: static; display: grid; grid-template-columns: 96px minmax(0, 1fr); grid-template-rows: auto auto 1fr; column-gap: 12px; align-items: start; }
+  .gmu-niche { grid-row: 1 / span 3; height: 112px; }
+  .gmu-keeper { height: 96px; }
+  .gmu-who, .gmu-role { text-align: left; }
+  .gmu-say { margin-top: 4px; }
+  .gmu-say::before { display: none; }
+}
+/* the Field Journal: a museum stamp on a card whose kind is on show */
+.gj-card .gmu-jstamp { position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: #c8962e; color: #fffaf0; transform: rotate(-12deg); box-shadow: 0 1px 0 rgba(40, 26, 10, .35); }
+.gj-card .gmu-jstamp svg { width: 12px; height: 12px; }
+/* the catch card's choices, the moment you land it */
+.gd-catchcard .gb2-ccacts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px; }
+.gd-catchcard .gb2-ccnew { display: inline-flex; align-items: center; gap: 4px; color: #8a5a10; font-style: normal; font-weight: 700; font-size: .78rem; }
+html[data-theme="dark"] .gd-catchcard .gb2-ccnew { color: #f2c860; }
+.gd-catchcard .gb2-ccnew svg { width: 14px; height: 14px; }
+.gd-catchcard .gb2-ccbtn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; border: 2px solid rgba(94, 64, 39, .35); background: rgba(255, 250, 240, .92); color: #3b2a1a; font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
+.gd-catchcard .gb2-ccbtn:hover { border-color: #d99a14; }
+.gd-catchcard .gb2-ccbtn svg { width: 14px; height: 14px; }
+@media (prefers-reduced-motion: reduce) {
+  .gmu-swim, .gmu-perch, .gmu-weed, .gmu-bub, .gmu-say.is-new, .gmu-ex.is-new .gmu-case { animation: none; }
+}

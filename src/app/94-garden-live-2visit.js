@@ -255,6 +255,7 @@ function _glvResult(b) {
     const P = _glv.pending.get(b.i);
     _glv.pending.delete(b.i);
     if (P) _glvEcho(P.t, P.f);
+    if (P && P.t === 'donate' && typeof gardenB2VisitDone === 'function') { try { gardenB2VisitDone(b, P); } catch (e) { /* said next time */ } }   // (build2) your gift is in their museum
     const g = _gdG(), led = g.led['gl.o.' + b.i];
     if (led && !led.ok) { _glvSettled(b.i, led, b.t); _gscSaveGarden(); }
     if (b.t === 'water') _gscXp('water', _glv.fid, _gllToday());

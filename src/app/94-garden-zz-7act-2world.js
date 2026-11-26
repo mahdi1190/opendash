@@ -120,7 +120,7 @@ function gardenActThingProp(id) {
     if (t.id !== id || t.src !== 'thing') continue;
     const K = GARDEN_KINDS[t.kind]; if (!K || !K.paint) return null;
     const w = t.w || K.w || 1, h = t.h || K.h || 1, mv = typeof gartActMovedTo === 'function' ? gartActMovedTo(t.id) : null, fx = mv ? mv.x : t.x, fy = mv ? mv.y : t.y;
-    return { id: t.id, art: K.paint, kind: K.paint, x: Math.round((fx - w / 2) * 100) / 100, y: Math.round((fy - h) * 100) / 100, w, h, name: t.name || K.name, thing: true };
+    return { id: t.id, art: K.paint, kind: K.paint, x: Math.round((fx - w / 2) * 100) / 100, y: Math.round((fy - h) * 100) / 100, w, h, name: t.name || K.name, thing: true, ...(K.door ? { door: { x: Math.round((fx - 0.5) * 100) / 100, y: Math.round((fy - 0.5) * 100) / 100 } } : {}) };   // (build2: a building's door, in the middle of its front: the worn way to the path starts there)
   }
   return null;
 }
@@ -132,6 +132,7 @@ function gardenActThingSolids() {
     // a kind drawn here (_GAW_ART) that says it stops the feet (solid 'block': a band's pitch, a log seat, a campfire) stops them along its
     // whole drawn foot, a little in from each end; its places to stand are in front, clear of it (each kind's acts' stand points)
     if (!K.paint && K.solid === 'block' && K.art && !(typeof gartActCarried === 'function' && gartActCarried(t.id))) { const mv = typeof gartActMovedTo === 'function' ? gartActMovedTo(t.id) : null, x = mv ? mv.x : t.x, y = mv ? mv.y : t.y, bw = (t.w || K.w || 1) * 0.9; out.push({ x0: x - bw / 2, y0: y - 0.3, x1: x + bw / 2, y1: y - 0.02, src: 'placed ' + t.kind + ' [thing:' + t.id + ']' }); continue; }
+    if (K.paint && K.fill) { const w = t.w || K.w || 1, h = t.h || K.h || 1; out.push({ x0: t.x - w / 2 + 0.08, y0: t.y - h + 0.15, x1: t.x + w / 2 - 0.08, y1: t.y - 0.06, src: 'placed ' + t.kind + ' [thing:' + t.id + ']' }); continue; }   // (build2: a building placed as data stops the feet over its whole footprint)
     if (!K.paint) continue; const bw = Math.min(t.w || 1, 2) * 0.5, foot = t.y - 0.08; out.push({ x0: t.x - bw / 2, y0: foot - 0.28, x1: t.x + bw / 2, y1: foot, src: 'placed ' + t.kind + ' [thing:' + t.id + ']' }); }
   return out;
 }

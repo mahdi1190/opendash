@@ -1969,7 +1969,7 @@ function _gwPetFrame(dt) {
  * a rectangle `tall` rows high, and the lawn in front of the shop opened the shop). Without a pointer: its footprint.
  */
 function _gwPropAtPt(wx, wy, ev) {
-  if (ev && (window.GardenNative && GardenNative.active() || window.GardenPhaser && GardenPhaser.active(_gw.svg))) { const hit = gardenWorldVisualPick(ev); if (!hit || !hit.prop) return null; const p = gardenPropsNow().find(x => x.id === hit.prop) || gardenLandSiteProp(hit.prop); return p && p.act ? p : null; }
+  if (ev && (window.GardenNative && GardenNative.active() || window.GardenPhaser && GardenPhaser.active(_gw.svg))) { const hit = gardenWorldVisualPick(ev); if (!hit || !hit.prop) return null; const p = gardenPropsNow().find(x => x.id === hit.prop) || gardenLandSiteProp(hit.prop) || (typeof gardenB2PropAt === 'function' ? gardenB2PropAt(hit.prop) : null); return p && p.act ? p : null; }
   if (ev && ev.clientX != null && typeof document.elementFromPoint === 'function') {
     const el = document.elementFromPoint(ev.clientX, ev.clientY), g = el && el.closest ? el.closest('.gd-prop[data-prop]') : null;
     if (g) { const id = g.getAttribute('data-prop'), p = gardenPropsNow().find(x => x.id === id) || gardenLandSiteProp(id); if (p && p.act) return p; }
@@ -1979,6 +1979,7 @@ function _gwPropAtPt(wx, wy, ev) {
 }
 function _gwOpenProp(p) {
   if (!p) return;
+  if (typeof gardenB2OpenProp === 'function' && gardenB2OpenProp(p)) return;   // (build2) a museum's door opens the museum, whichever building it is (94-garden-build2-3museum.js)
   const go = {
     tackle: () => gardenPopupOpen('catch', { sub: 'tackle', title: 'Tackle shop' }), journal: () => gardenJournalOpen(),
     shop: () => gardenPopupOpen('shop'), basket: () => gardenPopupOpen('basket'), almanac: () => gardenPopupOpen('almanac'), friends: () => gardenPopupOpen('friends'),

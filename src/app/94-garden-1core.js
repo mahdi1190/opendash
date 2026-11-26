@@ -42,7 +42,8 @@ const _GD_MAPS = ['dz', 'plants', 'decor', 'led', 'bank', 'wl', 'vd', 'disc', 'r
   'gl', 'gq', 'gv', 'glt',
   'wd',
   'dr',  // (build phase 1) where carried things were set down, one row per thing (94-garden-build-0rules.js)
-  'pk'];  // (build2) which of your things are in which pocket slot, one row per slot (94-garden-build2-0rules.js)
+  'pk',  // (build2) which of your things are in which pocket slot, one row per slot (94-garden-build2-0rules.js)
+  'mu'];  // (build2) the museum, one row per exhibit (94-garden-build2-0museum.js)
   // what visitors did here, what is still to post to them, what you planted in friends' gardens, what they touched since the visit's copy (`glc`) (94-garden-live-*.js)
 function _gdG() {
   if (typeof state === 'undefined' || !state) { const z = { v: 1 }; for (const k of _GD_MAPS) z[k] = {}; return z; }
@@ -694,6 +695,7 @@ function gardenSnapshot() {
     try { const wd = typeof gardenWonderWire === 'function' ? gardenWonderWire() : null; if (wd) out.wd = wd; } catch (e) { /* optional */ }   // the sky you have learned, your cairn (94-garden-wonder-*.js)
     try { const tg = typeof gardenTogetherWire === 'function' ? gardenTogetherWire() : null; if (tg) out.tg = tg; } catch (e) { /* optional */ }   // what you share with friends (94-garden-zz-*.js)
     try { if (typeof gartMoveTell === 'function') { const t = gartMoveTell(); out.pf = [t.h, t.g]; } } catch (e) { /* optional */ }   // (move360) which way you face (sixteenths) and how you last walked: a friend who arrives sees you turned the right way
+    try { const mu = typeof gardenMuseumWire === 'function' ? gardenMuseumWire() : null; if (mu) out.mu = mu; } catch (e) { /* optional */ }   // (build2) the museum: ids and numbers, no names (94-garden-build2-3museum.js)
     if (typeof gardenDropRows === 'function') out.dr = gardenDropRows(_gdG());   // (build phase 1) where carried things were set down: [[key, item, x tenths, y tenths]], always there (empty: all at home), so a friend knows this garden says it
     return out;
   } catch (e) { console.error('[garden]', e); return null; }

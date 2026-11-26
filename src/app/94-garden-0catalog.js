@@ -1055,6 +1055,7 @@ function gardenSnapshotClean(raw) {
   if (raw.sp && typeof gardenSpecClean === 'function') { const sp = gardenSpecClean(raw.sp); if (sp) out.sp = sp; }   // their best specimens (94-garden-fish-0variants.js)
   if (raw.jn && typeof gardenJournalSnapClean === 'function') { const jn = gardenJournalSnapClean(raw.jn); if (jn) out.jn = jn; }   // what they have caught for the Field Journal: vale ids, best sizes (94-garden-fish-0catalog.js)
   if (raw.ca && typeof gardenCatchWireClean === 'function') { const ca = gardenCatchWireClean(raw.ca); if (ca) out.ca = ca; }   // the lake: what it shows to friends
+  if (raw.mu && typeof gardenMuseumClean === 'function') { const mu = gardenMuseumClean(raw.mu); if (mu) out.mu = mu; }   // (build2) their museum: ids and sizes (94-garden-build2-0museum.js)
   { const tg = gardenTogetherClean(raw.tg); if (tg) out.tg = tg; }   // 94-garden-zz-*.js: ids and numbers only
   if (raw.rf && typeof raw.rf === 'object' && !Array.isArray(raw.rf)) {   // what they have put in their hidden rooms: {room: [[decor, x, y]]} (94-garden-world-4rooms2.js); an older app drops it
     const rf = {};

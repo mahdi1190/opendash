@@ -96,6 +96,7 @@ const wallForms = (data.landforms || []).filter(f => f.col === 'full' && Array.i
 const inPoly = (px, py, P) => { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a[1] > py) !== (b[1] > py) && px < (b[0] - a[0]) * (py - a[1]) / (b[1] - a[1] || 1e-9) + a[0]) ins = !ins; } return ins; };
 const placeFault = (K, x, y, w, h, self) => {
   const hw = w / 2, pts = [[x, y - 0.06], [x - hw * 0.85, y - 0.06], [x + hw * 0.85, y - 0.06], [x, y - h * 0.9]];
+  if (K.fill) for (let qy = y - h + 0.2; qy < y; qy += 0.5) for (let qx = x - hw + 0.2; qx < x + hw; qx += 0.5) pts.push([qx, qy]);   // (a building: its whole footprint, as the game checks it)
   for (const [px, py] of pts) { const c = cell(px, py); let fresh = false; try { fresh = isl.fresh(px, py) || !isl.land(px, py); } catch (e) { fresh = !!(c && c.freshwater); } if (fresh) return 'in the water'; if (!c || !c.land) return 'off the land'; if (c.solid) return 'on rock or a wall'; if (!K.onPath && c.route) return 'on a path (' + c.route + ')'; if (c.staticId && c.staticId !== self) { const st = statById.get(c.staticId); if (st && (st.col || 'full') === 'full' && !st.walk) return 'on ' + c.staticId; } }
   for (const [px, py] of pts) if (ctx.plot(data, px, py, 0.45)) return 'on a garden plot or its wall';   // (the game's own gardenPlotNear)
   for (const f of wallForms) for (const [px, py] of pts) if (inPoly(px, py, f.polygon)) return 'on the ' + f.kind + ' ' + f.id;

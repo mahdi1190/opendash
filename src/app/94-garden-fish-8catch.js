@@ -22,7 +22,7 @@ function gardenCatchWire() {
   const t = performance.now(); if (_gcaMemo.v && t - _gcaMemo.at < 1200) return _gcaMemo.v;
   const c = _gca(), g = _gdG(), today = _gdToday(), fd = (g.fd[today] && typeof g.fd[today] === 'object') ? g.fd[today] : {}, hall = c.hall || {};
   const hf = Object.keys(hall.f || {}), hb = Object.keys(hall.b || {}), lim = (v, hi) => Math.max(0, Math.min(hi, Math.floor(Number(v) || 0)));
-  const out = { sd: lim(gardenLakeSeed(), 9999), ha: lim(hf.length + hb.length, 999), sm: lim(gardenSmokerState(), 2), aj: lim(c.job, 99), fe: lim(c.fe, 99), rl: lim(c.rl, 999), th: lim(c.th, 99), ch: lim(c.ch, 9),
+  const out = { sd: lim(gardenLakeSeed(), 9999), ha: lim(typeof gardenMuseumCount === 'function' ? Math.max(gardenMuseumCount(), hf.length + hb.length) : hf.length + hb.length, 999), sm: lim(gardenSmokerState(), 2), aj: lim(c.job, 99), fe: lim(c.fe, 99), rl: lim(c.rl, 999), th: lim(c.th, 99), ch: lim(c.ch, 9),
     hf: hf.slice(-24), hb: hb.slice(-12), st: Object.keys(gardenStockNow(today)).slice(0, 6), fd: Object.keys(gardenSpotsFed()).slice(0, 7),
     rk: (Array.isArray(fd.rk) ? fd.rk : []).slice(0, 5).map(r => [String(r[0]), Math.max(1, Math.min(400, Math.round(Number(r[1]) || 1)))]),
     rc: (Array.isArray(c.rec) ? c.rec : []).slice(0, 3).map(r => [String(r[0]), Math.max(1, Math.min(400, Math.round(Number(r[1]) || 1)))]) };
@@ -313,7 +313,7 @@ function gardenFishRelease(key) {
   c.stock = gardenStockNow(today); c.stock[d.id] = _gdAddDays(today, GARDEN_CATCH_RULES.stockDays);
   const ids = Object.keys(c.stock); if (ids.length > GARDEN_CATCH_RULES.stockMax) delete c.stock[ids[0]];
   c.rl = (Number(c.rl) || 0) + 1;
-  try { if (typeof _gw !== 'undefined' && _gw.on && !_gcaOnVisit() && _gfsDecides()) { const L = gardenLakeWater(), x = Math.max(L.x + 1, Math.min(L.x + L.w - 2, _gw.px)), y = Math.max(L.y + 0.6, Math.min(L.y + L.h - 2, _gw.py + 1.5)); if (gardenIsWater(Math.floor(x), Math.floor(y))) { _gfs.u = (_gfs.u + 1) % 1000; _gfsAdd({ u: _gfs.u, id: d.id, cm: Math.round((d.cm[0] + d.cm[1]) / 2), x, y, tx: x + 2.5, ty: y + 1.5, band: 'b0', life: 200 }); _gfs.dirty = true; _gfsRing(x, y, 1); } } } catch (e) { /* it swam off out of sight */ }
+  try { if (typeof gardenB2ReleasePicture === 'function') gardenB2ReleasePicture('fish', d); else if (typeof _gw !== 'undefined' && _gw.on && !_gcaOnVisit() && _gfsDecides()) { const L = gardenLakeWater(), x = Math.max(L.x + 1, Math.min(L.x + L.w - 2, _gw.px)), y = Math.max(L.y + 0.6, Math.min(L.y + L.h - 2, _gw.py + 1.5)); if (gardenIsWater(Math.floor(x), Math.floor(y))) { _gfs.u = (_gfs.u + 1) % 1000; _gfsAdd({ u: _gfs.u, id: d.id, cm: Math.round((d.cm[0] + d.cm[1]) / 2), x, y, tx: x + 2.5, ty: y + 1.5, band: 'b0', life: 200 }); _gfs.dirty = true; _gfsRing(x, y, 1); } } } catch (e) { /* it swam off out of sight */ }
   gardenJobEvent({ kind: 'release', def: d });
   gardenCatchShowSoon();
   return _gdDone(`You let the ${d.name.toLowerCase()} go. There will be more of them in your lake this week.`, 'letting a fish go', mark, { icon: 'fish' });

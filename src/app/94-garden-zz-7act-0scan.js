@@ -112,6 +112,7 @@ function _gksDecorRows(base) {
  *  (a building, a wall, a rock, a tree's trunk, a painted thing: the walker's own map), not on another thing found standing. */
 function _gksPlaceFault(K, x, y, w, h, list, self) {
   const hw = w / 2, cy = y - h / 2, pts = [[x, y - 0.06], [x - hw * 0.85, y - 0.06], [x + hw * 0.85, y - 0.06], [x, y - h * 0.9]];
+  if (K.fill) for (let qy = y - h + 0.2; qy < y; qy += 0.5) for (let qx = x - hw + 0.2; qx < x + hw; qx += 0.5) pts.push([qx, qy]);   // (a building: its whole footprint, so no path or pond runs under it)
   for (const [px, py] of pts) if (_gksWet(px, py)) return 'in the water';
   if (!K.onPath) for (const [px, py] of pts) { let c = null; try { c = gardenIslandBaseCell(px, py); } catch (e) { c = null; } if (c && c.route) return 'on a path (' + c.route + ')'; }
   try { const D = gardenIslandData(); for (const [px, py] of pts) if (gardenPlotNear(D, px, py, 0.45)) return 'on a garden plot or its wall'; } catch (e) { /* no plots */ }

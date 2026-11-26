@@ -558,7 +558,7 @@ function _glhApply(ev, key) {
       B.caught.add(f);
       return put([], { noUndo: true, bug: B.p });
     }
-    default: return 'kind';
+    default: return typeof gardenB2HostIntent === 'function' ? gardenB2HostIntent(ev, put, m, W) : 'kind';   // (build2) a gift to your museum (94-garden-build2-3museum.js)
   }
 }
 function _gbOwnLed(g, k) { return !!g.led && Object.prototype.hasOwnProperty.call(g.led, k); }
@@ -832,6 +832,7 @@ function _glhDiaryLine(e, n) {
 function _glhDiaryWhat(e, n) {
   const who = _glhByName(e.f), p = e.p ? gardenPlant(e.p) : null, d = e.p ? gardenDecor(e.p) : null, what = (p || d) ? (p || d).name.toLowerCase().replace(/^the /, '') : 'something';
   const some = n > 1 ? n + ' ' + _glhMany(what) : _gscA(what);
+  if (typeof gardenB2DiaryWhat === 'function') { const own = gardenB2DiaryWhat(e, n, who); if (own) return own; }   // (build2) "Sam gave your museum a perch"
   switch (e.t) {
     case 'plant': return `${who} planted ${some}`;
     case 'place': return `${who} placed ${some}`;

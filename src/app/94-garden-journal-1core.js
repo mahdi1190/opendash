@@ -145,6 +145,7 @@ function _gjCard(def, kind, m, fr) {
     + `<span class="gj-cart">${rec ? _gjArt(kind, def.id, 72) : _gjSil(kind, def.id, 72)}</span>`
     + (rec || gl ? `<b>${esc(def.name)}</b><small>${esc(sub)}</small>` : `<b class="gj-q">? ? ?</b><small class="gj-clue">${def.legend ? esc(_gjWho(def.by)) + ': ' : ''}“${esc(def.clue)}”</small>`);
   c.setAttribute('aria-label', rec ? `${def.name}, caught` : gl ? `${def.name}, glimpsed` : `Not found yet. Clue: ${def.clue}`);
+  if (typeof gardenMuseumCardMark === 'function') gardenMuseumCardMark(c, kind, def.id);   // (build2) a museum stamp when it is on show
   c.onclick = () => { _gj.pick = def.id; _gjRepaint(); };
   return c;
 }
@@ -229,6 +230,7 @@ function _gjEntry(right, def, kind, m, fr) {
   row('First', _gjDay(rec.d)); row('Caught', String(rec.n || 1));
   if (kind === 'fish') row('Best', `${Math.round(rec.b)} cm`);
   row('Range', `${range[0]} to ${range[1]} ${size}`);
+  if (typeof gardenMuseumEntryMark === 'function') gardenMuseumEntryMark(dl, kind, def.id);   // (build2) on show in the museum since
   if (fr && m.visit) { const theirs = kind === 'fish' ? (fr.f.find(r => r[0] === def.id) || [])[1] : fr.b.includes(def.id); if (theirs) row('Their best', kind === 'fish' ? theirs + ' cm' : 'caught'); }
   const acts = right.appendChild(_gjEl('div', 'gj-acts'));
   if (!m.visit) {

@@ -1,0 +1,6 @@
+{
+  "about": "The Vale Museum (build2): a building placed through layout data, a row of the kind `museum` (src/app/94-garden-zz-7act-0kinds.js), painted by 'vale-museum' (src/app/94-garden-native-painted-zb2museum.js). Its door opens the one collection every museum shares (src/app/94-garden-build2-3museum.js). Placed against the garden shop, so it stays at the west end of the village if the layout moves the shop; the game's ground rule keeps its whole footprint off paths, plots, paving and water, and moves it to the nearest clear ground within 3 cells (check with node tools/affordance-audit.mjs). Not part of the saved-world identity.",
+  "things": [
+    {"id": "ga-museum", "kind": "museum", "on": "garden-shop", "at": [-13, 7.5], "w": 5, "h": 2.4, "front": 90, "name": "The Vale Museum", "note": "on the open grass at the west end of the village, south of where the plaza road ends: its door faces south, a forecourt of flags in front"}
+  ]
+}

@@ -32,6 +32,7 @@ function _gwCatchCard(o) {
   const stars = o.q ? `<b class="gd-stars q${o.q}" title="${esc(gardenQuality(o.q).label)}">${gardenQuality(o.q).stars}</b>` : '';
   c.innerHTML = `<div class="gd-cc-art">${o.svg}</div><div class="gd-cc-txt"><b>${esc(o.name)}</b>${stars}<span>${esc(o.sub)}</span>${o.newV ? '<em>A new variant!</em>' : o.isNew ? '<em>New in your book!</em>' : o.record ? '<em>A new record!</em>' : ''}</div>`;
   c.onclick = () => { c.classList.add('is-out'); setTimeout(() => c.remove(), 220); if (o.open) gardenCatchOpen(o.open); };
+  if (typeof gardenB2CatchCard === 'function') { try { gardenB2CatchCard(c, o); } catch (e) { /* the card as it was */ } }   // (build2) let it go, new for the museum (94-garden-build2-2catch.js)
   { const top = gardenMessageHost() || box; top.insertBefore(c, top.querySelector(':scope > .gd-msg')); }   // (over the message line, never on top of it)
   clearTimeout(_gw.cardT); _gw.cardT = setTimeout(() => { c.classList.add('is-out'); setTimeout(() => { gardenUiGone(c); c.remove(); }, 300); }, o.ms || 4200);
 }
@@ -457,7 +458,7 @@ function _gwFishFinish() {
   if (r.spec) sub += ` · ${gardenSpecWeight('fish', r.spec.rec.g)} · No. ${r.spec.rec.n}`;
   if (r.story) sub = `${sub}. ${r.story}`;   // the one that got away, a job for the old angler, a piece of a map
   // always said in words too, where nothing covers it: what you caught, and a line about it
-  _gwCatchCard({ svg: gardenCatchSvg('fish', d.id, 64, { uid: 'cc', v: r.v }), newV: !!(r.spec && r.spec.newVariant), name: `You ${d.cat === 'fish' ? 'caught' : 'fished up'} ${_gscA(name.toLowerCase())}!`, sub: d.blurb ? `${sub}. ${d.blurb}` : sub, q: r.q, isNew: r.isNew, record: r.record, rare, open: r.v ? 'best' : 'fish', ms: r.v ? 7000 : 5200 });
+  _gwCatchCard({ svg: gardenCatchSvg('fish', d.id, 64, { uid: 'cc', v: r.v }), newV: !!(r.spec && r.spec.newVariant), name: `You ${d.cat === 'fish' ? 'caught' : 'fished up'} ${_gscA(name.toLowerCase())}!`, sub: d.blurb ? `${sub}. ${d.blurb}` : sub, q: r.q, isNew: r.isNew, record: r.record, rare, open: r.v ? 'best' : 'fish', ms: r.v ? 7000 : 5200, item: !r.contest && d.cat === 'fish' ? gardenFishKey(d.id, r.q || 0) : '' });
   if (typeof gardenFloat === 'function' && !r.contest) gardenFloat(d.cat === 'fish' ? `+${(_GC_XP[d.rarity] || 1)} XP` : '', Math.floor(_gw.px), Math.floor(_gw.py) - 1, 1, 1, 'is-xp');
   _gdpRefreshChromeSoon();
 }
@@ -762,7 +763,7 @@ function _gwBugTaken(b) {
   const held = gardenCatchMoment('bug', d2.id, { isNew: r.isNew, v: r.v });
   void held;
   const bugName = (r.v ? gardenSpecName('bug', d2.id, r.v) : d2.name).toLowerCase(), bugFacts = r.spec ? `${gardenSpecSize('bug', r.spec.rec.c)} · No. ${r.spec.rec.n}. ` : '';
-  _gwCatchCard({ svg: gardenCatchSvg('bug', d2.id, 56, { uid: 'cb', glow: false, v: r.v }), newV: !!(r.spec && r.spec.newVariant), name: `You caught ${_gscA(bugName)}!`, sub: bugFacts + (d2.blurb || 'In your bag'), isNew: r.isNew, rare, open: r.v ? 'best' : 'bugs', ms: r.v ? 7000 : 5200 });
+  _gwCatchCard({ svg: gardenCatchSvg('bug', d2.id, 56, { uid: 'cb', glow: false, v: r.v }), newV: !!(r.spec && r.spec.newVariant), name: `You caught ${_gscA(bugName)}!`, sub: bugFacts + (d2.blurb || 'In your bag'), isNew: r.isNew, rare, open: r.v ? 'best' : 'bugs', ms: r.v ? 7000 : 5200, item: r.contest ? '' : 'bug:' + d2.id });
   if (typeof gardenFloat === 'function' && !r.contest) gardenFloat(`+${_GC_XP[d2.rarity] || 1} XP`, Math.floor(_gw.px), Math.floor(_gw.py) - 1, 1, 1, 'is-xp');
   _gdpRefreshChromeSoon();
 }

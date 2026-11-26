@@ -46,7 +46,7 @@ function _gldVisitBubble(f, at, m) {
   const s = m.visit.snap || {}, items = [];
   let sub = f.blurb;
   const seen = gardenLandShowOf(s);
-  if (f.does === 'museum') { sub = `${seen.c.filter(id => id !== GARDEN_LAND_KEY_ID).length} of ${GARDEN_LAND_CURIOS.length} curios on show.`; items.push({ ic: 'book-open', label: 'See them all', cls: 'is-go', run: () => gardenPopupOpen('lands') }); }
+  if (f.does === 'museum') { sub = `${seen.c.filter(id => id !== GARDEN_LAND_KEY_ID).length} of ${GARDEN_LAND_CURIOS.length} curios on show.`; items.push({ ic: 'book-open', label: 'See them all', cls: 'is-go', run: () => gardenPopupOpen('lands') }); if (typeof gardenMuseumOpen === 'function') items.unshift({ ic: 'landmark', label: 'Go in', cls: 'is-go', run: () => gardenMuseumOpen({ wing: 'c', from: f.id }) }); }   // (build2) their museum
   if (f.does === 'stars') sub = `${'★'.repeat(seen.r)}${'☆'.repeat(5 - seen.r)} this garden’s stars.`;
   if (f.does === 'observatory') sub = `${seen.z.length} of ${GARDEN_LAND_SKY.length} in their star book.`;
   if (f.does === 'post') { sub = 'Where to?'; for (const q of GARDEN_LAND_FEATURES) if (q.does === 'post' && q.id !== f.id && _GD_LAND.has(q.id)) items.push({ ic: 'milestone', label: q.name.replace(/^Way post /, ''), cls: 'is-go', run: () => gardenLandHop(q.id) }); }
@@ -111,6 +111,7 @@ function _gldUseBubble(f, at, m0) {
     sub = `${n} of ${GARDEN_LAND_CURIOS.length} curios on show. Dig them up on your land.`;
     if (ms) go('gift', `Collect ${ms.c} coins`, (b) => _gldSay(gardenLandMilestoneTake('curios', n), b, 'gift'));
     items.push({ ic: 'book-open', label: 'See them all', run: () => gardenPopupOpen('lands') });
+    if (typeof gardenMuseumOpen === 'function') items.unshift({ ic: 'landmark', label: 'Go in', cls: 'is-go', run: () => gardenMuseumOpen({ wing: 'c', from: f.id }) });   // (build2) the Vale Museum's collection, in here too
   } else if (f.does === 'stars') {
     const S = gardenLandStars(m), ms = _gldMilestone('stars', S.stars);
     sub = `${'★'.repeat(S.stars)}${'☆'.repeat(5 - S.stars)} ${S.next ? `${S.pts} of ${S.next} points to the next star: land, buildings, kinds of plant and what you have placed all count.` : 'Five stars. There is nothing more to say.'}`;
