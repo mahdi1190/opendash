@@ -170,7 +170,9 @@ function _trvMoney(t, snap) {
   const c = _trvSpend.get(t.id);
   if (!c || (!c.busy && Date.now() - c.at > 10 * 60000)) {
     _trvSpend.set(t.id, { at: Date.now(), data: c ? c.data : null, busy: true });
-    TravelStore.spending(t).then((d) => { _trvSpend.set(t.id, { at: Date.now(), data: d, busy: false }); if (state.view === 'trip:' + t.id) render(); }).catch(() => { _trvSpend.set(t.id, { at: Date.now(), data: null, busy: false }); });
+    // Shown on Trips (the default trip) or by any of its ids: whenever this trip is on screen, it fills in (the same choice as the section's own).
+    const showing = () => { const v = String(state.view || ''); const s = v === 'trips' ? _trvDefault(_trvTrips().trips) : /^trip:/.test(v) ? _trvFind(v.slice(5)).trip : null; return !!s && s.id === t.id; };
+    TravelStore.spending(t).then((d) => { _trvSpend.set(t.id, { at: Date.now(), data: d, busy: false }); if (showing()) render(); }).catch(() => { _trvSpend.set(t.id, { at: Date.now(), data: null, busy: false }); if (showing()) render(); });
   }
   const cur = _trvSpend.get(t.id);
   if (!cur || (cur.busy && !cur.data)) { box.insertAdjacentHTML('beforeend', '<div class="skeleton tr-money-sk"></div>'); return box; }
