@@ -32,12 +32,17 @@ function gardenTideLastStorm() {
   } catch (e) { /* no storms */ }
   return -1;
 }
-/** The storm day whose set is on the strand at low water w here (yours, or a friend's from their snapshot), or -1. */
-function _gtsStormHere(w) {
-  let s = -1;
-  try { const m = gardenHere(), snap = m && m.visit ? m.visit.snap : null; s = snap ? (snap.ti && Number.isInteger(snap.ti.s) ? snap.ti.s : -1) : gardenTideLastStorm(); } catch (e) { s = -1; }
-  return gardenTideStormFor(w, s);
+/** The storm whose set lies on the strand at low water w: the night before that low water's day, if it was rough (yours from the
+ *  made-up sky and the weather you saw, a friend's from their snapshot), as its day number, or -1. */
+function gardenTideStormBefore(w) {
+  const night = Math.floor(gardenTideWindowLow(w) / 1440) - 1;
+  try {
+    const m = gardenHere(), snap = m && m.visit ? m.visit.snap : null;
+    if (snap) return snap.ti && snap.ti.s === night ? night : -1;
+    return gardenTideStormy(night, gardenTideSeed()) || _gdG().wd['tds.' + night] ? night : -1;
+  } catch (e) { return -1; }
 }
+function _gtsStormHere(w) { return gardenTideStormBefore(w); }
 /** Where the storm's chest and bottle lie: on open sand in the low band, from the strand's number and the storm's day. */
 function gardenTideChest(w) {
   const s = _gtsStormHere(w); if (s < 0 || !GardenTide.ready()) return null;
@@ -64,7 +69,7 @@ function _gtsBottleKey(day) { return (_gtcVisit() ? 'tdbv.' + _gtcFriendTag() + 
 function gardenTideStormRows(px, py, T) {
   const out = [], C = gardenTideChest(T.w); if (!C) return out;
   const g = _gdG(), c = C.chest, b = C.bottle;
-  if (c && !g.led[_gtsChestKey(c.day)] && c.h > T.line + 2 && Math.hypot(c.x - px, (c.y - py) * 1.3) <= 2) out.push({ key: 'tide:c:' + c.day, act: 'heave', tide: { kind: 'chest', day: c.day }, words: 'Haul the chest up the beach', name: 'the sea chest', x: c.x, y: c.y, stand: { x: c.x, y: c.y + .9 }, pri: .7 });
+  if (c && !g.led[_gtsChestKey(c.day)] && c.h > T.line + 2 && Math.hypot(c.x - px, (c.y - py) * 1.3) <= 2) out.push({ key: 'tide:c:' + c.day, act: 'heave', tide: { kind: 'chest', day: c.day }, words: 'Haul the chest up the beach', name: 'the sea chest', x: c.x, y: c.y, stand: gardenTideStandFree([{ x: c.x, y: c.y + .95 }, { x: c.x - .7, y: c.y + .82 }, { x: c.x + .7, y: c.y + .82 }, { x: c.x - 1.2, y: c.y + .5 }, { x: c.x + 1.2, y: c.y + .5 }], px, py), pri: .7 });
   if (b && !g.led[_gtsBottleKey(b.day)] && b.h > T.line + 2 && Math.hypot(b.x - px, (b.y - py) * 1.3) <= 1.7) out.push({ key: 'tide:b:' + b.day, act: 'scoop', tide: { kind: 'bottle', day: b.day }, words: 'Pick up the bottle', name: 'a bottle', x: b.x, y: b.y, stand: { x: b.x, y: b.y + .12 }, pri: .65 });
   return out;
 }
@@ -174,6 +179,8 @@ const GardenTideStormSprites = {
   },
 };
 if (window.GardenPaintTide) GardenPaintTide.parts.push(GardenTideStormSprites);
+GT_ROW_SOURCES.push((px, py, T) => gardenTideStormRows(px, py, T));
+GT_RUN.chest = GT_RUN.bottle = (spot) => gardenTideStormRun(spot);
 
 /* ---------- rough nights: the weather's, recorded; the made-up sky's, told a day ahead ---------- */
 setTimeout(() => {

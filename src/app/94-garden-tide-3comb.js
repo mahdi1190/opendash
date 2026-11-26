@@ -42,8 +42,7 @@ function gardenTideGlints() {
   const T = gardenTideNow(); if (!GardenTide.ready()) return [];
   const snap = _gtcSnap(), visit = !!snap;
   const rich = visit ? (snap.ti && snap.ti.r) || 0 : gardenTideRich();
-  const s = visit ? (snap.ti && Number.isInteger(snap.ti.s) ? snap.ti.s : -1) : (typeof gardenTideLastStorm === 'function' ? gardenTideLastStorm() : -1);
-  return gardenTideScatter(T.w, { rich, storm: gardenTideStormFor(T.w, s) });
+  return gardenTideScatter(T.w, { rich, storm: typeof gardenTideStormBefore === 'function' ? gardenTideStormBefore(T.w) : -1 });
 }
 /** The glints you have taken at low water w (yours, or on this friend's strand), as a set of their numbers. */
 function _gtcTakenSet(w) {
@@ -73,7 +72,7 @@ function gardenTideTake(gl, w, keyAs) {
   g.led[key] = { d: m.today, k: 'td', i: { ['sh:' + id]: 1 }, x: (first ? 2 : 0) + (rare ? 1 : 0), n: 1 };
   if (id === 'rope-tangle') g.led[key].i['mat:timber'] = 1;   // (good rope counts as timber)
   if (first) g.disc['td.' + id] = m.today;
-  if (!visit) { g.wd.tdw = Math.max(Number(g.wd.tdw) || 0, w); if (!(Array.isArray(g.wd.tdk) && g.wd.tdk[0] === w)) g.wd.tdk = [w, gardenTideRich()]; }
+  if (!visit) { if (!(Array.isArray(g.wd.tdk) && g.wd.tdk[0] === w)) g.wd.tdk = [w, gardenTideRich()]; g.wd.tdw = Math.max(Number(g.wd.tdw) || 0, w); }   // (the richness first, from the low water you last combed, so this low water's glints stay where they are)
   // a full row: coins and a decoration for the garden, once (journal-page style, through the ledger)
   let row = null;
   for (const R of GT_ROWS) if (R.what === gl.find.what && !g.led['tdrow.' + R.id] && _gtcRowDone(R, g)) { row = R; g.led['tdrow.' + R.id] = { d: m.today, k: 'td', c: R.coins, i: { ['decor:' + R.decor]: 1 }, x: 5, n: 1 }; }
@@ -187,6 +186,10 @@ function gardenTideCurveSvg(tab) {
 }
 
 /* ---------- what is in reach: the act system asks (94-garden-zz-7act-1core.js gartActNearby) ---------- */
+/* Other tide modules add what they offer here, with no edit to this file: GT_ROW_SOURCES.push((px, py, T) => [rows]) and
+ * GT_RUN[kind] = (spot) => true when started (each row's tide: { kind, ... } says which). The pools and the storm do so below. */
+const GT_ROW_SOURCES = [];
+const GT_RUN = {};
 /** Rows for the prompt: glints within reach, the tide card on a board, and what the pools and the storm add. */
 function gardenTideActRows(px, py) {
   const out = []; if (typeof GardenTide === 'undefined' || !GardenTide.ready()) return out;
@@ -194,8 +197,7 @@ function gardenTideActRows(px, py) {
   try {
     for (const g of gardenTideGlintsShown()) { const d = Math.hypot(g.x - px, (g.y - py) * 1.3); if (d > GT_REACH) continue; out.push({ key: 'tide:g:' + T.w + '.' + g.i, act: 'scoop', tide: { kind: 'glint', w: T.w, i: g.i }, words: 'Pick up the ' + g.find.name.replace(/^(.)/, c => c.toLowerCase()), name: g.find.name, x: g.x, y: g.y, stand: { x: g.x, y: g.y + 0.12 }, pri: 0.55 }); }
     for (const b of gardenTideBoards()) { const d = Math.hypot(b.x - px, (b.y - py) * 1.3); if (d > 2) continue; out.push({ key: 'tide:board:' + b.t.id, act: 'read', tide: { kind: 'board' }, words: 'Read the tide table', name: 'the tide table', x: b.x, y: b.y, pri: 0.2, src: 'tide-board:' + b.t.id }); }
-    if (typeof gardenTidePoolRows === 'function') out.push(...gardenTidePoolRows(px, py, T));
-    if (typeof gardenTideStormRows === 'function') out.push(...gardenTideStormRows(px, py, T));
+    for (const f of GT_ROW_SOURCES) { try { out.push(...f(px, py, T)); } catch (e) { /* that one has nothing now */ } }
   } catch (e) { /* nothing here now */ }
   return out;
 }
@@ -207,9 +209,7 @@ function gardenTideRun(spot) {
     const g = gardenTideGlints().find(q => q.i === t.i); if (!g) return false;
     return _gtcDo('scoop', spot, () => { const r = gardenTideTake(g, t.w); if (r && !r.ok) try { gardenToast(r.msg || 'Gone with the tide.'); } catch (e) { /* fine */ } }, 0.62);
   }
-  if (t.kind === 'pool' || t.kind === 'stone') return typeof gardenTidePoolRun === 'function' && gardenTidePoolRun(spot);
-  if (t.kind === 'chest' || t.kind === 'bottle') return typeof gardenTideStormRun === 'function' && gardenTideStormRun(spot);
-  return false;
+  const run = GT_RUN[t.kind]; return typeof run === 'function' ? !!run(spot) : false;
 }
 /** Do a move from the act table at a spot (walking there first), then call then() at that share (at) of the move if you are still
  *  doing it: walking off, or doing something else, gives nothing. */
@@ -225,6 +225,15 @@ function _gtcDo(act, spot, then, at) {
   };
   setTimeout(poll, 60);
   return true;
+}
+
+/** Of a few places to stand round a thing (several people can kneel at one pool or haul one chest together), the nearest to (px, py)
+ *  that no friend in the garden is standing on. */
+function gardenTideStandFree(spots, px, py) {
+  const who = []; try { if (typeof _gll !== 'undefined' && _gll.actors) for (const A of _gll.actors.values()) { if (!A || A.me || A.rm || A.away) continue; const at = A.actAt || A; if (Number.isFinite(at.x)) who.push(at); } } catch (e) { /* alone */ }
+  let best = null, bd = Infinity;
+  for (const q of spots) { if (who.some(a => Math.hypot(a.x - q.x, (a.y - q.y) * 1.3) < .45)) continue; const d = Math.hypot(q.x - px, (q.y - py) * 1.3); if (d < bd) { bd = d; best = q; } }
+  return best || spots[0];
 }
 
 /* ---------- the journal: "From the shore" on the Keepsakes page ---------- */

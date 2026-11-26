@@ -63,7 +63,7 @@ function gardenTidePoolRows(px, py, T) {
   }
   for (const p of gardenTidePools()) {
     if (Math.hypot(p.x - px, (p.y - py) * 1.3) > 2 || !_gtqExposed(p, T)) continue;
-    out.push({ key: 'tide:p:' + p.id, act: 'peer', tide: { kind: 'pool', id: p.id }, words: 'Look into the rock pool', name: 'the rock pool', x: p.x, y: p.y, stand: { x: p.x, y: p.y + .62 }, pri: .3 });
+    out.push({ key: 'tide:p:' + p.id, act: 'peer', tide: { kind: 'pool', id: p.id }, words: 'Look into the rock pool', name: 'the rock pool', x: p.x, y: p.y, stand: gardenTideStandFree([{ x: p.x - .45, y: p.y + .66 }, { x: p.x + .5, y: p.y + .64 }, { x: p.x - 1.05, y: p.y + .2 }, { x: p.x + 1.1, y: p.y + .18 }], px, py), pri: .3 });
   }
   return out;
 }
@@ -98,14 +98,28 @@ function _gtqQuick(st, id) {
   const place = () => { const s = typeof _ghProject === 'function' ? _ghProject(_gw.px, _gw.py - 2.3) : null; if (s) el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, -100%)`; };
   place();
   const motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(), ms = motion ? 1150 : 2400, Q = _gtq.quick = { el, st, id, done: false };
-  const win = (ev) => { if (Q.done) return; if (ev && ev.type === 'keydown' && !(ev.key === 'e' || ev.key === 'E' || ev.key === ' ')) return; if (ev) { ev.preventDefault(); ev.stopPropagation(); } Q.done = true; _gtqQuickEnd(); _gtqCatch(st, id); };
+  Q.critter = _gtqCritter(st, id, ms, motion);
+  const win = (ev) => { if (Q.done) return; if (ev && ev.type === 'keydown' && !(ev.key === 'e' || ev.key === 'E' || ev.key === ' ')) return; if (ev) { ev.preventDefault(); ev.stopPropagation(); } Q.done = true; Q.caught = true; _gtqQuickEnd(); _gtqCatch(st, id); };
   el.addEventListener('click', win); el.addEventListener('pointerdown', (ev) => ev.stopPropagation());
   document.addEventListener('keydown', win, true);
   Q.off = () => document.removeEventListener('keydown', win, true);
   Q.timer = setTimeout(() => { if (Q.done) return; Q.done = true; _gtqQuickEnd(); const d = gardenFishDef(id); try { gardenMessage((d ? 'The ' + d.name.toLowerCase() : 'It') + ' was too quick for you, and scuttled off under the weed.', { icon: 'waves', ms: 4000 }); } catch (e) { /* fine */ } }, ms);
   Q.iv = setInterval(place, 120);
 }
-function _gtqQuickEnd() { const Q = _gtq.quick; if (!Q) return; _gtq.quick = null; clearTimeout(Q.timer); clearInterval(Q.iv); if (Q.off) Q.off(); if (Q.el) Q.el.remove(); }
+function _gtqQuickEnd() { const Q = _gtq.quick; if (!Q) return; _gtq.quick = null; clearTimeout(Q.timer); clearInterval(Q.iv); if (Q.off) Q.off(); if (Q.el) Q.el.remove(); if (Q.critter) { const c = Q.critter; setTimeout(() => c.remove(), Q.done && !Q.caught ? 700 : 0); } }
+/** The creature itself, out from under the stone and making for the pool (its own Field Journal picture, small, on the ground). */
+function _gtqCritter(st, id, ms, motion) {
+  const box = typeof _gw !== 'undefined' && _gw.box; if (!box || typeof gardenCatchSvg !== 'function' || typeof _ghProject !== 'function') return null;
+  const s = _ghProject(st.x, st.y), to = _ghProject(st.pool.x, st.pool.y); if (!s || !to) return null;
+  const el = document.createElement('div'); el.className = 'gt-critter'; el.setAttribute('aria-hidden', 'true');
+  el.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;z-index:5;filter:drop-shadow(0 2px 1px rgba(40,30,20,.35))';
+  let art = ''; try { art = gardenCatchSvg('fish', id, 30, { uid: 'gtq' + id }); } catch (e) { art = ''; }
+  el.innerHTML = art; box.appendChild(el);
+  const dx = (to.x - s.x) * .7, dy = (to.y - s.y) * .7, at = (k) => 'translate(' + Math.round(s.x + dx * k - 15) + 'px, ' + Math.round(s.y + dy * k - 22) + 'px)';
+  el.style.transform = at(0);
+  if (motion && el.animate) el.animate([{ transform: at(0) }, { transform: at(.35), offset: .3 }, { transform: at(.5), offset: .55 }, { transform: at(1) }], { duration: ms + 600, easing: 'ease-in', fill: 'forwards' });
+  return el;
+}
 function _gtqCatch(st, id) {
   const d = gardenFishDef(id); if (!d) return;
   const r = gardenRand(gardenHash('tide-cm|' + st.k + '|' + Date.now())), cm = d.cm ? Math.round(d.cm[0] + (d.cm[1] - d.cm[0]) * r() * r()) : 0;   // clock-ok: luck
@@ -174,5 +188,7 @@ const GardenTideStoneSprites = {
   },
 };
 if (window.GardenPaintTide) GardenPaintTide.parts.push(GardenTideStoneSprites);
+GT_ROW_SOURCES.push((px, py, T) => gardenTidePoolRows(px, py, T));
+GT_RUN.pool = GT_RUN.stone = (spot) => gardenTidePoolRun(spot);
 /** A friend lifted a stone: yours tips on your screen for a moment and settles back (you can still lift your own). */
 function gardenTideStoneSeen(k) { if (!_gtq.peek.has(k)) _gtq.peek.set(k, { t: performance.now(), lift: false, w: gardenTideNow().w }); }

@@ -75,6 +75,11 @@ void main () {
     float lace = rim * (0.55 + 0.45 * sin(wp.x * 0.09 + wp.y * 0.05 + t * 1.7 + n * 6.0));
     water = mix(water, uFoam, lace * 0.6 * uLook.x);
     a = max(a, lace * 0.45 * uLook.x * uLook.z);
+    // the drop-off where the sand ends (the authored coast: walking stops there): a broken line of small breakers when the tide is up
+    float drop = (1.0 - smoothstep(0.0, 3.2, abs(h + 1.0))) * smoothstep(10.0, 26.0, line);
+    drop *= smoothstep(0.3, 0.85, 0.5 + 0.5 * sin(wp.x * 0.047 + wp.y * 0.071 + t * 1.25 + n * 7.0));
+    water = mix(water, uFoam, drop * 0.7);
+    a = max(a, drop * 0.55 * uLook.z);
     // out past the authored coast the painted sea is the water
     a *= smoothstep(-22.0, -4.0, h);
     col = vec4(water * a, a);
