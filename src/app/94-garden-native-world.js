@@ -139,6 +139,7 @@ window.GardenNativeWorld = (function () {
     for (const cls of ['gd-hover', 'gd-sel']) ui.appendChild(element(scene, 'rect', { class: cls, width: 0, height: 0, rx: 4 }));
     ui.appendChild(element(scene, 'g', { class: 'gd-ghost' }));
     group('gd-weather', 79000); group('gd-nightlayer', 80000);
+    const pierPiles = new Map();   // (the depth lane: each south deck's piles where they meet the water, as drawn below: they hold a swimmer off)
     const drawings = new Map(), dynamic = new Map(), needRings = new Map(), markers = [], terrainObjects = [], terrainChunks = new Map(), pierDeckRecords = new Map(), terrainLabels = [], solidObjects = [], pointLights = [], fadingProps = [], cacheQueue = new Map(), terrainBaseQueue = new Map();
     const sceneryCache = { retainBase: true, baseQuality: 1, baseFromCapture: true, baseMaxBytes: 512 * 1024 };
     const mainDrawingGuard = 16;
@@ -368,7 +369,7 @@ window.GardenNativeWorld = (function () {
       // Each native deck owns its Graphics and cached tiles. Removing the
       // node releases both once; these Graphics never enter terrainObjects.
       for (const record of pierDeckRecords.values()) { cacheQueue.delete(record.node); record.node.remove(); }
-      pierDeckRecords.clear(); pierBoards.nativeBounds = null;
+      pierDeckRecords.clear(); pierBoards.nativeBounds = null; pierPiles.clear();
     }
     // The Painted village art style (94-garden-native-painted.js): the scene
     // kit's painting baked over the village and start area. Cells and walking
@@ -911,6 +912,7 @@ window.GardenNativeWorld = (function () {
           // (coast fix round 2: each post's shadow a soft oval at its foot; small rectangles in the water down the pier's side
           // read as a strip of another tone by day and pale boxes at night)
           const posts = []; for (let yy = y + 6; yy < y + h - 4; yy += 37) posts.push(yy);
+          { const piles = []; for (const yy of posts) piles.push({ x: x - 11, y: yy + 9 }, { x: x + w + 12, y: yy + 9 }); if (last) for (const px of [x + 2, x + w / 2 - 3, x + w - 2]) piles.push({ x: px, y: y + h + 14.5 }); pierPiles.set(pier.id, piles); }
           for (const xx of [x - 2, x + w + 2]) {
             for (const yy of posts) pg.fillStyle(0x234a48, .18).fillEllipse(xx + 4, yy + 5, 8, 4.4).fillStyle(0x5e4a34).fillRoundedRect(xx - 3, yy - 9, 6, 17, 1.6).fillStyle(0x8a7050, .7).fillRect(xx - 2.2, yy - 8, 1.6, 15).fillStyle(0xd0bd8c).fillEllipse(xx, yy - 9, 7, 3.6);
             pg.lineStyle(1.6, 0xc9b07a, .9); for (let i = 1; i < posts.length; i++) { const y0 = posts[i - 1] - 6, y1 = posts[i] - 6, sag = 3; pg.beginPath(); pg.moveTo(xx, y0); for (let k = 1; k <= 6; k++) { const u = k / 6; pg.lineTo(xx + Math.sin(u * Math.PI) * .8, y0 + (y1 - y0) * u + Math.sin(u * Math.PI) * sag); } pg.strokePath(); }
@@ -2167,6 +2169,7 @@ window.GardenNativeWorld = (function () {
     const api = { root, rootNode, objectsNode: objects, actorsNode: actors, petsNode: pets, uiNode: ui, effectsNode: effects, playerNode, sync, update, prepareRender, prepareCaches, walkTo, actor, spawn: spec => actor(spec.id, spec.svg || '', spec.x, spec.y, spec), remove, point, project, pick, bounds, resize, cameraSet, cameraControls, zoom: step => cameraSet(null, step), camera: () => ({ ...camera }), model: () => model, playerState: () => ({ x: _gw.px, y: _gw.py, face: _gw.face, moving: _gw.moving }), entities: drawings, dynamic, occluders, forestTrunks: () => forestRows.filter(spec => drawings.has(spec.id)).map(spec => [+(spec.x / W.cellW).toFixed(2), +((spec.y - W.sky) / W.cellH).toFixed(2), gardenTrunkBoxWidth(17)]) /* (their drawn trunk is 17 px wide at the foot: 94-garden-native-scenery.js) */, lightSources: () => pointLights, renderStats: () => ({ staticObjects: drawings.size, visibleStatic, terrainChunks: terrainChunks.size, visibleTerrain, cacheQuality, terrainBaseQuality, terrainBaseReady, queuedTerrainBase: terrainBaseQueue.size, queuedCaches: cacheQueue.size, needGroundRings: needRings.size, mainCameraCull: { cameraId: mainExclusionCameraId, guardWorldPx: mainDrawingGuard, excludedDrawings: mainExcludedDrawings, specialActors: specialMainStatus() }, playerOcclusion: playerOcclusionState() }), setVisible: value => root.setVisible(value), depthChanged: () => { sorted = true; }, flushDepth: sortObjects, stopMoving: () => { _gw.path = []; _gw.then = null; _gw.hold = null; _gw.keys.clear(); _gw.spd = 0; }, destroy };
     api.effectsState = effectsState;
     api.waterAt = (x, y) => waterRegions.length ? containsWater(x * GARDEN_WORLD.cellW, GARDEN_WORLD.sky + y * GARDEN_WORLD.cellH) : null;   // the water AS PAINTED (cells), null before it is drawn
+    api.pierPiles = () => pierPiles; api.pierDecks = () => pierDeckRecords;   // (the depth lane: the piles a swimmer passes between, the deck drawn again over them)
     api.frontierState = () => frontierMetadata;
     api.syncNeedRings = syncNeedRings;
     api.playerOcclusionState = playerOcclusionState;

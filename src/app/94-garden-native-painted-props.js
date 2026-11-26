@@ -730,6 +730,17 @@ window.GardenPaintedProps = (function () {
    *  (the shared crossing geometry), drawn round the crossing point. Setts on
    *  the deck, a parapet with a coping either side, the downstream face with
    *  its arches and cutwater going down into the river, ivy and valerian. */
+  /** The Millwater bridge's arch openings as millBridge draws them below (the same numbers: c .31 and .69 of its length, +-.15, crown 15,
+   *  FACE 24), and the water below its face, in px round the crossing's centre: the depth lane cuts these out of its copy of the bridge,
+   *  so a swimmer in an arch is seen whole in its shade (94-garden-zz-8depth-2lids.js). */
+  function millOpenings(deck, crossing) {
+    const W = GARDEN_WORLD, O = { x: crossing.x * W.cellW, y: W.sky + crossing.y * W.cellH }, L = deck.length, hw = deck.halfWidth, FACE = 24, crown = 15;
+    const q = (t, lift) => { const p = deck.deckPoint(t / L, hw); return [p.x - O.x, p.y - O.y - lift]; }, arches = [];
+    for (const c of [.31, .69]) { const t0 = L * (c - .15), t1 = L * (c + .15), arch = []; for (let i = 0; i <= 16; i++) { const u = i / 16; arch.push(q(t0 + (t1 - t0) * u, -FACE + Math.sin(Math.PI * u) * (crown + FACE * .25))); } arches.push(arch); }
+    const foot = []; for (let t = L * .16; t <= L * .84 + .01; t += 4) foot.push(q(t, -FACE + .5));
+    const below = foot.concat([[foot[foot.length - 1][0], foot[foot.length - 1][1] + 90], [foot[0][0], foot[0][1] + 90]]);
+    return { arches, below, face: FACE };
+  }
   function millBridge(B, r, deck, crossing, season, open) {
     const W = GARDEN_WORLD, O = { x: crossing.x * W.cellW, y: W.sky + crossing.y * W.cellH }, L = deck.length, hw = deck.halfWidth;
     const hump = t => 4.5 * Math.sin(Math.PI * Math.max(0, Math.min(L, t)) / L);
@@ -1157,6 +1168,7 @@ window.GardenPaintedProps = (function () {
     })() : false;
     if (!halves && !(kind === 'bridge' ? h.ground(base) : h.add(base))) { h.destroy(); return null; }
     if (kind === 'bridge' && crossing) ok(() => bridgeFront(scene, h, o, baseKey, art.box, baseX, baseY, crossing));
+    if (kind === 'bridge' && crossing && typeof gardenDepthBridgeArt === 'function') ok(() => { const deck = typeof gardenIslandCrossingGeometry === 'function' ? gardenIslandCrossingGeometry().find(d => d.crossing.id === crossing.id) : null; gardenDepthBridgeArt(crossing.id, { key: baseKey, x: baseX, y: baseY, box: art.box, K, openings: deck && deck.halfWidth < 40 ? millOpenings(deck, crossing) : null }); });   // (its picture drawn again over a swimmer beneath it)
     lib('front');
     const was = gateSeen.get(g.id); gateSeen.set(g.id, !!open);
     const blockKey = bake(scene, stem + '|block', art.box, B => art.blocker(B));

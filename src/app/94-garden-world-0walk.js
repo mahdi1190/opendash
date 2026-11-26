@@ -1951,10 +1951,10 @@ function _gwPetFrame(dt) {
     const slide = gardenWorldSlide(P.x, P.y, nx - P.x, ny - P.y, .1, P.shoreMove || (P.shoreMove = {})); P.x = slide.x; P.y = slide.y; mv = slide.moved;
     // caught on a corner: it hops to your heel rather than running on the spot
     P.stuck = mv ? 0 : (P.stuck || 0) + dt;
-    if (P.stuck > 0.5) { const f = _gwNearestFreePt(_gw.px - 0.8, _gw.py + 0.2, 2); if (f) { P.x = f.x; P.y = f.y; } P.stuck = 0; }
+    if (P.stuck > 0.5) { const f = typeof gardenHeightSwimming === 'function' && gardenHeightSwimming() ? null : _gwNearestFreePt(_gw.px - 0.8, _gw.py + 0.2, 2); if (f) { P.x = f.x; P.y = f.y; } P.stuck = 0; }   // (while you swim it stays on the bank: the depth lane)
     if (Math.abs(dx) > 4) P.face = dx > 0 ? 1 : -1;
   }
-  if (Math.hypot((_gw.px - P.x) * W.cellW, (_gw.py - P.y) * W.cellH) > 320) { P.x = _gw.px - 1; P.y = _gw.py; }
+  if (Math.hypot((_gw.px - P.x) * W.cellW, (_gw.py - P.y) * W.cellH) > 320 && !(typeof gardenHeightSwimming === 'function' && gardenHeightSwimming())) { P.x = _gw.px - 1; P.y = _gw.py; }
   P.moving = mv;
   const x = P.x * W.cellW, y = W.sky + P.y * W.cellH;
   const hop = mv && gardenMotionOn() ? -Math.abs(Math.sin(_gw.t * 14)) * 2.2 : 0, tfp = `translate(${x.toFixed(1)} ${(y + hop).toFixed(1)})`;

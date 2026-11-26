@@ -123,6 +123,9 @@ const GARDEN_KINDS = Object.freeze({
   rill: { name: 'the spring', arts: ['rill'], words: ['rill', 'spring'], drink: true, noPerch: true },
   reeds: { name: 'the reeds', arts: ['reeds'], words: ['reeds', 'reed'], noPerch: true },
   bridge: { name: 'the bridge', arts: ['bridge'], words: ['bridge'], noPerch: true, solid: 'free' },
+  // (the depth lane) a way underground: its row carries its mouths, passages and chambers (assets/garden/vale-depth.json, 94-garden-zz-8depth-3tunnel.js);
+  // ground: drawn by the vale (94-garden-paint-vale-1depth-mouths.js) and never moved, so it is found where its row puts it
+  tunnel: { name: 'the tunnel', place: true, ground: 'under', w: 1.5, h: 0.6, noPerch: true, solid: 'free' },
   post: { name: 'the post', arts: ['post'], words: ['post', 'mooring'], noPerch: true },
   /* to kick, carry or play with */
   ball: { name: 'the ball', art: 'ball', place: true, w: 0.4, h: 0.2, acts: [{ act: 'kick', stand: [0, -0.3], deg: 90, kick: 'ball' }], pet: 'ball', solid: 'free' },

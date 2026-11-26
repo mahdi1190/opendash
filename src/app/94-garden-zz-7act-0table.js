@@ -109,6 +109,9 @@ const GARDEN_ACTS = Object.freeze({
   climbup: { verb: 'Climb up', dir: 'n', ms: 600, first: 'Climbed up high and looked out over the vale.', sound: 'step' },
   climbdown: { verb: 'Climb down', dir: 'n', ms: 600, sound: 'step' },
   stairup: { verb: 'Go up', dir: 'n', ms: 600, first: 'Went up the old stair and out on to the top.', sound: 'step' },
+  // (the depth lane) into a tunnel and out again (94-garden-zz-8depth-3tunnel.js: the prompt's words come from the mouth, these give the journal its line)
+  tunnelin: { verb: 'Go in', dir: 'n', ms: 600, first: 'Went down under the vale with a light in my hand.', sound: 'step' },
+  tunnelout: { verb: 'Go out', dir: 's', ms: 600, sound: 'step' },
   // hand over hand up the rungs, back to you: one hand up a rung and the opposite foot up after it, then the other side
   climbing: { verb: '', dir: 'n', ms: 260, hold: true,
     enter: { armL: [[1, { r: 166 }]], armR: [[1, { r: -150, sy: 0.86 }]], legL: [[1, { sy: 0.62 }]], kneeL: [[1, { sy: 1.15 }]] },
