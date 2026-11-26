@@ -217,7 +217,7 @@ function _hsOutsidePaint() {
   for (const p of HOUSE_PLAN) if (st(p.s) === 2) { const svg = _hsAddSvg(p.id, B); if (svg) { keep.add('add-' + p.id); _hsOutSprite('add-' + p.id, B, 0, 0, svg, .015); } }
   // your banner on its bracket at the corner, and the mailbox by the door
   const fx = -B.w * .45 - 22, fy = -B.h * .3 - 20;
-  keep.add('banner'); _hsOutSprite('banner', B, fx, fy, _hsBannerOutSvg(B, v.bn || HOUSE_BANNER0, -fx, -fy), .025, { hit: .45, hitUp: 0, label: H.visit ? 'Their banner' : 'Your banner', cursor: 'hand', onClick: () => { if (typeof _hsBannerOpen === 'function') _hsBannerOpen(); } });
+  keep.add('banner'); _hsOutSprite('banner', B, fx, fy, _hsBannerOutSvg(B, v.bn || HOUSE_BANNER0, 22, 20), .025, { hit: .45, hitUp: 0, label: H.visit ? 'Their banner' : 'Your banner', cursor: 'hand', onClick: () => { if (typeof _hsBannerOpen === 'function') _hsBannerOpen(); } });
   if (typeof _hsMailboxSvg === 'function') { const mx = -B.w * .2; keep.add('mailbox'); _hsOutSprite('mailbox', B, mx, 6, _hsMailboxSvg(B), .04, { hit: .55, hitUp: 24, label: H.visit ? 'Their mailbox' : 'Your mailbox', cursor: 'hand', onClick: () => { if (typeof _hsPostOpen === 'function') _hsPostOpen(); } }); }
   _hsOutClear(keep);
 }

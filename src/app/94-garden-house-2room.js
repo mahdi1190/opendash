@@ -101,16 +101,29 @@ function _hsActRows(px, py) {
   const H = gardenHouseMine(); if (!H) return [];
   const d = Math.hypot(H.door.x - px, (H.door.y - py) * 1.3);
   if (!H.visit && !H.moved && !_hs.saidNear && d < 4) { _hs.saidNear = true; try { gardenMessage(`${H.name} stands empty, its door on the latch. A note pinned to it says: “For whoever keeps the garden now.”`, { ambient: true, source: 'house-near', icon: 'house' }); } catch (e) { /* only words */ } }
-  if (d > HOUSE_DOOR_REACH) return [];
+  const post = _hsPostRow(H, px, py);
+  if (d > HOUSE_DOOR_REACH) return post ? [post] : [];
   // (at the door, with the doorstep as where you stand: in the doorway or on the step it is offered whichever way you face; the prompt floats over the door)
-  return [{ key: 'house:' + H.id, act: 'house', house: H.id, src: 'house:' + H.id, words: H.visit ? 'Go in' : H.moved ? 'Go in' : 'Go in: it is yours', name: H.name, x: H.door.x, y: H.door.y, stand: { x: H.door.x, y: H.door.y + .75 }, promptY: H.door.y - 1.7, pri: 0.8 }];
+  return (post ? [post] : []).concat([{ key: 'house:' + H.id, act: 'house', house: H.id, src: 'house:' + H.id, words: H.visit ? 'Go in' : H.moved ? 'Go in' : 'Go in: it is yours', name: H.name, x: H.door.x, y: H.door.y, stand: { x: H.door.x, y: H.door.y + .75 }, promptY: H.door.y - 1.7, pri: 0.8 }]);
+}
+/** "E  Check the post" at your mailbox while a letter waits (the mailbox stands where 94-garden-house-4grow.js draws it). */
+function _hsPostRow(H, px, py) {
+  if (H.visit || !H.moved || typeof _hsPostUnread !== 'function' || typeof _hsOutBox !== 'function') return null;
+  if (_hs.postRev !== _gd.rev) { _hs.postRev = _gd.rev; _hs.postN = _hsPostUnread(); }
+  if (!_hs.postN) return null;
+  const B = _hsOutBox(H.id); if (!B) return null;
+  const W = GARDEN_WORLD, mx = (B.cx - B.w * .2) / W.cellW, my = (B.foot + 6 - W.sky) / W.cellH;
+  if (Math.hypot(mx - px, (my - py) * 1.3) > 1.5) return null;
+  return { key: 'house-post:' + H.id, act: 'house', house: H.id, post: 1, src: 'house-post:' + H.id, words: 'Check the post', name: 'your mailbox', x: mx, y: my, stand: { x: mx, y: my + .55 }, promptY: my - 1.3, pri: .9 };
 }
 function gardenHouseItems(id, items) {
   let H = null; try { H = gardenHouseMine(); } catch (e) { H = null; } if (!H || H.id !== id) return;
   items.unshift({ svg: `<svg viewBox="-30 -60 60 66" width="26" height="26" aria-hidden="true">${_hsSym()}</svg>`, label: 'Go in', cls: 'is-go grm-way', run: () => gardenHouseGo() });
+  if (H.moved && typeof _hsPlanOpen === 'function' && (!H.visit || (typeof _glvLive === 'function' && _glvLive()))) items.splice(1, 0, { svg: `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 11L12 4L21 11" fill="none" stroke="#6a4a2e" stroke-width="2" stroke-linejoin="round"/><path d="M6 10V20H18V10" fill="#f4e6c8" stroke="#6a4a2e" stroke-width="1.6"/><path d="M14 20V14H18" fill="none" stroke="#a8865a" stroke-width="1.4" stroke-dasharray="2 2"/></svg>`, label: H.visit ? 'Their plans' : 'Build on', cls: 'grm-way', run: () => { try { gardenBubbleClose(); } catch (e) { /* closed */ } _hsPlanOpen(); } });
 }
-/** Walk to the door and go in. */
-function gardenHouseGo() {
+/** Walk to the door and go in (or, from the mailbox's prompt, read the post). */
+function gardenHouseGo(spot) {
+  if (spot && spot.post) { if (typeof _hsPostOpen === 'function') _hsPostOpen(); _hs.postRev = -1; return true; }
   if (!_hsBoot()) return false;
   const H = gardenHouseMine(); if (!H) return false;
   const R = gardenHouseRoomRow('hs-0'); if (!R) return false;
@@ -194,6 +207,7 @@ const HOUSE_PLAY = {
     S.slot = R.slot; S.rev = -1; S.vrev = -1; S.snapRef = null; S.move = false; S.carry = null; S.imgs = new Map(); S.lamps = new Map(); S.lampList = []; S.clocks = new Map(); S.blocks = []; S.pieces = []; S.dirty = false; S.pend = new Map();
     S.native = !!_hsNative(); S.t = 0; S.lightAt = 0; S.keyNow = R.paintKey; S.near = null; S.nearAt = 0;
     S.leave = () => _hsEnd(R, S);
+    if (_hs.dirty) { S.dirty = true; _hs.dirty = false; }
     if (!gpVisiting()) _hsMoveIn(R, S);
     S.shell = houseShellFor(R.slot, ((_hsView() || {}).rooms) || {});
     const A = _hs.arrive && _hs.arrive.slot === R.slot ? _hs.arrive : null; _hs.arrive = null;
@@ -569,8 +583,11 @@ function _hsGoRoom(slot, via) {
   const go = () => {
     _hs.going = false; _hs.arrive = { slot, via };
     const native = !!(window.GardenNative && GardenNative.inRoom && GardenNative.inRoom());
-    if (native) { GardenNative.leaveRoom(); gardenRoomEnter(R); return; }
-    gardenRoomLeave(); setTimeout(() => { _hs.arrive = { slot, via }; gardenRoomEnter(R); }, 470);   // (the standard room needs its close to finish)
+    _hs.swapping = true;
+    try {
+      if (native) { GardenNative.leaveRoom(); gardenRoomEnter(R); return; }
+      gardenRoomLeave(); setTimeout(() => { _hs.arrive = { slot, via }; gardenRoomEnter(R); }, 470);   // (the standard room needs its close to finish)
+    } finally { _hs.swapping = false; }
   };
   try { if (typeof _fxSound === 'function') _fxSound('pop'); } catch (e) { /* no sound */ }
   if (!gardenMotionOn()) { go(); return; }
@@ -608,7 +625,8 @@ function _hsEnd(R, S) {
   _hst.onReady = null;
   if (S.swap) { try { S.swap.old.destroy(); } catch (e) { /* gone with the room */ } S.swap = null; }
   S.imgs = new Map(); S.lamps = new Map(); S.clocks = new Map(); S.prompt = null;
-  if (S.dirty) { try { gardenRepaintSoon(); gardenTickSoon(); } catch (e) { /* drawn at the next change */ } }
+  if (S.dirty && _hs.swapping) _hs.dirty = true;   // (on to another room of the house: the garden outside is drawn once, when you go out)
+  else if (S.dirty || _hs.dirty) { _hs.dirty = false; try { gardenRepaintSoon(); gardenTickSoon(); } catch (e) { /* drawn at the next change */ } }
 }
 
 /* ---------- the standard room (no Phaser): the same pieces as SVG spots on a plain painted room ---------- */
