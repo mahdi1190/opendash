@@ -131,7 +131,7 @@ function _vgHostFrame(dt) {
   if (R.phase === 'gather') {
     // the course is found meanwhile (the path service, sliced); folk run to the start; at most the game's own gather time
     const allIn = R.folk.every(id => (R.inAt && R.inAt[id]) || !gardenFolkDriven(id) || (gardenFolkDriven(id).failed));
-    if ((R.ready && (allIn || secs > R.G.gather)) || secs > R.G.gather + 6) {
+    if ((R.ready && (allIn || secs > R.G.gather + 4)) || secs > R.G.gather + 8) {   // (a few seconds more for anyone still running there)
       if (!R.ready) { _vgFail(R, VF3_SAY.noWhere); return; }
       // anyone who could not get there is left out (they go back to their day)
       for (const id of R.folk.slice()) if (!(R.inAt && R.inAt[id])) { const D = gardenFolkDriven(id); const V = _vf3V(id); if (!D || !V || Math.hypot(V.x - R.at.x, V.y - R.at.y) > 6) { R.folk.splice(R.folk.indexOf(id), 1); gardenFolkRelease(id, 'game'); } }
@@ -233,9 +233,10 @@ function _vgCrateSvg(k) {
 /** Where the podium goes: open, free ground beside the place, three crates side by side (second, first, third), never on a figure,
  *  never in front of or behind anything that stands (its foot, its post: the crates once hid a sign's post), in front first. */
 const VG_FLAT_RE = /^(road|plaza|path|field|plot|pond|crossing|ford|bridge|pier|stepping|leaf-pile|ball|log$)/;
-function _vgPodiumAt(p) {
+function _vgPodiumAt(p, avoid) {
   const C = typeof _vfr !== 'undefined' && _vfr.ctx ? _vfr.ctx : null, things = C ? C.things : (typeof gardenAffordThings === 'function' ? gardenAffordThings() : []);
   const ok = (x, y) => {
+    for (const q of avoid || []) if (Math.abs(q.x - x) < 1.7 && Math.abs(q.y - y) < 1.3) return false;
     for (const k of [-1, 0, 1]) for (const ex of [-0.32, 0, 0.32]) if (typeof _gwFree === 'function' && !_gwFree(x + k * 0.62 + ex, y)) return false;
     for (const t of things) { if (!t.kind || VG_FLAT_RE.test(t.kind)) continue; const B = C ? C.base(t) : t, hw = (B.w || t.w || 1) / 2 + 1.25; if (Math.abs(B.x - x) < hw && y > B.y - Math.max(1.2, (B.h || 1.2) + 0.4) && y < B.y + 1.1) return false; }
     if (typeof _vfrFigures === 'function' && _vfrFigures().some(F => Math.abs(F.x - x) < 1.5 && Math.abs(F.y - y) < 0.8)) return false;
@@ -255,7 +256,10 @@ function _vgCratesAt(at) {
   return out;
 }
 function _vgPodium(R, res) {
-  const at = _vgPodiumAt(R.I.podium ? R.I.podium(R) : R.at); if (!at) { R.podium = []; return null; }
+  R.podium = [];
+  if (res.length < 2) return null;   // (a round on your own: no podium to stand alone on)
+  const avoid = R.sprites.filter(S => S && Number.isFinite(S.x)).map(S => ({ x: S.x, y: S.y }));   // (the game's own flags and chests)
+  const at = _vgPodiumAt(R.I.podium ? R.I.podium(R) : R.at, avoid); if (!at) return null;
   const crates = _vgCratesAt(at); R.podium = [];
   res.slice(0, 3).forEach((r, k) => { const c = crates.find(q => q.k === k); if (c && r.v) R.podium.push({ v: r.v, stand: { x: c.x, y: c.y - 0.01 }, lift: c.lift, z: c.z }); });
   try { gardenSfx('cheer'); } catch (e) { /* quiet */ }
@@ -300,8 +304,8 @@ function _vgReward(game, folk, res, me, visit) {
   if (mat) bits.push(mat);
   if (warm) bits.push(folk.length === 1 ? _vgFolkCap(folk[0]) + ' is a little fonder of you' : 'the folk are a little fonder of you');
   if (pb) bits.push('your best yet: ' + valeBestWords(game, best));
-  const head = won ? VF3_SAY.first : VF3_SAY.place(mine.place);
-  try { gardenToast(head + (bits.length ? ' ' + bits.join(', ') + '.' : ''), { icon: G.icon }); } catch (e) { /* fine */ }
+  const head = won ? VF3_SAY.first : VF3_SAY.place(mine.place), tail = bits.join(', ');
+  try { gardenToast(head + (tail ? ' ' + tail[0].toUpperCase() + tail.slice(1) + '.' : ''), { icon: G.icon }); } catch (e) { /* fine */ }
   for (const id of prizes) { const def = typeof gardenDecor === 'function' ? gardenDecor(id) : null; if (def) setTimeout(() => { try { gardenToast(`A prize: ${def.name}. It is in your bag, to put out where you like.`, { icon: 'gift' }); } catch (e) { /* fine */ } }, 1600); }
   if (said.length) setTimeout(() => { try { wdAmbient(said[0], 7000, 'folk'); } catch (e) { /* quiet */ } }, 2600);
 }

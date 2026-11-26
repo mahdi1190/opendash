@@ -26,6 +26,7 @@ function _vgtEdges(at, R, want) {
       if (out.some(q => Math.hypot(q.x - x, q.y - y) < 1.6) || !_gwFree(x, y) || !gardenTerrainWaterAhead(x, y)) continue;
       if (calm.some(t => Math.hypot(x - t.x, (y - t.y) * 1.3) < Math.max(GARDEN_KINDS[t.kind].calmsWater, t.w || 1)) || (typeof _vgsMillNear === 'function' && _vgsMillNear(x, y))) continue;
       if (m && typeof _vfrOpenAt === 'function' && !_vfrOpenAt(x, y, m)) continue;
+      if (typeof gardenFolkReach === 'function' && !gardenFolkReach(at, { x, y })) continue;   // (on your side of the water: the folk walk there with you)
       out.push({ x, y });
     }
   }
