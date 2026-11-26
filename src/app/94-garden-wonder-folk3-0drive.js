@@ -79,6 +79,7 @@ function gardenFolkDriveFrame(V, dt, now, view) {
     } else {
       V.x = D.to.x; V.y = D.to.y; if (V.path) V.path.length = 0; D.to = null; D.at = now;
       const f = D.then; D.then = null; if (f) { try { f(V); } catch (e) { console.error('[folk drive]', e); } }
+      if (V.drive !== D) return;   // (let go, or taken on to something else, by what they arrived for)
     }
   }
   if (!moving && D.face != null) { if (D.face === 1 || D.face === -1) V.face = D.face; else if (Number.isFinite(D.face.x) && Math.abs(D.face.x - V.x) > 0.12) V.face = D.face.x > V.x ? 1 : -1; }
@@ -107,7 +108,7 @@ function _vf3Step(V, dt, speed) {
 /** Someone at px, py just ahead of a racer heading ux, uy: which way to veer (-1, 1) to pass them, 0 when they are not in the way. */
 function _vf3Veer(V, px, py, ux, uy) { const G = GARDEN_WORLD, rx = (px - V.x) * G.cellW, ry = (py - V.y) * G.cellH, along = rx * ux + ry * uy, lat = -rx * uy + ry * ux; return along > -8 && along < 58 && Math.abs(lat) < 30 ? (lat > 0 ? -1 : 1) : 0; }
 function _vf3Draw(V, moving) {
-  const S = V.S, D = V.drive;
+  const S = V.S, D = V.drive; if (!D) return;
   const pose = moving ? 'idle' : (D.pose || 'idle'), face = V.face < 0 ? -1 : 1;
   let view;
   if (moving) view = _vfrView3(V, true, pose);

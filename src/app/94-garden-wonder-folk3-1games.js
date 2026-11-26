@@ -236,10 +236,10 @@ const VG_FLAT_RE = /^(road|plaza|path|field|plot|pond|crossing|ford|bridge|pier|
 function _vgPodiumAt(p, avoid) {
   const C = typeof _vfr !== 'undefined' && _vfr.ctx ? _vfr.ctx : null, things = C ? C.things : (typeof gardenAffordThings === 'function' ? gardenAffordThings() : []);
   const ok = (x, y) => {
-    for (const q of avoid || []) if (Math.abs(q.x - x) < 1.7 && Math.abs(q.y - y) < 1.3) return false;
+    for (const q of avoid || []) if (Math.abs(q.x - x) < 1.8 && q.y - y < 1.3 && y - q.y < 2.4) return false;   // (a flag a little behind the crates stood out of the winner's head)
     for (const k of [-1, 0, 1]) for (const ex of [-0.32, 0, 0.32]) if (typeof _gwFree === 'function' && !_gwFree(x + k * 0.62 + ex, y)) return false;
     for (const t of things) { if (!t.kind || VG_FLAT_RE.test(t.kind)) continue; const B = C ? C.base(t) : t, hw = (B.w || t.w || 1) / 2 + 1.25; if (Math.abs(B.x - x) < hw && y > B.y - Math.max(1.2, (B.h || 1.2) + 0.4) && y < B.y + 1.1) return false; }
-    if (typeof _vfrFigures === 'function' && _vfrFigures().some(F => Math.abs(F.x - x) < 1.5 && Math.abs(F.y - y) < 0.8)) return false;
+    if (typeof _vfrFigures === 'function' && _vfrFigures().some(F => Math.abs(F.x - x) < 1.6 && F.y - y < 1.0 && y - F.y < 2.4)) return false;   // (nobody just behind it: the folk stood on it cover them)
     return !(typeof gardenTerrainAt === 'function' && /water|deep/.test(gardenTerrainAt(x, y)));
   };
   for (let r = 1.6; r <= 6.2; r += 0.5) for (let a = 0; a < 16; a++) { const t = Math.PI / 2 + (a % 2 ? 1 : -1) * Math.ceil(a / 2) * Math.PI / 8, x = p.x + Math.cos(t) * r, y = p.y + Math.sin(t) * r * 0.6; if (ok(x, y)) return { x, y }; }
@@ -379,6 +379,7 @@ function gardenGameActRows(px, py) {
     }
     if (!R && !(G && !G.over)) out.push(..._vgBoardRows(px, py));
   } catch (e) { console.error('[vale games]', e); }
+  for (const r of out) if (r.run) r.down = true;   // (a game's move is offered whichever way you face: the prompt keeps rows marked so even when behind you)
   return out;
 }
 function _vgJoinMe() {
