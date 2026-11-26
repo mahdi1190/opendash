@@ -532,22 +532,23 @@ function _gtdPlazaFace(x, y) {
   return false;
 }
 /** Is (x, y) too close to a path, a standing thing, a plot or a painted thing's foot for something lying on the sand? */
-function _gtdCrowded(x, y) {
+function _gtdCrowded(x, y, wide) {
+  const mx = wide ? .45 : .26, my = wide ? .35 : .2, hm = wide ? .5 : .22;
   if (!gardenIslandLandContains(x, y)) return true;
-  for (const [dx, dy] of [[0, 0], [-.45, 0], [.45, 0], [0, -.35], [0, .35]]) { const c = gardenIslandBaseCell(x + dx, y + dy); if (!c || c.freshwater || c.route || c.staticId || c.solid || c.reservation === 'apron' || c.reservation === 'landform') return true; }   // (the sea's cells round the waterline, the space behind a building and a pier's future place are still open sand)
-  try { const V = typeof GardenPaintVale !== 'undefined' && GardenPaintVale.feet ? GardenPaintVale.feet() : []; for (const f of V) if (x > f.x0 - .45 && x < f.x1 + .45 && y > f.y0 - .4 && y < f.y1 + .4) return true; } catch (e) { /* no painted feet */ }
+  for (const [dx, dy] of [[0, 0], [-mx, 0], [mx, 0], [0, -my], [0, my]]) { const c = gardenIslandBaseCell(x + dx, y + dy); if (!c || c.freshwater || c.route || c.staticId || c.solid || c.reservation === 'apron' || c.reservation === 'landform') return true; }   // (the sea's cells round the waterline, the space behind a building and a pier's future place are still open sand)
+  try { const V = typeof GardenPaintVale !== 'undefined' && GardenPaintVale.feet ? GardenPaintVale.feet() : []; for (const f of V) if (x > f.x0 - mx && x < f.x1 + mx && y > f.y0 - my - .1 && y < f.y1 + my) return true; } catch (e) { /* no painted feet */ }
   // (below a plaza, a quay's wall face is painted down towards the water: nothing lies at its foot)
   if (_gtdPlazaFace(x, y)) return true;
-  try { if (typeof gardenIslandHarbourThings === 'function') for (const t of gardenIslandHarbourThings()) { const f = t.foot; if (x > f[0] - .5 && x < f[2] + .5 && y > f[1] - .6 && y < f[3] + .45) return true; } } catch (e) { /* no harbour */ }   // (the drying net, the boat on the sand, the crates: by the harbour's own rule, the same on every screen)
+  try { if (typeof gardenIslandHarbourThings === 'function') for (const t of gardenIslandHarbourThings()) { const f = t.foot; if (x > f[0] - hm && x < f[2] + hm && y > f[1] - hm - .15 && y < f[3] + hm) return true; } } catch (e) { /* no harbour */ }   // (the drying net, the boat on the sand, the crates: by the harbour's own rule, the same on every screen)
   return false;
 }
 
 /** Open beach at (x, y): clear of paths and standing things (_gtdCrowded), and the sand's own height there (not ground that rises
  *  to a quay or a path: a thing lying there would sit on a wall's face). Mud by a river mouth is measured from the river instead. */
 function gardenTideOpenSand(x, y, wide) {
-  if (_gtdCrowded(x, y) || wide && (_gtdCrowded(x - .55, y) || _gtdCrowded(x + .55, y) || _gtdCrowded(x, y + .9))) return false;
+  if (_gtdCrowded(x, y, wide) || wide && (_gtdCrowded(x - .55, y, true) || _gtdCrowded(x + .55, y, true) || _gtdCrowded(x, y + .9, true))) return false;
   const h = gardenTideH(x, y); if (!Number.isFinite(h)) return false;
-  return gardenTideFieldKind(x, y) === 3 || Math.abs(h - gardenIslandCoastDistance(x, y)) < 14;
+  return gardenTideFieldKind(x, y) === 3 || Math.abs(h - gardenIslandCoastDistance(x, y)) < (wide ? 14 : 22);
 }
 
 /* ---------- storms ---------- */

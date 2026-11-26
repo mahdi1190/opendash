@@ -99,7 +99,7 @@ function _gtsBottle(day) {
 function _gtsHaulLoop() {
   const cur = typeof _ga !== 'undefined' ? _ga.cur : null;
   if (!(cur && cur.doing && cur.id === 'heave')) { _gts.hauling = 0; _gtsBar(null); return; }
-  const now = performance.now(), dt = Math.min(.5, (now - (_gts.last || now)) / 1000), role = typeof _gll !== 'undefined' ? _gll.role : '';
+  const now = performance.now(), dt = Math.min(1.2, (now - (_gts.last || now)) / 1000), role = typeof _gll !== 'undefined' ? _gll.role : '';
   const host = role === 'host' && typeof _glh !== 'undefined' && _glh.on, guest = role === 'visit' && typeof _glvLive === 'function' && _glvLive(), heard = guest && _gts.hostProg >= 0 && now - _gts.heardAt < 2500;
   _gts.last = now; _gts.hauling = now;
   if (guest && now - _gts.tellT > 900) { _gts.tellT = now; try { gardenLiveFx('tide', 'haul', { n: _gts.n }); } catch (e) { /* alone */ } }
@@ -115,7 +115,7 @@ function _gtsHostTick() {
   if (_gts.hostOn) return;
   _gts.hostOn = true; _gts.hostLast = performance.now();
   const step = () => {
-    const now = performance.now(), dt = Math.min(.5, (now - _gts.hostLast) / 1000); _gts.hostLast = now;
+    const now = performance.now(), dt = Math.min(1.2, (now - _gts.hostLast) / 1000); _gts.hostLast = now;
     for (const [k, t] of _gts.helpers) if (now - t > 1800) _gts.helpers.delete(k);
     const self = now - (_gts.self || 0) < 450 ? 1 : 0, count = _gts.helpers.size + self;
     if (!count) { _gts.hostOn = false; return; }

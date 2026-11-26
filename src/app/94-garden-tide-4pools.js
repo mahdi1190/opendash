@@ -26,19 +26,40 @@ const GT_POOL_PEEK = Object.freeze([
   'Limpets on the rocks, every one facing a different way.', 'A green crab pretending to be a stone.',
 ]);
 function _gtqVisit() { try { return typeof gardenVisitOn === 'function' && gardenVisitOn(); } catch (e) { return false; } }
-/** The stones that wobble at low water w: [{k (number), pool, x, y, ph}] (k = pool's number x 2 + which). */
+/** The stones that wobble at low water w: [{k (number), pool, x, y, ph}] (k = pool's number x 2 + which; 48 on: loose stones). */
 function gardenTideStones() {
-  const out = [];
+  const out = _gtqLooseStones().slice();
   for (const p of gardenTidePools()) for (let j = 0; j < p.stones; j++) {
     const a = (gardenHash('tide-stone|' + p.id) % 628) / 100 + j * 2.3, W = GARDEN_WORLD, d = p.rx * 1.45 + 3;
     out.push({ k: p.n * 2 + j, pool: p, x: Math.round((p.x + Math.cos(a) * d / W.cellW) * 100) / 100, y: Math.round((p.y + Math.abs(Math.sin(a)) * d * .5 / W.cellH + .05) * 100) / 100, ph: (a * 13) % 1 });
   }
   return out;
 }
+const _gtqLoose = { key: '', list: [] };
+/** Loose stones on a rocky shore with no pool drawn (the rocks round a lighthouse, a shore too busy for a pool): two at most a region,
+ *  placed by rule on open rocky sand low on the shore, the same on every screen. Their creature runs for the sea. */
+function _gtqLooseStones() {
+  const F = typeof GardenTide !== 'undefined' ? GardenTide.field() : null; if (!F) return [];
+  const pools = gardenTidePools(), key = F.rev + '|' + pools.map(p => p.id).join(',');
+  if (_gtqLoose.key === key) return _gtqLoose.list;
+  const out = [], W = GARDEN_WORLD, have = new Set(pools.map(p => p.zone));
+  for (const z of [...F.bandZ.keys()].sort((a, b) => a - b)) {
+    if (have.has(z) || out.length >= 4) continue;
+    const list = F.bandZ.get(z).filter(at => F.K[at] === 2), r = gardenRand(gardenHash('tide-loose|' + z)); let got = 0;
+    for (let k = 0; k < 160 && got < 2 && list.length && out.length < 4; k++) {
+      const at = list[Math.floor(r() * list.length)], tx = at % F.FW, ty = (at - tx) / F.FW, x = (tx + .5) * F.P / W.cellW, y = ((ty + .5) * F.P - W.sky) / W.cellH, h = gardenTideH(x, y);
+      if (!(h > 6 && h < 40) || !gardenTideOpenSand(x, y, true) || out.some(q => Math.hypot(q.x - x, q.y - y) < 1.6)) continue;
+      out.push({ k: 48 + out.length, pool: { id: 'tl' + z + '-' + got, x: x + .45, y: y + .5, zone: z, n: -1 }, x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100, ph: r() }); got++;
+    }
+  }
+  _gtqLoose.key = key; _gtqLoose.list = out; return out;
+}
+/** Is stone k lifted in mask v (up to 52 stones: plain arithmetic, not 32-bit bit tricks)? */
+function _gtqBit(v, k) { return Math.floor((Number(v) || 0) / Math.pow(2, k)) % 2 === 1; }
 function _gtqMaskKey(w) { return _gtqVisit() && typeof _gtcFriendTag === 'function' ? 'tdlv.' + _gtcFriendTag() + '.' + w : 'tdl.' + w; }
-function _gtqLifted(w, k) { const v = Number(_gdG().wd[_gtqMaskKey(w)]) || 0; return !!(v & (1 << (k % 31))); }
+function _gtqLifted(w, k) { return _gtqBit(_gdG().wd[_gtqMaskKey(w)], k); }
 function _gtqSetLifted(w, k) {
-  const g = _gdG(), key = _gtqMaskKey(w); g.wd[key] = (Number(g.wd[key]) || 0) | (1 << (k % 31));
+  const g = _gdG(), key = _gtqMaskKey(w), v = Number(g.wd[key]) || 0; if (!_gtqBit(v, k)) g.wd[key] = v + Math.pow(2, k);
   // keep the last few low waters only
   const pre = key.slice(0, key.lastIndexOf('.') + 1), olds = Object.keys(g.wd).filter(q => q.startsWith(pre)).map(q => Number(q.slice(pre.length))).filter(Number.isFinite).sort((a, b) => b - a);
   for (const o of olds.slice(4)) delete g.wd[pre + o];
@@ -176,7 +197,7 @@ const GardenTideStoneSprites = {
     if (this.maskW !== T.w || this.maskRev !== rev) { this.maskW = T.w; this.maskRev = rev; this.mask = Number(_gdG().wd[_gtqMaskKey(T.w)]) || 0; }   // (once when it changes, not every frame)
     for (const im of _gtq.imgs) {
       const st = im._st; if (!st) continue;
-      const lifted = !!(this.mask & (1 << (st.k % 31))), peek = _gtq.peek.get(st.k), baseY = W.sky + st.y * W.cellH;
+      const lifted = _gtqBit(this.mask, st.k), peek = _gtq.peek.get(st.k), baseY = W.sky + st.y * W.cellH;
       if (peek && peek.w !== T.w) _gtq.peek.delete(st.k);
       else if (peek && (peek.lift || performance.now() - peek.t < 2600)) {
         // tipped back: on its edge beside the hollow it lay in (yours stays so; a friend's settles back after a moment)
