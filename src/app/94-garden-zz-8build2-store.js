@@ -36,12 +36,15 @@ function _gb2ChestAtHome(v) {
   for (const k in v.home) { if (!k.startsWith('decor:')) continue; try { const kd = gardenKindOf({ decor: k.slice(6), id: k.slice(6) }); if (kd && GARDEN_KINDS[kd] && GARDEN_KINDS[kd].store) return k; } catch (e) { /* not one */ } }
   return '';
 }
+/** What a panel shows, as words to compare: base (everything but which pocket is chosen) and sel (the chosen one and what it offers). */
 function _gb2Stamp(v, store) {
-  let s = (store ? 's' : 'p') + '|' + _gb2.sel + '|' + _gb2.tab + '|' + _gb2.page + '|' + v.size + '|';
+  let s = (store ? 's' : 'p') + '|' + _gb2.tab + '|' + _gb2.page + '|' + v.size + '|';
   for (const e of v.slots) s += e ? (e.i || e.u) + '*' + (e.n || 1) + ',' : '-,';
-  if (store) { for (const k in v.home) { const r = gardenB2Class(k); if (r && r.tab === _gb2.tab) s += k + '=' + v.home[k] + ';'; } s += '|' + GB2_TABS.map(t => t.id + Object.keys(v.home).filter(k => { const r = gardenB2Class(k); return r && r.tab === t.id; }).length).join(',') + '|k' + _gb2Kept0().signature; }
-  else { const e = v.slots[_gb2.sel]; if (e && e.i) s += '|h' + (v.home[e.i] || 0) + '|' + gardenB2SlotActs(e, gardenB2SlotCtx(e, false)).map(r => r.id).join(','); s += '|c' + (_gb2ChestOut() ? 1 : 0) + '|k' + _gb2Kept0().rows.length + '|h' + (_gb2ChestAtHome(v) ? 1 : 0); }
-  return s;
+  if (store) { for (const k in v.home) { const r = gardenB2Class(k); if (r && r.tab === _gb2.tab) s += k + '=' + v.home[k] + ';'; } s += '|' + GB2_TABS.map(t => t.id + Object.keys(v.home).filter(k => { const r = gardenB2Class(k); return r && r.tab === t.id; }).length).join(',') + '|k' + _gb2Kept0().signature; return { base: s, sel: '' }; }
+  s += '|c' + (_gb2ChestOut() ? 1 : 0) + '|k' + _gb2Kept0().rows.length + '|h' + (_gb2ChestAtHome(v) ? 1 : 0) + '|in' + _gb2HandItem();
+  const e = v.slots[_gb2.sel]; let sel = String(_gb2.sel);
+  if (e && e.i) sel += '|h' + (v.home[e.i] || 0) + '|' + gardenB2SlotActs(e, gardenB2SlotCtx(e, false)).map(r => r.id).join(',');
+  return { base: s, sel };
 }
 function gardenB2Pockets(box) {
   if (!gardenB2On()) return false;
@@ -61,9 +64,16 @@ function gardenB2Pockets(box) {
   const v = gardenB2View(), store = _gb2.panel === 'store';
   if (fresh && !store) { const hand = _gb2HandSlot(v.slots), chest = v.slots.findIndex(e => e && e.i === 'decor:storage-chest'); _gb2.sel = hand != null ? hand : !_gb2ChestOut() && chest >= 0 ? chest : v.slots.findIndex(Boolean); }
   if (_gb2.sel >= v.size) _gb2.sel = -1;
-  const stamp = _gb2Stamp(v, store);
-  if (!fresh && _gb2.popKey === stamp && el.firstChild) return true;
-  _gb2.popKey = stamp;
+  const st = _gb2Stamp(v, store);
+  if (!fresh && el.firstChild && _gb2.popKey === st.base) {
+    if (_gb2.popSel === st.sel) return true;
+    // only which pocket is chosen changed: the grid stays as it is and the strip under it is drawn again (a whole panel per tap was 20 ms)
+    _gb2.popSel = st.sel;
+    for (const b of el.querySelectorAll('.gb2-pkgrid .gb2-slot')) b.setAttribute('aria-selected', String(Number(b.dataset.s) === _gb2.sel));
+    const det = el.querySelector('.gb2-detail'); if (det) { det.textContent = ''; _gb2Detail(det, v); }
+    return true;
+  }
+  _gb2.popKey = st.base; _gb2.popSel = st.sel;
   const focusKey = el.contains(document.activeElement) ? document.activeElement.dataset.gb2k || '' : '';
   el.textContent = ''; el.classList.toggle('gb2-store', store); el.classList.toggle('gb2-pockets', !store);
   const head = _gb2El('div', 'gb2-head'), pic = _gb2El('span', 'gb2-head-pic'), title = _gb2El('h2', '', store ? 'Your storage' : 'Your pockets'), cap = _gb2El('span', 'gb2-cap', `${v.used} of ${v.size} pockets used`), x = _gb2El('button', 'gb2-x');
@@ -99,6 +109,11 @@ function _gb2DrawPockets(el, v) {
   for (let s = 0; s < v.size; s++) grid.appendChild(_gb2SlotBtn(v, s, false));
   el.appendChild(grid);
   const det = _gb2El('div', 'gb2-detail'); det.setAttribute('aria-live', 'polite'); el.appendChild(det);
+  _gb2Detail(det, v);
+  _gb2Foot(el, v);
+}
+/** The strip under your pockets: the chosen thing, how many, and what you can do with it. */
+function _gb2Detail(det, v) {
   const e = v.slots[_gb2.sel];
   if (e && e.i) {
     const name = gardenB2Name(e.i), stars = _gb2Stars(e.i), atHome = v.home[e.i] || 0, ctx = gardenB2SlotCtx(e, false);
@@ -120,6 +135,9 @@ function _gb2DrawPockets(el, v) {
     t.append(_gb2El('b', '', v.used ? 'Choose a pocket' : 'Your pockets are empty'), _gb2El('small', '', 'What you pick, catch, find and buy goes in your pockets. When they are full, the rest goes home to your storage.'));
     det.appendChild(t);
   }
+}
+/** The line at the foot of your pockets: where your storage is (and your chest, should it have gone home). */
+function _gb2Foot(el, v) {
   const chestIn = v.slots.some(x => x && x.i === 'decor:storage-chest'), out = _gb2ChestOut(), keptN = _gb2Kept0().rows.length;
   const keptLine = keptN ? ` ${keptN === 1 ? 'A plant or decoration you kept whole waits' : keptN + ' plants and decorations you kept whole wait'} there too.` : '';
   const homeChest = !out && !chestIn ? _gb2ChestAtHome(v) : '';   // (your only chest went home: it could never be opened to take itself out)
@@ -216,7 +234,7 @@ function _gb2Bind(el) {
       const s = Number(t.dataset.s), v = gardenB2View(), e = v.slots[s];
       if (store) { if (e && e.i) { const r = gardenB2SendHome(s); if (!r.ok) gameDenyOf(r, t); else { try { gardenSfx('place'); } catch (err) { /* quiet */ } } } return; }
       if (_gb2.sel === s && e && e.i) { const first = gardenB2SlotActs(e, gardenB2SlotCtx(e, false))[0]; if (first) _gb2DoAct(first, s, t); return; }   // a second tap: the first thing it does
-      _gb2.sel = s; _gb2.popKey = ''; _ghBag();
+      _gb2.sel = s; _ghBag();   // (only the choice changed: the light path in gardenB2Pockets)
     }
   });
   el.addEventListener('dblclick', (ev) => {
@@ -230,7 +248,7 @@ function _gb2Bind(el) {
     if (slot && /^Arrow(Left|Right|Up|Down)$/.test(ev.key)) {
       const grid = slot.parentElement, all = [...grid.querySelectorAll(':scope > .gb2-slot')], i = all.indexOf(slot), cols = Math.max(1, Number(getComputedStyle(grid).getPropertyValue('--cols')) || 10);
       const n = ev.key === 'ArrowLeft' ? i - 1 : ev.key === 'ArrowRight' ? i + 1 : ev.key === 'ArrowUp' ? i - cols : i + cols;
-      if (n >= 0 && n < all.length) { ev.preventDefault(); ev.stopPropagation(); all[n].focus({ preventScroll: true }); if (_gb2.panel !== 'store' && all[n].dataset.s != null) { _gb2.sel = Number(all[n].dataset.s); _gb2.popKey = ''; _ghBag(); } }
+      if (n >= 0 && n < all.length) { ev.preventDefault(); ev.stopPropagation(); all[n].focus({ preventScroll: true }); if (_gb2.panel !== 'store' && all[n].dataset.s != null) { _gb2.sel = Number(all[n].dataset.s); _ghBag(); } }
       return;
     }
     if (slot && slot.dataset.s != null && (ev.key === 'Delete' || ev.key === 'Backspace')) { ev.preventDefault(); ev.stopPropagation(); const r = gardenB2SendHome(Number(slot.dataset.s)); if (r.ok) { if (r.msg) gardenMessage(r.msg, { icon: 'house', ms: 3000 }); } else gameDenyOf(r, slot); return; }

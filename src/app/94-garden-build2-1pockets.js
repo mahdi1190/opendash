@@ -122,7 +122,7 @@ function _gb2Say(key, text, icon, ms, gap) {
 function _gb2Arrived(up, home) {
   const went = new Map(home.map(h => [h[0], h])), full = home.filter(h => h[2] === 'full'), more = home.filter(h => h[2] === 'more' && h[1] >= 5);
   let flown = 0;
-  for (const [it, n] of up) { const h = went.get(it); if (h && h[1] >= n) continue; if (flown < 2) { _gb2Fly(it); flown++; } }
+  for (const [it, n] of up) { const h = went.get(it); if (h && h[1] >= n) continue; if (flown < 2) { requestAnimationFrame(() => _gb2Fly(it)); flown++; } }   // (next frame: where things are is read once the ring has been laid out anyway)
   if (full.length) {
     const name = 'the ' + gardenB2Name(full[0][0]).toLowerCase(), rest = full.length - 1;
     let line = `Your pockets are full, so Perpetua took ${name}${rest ? ` and ${rest} more thing${rest === 1 ? '' : 's'}` : ''} home.`;
@@ -154,7 +154,7 @@ function _gb2Fly(item) {
   } catch (e) { _gb2.flying = 0; }
 }
 function _gb2Bump(full) {
-  try { const box = _ghBox(), b = box && box.querySelector('.gb2-bagbtn'); if (!b) return; const cls = full ? 'is-full-shake' : 'is-bump'; b.classList.remove(cls); void b.offsetWidth; b.classList.add(cls); setTimeout(() => b.classList.remove(cls), 700); } catch (e) { /* fine */ }
+  try { const box = _ghBox(), b = box && box.querySelector('.gb2-bagbtn'); if (!b) return; const cls = full ? 'is-full-shake' : 'is-bump'; b.classList.remove(cls); requestAnimationFrame(() => { b.classList.add(cls); setTimeout(() => b.classList.remove(cls), 700); }); } catch (e) { /* fine */ }   // (a frame apart restarts it: no forced layout)
 }
 
 /* ---------- moving things between your pockets and home ---------- */
