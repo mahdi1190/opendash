@@ -91,6 +91,7 @@ function openOnboarding() {
       try { if (typeof _persistFire === 'function' && !d.demo) await _persistFire(); } catch (e) { /* the next save carries it */ }
     }
     close();
+    _writeLocalDrop();   // (a cache write still waiting must not bring the old state back before the reload: 01-core-state.js)
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
     // 2.16: after the reload, a short skippable quick start (three tips; 95-whats-new.js).
     try { localStorage.setItem('dashboard-quickstart', '1'); } catch (e) { /* no quick start then */ }

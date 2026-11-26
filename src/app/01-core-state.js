@@ -112,19 +112,25 @@ const RETIRED_STATE_KEYS = ['boards', 'boardCollapsed', 'canvasConnect'];
 // garden action (a watering sweep is ten saves) and every zoom wrote the whole state there at once, a full JSON copy each
 // time. _writeLocal() asks for a write a moment later (_writeLocal(true) for a data save: a full storage then says where the
 // edit went, _saveLocalFull); _writeLocalNow() writes at once. A hidden or closing tab writes what is pending straight away.
-let _localWriteTimer = 0, _localWriteData = false;
+let _localWriteTimer = 0, _localWriteData = false, _localWriteOff = false;
 function _writeLocalNow() {
   if (_localWriteTimer) { clearTimeout(_localWriteTimer); _localWriteTimer = 0; }
   const data = _localWriteData; _localWriteData = false;
+  if (_localWriteOff) return;   // (the cache was emptied for a reload: _writeLocalDrop)
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   catch (e) { if (data) _saveLocalFull(); throw e; }
 }
 function _writeLocal(data) {
+  if (_localWriteOff) return;
   if (data) _localWriteData = true;
   if (_localWriteTimer) return;
   _localWriteTimer = setTimeout(() => { _localWriteTimer = 0; try { _writeLocalNow(); } catch (e) { /* storage full or blocked: a data save says so (_saveLocalFull) */ } }, 300);
 }
 function _writeLocalFlush() { if (_localWriteTimer) { try { _writeLocalNow(); } catch (e) { /* storage full or blocked */ } } }
+/** The cache is being emptied so the reload starts from the saved file (Reset everything, the welcome set-up): a write still
+ *  waiting would put the old state back as the page unloads (the old at-once write always came before the removal), so from
+ *  here to the reload none is made. */
+function _writeLocalDrop() { _localWriteOff = true; if (_localWriteTimer) { clearTimeout(_localWriteTimer); _localWriteTimer = 0; } _localWriteData = false; }
 if (typeof window !== 'undefined' && window.addEventListener) {
   window.addEventListener('pagehide', _writeLocalFlush);
   window.addEventListener('beforeunload', _writeLocalFlush);
