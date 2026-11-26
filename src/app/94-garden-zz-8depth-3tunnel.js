@@ -259,7 +259,8 @@ function _gdtChamberFirst(C, n) {
   let g = null; try { g = _gdG(); } catch (e) { g = null; }
   const key = 'dp.c.' + C.T.id + '.' + n; if (!g || !g.seen || g.seen[key] || (typeof gardenVisitOn === 'function' && gardenVisitOn())) return;
   g.seen[key] = typeof _gdToday === 'function' ? _gdToday() : '1'; try { _gdSave(); } catch (e) { /* later */ }
-  const line = { shelves: 'Shelves of old boxes and ledgers, thick with dust.', bench: 'A bench cut into the rock, worn smooth by drovers resting.', well: 'A well shaft, cold air breathing up from the water far below.', barrels: 'Barrels laid down in the cool, waiting for the cider.', tub: 'An old ore tub on its rails, half full of spoil.', crystals: 'Crystals in the rock, catching your light.', pool: 'A still pool, so clear you can see the stones on its bottom.', worms: 'Tiny green lights on the ceiling.', none: 'Your footsteps come back to you.' }[R.piece];
+  const rough = (GARDEN_TUNNEL_STYLES[C.T.style] || {}).wall === 'rock';
+  const line = { shelves: rough ? 'An old store in the rock: sacks on a rack, a coil of rope, a crate nobody came back for.' : 'Shelves of old boxes and ledgers, thick with dust.', bench: 'A bench cut into the rock, worn smooth by drovers resting.', well: 'A well shaft, cold air breathing up from the water far below.', barrels: 'Barrels laid down in the cool, waiting for the cider.', tub: 'An old ore tub on its rails, half full of spoil.', crystals: 'Crystals in the rock, catching your light.', pool: 'A still pool, so clear you can see the stones on its bottom.', worms: 'Tiny green lights on the ceiling.', none: 'Your footsteps come back to you.' }[R.piece];
   if (line) try { gardenToast(line, { icon: 'sparkles' }); } catch (e) { /* quiet */ }
 }
 /** Out of a tunnel: the first time out of each one, a few coins and a line in your journal (its ledger line pays once, by id); the ribbons

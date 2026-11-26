@@ -59,8 +59,8 @@
   function hatch(C, T, m, shut, seed) {
     const { L, add, thing, kit, P } = C, O = opening(L, m), r0 = kit.rng(seed), paved = !!(L.mat && L.mat(m.x, m.y) === 'path') || (typeof _plStoneAt === 'function' && _plStoneAt(m.x, m.y));
     add([O.x0 - 40, O.y0 - 34, O.x1 + 40, O.y1 + 34], seed, (B, r) => wear(B, r, O, P, paved));
-    const ax = O.cx, ay = O.y1, ext = O.b * 0.95 + 6, n0 = O.fx ? ext : 6;
-    thing({ key: 'dp-hatch|' + T.id + '|' + m.i + '|' + (shut ? 1 : 0) + '|' + C.season, x: ax, y: ay, depth: O.y0 - n0, K: 1.6, shade: false, box: [O.x0 - ax - ext - 4, O.y0 - ay - ext - 4, O.x1 - ax + ext + 4, ext + 4], foot: [-(O.x1 - O.x0) / 2 + 1, (O.x1 - O.x0) / 2 - 1, O.y1 - O.y0 - 1], draw: (B0) => { const B = B0, r = kit.rng(seed); B.cx.save(); B.cx.translate(-ax, -ay);
+    const fl = O.b * 0.95, ac = !!O.fx, X0 = O.x0 - (ac ? 0 : fl), X1 = O.x1 + (ac ? 0 : fl), Y0 = O.y0 - (ac ? fl : 0), Y1 = O.y1 + (ac ? fl : 0) + 1.5, ax = (X0 + X1) / 2, ay = Y1 - 2;
+    thing({ key: 'dp-hatch|' + T.id + '|' + m.i + '|' + (shut ? 1 : 0) + '|' + C.season, x: ax, y: ay, depth: Y0 + 0.5, K: 1.6, shade: false, box: [X0 - ax - 10, Y0 - ay - 10, X1 - ax + 10, Y1 - ay + 8], foot: [X0 - ax, X1 - ax, ay - Y0], draw: (B0) => { const B = B0, r = kit.rng(seed); B.cx.save(); B.cx.translate(-ax, -ay);
       // the flaps, folded back flat on the ground either side, iron rings, the hinges
       const along = !!O.fx, f1 = along ? [O.x0, O.y0 - O.b * 0.95, O.x1, O.y0] : [O.x0 - O.b * 0.95, O.y0, O.x0, O.y1], f2 = along ? [O.x0, O.y1, O.x1, O.y1 + O.b * 0.95] : [O.x1, O.y0, O.x1 + O.b * 0.95, O.y1];
       if (!shut) for (const f of [f1, f2]) {   // each flap: planks across it, two iron straps from its hinge, a ring to lift it by
@@ -82,7 +82,7 @@
     const { L, thing, kit, add, P } = C, H = Hpx(), W = L.W, x = m.x * W.cellW, base = W.sky + (m.y + m.fy * 0.32) * W.cellH, ow = H * 0.84, oh = H * 1.36, sunk = H * 0.3;
     const O = { x0: x - ow / 2, x1: x + ow / 2, y0: base - 6, y1: base + 4 };
     add([O.x0 - 40, O.y0 - 20, O.x1 + 40, O.y1 + 30], seed, (B, r) => wear(B, r, { x0: x - ow * 0.4, x1: x + ow * 0.4, y0: base, y1: base + 8 }, P, false));
-    thing({ key: 'dp-arch|' + T.id + '|' + m.i + '|' + (shut ? 1 : 0) + '|' + C.season, x, y: base + 1, K: 1.6, box: [-ow / 2 - 30, -oh - 22, ow / 2 + 30, 8], shade: false, foot: [-ow / 2 - 6, ow / 2 + 6, 7], draw: B => {
+    thing({ key: 'dp-arch|' + T.id + '|' + m.i + '|' + (shut ? 1 : 0) + '|' + C.season, x, y: base + 1, K: 1.6, box: [-ow / 2 - 30, -oh - 22, ow / 2 + 30, 8], shade: false, foot: [-ow / 2 - 6, ow / 2 + 22, 7], draw: B => {
       const r = kit.rng(seed + 3), top = -oh + sunk, rr = ow / 2;
       // the surround: dressed voussoirs round the head, quoins down the jambs, a little proud of the wall it is set in
       const outline = (g) => `M${-rr - g} ${sunk}V${top + rr}A${rr + g} ${rr + g} 0 0 1 ${rr + g} ${top + rr}V${sunk}Z`;
@@ -167,8 +167,8 @@
   function steps(C, T, m, shut, seed) {
     const { L, add, thing, kit, P } = C, O = opening(L, m), snowy = C.season === 'winter';
     add([O.x0 - 40, O.y0 - 30, O.x1 + 40, O.y1 + 30], seed, (B, r) => wear(B, r, O, P, false));
-    const ax = O.cx, ay = O.y1;
-    thing({ key: 'dp-steps|' + T.id + '|' + m.i + '|' + (shut ? 1 : 0) + '|' + C.season, x: ax, y: ay, depth: O.y0 - 7, K: 1.6, shade: false, box: [O.x0 - ax - 10, O.y0 - ay - 10, O.x1 - ax + 10, 10], foot: [-(O.x1 - O.x0) / 2 + 1, (O.x1 - O.x0) / 2 - 1, O.y1 - O.y0 - 1], draw: (B) => { const r = kit.rng(seed); B.cx.save(); B.cx.translate(-ax, -ay);
+    const X0 = O.x0 - (m.fx > 0 ? 0 : 4), X1 = O.x1 + (m.fx < 0 ? 0 : 4), Y0 = O.y0 - 2.8, Y1 = O.y1 + 3.5, ax = (X0 + X1) / 2, ay = Y1 - 2;
+    thing({ key: 'dp-steps|' + T.id + '|' + m.i + '|' + (shut ? 1 : 0) + '|' + C.season, x: ax, y: ay, depth: Y0 + 0.5, K: 1.6, shade: false, box: [X0 - ax - 10, Y0 - ay - 10, X1 - ax + 10, 10], foot: [X0 - ax, X1 - ax, ay - Y0], draw: (B) => { const r = kit.rng(seed); B.cx.save(); B.cx.translate(-ax, -ay);
       kerb(B, r, O, ['#7e7868', '#a29a86', '#c2b8a0']);
       if (shut) {   // fallen rock fills it, daylight would show only from below
         B.f(B.rect(O.x0, O.y0, O.x1 - O.x0, O.y1 - O.y0), '#14110e');
@@ -178,7 +178,9 @@
       B.cx.restore();
     } });
     // the marker stone beside it, a mark cut in its face (two strokes and a ring: "way under"): at its far corner, away from where you stand
-    const sx = m.fx < 0 ? O.x0 - 9 : O.x1 + 9, sy = O.y0 + 5;
+    const sy = O.y0 + 5, plotAt = (cx, cy) => { if (!C._dpPlots) { C._dpPlots = new Set(); for (const cells of Object.values((L.D && L.D.sectionCells) || {})) for (const q of cells || []) if (Array.isArray(q)) C._dpPlots.add(q[0] + ',' + q[1]); } return C._dpPlots.has(Math.floor(cx) + ',' + Math.floor(cy)) || L.plot(cx, cy); };
+    const turf = (px) => { const cx = px / L.cw, cy = (sy - L.W.sky) / L.ch; return L.kind(cx, cy) === 'grass' && !plotAt(cx, cy) && !plotAt(cx + 0.3, cy) && !plotAt(cx - 0.3, cy) && L.kind(cx + 0.3, cy) !== 'water' && L.kind(cx - 0.3, cy) !== 'water'; };
+    const sides = (m.fx < 0 ? [O.x0 - 9] : m.fx > 0 ? [O.x1 + 9] : [O.x1 + 9, O.x0 - 9]).concat([(O.x0 + O.x1) / 2 + 6]), sx = sides.find(turf) || sides[0];
     thing({ key: 'dp-marker-stone|' + T.id + '|' + m.i + '|' + C.season, x: sx, y: sy, K: 1.6, box: [-10, -28, 10, 5], foot: [-5, 5, 5], draw: B => {
       const r = kit.rng(seed + 9), h = Hpx() * 0.56;
       B.shadow(2.6, 1.2, 8, 2.2, 0.32);
