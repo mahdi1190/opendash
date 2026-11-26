@@ -762,9 +762,12 @@ function gardenFacts(mArg) {
   try { dep = typeof gardenDepthFacts === 'function' ? gardenDepthFacts() : null; } catch (e) { dep = null; }
   let hsf = null;   // your own house: rooms built, housewarmings, cosy stars (94-garden-house-4grow.js)
   try { hsf = typeof gardenHouseFacts === 'function' ? gardenHouseFacts() : null; } catch (e) { hsf = null; }
+  let vf3 = null;   // (folk3) games with the vale's folk: wins and bests (94-garden-wonder-folk3-1games.js)
+  try { vf3 = typeof gardenFolkFacts === 'function' ? gardenFolkFacts() : null; } catch (e) { vf3 = null; }
   return {
     ...(dep || {}),
     ...(hsf || {}),
+    ...(vf3 || {}),
     ...(rgn || {}),
     ...(soc || {}),
     ...(cat || {}),

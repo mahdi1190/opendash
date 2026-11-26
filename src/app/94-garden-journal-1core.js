@@ -23,6 +23,7 @@ const _gj = { sec: 'creatures', page: 'village', kind: 'fish', pick: '' };
 const GJ_SECTIONS = Object.freeze([
   ['creatures', 'Creatures', 'leaf', '#6a8a4a'], ['plants', 'Plants', 'sprout', '#7a8a3a'], ['people', 'People', 'user', '#b0605a'],
   ['places', 'Places', 'map', '#4a7a98'], ['stories', 'Letters', 'mail', '#7a5a98'], ['keep', 'Keepsakes', 'star', '#c8902a'], ['photos', 'Photos', 'camera', '#7a5a3a'],
+  ['chron', 'Chronicle', 'scroll-text', '#8a6a3a'],   // (folk3: the Chronicle, 94-garden-wonder-folk3-9chron.js)
 ]);
 /* W.'s old notes, in the margins (JOURNAL.md section 4): one ordinary sentence each, all about life before. */
 const GJ_MARGIN = Object.freeze({
@@ -119,6 +120,7 @@ function gardenJournalTab(el, m) {
     else if (_gj.sec === 'places') _gjPlaces(left, right, m);
     else if (_gj.sec === 'stories') _gjStories(left, right, m);
     else if (_gj.sec === 'keep') _gjKeep(left, right, m);
+    else if (_gj.sec === 'chron' && typeof gardenChronicleTab === 'function') gardenChronicleTab(left, right, m);   // (folk3)
     else _gjPhotos(left, right, m);
   } catch (e) { console.error('[journal]', e); left.appendChild(_gjEl('p', 'muted', 'This page would not open. Close the journal and try again.')); }
 }
@@ -341,6 +343,7 @@ function _gjStories(left, right, m) {
   const h = left.appendChild(_gjEl('div', 'gj-ptitle')); h.innerHTML = `<h3>Stories</h3><i class="gj-hand">in your own hand</i>`;
   const box = left.appendChild(_gjEl('div', 'gj-stories wd-box'));
   if (typeof wdBoxStories === 'function') wdBoxStories(box, m);   // the story engine's chapters (wdTaleAdd), told as you heard them
+  if (typeof gardenMomentsBox === 'function') gardenMomentsBox(box, m);   // (folk3: moments you saw, to watch again)
   else box.appendChild(_gjEl('p', 'gj-hand gj-empty', 'Nothing written here yet. Stories find you: sit with people, and listen.'));
   left.appendChild(_gdpBtn('If this brings anything up', { icon: 'heart', kind: 'btn-ghost', run: () => { if (typeof wdCareNote === 'function') wdCareNote(); else gardenMessage('If anything in the story is hard to read, it is fine to stop. Settings › Garden can soften the darker turns.', { icon: 'heart' }); } }));
   const h2 = right.appendChild(_gjEl('div', 'gj-etitle')); h2.innerHTML = '<h3>Letters</h3><small>tipped in, to open and read again</small>';

@@ -1655,6 +1655,7 @@ window.GardenNativeWorld = (function () {
       const ar = size.w / Math.max(1, size.h), fishing = !!(_gw.fishing && _gw.fishing.state !== 'idle' && _gw.fishing.bx < GARDEN_ROOM_X);
       if (fishing !== wasFishing) { wasFishing = fishing; fishZoom = 1; fishViewMode = ''; }
       if (typeof gardenDesignCam === 'function') { const view = gardenDesignCam(ar, width, height); if (view) return view; }
+      if (typeof gardenSceneCam === 'function') { const view = gardenSceneCam(ar, width, height); if (view) return view; }   // (folk3: a moment's shot, 94-garden-wonder-folk3-8scene.js)
       const activity = fishing ? null : activitySubject(); if (fishing) activityCamera = null;
       const fit = fishing ? fishViewMode === 'fit' : activity ? activityCamera.mode === 'fit' : prefs.cam === 'fit';
       let vh = fit ? Math.max(height, width / ar) : GW_ZOOMS[clamp(Number.isInteger(Number(prefs.zoom)) && prefs.zoom != null ? Number(prefs.zoom) : typeof _gwCamDefaultIdx === 'function' ? _gwCamDefaultIdx() : 2, 0, GW_ZOOMS.length - 1)], vw = vh * ar;

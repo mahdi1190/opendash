@@ -253,6 +253,8 @@ function _wdFolkTalk(S) {
   const extra = typeof wdFolkExtra === 'function' ? wdFolkExtra(row, F, S) : null;   // a map, an invitation to look up
   if (extra && extra.lines) lines.push(...extra.lines);
   if (extra && extra.actions) acts.push(...extra.actions);
+  if (typeof gardenGameTalkLines === 'function') lines.push(...gardenGameTalkLines(row, F));   // (folk3: what they remember of your last game together)
+  if (typeof gardenGameTalkActs === 'function') acts.push(...gardenGameTalkActs(row, F, S));   // (folk3: Play, 94-garden-wonder-folk3-1games.js)
   if (!S.gave) acts.push({ label: 'Give something', run: (T) => _wdFolkGive(S, T) });
   _wdSave();
   wdTalk({ name: kin && kin.name || row.name, art: _wdFolkArt(row), lines, actions: acts, at: { x: S.x, y: S.y }, onClose: () => _wdFolkLeave(S), closeQuiet: true });

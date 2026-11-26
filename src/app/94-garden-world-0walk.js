@@ -233,6 +233,7 @@ function _gwBuildSolids(m) {
       let top = null; for (const b of walls) if (b !== r && r.x0 < b.x1 - .05 && r.x1 > b.x0 + .05) { const gap = r.y0 - b.y1; if (gap > .01 && gap < .6 && (top == null || b.y1 > top)) top = b.y1; }
       if (top != null) add(r.x0, top - .02, r.x1, r.y0 + .01, r.src);
     } }
+  if (typeof gardenKitSolids === 'function') { try { for (const b of gardenKitSolids()) add(b.x0, b.y0, b.x1, b.y1, b.src); } catch (e) { /* an ordinary day */ } }   // (folk3: a market stall's counter, the brazier, the card table: 94-garden-wonder-folk3-6kit.js)
   return { list, at };
 }
 /** The one trunk-collision list for painted trees, in cells ({x0, y0, x1, y1, src}). Five painters plant trees, each

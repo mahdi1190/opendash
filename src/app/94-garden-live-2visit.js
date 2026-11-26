@@ -362,6 +362,7 @@ function _glvPersonMenu(A) {
     go(_glv.follow === A.w ? 'Stop following' : 'Follow', 'footprints', () => { _glv.follow = _glv.follow === A.w ? null : A.w; _glvSend('em', { c: 'do', e: _glv.follow != null ? 'follow' : 'unfollow', to: A.w }); if (_glv.follow != null) _glvFollowGo(A.x - 0.8, A.y + 0.3); });
     if (!glMayDo(_glv.lv, 'drop')) go('Give something', 'gift', () => _glvGiveMenu(A));
     if (glAtLeast(_glv.lv, GL_TRADE.lv)) go('Trade', 'repeat', () => gardenLiveTradeOpen(A));
+    if (typeof gardenGameFriendButtons === 'function') for (const b of gardenGameFriendButtons(A, close)) r.appendChild(b);   // (folk3: ask the host for a race or hide and seek)
     el.appendChild(r);
   }, { align: 'center' });
 }
@@ -488,6 +489,8 @@ function _glvEvent(ev) {
       if (ev.c === 'marble') { if (typeof gardenMarbleGuestState === 'function') gardenMarbleGuestState(ev); return; }
       if (ev.c === 'kite') { if (typeof gardenKiteGuestState === 'function') gardenKiteGuestState(ev); return; }
       if (ev.c === 'ct') { if (typeof _ctGuestEvent === 'function') _ctGuestEvent(ev); return; }   // the host's contest round (94-garden-live-7contest.js)
+      if (ev.c === 'gm') { if (typeof gardenGameGuestEvent === 'function') gardenGameGuestEvent(ev); return; }
+      if (ev.c === 'mo') { if (typeof gardenSceneGuestEvent === 'function') gardenSceneGuestEvent(ev); return; }   // (folk3: the host's public moment, a festival's opening)   // (folk3: the host's game with the vale's folk, 94-garden-wonder-folk3-1games.js)
       const A = _gll.actors.get(ev.w); if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return;
     }
     case 'd': _glvDelta(ev.ops); return;

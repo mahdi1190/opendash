@@ -155,5 +155,6 @@ function wdBoxDays(el, m) {
     const d = _gdpEl('div', 'wd-yearrow' + (x.now ? ' is-now' : '')); d.innerHTML = `<span class="wd-date" aria-hidden="true"><b>${Number(x.f.slice(3))}</b><small>${esc(_WD_MONTHS[Number(x.f.slice(0, 2)) - 1].slice(0, 3))}</small></span>`;
     const t = _gdpEl('span', 'wd-letter-t'); t.appendChild(_gdpEl('b', null, x.r.name + (x.now ? ': now' : ''))); t.appendChild(_gdpEl('small', 'muted', x.r.blurb)); d.appendChild(t); el.appendChild(d);
   }
+  if (typeof gardenYearBoxRows === 'function') gardenYearBoxRows(el, m);   // (folk3: the festivals and the week)
 }
 function _wdDayOnDate(f, t, md) { return (f <= t ? md >= f && md <= t : md >= f || md <= t) ? 1 : 0; }
