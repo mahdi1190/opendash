@@ -72,8 +72,10 @@ export function createRemoteServer({ dataDir, publicOrigin, now, rpc = message =
       const body = async json => {
         const type = String(req.headers['content-type'] || '').split(';')[0];
         if (type !== (json ? 'application/json' : 'application/x-www-form-urlencoded')) throw Object.assign(new Error('invalid_content_type'), { status: 415 });
-        let chunks = '', size = 0;
-        for await (const chunk of req) { size += chunk.length; if (size > 256 * 1024) throw Object.assign(new Error('body_too_large'), { status: 413 }); chunks += chunk; }
+        // Buffers, decoded once at the end: a character whose bytes are split across two chunks stays whole.
+        const list = []; let size = 0;
+        for await (const chunk of req) { size += chunk.length; if (size > 256 * 1024) throw Object.assign(new Error('body_too_large'), { status: 413 }); list.push(chunk); }
+        const chunks = Buffer.concat(list).toString('utf8');
         try { return json ? JSON.parse(chunks) : Object.fromEntries(new URLSearchParams(chunks)); } catch { throw Object.assign(new Error('invalid_json'), { status: 400 }); }
       };
       if (get && path === '/.well-known/oauth-authorization-server') return send(200, auth.metadata());

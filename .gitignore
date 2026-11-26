@@ -57,3 +57,6 @@ secrets/
 # imported into assets/objects by `object import-batch`. Only the README is committed.
 /ai-objects/inbox/*
 !/ai-objects/inbox/README.md
+
+# lib/update-guard.mjs: there only while an app update is being installed and rebuilt
+update-in-progress.json

@@ -233,7 +233,7 @@ function gardenSightRow(row) {
   const p = _gardenSightPlacementState.rows.get(row.id); if (!p) return null;
   return Object.assign({}, row, { x: p[1], y: p[2], door: { x: p[1] + Math.floor((row.w || 1) / 2), y: p[2] + (row.h || 1) } });
 }
-function gardenSightSetNearby(id) {
+function gardenSightSetNearby(id, near) {   // near: {x, y} cell to look round (a friend who solved its trail), else where you stand
   const m = gardenHere(); if (m.visit) return _gdNo('Only the garden owner can set this out');
   if (m.worldPending) return _gdNo('The garden update needs to finish first');
   if (typeof _grm !== 'undefined' && _grm.on || typeof _ee !== 'undefined' && _ee.on) return _gdNo('Step outside before setting out a place');

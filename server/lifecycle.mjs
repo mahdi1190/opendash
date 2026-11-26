@@ -11,6 +11,8 @@
 //       `node tools/migrate.mjs --auto`, `node build.mjs --syntax` and
 //       `node build.mjs` first; if a step fails it restarts the previous build
 //       and reports it (DASHBOARD_LAST_REBUILD -> /api/health.lastRebuild).
+//       After an app update the server starting next puts the previous
+//       version's files back first (lib/update-guard.mjs, read in serve.mjs).
 //   78  set-up problem (the port belongs to another program, the data folder
 //       has not been moved yet): not restarted, the window shows why.
 //   anything else (1, a signal, an uncaught exception): a CRASH, restarted
@@ -122,8 +124,9 @@ export function lifecyclePending() { return life.pending; }
  * across restarts (DASHBOARD_RESTART_HISTORY), one at a time.
  * -> {ok:true} | {ok:false, status, message, retryAfter}
  */
+export const UPDATE_BUSY = 'an update is being installed: OpenDash restarts by itself when it is done';
 export function checkRestartAllowed({ now = Date.now(), max = 6, windowMs = HISTORY_MS } = {}) {
-  if (life.pending) return { ok: false, status: 409, message: `already ${life.pending.action === 'stop' ? 'stopping' : 'restarting'}` };
+  if (life.pending) return { ok: false, status: 409, message: life.pending.update ? UPDATE_BUSY : `already ${life.pending.action === 'stop' ? 'stopping' : 'restarting'}` };
   const recent = life.history.filter(t => t > now - windowMs);
   if (recent.length >= max) {
     const retryAfter = Math.max(1, Math.ceil((recent[0] + windowMs - now) / 1000));
@@ -137,12 +140,35 @@ export function checkRestartAllowed({ now = Date.now(), max = 6, windowMs = HIST
  * before the 202 goes out: a burst of requests gets one 202 and 409s (the
  * handler itself only runs after the answer has been sent). false = taken.
  */
-export function claimLifecycle({ action, rebuild = false, now = Date.now() }) {
+export function claimLifecycle({ action, rebuild = false, update = false, now = Date.now() }) {
   if (life.pending) return false;
-  life.pending = { action, rebuild: !!rebuild, at: now };
+  life.pending = { action, rebuild: !!rebuild, at: now, ...(update ? { update: true } : {}) };
   if (action === 'restart') life.history = [...life.history.filter(t => t > now - HISTORY_MS), now];
   return true;
 }
+/** Give the slot back (an update that stopped before it restarted anything): its restart does not count either. */
+export function releaseLifecycle() {
+  const p = life.pending;
+  if (!p) return;
+  life.pending = null;
+  if (p.action === 'restart') { const i = life.history.lastIndexOf(p.at); if (i >= 0) life.history.splice(i, 1); }
+}
+
+// ─── An update being written into the app folder (server/routes/updates.mjs) ─
+// A stop waits for it (serve.mjs), and it never starts once the server is stopping: stopping part-way would leave the
+// folder half old, half new (lib/update-guard.mjs puts it back at the next start if the process is ended anyway).
+let installing = null, stoppingNow = false;
+export function runInstall(fn) {
+  if (stoppingNow) throw Object.assign(new Error('OpenDash is stopping, so the update was not installed'), { status: 503 });
+  const p = Promise.resolve().then(fn);
+  const done = p.then(() => {}, () => {});
+  installing = done;
+  done.then(() => { if (installing === done) installing = null; });
+  return p;
+}
+/** A promise while an update is being written, else null. */
+export function installInProgress() { return installing; }
+export function markStopping() { stoppingNow = true; }
 
 /** Hand the request to serve.mjs (after the 202 has gone out). Returns the mode. */
 export function requestLifecycle({ action, rebuild = false, reason, now = Date.now() }) {
@@ -220,16 +246,24 @@ export async function rebuildApp({ args = [], run = runNodeStep, log = () => {},
     ['check', 'build.mjs', ['--syntax']],
     ['build', 'build.mjs', []],
   ];
-  for (const [step, script, a] of steps) {
-    log('info', `rebuild: ${step === 'migrate' ? 'running migrations' : step === 'check' ? 'checking the app code' : 'building index.html'} (node ${script}${a.length ? ' ' + a.filter(x => x === '--auto' || x === '--syntax').join(' ') : ''})`);
-    const r = await run(script, a);
-    if (r.code !== 0) {
-      const message = (r.tail || []).slice(-3).join(' | ').slice(0, 400) || `exit code ${r.code}`;
-      log('error', `rebuild: the ${step} step failed (exit ${r.code}): ${message}`);
-      return { ok: false, step, code: r.code, at: new Date(now()).toISOString(), message };
+  // The steps are a rebuild's own, not a launcher start: tools/migrate.mjs leaves an update's marker to the server
+  // that starts next (lib/update-guard.mjs), which reads how this rebuild went from DASHBOARD_LAST_REBUILD.
+  const prevStep = process.env.DASHBOARD_REBUILD_STEP;
+  process.env.DASHBOARD_REBUILD_STEP = '1';
+  try {
+    for (const [step, script, a] of steps) {
+      log('info', `rebuild: ${step === 'migrate' ? 'running migrations' : step === 'check' ? 'checking the app code' : 'building index.html'} (node ${script}${a.length ? ' ' + a.filter(x => x === '--auto' || x === '--syntax').join(' ') : ''})`);
+      const r = await run(script, a);
+      if (r.code !== 0) {
+        const message = (r.tail || []).slice(-3).join(' | ').slice(0, 400) || `exit code ${r.code}`;
+        log('error', `rebuild: the ${step} step failed (exit ${r.code}): ${message}`);
+        return { ok: false, step, code: r.code, at: new Date(now()).toISOString(), message };
+      }
     }
+    return { ok: true, at: new Date(now()).toISOString() };
+  } finally {
+    if (prevStep === undefined) delete process.env.DASHBOARD_REBUILD_STEP; else process.env.DASHBOARD_REBUILD_STEP = prevStep;
   }
-  return { ok: true, at: new Date(now()).toISOString() };
 }
 
 // ─── Why did the last server stop? (from the log) ─────────────────────────
@@ -263,7 +297,8 @@ export function lastStopFromLog(text) {
   const lines = String(text || '').split(/\r?\n/);
   let start = -1;
   for (let i = lines.length - 1; i >= 0; i--) if (/\bserver started on\b/.test(lines[i])) { start = i; break; }
-  if (start < 0) return null;
+  // A long session pushes its start line out of the tail (every request logs a line): the stop, crash and exit lines
+  // at the end still say why it ended. With no start line in view only those count (a first start has none).
   let stop = null, exit = null, crash = null, sup = null;
   for (let i = start + 1; i < lines.length; i++) {
     const m = LINE.exec(lines[i]);
@@ -277,6 +312,7 @@ export function lastStopFromLog(text) {
   if (stop) return { ...stop, source: 'log' };
   if (crash) return { reason: crash.reason.slice(0, 300), at: crash.at, source: 'log' };
   if (exit) return { reason: exit.code === 0 ? 'stopped (exit code 0)' : `crashed (exit code ${exit.code})`, at: exit.at, source: 'log' };
+  if (start < 0) return null;
   if (sup) return { reason: sup.reason, at: sup.at, source: 'log' };
   return { reason: 'unknown: the previous server ended without logging a stop (ended from outside, e.g. Task Manager, or the computer shut down)', at: null, source: 'log' };
 }

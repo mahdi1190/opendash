@@ -11,6 +11,7 @@
      sbLimit(items, show, expanded, keepId)  {shown, hidden}
      sbMoveId(ids, id, delta)        ids with one moved (keyboard reorder)
      sbMergeOrder(visibleIds, allIds)  the new full order after a drag of the visible ones
+     sbKeepHidden(newIds, fullIds)   that order with the undrawn ids of the saved order kept in place
    ============================================================ */
 const SB_LIST_SORTS = [['total', 'Total tasks'], ['open', 'Open tasks'], ['name', 'Name'], ['recent', 'Recent activity'], ['custom', 'Custom (drag to reorder)']];
 const SB_LIST_SHOWS = [5, 10, 0];
@@ -94,4 +95,16 @@ function sbMergeOrder(visibleIds, allIds) {
   const vis = (Array.isArray(visibleIds) ? visibleIds : []).slice();
   const seen = new Set(vis);
   return [...vis, ...(Array.isArray(allIds) ? allIds : []).filter(id => !seen.has(id))];
+}
+
+/** The order to save after reordering the drawn rows: ids of the full saved order that were not drawn
+ *  (an empty stream, a pin that cannot show right now) keep their places instead of moving or dropping out. */
+function sbKeepHidden(newIds, fullIds) {
+  const out = (Array.isArray(newIds) ? newIds : []).slice();
+  const seen = new Set(out);
+  (Array.isArray(fullIds) ? fullIds : []).forEach((id, i) => {
+    if (seen.has(id)) return;
+    out.splice(Math.min(i, out.length), 0, id); seen.add(id);
+  });
+  return out;
 }

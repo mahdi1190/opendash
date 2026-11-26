@@ -148,6 +148,8 @@ function homeFocusTasks(limit) {
   const cands = [];
   for (const i of getAllItems()) {
     if (!_homeIsOpen(i) || _homeNotStarted(i)) continue;
+    // Waiting on someone or blocked: out of Focus as out of Today (in progress stays; 34-review-core.js).
+    if (typeof rfLeavesView === 'function' && rfLeavesView(i, 'today')) continue;
     if (snoozed[i.id] && snoozed[i.id] >= today) continue;
     if (streams && !streams.has(effStream(i))) continue;
     const r = homeFocusWhy(i, cfg);

@@ -233,12 +233,13 @@ function tglRenameRefs(s, from, to) {
     delete p[fv]; out.push('taskViewPrefs');
   }
   // Smart lists (#from / tag:from in a filter, a tag:from base) and sidebar pins (15-nav-smart-lists.js, 15-nav-custom.js).
+  const re = new RegExp('(^|\\s)(-?)(#|tag:)' + from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=\\s|$)', 'gi');
+  const reQ = (q) => (typeof q === 'string' ? q.replace(re, (m0, a, neg, mark) => a + neg + mark + to) : q);
   if (Array.isArray(s.smartLists)) {
-    const re = new RegExp('(^|\\s)(-?)(#|tag:)' + from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=\\s|$)', 'gi');
     let hit = false;
     s.smartLists = s.smartLists.map(sl => {
       if (!sl || typeof sl !== 'object') return sl;
-      const q = typeof sl.q === 'string' ? sl.q.replace(re, (m0, a, neg, mark) => a + neg + mark + to) : sl.q;
+      const q = reQ(sl.q);
       const base = sl.base === fv ? tv : sl.base;
       if (q === sl.q && base === sl.base) return sl;
       hit = true; return Object.assign({}, sl, { q, base });
@@ -248,6 +249,68 @@ function tglRenameRefs(s, from, to) {
   if (s.sidebarLayout && Array.isArray(s.sidebarLayout.pins) && s.sidebarLayout.pins.includes(fv)) {
     s.sidebarLayout = Object.assign({}, s.sidebarLayout, { pins: [...new Set(s.sidebarLayout.pins.map(v => (v === fv ? tv : v)))] });
     out.push('sidebarLayout');
+  }
+  // Boards (33-board-model.js; B9): a saved board's filter view, a tag view's own board (forView and its id
+  // 'vb-<view>', with its card order), custom columns' tag rules, and on boards grouped or in rows by tag
+  // the tag's column / row keys and its card order ('<boardId>|<tag>' in state.boardOrder).
+  const own = (o, k) => !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k);
+  const reKey = (o) => { const c = Object.assign({}, o); if (!own(c, to)) c[to] = c[from]; delete c[from]; return c; };
+  if (Array.isArray(s.taskBoards)) {
+    const forViews = new Set(), ids = new Set();
+    for (const b of s.taskBoards) if (b && typeof b === 'object') { if (b.forView) forViews.add(b.forView); if (b.id) ids.add(b.id); }
+    const moved = [], tagCols = [];
+    let hit = false;
+    s.taskBoards = s.taskBoards.map(b => {
+      if (!b || typeof b !== 'object') return b;
+      const n = Object.assign({}, b);
+      let ch = false;
+      if (b.filter && typeof b.filter === 'object' && b.filter.view === fv) { n.filter = Object.assign({}, b.filter, { view: tv }); ch = true; }
+      if (b.forView === fv && !forViews.has(tv) && !ids.has('vb-' + tv)) {
+        n.forView = tv; ch = true;
+        if (b.id === 'vb-' + fv) { n.id = 'vb-' + tv; moved.push([b.id, n.id]); }
+      }
+      const tagRule = (c) => !!(c && c.rule && c.rule.kind === 'tag' && c.rule.value === from);
+      if (Array.isArray(b.columns) && b.columns.some(tagRule)) { n.columns = b.columns.map(c => (tagRule(c) ? Object.assign({}, c, { rule: Object.assign({}, c.rule, { value: to }) }) : c)); ch = true; }
+      if (b.group === 'tag') {
+        if (Array.isArray(b.colOrder) && b.colOrder.includes(from)) { n.colOrder = [...new Set(b.colOrder.map(k => (k === from ? to : k)))]; ch = true; }
+        if (own(b.col, from)) { n.col = reKey(b.col); ch = true; }
+        if (n.id) tagCols.push(n.id);
+      }
+      if (b.lanes === 'tag' && own(b.laneFold, from)) { n.laneFold = reKey(b.laneFold); ch = true; }
+      if (ch) hit = true;
+      return ch ? n : b;
+    });
+    if (hit) out.push('taskBoards');
+    const o = s.boardOrder;
+    if (o && typeof o === 'object' && !Array.isArray(o)) {
+      let n = null;
+      const mv = (a, z) => { if (!own(n || o, a)) return; n = n || Object.assign({}, o); if (!own(n, z)) n[z] = n[a]; delete n[a]; };
+      for (const [a, z] of moved) for (const k of Object.keys(o)) if (k.startsWith(a + '|')) mv(k, z + k.slice(a.length));
+      for (const id of tagCols) mv(id + '|' + from, id + '|' + to);
+      if (n) { s.boardOrder = n; out.push('boardOrder'); }
+    }
+  }
+  // Home widgets' settings (12-home-w-*.js; B9): the Deadline runway's scope ({kind:'tag'} or a query naming
+  // the tag), a list widget's query and the habits widget's tag.
+  const h = s.home;
+  if (h && typeof h === 'object' && h.widgetPrefs && typeof h.widgetPrefs === 'object' && !Array.isArray(h.widgetPrefs)) {
+    let wp = null;
+    for (const [k, v] of Object.entries(h.widgetPrefs)) {
+      if (!v || typeof v !== 'object') continue;
+      const n = Object.assign({}, v);
+      let ch = false;
+      const sc = v.scope;
+      if (sc && typeof sc === 'object') {
+        if (sc.kind === 'tag' && sc.value === from) { n.scope = Object.assign({}, sc, { value: to }); ch = true; }
+        else if (sc.kind === 'query' && reQ(sc.value) !== sc.value) { n.scope = Object.assign({}, sc, { value: reQ(sc.value) }); ch = true; }
+      }
+      if (typeof v.query === 'string' && reQ(v.query) !== v.query) { n.query = reQ(v.query); ch = true; }
+      if (v.tag === from) { n.tag = to; ch = true; }
+      if (!ch) continue;
+      wp = wp || Object.assign({}, h.widgetPrefs);
+      wp[k] = n;
+    }
+    if (wp) { s.home = Object.assign({}, h, { widgetPrefs: wp }); out.push('home'); }
   }
   for (const e of Array.isArray(s.tagRegistry) ? s.tagRegistry : []) {
     if (!e || typeof e !== 'object' || !Array.isArray(e.aliases) || !e.aliases.includes(from)) continue;

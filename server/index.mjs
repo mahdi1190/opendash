@@ -18,7 +18,7 @@
 // (a set-up problem the supervisor does not retry).
 
 import { createServer } from 'node:http';
-import { readdir } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { join, resolve } from 'node:path';
@@ -162,6 +162,19 @@ export async function main(argv = process.argv.slice(2)) {
   // port open never meets a half-started server.
   let started;
   const startup = new Promise((r) => { started = r; });
+  // The saved garden's world tag (the page picks the matching layout as it loads) is only a hint: the state itself
+  // loads through /api/state. It is parsed again only when the state file changed, and a file that cannot be read
+  // right now (OneDrive or an antivirus holding it, or damaged with no good backup) never stops the page: the last
+  // tag read is used, or none, and the page then goes by its own copy (94-garden-0catalog.js).
+  let worldTag = null;   // {key, tag}
+  async function savedWorldTag() {
+    const st = await stat(store.file).catch(() => null);
+    const key = st ? `${st.size}:${st.mtimeMs}` : 'none';
+    if (worldTag && worldTag.key === key) return worldTag;
+    try { worldTag = { key, tag: gardenWorldTag((await store.readObject())?.garden) }; }
+    catch (e) { log('warn', `page: the state file could not be read for the garden's world (${(e && e.code) || 'error'}); the page goes by its own copy`); }
+    return worldTag;
+  }
   const server = createServer(async (req, res) => {
     await startup;
     try {
@@ -177,8 +190,8 @@ export async function main(argv = process.argv.slice(2)) {
         // X-Dashboard-App: the offline-page worker (src/sw.js) keeps only a page with this mark.
         // Only the physical-world tag is bootstrapped. The state and all
         // progress still load through the ordinary versioned state routes.
-        const saved = await store.readObject();
-        return await shell.respond(req, res, { ...publicConfig(config), pageKey: ctx.pageKey, gardenSavedWorld: gardenWorldTag(saved?.garden) });
+        const wt = await savedWorldTag();
+        return await shell.respond(req, res, { ...publicConfig(config), pageKey: ctx.pageKey, ...(wt ? { gardenSavedWorld: wt.tag } : {}) });
       }
       if (url.pathname === '/favicon.ico') return send(res, 204, '');
       return send(res, 404, 'not found');

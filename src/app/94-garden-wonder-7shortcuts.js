@@ -8,7 +8,9 @@
      joined from then on.
    Shut, each stops the feet across its gap (a hurdle, a gate tied with rope: you see why); open, it stands aside for
    good. The cliff face itself, with the blackthorn along the cliff top's edge, stops the feet always. In your own garden
-   only: in a friend's garden both stand open. The state is one ledger line each ('sc.' + id), saved with the garden.
+   only: in a friend's garden both stand open. The state is one ledger line each ('sc.' + id), saved with the garden, and a mark
+   in `seen` of the same name: the ledger folds lines older than 40 days into the bank, and with the line alone a shortcut shut
+   again 40 days after you opened it. One opened before the mark existed gets it from its line.
    ============================================================ */
 const GARDEN_ORCHARD_SHORTCUTS = Object.freeze([
   // (layfix east) the steps climb straight up the screen from the footbridge between the lake and the fence, and the hurdle stands
@@ -30,7 +32,7 @@ const GARDEN_ORCHARD_CLIFF = Object.freeze([
   Object.freeze({ box: [85.05, 36.5, 85.45, 40.35], src: 'blackthorn on the cliff top' }),
 ]);
 function _gscOrchard() { const D = typeof gardenIslandData === 'function' ? gardenIslandData() : null; return D && D.version >= 5 && D.presentation && D.presentation.orchard || null; }
-function gardenShortcutOpen(id) { try { const m = typeof gardenHere === 'function' ? gardenHere() : null; if (m && m.visit) return true; const g = _gdG(); return !!(g && g.led && g.led['sc.' + id]); } catch (e) { return true; } }
+function gardenShortcutOpen(id) { try { const m = typeof gardenHere === 'function' ? gardenHere() : null; if (m && m.visit) return true; const g = _gdG(); return !!(g && (g.led && g.led['sc.' + id] || g.seen && g.seen['sc.' + id])); } catch (e) { return true; } }
 /** What stops the feet: the shut shortcuts and the cliff, [{x0, y0, x1, y1, src}] in cells (94-garden-world-0walk.js). */
 function gardenOrchardShortcutBlocks() {
   const O = _gscOrchard(); if (!O) return [];
@@ -78,7 +80,7 @@ function _wscPlace(s, open) {
 /** Open it, from its own side. True when it opened. */
 function _wscTry(s) {
   const m = typeof gardenHere === 'function' ? gardenHere() : null; if (!m || m.visit || gardenShortcutOpen(s.id) || typeof _gw === 'undefined' || !s.from(_gw.px, _gw.py)) return false;
-  const g = _gdG(); g.led['sc.' + s.id] = { d: _gdToday(), k: 'sc', n: 1 }; _gdSave();
+  const g = _gdG(); g.led['sc.' + s.id] = { d: _gdToday(), k: 'sc', n: 1 }; g.seen['sc.' + s.id] = _gdToday(); _gdSave();
   if (typeof _glFx === 'function') _glFx(s.at[0], s.at[1], 'sparkle', { lift: 12 }); if (typeof _glSound === 'function') _glSound('twinkle');
   gardenMessage(s.open, { ms: 4500 });
   _wscPlace(s, true);
@@ -87,7 +89,11 @@ function _wscTry(s) {
 }
 wdMod({
   id: 'orchard-shortcuts', fun: false,
-  begin(m) { _wsc.S.clear(); _wsc.said.clear(); },
+  begin(m) {
+    _wsc.S.clear(); _wsc.said.clear();
+    // (the mark for a shortcut opened before it existed, while its line is still in the ledger: on every device before the fold)
+    if (!m || !m.visit) { const g = _gdG(); let put = false; if (g && g.led && g.seen) for (const s of GARDEN_ORCHARD_SHORTCUTS) { const e = g.led['sc.' + s.id]; if (e && !g.seen['sc.' + s.id]) { g.seen['sc.' + s.id] = e.d || _gdToday(); put = true; } } if (put) _gdSave(); }
+  },
   tick(m) {
     const O = _gscOrchard(); if (!O) return;
     for (const s of GARDEN_ORCHARD_SHORTCUTS) {
