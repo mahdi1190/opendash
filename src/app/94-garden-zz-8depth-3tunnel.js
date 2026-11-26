@@ -61,9 +61,11 @@ function _gdtOpen(T) {
 function _gdtRegion(m) {
   try { const c = gardenIslandBaseCell(Math.floor(m.x), Math.floor(m.y)); const z = c && c.regionZone != null ? c.regionZone : typeof gardenZoneOf === 'function' ? gardenZoneOf(Math.floor(m.x), Math.floor(m.y)) : null; const r = z != null && typeof gardenIslandRegionForZone === 'function' ? gardenIslandRegionForZone(z) : null; return { zone: z, name: r && r.name ? r.name : '' }; } catch (e) { return { zone: null, name: '' }; }
 }
+/** A region's name as a sentence wants it: "the Cloudbreak mountains", "the old woodland", "Fleetwater". */
+function _gdtThe(name) { const n = String(name || ''); if (/^the /i.test(n)) return 'the ' + n.slice(4); return /\s/.test(n) ? 'the ' + n : n; }
 /** The words for a shut mouth, seen from inside. */
 function _gdtShutWords(T, m) {
-  const R = _gdtRegion(m), where = R.name || 'the land beyond';
+  const R = _gdtRegion(m), where = R.name ? _gdtThe(R.name) : 'the land beyond';
   if (m.by === 'steps' || m.by === 'hatch') return 'Fallen rock blocks the way up. Daylight shows through a crack: this way comes out in ' + where + '. It will open when ' + where + ' does.';
   return 'A locked gate stands across the way: it comes out in ' + where + ', and opens when ' + where + ' does.';
 }
@@ -111,7 +113,7 @@ function _gdtWords(r) {
     const C = _gdt.cur, R = _gdtRegion(m), back = C && C.inBy && _gdtRegion(C.inBy).zone === R.zone;
     const up = m.by === 'hatch' || m.by === 'steps';
     if (back || !R.name) return up ? 'Go back up' : 'Go back out';
-    return (up ? 'Go up into ' : 'Go out into ') + R.name;
+    return (up ? 'Go up into ' : 'Go out into ') + _gdtThe(R.name);
   }
   if (r.act === 'tunnelshut') return m.by === 'steps' || m.by === 'hatch' ? 'Look at the fallen rock' : 'Look at the gate';
   return '';
@@ -235,6 +237,7 @@ function _gdtAbort() {
  *  layout while you were in it puts you back out. */
 function _gdtIdle(now) {
   if (typeof _gw === 'undefined' || !_gw.on) return;
+  if (typeof gardenTunnelGlowSweep === 'function' && now - (_gdt.sweepT || 0) > 1000) { _gdt.sweepT = now; try { gardenTunnelGlowSweep(); } catch (e) { /* later */ } }
   if (now - _gdt.nearT >= 700) {   // (which mouth is near: looked at twice a second or so)
     _gdt.nearT = now;
     let best = null, bd = 6;
@@ -494,7 +497,7 @@ function _gdtTunnelAt(x, y) {
 /** Their copy, told they went in at (ev.x, ev.y): walks to the threshold if it is not there, then down into the mouth, fading. */
 function _gdtRemoteIn(A, ev) {
   const hit = _gdtMouthNear(ev.x, ev.y); if (!hit) return;
-  const start = () => { A.dpGo = { kind: 'in', T: hit.T, m: hit.m, t0: performance.now(), from: { x: A.x, y: A.y } }; A.tx = null; A.ty = null; A.way = null; };
+  const start = () => { A.dpGo = { kind: 'in', T: hit.T, m: hit.m, t0: performance.now(), from: { x: A.x, y: A.y } }; A.dpT = hit.T.id; A.tx = null; A.ty = null; A.way = null; };   // (underground from the first step: their walks are routed inside it)
   if (Math.hypot(A.x - hit.m.x, A.y - hit.m.y) > 6 || A.dpT) { A.x = hit.m.x; A.y = hit.m.y; start(); }
   else if (Math.hypot(A.x - hit.m.x, A.y - hit.m.y) > 0.15 && typeof _gllWalkVia === 'function') { _gllWalkVia(A, null, hit.m.x, hit.m.y); A.then = start; }
   else start();
@@ -531,7 +534,7 @@ function _gdtRemoteStep(A) {
     if (G.kind === 'in') {
       A.x = G.from.x + (m.ix + m.fx * 0.32 - G.from.x) * q; A.y = G.from.y + (m.iy + m.fy * 0.32 - G.from.y) * q;
       const inSame = mineIn === G.T.id;
-      if (k >= 0.5) { A.dpT = G.T.id; if (inSame && typeof gardenTunnelStageAdopt === 'function') gardenTunnelStageAdopt(A.root); }
+      if (k >= 0.5 && inSame && typeof gardenTunnelStageAdopt === 'function') gardenTunnelStageAdopt(A.root);
       if (k >= 1) { A.dpGo = null; A.moving = false; A.key = ''; }
       const a = k < 0.5 ? Math.max(0, 1 - k / 0.42) : inSame ? Math.min(1, (k - 0.5) / 0.3) : 0;
       if (A.root && typeof _ghtAlpha === 'function') _ghtAlpha(A.root, a);

@@ -34,12 +34,15 @@
     const L = O.a * 2, start = { x: O.cx - O.fx * O.a, y: O.cy - O.fy * O.a };
     B.f(B.poly([{ x: O.x0, y: O.y0 }, { x: O.x1, y: O.y0 }, { x: O.x1, y: O.y1 }, { x: O.x0, y: O.y1 }]), '#0d0b09');
     for (let k = 0; k < n; k++) {
-      const t0 = k / n, t1 = (k + 0.78) / n, drop = k * 2.2, lit = 1 - k / n;
+      const t0 = k / n, t1 = (k + 0.74) / n, drop = O.fy ? k * 2.2 : 0, lit = 1 - k / n;
       const ax = start.x + O.fx * L * t0, ay = start.y + O.fy * L * t0 + drop, bx = start.x + O.fx * L * t1, by = start.y + O.fy * L * t1 + drop;
       const px = O.fx ? 0 : O.b - 2, py = O.fx ? O.b - 2 : 0;
       const quad = O.fx ? [{ x: ax, y: ay - py }, { x: bx, y: by - py }, { x: bx, y: by + py }, { x: ax, y: ay + py }] : [{ x: ax - px, y: ay }, { x: ax + px, y: ay }, { x: bx + px, y: by }, { x: bx - px, y: by }];
       B.f(B.poly(quad), col, 0.15 + 0.75 * lit * lit);
       B.f(B.poly(quad), '#ffffff', 0.08 * lit);
+      // the nose of each tread lit, its riser in shadow
+      const nose = O.fx ? `M${ax} ${ay - py}V${ay + py}` : `M${ax - px} ${ay}H${ax + px}`, rise = O.fx ? `M${bx} ${by - py}V${by + py}` : `M${bx - px} ${by}H${bx + px}`;
+      B.s(nose, '#f4ecd6', 1.1, 0.55 * lit).s(rise, '#0d0b09', 1.6, 0.7);
     }
     // the dark gathers at the far end
     const g = B.lin(O.cx - O.fx * O.a, O.cy - O.fy * O.a, O.cx + O.fx * O.a, O.cy + O.fy * O.a, [[0, 'rgba(10,8,6,0)'], [0.55, 'rgba(10,8,6,.35)'], [1, 'rgba(10,8,6,.92)']]);
@@ -55,23 +58,24 @@
   /* ---------- the four ways in ---------- */
   function hatch(C, T, m, shut, seed) {
     const { L, add, thing, kit, P } = C, O = opening(L, m), r0 = kit.rng(seed), paved = !!(L.mat && L.mat(m.x, m.y) === 'path') || (typeof _plStoneAt === 'function' && _plStoneAt(m.x, m.y));
-    add([O.x0 - 40, O.y0 - 34, O.x1 + 40, O.y1 + 34], seed, (B, r) => {
-      wear(B, r, O, P, paved);
+    add([O.x0 - 40, O.y0 - 34, O.x1 + 40, O.y1 + 34], seed, (B, r) => wear(B, r, O, P, paved));
+    const ax = O.cx, ay = O.y1, ext = O.b * 0.95 + 6, n0 = O.fx ? ext : 6;
+    thing({ key: 'dp-hatch|' + T.id + '|' + m.i + '|' + (shut ? 1 : 0) + '|' + C.season, x: ax, y: ay, depth: O.y0 - n0, K: 1.6, shade: false, box: [O.x0 - ax - ext - 4, O.y0 - ay - ext - 4, O.x1 - ax + ext + 4, ext + 4], foot: [-(O.x1 - O.x0) / 2 + 1, (O.x1 - O.x0) / 2 - 1, O.y1 - O.y0 - 1], draw: (B0) => { const B = B0, r = kit.rng(seed); B.cx.save(); B.cx.translate(-ax, -ay);
       // the flaps, folded back flat on the ground either side, iron rings, the hinges
       const along = !!O.fx, f1 = along ? [O.x0, O.y0 - O.b * 0.95, O.x1, O.y0] : [O.x0 - O.b * 0.95, O.y0, O.x0, O.y1], f2 = along ? [O.x0, O.y1, O.x1, O.y1 + O.b * 0.95] : [O.x1, O.y0, O.x1 + O.b * 0.95, O.y1];
-      if (!shut) for (const f of [f1, f2]) {
-        B.f(B.rect(f[0] + 1, f[1] + 1.4, f[2] - f[0], f[3] - f[1]), '#1e1812', 0.45).f(B.rect(f[0], f[1], f[2] - f[0], f[3] - f[1]), OAK[1]);
-        const n = 3; for (let k = 1; k < n; k++) { if (along) { const yy = f[1] + (f[3] - f[1]) * k / n; B.s(`M${f[0]} ${yy}H${f[2]}`, OAK[3], 0.8, 0.6); } else { const xx = f[0] + (f[2] - f[0]) * k / n; B.s(`M${xx} ${f[1]}V${f[3]}`, OAK[3], 0.8, 0.6); } }
-        B.f(B.rect(f[0], f[1], along ? (f[2] - f[0]) : 1.6, along ? 1.6 : (f[3] - f[1])), OAK[2], 0.6);
-        const cx = (f[0] + f[2]) / 2, cy = (f[1] + f[3]) / 2; B.s(B.ell(cx, cy, 2.2, 1.6), IRON, 1.1, 0.95).s(B.ell(cx - 0.4, cy - 0.4, 1.6, 1.1), '#8a9094', 0.5, 0.6);
-        for (const t of [0.22, 0.78]) { const hx = along ? f[0] + (f[2] - f[0]) * t : (f === f1 ? f[2] : f[0]), hy = along ? (f === f1 ? f[3] : f[1]) : f[1] + (f[3] - f[1]) * t; B.f(B.rect(hx - 1.6, hy - 1.6, 3.2, 3.2), IRON, 0.9); }
+      if (!shut) for (const f of [f1, f2]) {   // each flap: planks across it, two iron straps from its hinge, a ring to lift it by
+        const fw = f[2] - f[0], fh = f[3] - f[1];
+        B.f(B.rect(f[0] + 1.2, f[1] + 1.6, fw, fh), '#1e1812', 0.45).f(B.rect(f[0], f[1], fw, fh), OAK[1]);
+        const n = along ? 4 : 3; for (let k = 0; k < n; k++) { if (along) { const xx = f[0] + fw * k / n; B.f(B.rect(xx + 0.4, f[1] + 0.4, fw / n - 0.8, fh - 0.8), k % 2 ? OAK[1] : '#86684a').s(`M${xx} ${f[1]}V${f[3]}`, OAK[3], 0.8, 0.7); } else { const yy = f[1] + fh * k / n; B.f(B.rect(f[0] + 0.4, yy + 0.4, fw - 0.8, fh / n - 0.8), k % 2 ? OAK[1] : '#86684a').s(`M${f[0]} ${yy}H${f[2]}`, OAK[3], 0.8, 0.7); } }
+        for (const t of [0.24, 0.76]) { if (along) { const xx = f[0] + fw * t; B.f(B.rect(xx - 1.3, f[1], 2.6, fh), IRON, 0.85).f(B.rect(xx - 1.3, f[1], 0.8, fh), '#7a8086', 0.6); } else { const yy = f[1] + fh * t; B.f(B.rect(f[0], yy - 1.3, fw, 2.6), IRON, 0.85).f(B.rect(f[0], yy - 1.3, fw, 0.8), '#7a8086', 0.6); } }
+        const cx = (f[0] + f[2]) / 2, cy = (f[1] + f[3]) / 2; B.s(B.ell(cx, cy, 2.6, 1.9), IRON, 1.3, 0.95).s(B.ell(cx - 0.5, cy - 0.5, 1.8, 1.2), '#8a9094', 0.6, 0.6);
+        B.f(B.rect(f[0], f[1], along ? fw : 1.4, along ? 1.4 : fh), OAK[2], 0.55);
       }
       kerb(B, r, O, [STONE[0], STONE[1], STONE[2]]);
       if (shut) { B.f(B.rect(O.x0, O.y0, O.x1 - O.x0, O.y1 - O.y0), OAK[1]); if (along) B.s(`M${O.x0} ${O.cy}H${O.x1}`, OAK[3], 1, 0.8); else B.s(`M${O.cx} ${O.y0}V${O.y1}`, OAK[3], 1, 0.8); B.f(B.rect(O.cx - 2, O.cy - 2.5, 4, 5), '#8a6a3a').s(B.ell(O.cx, O.cy - 3, 1.6, 1.4), '#5a5e62', 0.9, 0.9); }
       else treads(B, O, 5, STONE[2]);
-    });
-    // the hole stops the feet (the threshold where you stand stays open)
-    thing({ key: 'dp-hatch-foot|' + T.id + '|' + m.i, x: O.cx, y: O.y1, foot: [-(O.x1 - O.x0) / 2 + 1, (O.x1 - O.x0) / 2 - 1, O.y1 - O.y0 - 1], make: () => null });
+      B.cx.restore();
+    } });
     void r0;
   }
   function arch(C, T, m, shut, seed) {
@@ -110,7 +114,8 @@
       for (const s of [-1, 1]) B.s(`M${x + s * 6} ${base}V${base + 32}`, '#5a5e62', 1.7, 0.95).s(`M${x + s * 6 - 0.5} ${base}V${base + 32}`, '#b8bcbe', 0.6, 0.5);
     });
     // the rock face the adit is cut into, either side of the mouth (each stops the feet), and the timber frame
-    for (const s of [-1, 1]) thing({ key: 'dp-adit-rock|' + T.id + '|' + m.i + '|' + s + '|' + C.season, x: x + s * (ow / 2 + rw * 0.42), y: base, K: 1.5, box: [-rw * 0.62, -rh - 6, rw * 0.62, 8], foot: [-rw * 0.5, rw * 0.5, 10], draw: B => {
+    const front = W.sky + m.y * W.cellH - 0.6;
+    for (const s of [-1, 1]) thing({ key: 'dp-adit-rock|' + T.id + '|' + m.i + '|' + s + '|' + C.season, x: x + s * (ow / 2 + rw * 0.42), y: base, depth: front - 0.2, K: 1.5, box: [-rw * 0.62, -rh - 6, rw * 0.62, 8], foot: [-rw * 0.5, rw * 0.5, 10], draw: B => {
       const r = kit.rng(seed + (s > 0 ? 11 : 17)), w = rw * 0.5, top = -rh * (0.86 + r() * 0.1);
       const pts = []; for (let k = 0; k <= 10; k++) { const t = k / 10, xx = -w + 2 * w * t, inner = s > 0 ? t < 0.12 : t > 0.88; pts.push({ x: xx, y: inner ? -oh - 6 + r() * 4 : top * (0.62 + 0.38 * Math.sin(Math.PI * t)) + (r() - 0.5) * 6 }); }
       const body = [{ x: -w - 4, y: 2 }].concat(pts).concat([{ x: w + 4, y: 2 }]);
@@ -123,7 +128,7 @@
       for (let k = 0; k < 7; k++) { const p = pts[1 + Math.floor(r() * 9)]; B.f(B.ell(p.x, p.y + 2, 5 + r() * 5, 2.6), r() < 0.5 ? (P.leaf ? P.leaf[1] : '#557e40') : '#7a5a6a', 0.85); }
       B.f(B.ell(-s * w * 0.2, -1, w * 0.9, 3.4), '#3f5a34', 0.55);   // (grass and moss at its foot)
     } });
-    thing({ key: 'dp-adit-arch|' + T.id + '|' + m.i + '|' + (shut ? 1 : 0) + '|' + C.season, x, y: base + 0.5, K: 1.6, box: [-ow / 2 - 26, -oh - 24, ow / 2 + 34, 10], shade: false, draw: B => {
+    thing({ key: 'dp-adit-arch|' + T.id + '|' + m.i + '|' + (shut ? 1 : 0) + '|' + C.season, x, y: base + 0.5, depth: front, K: 1.6, box: [-ow / 2 - 26, -oh - 24, ow / 2 + 34, 10], shade: false, draw: B => {
       const r = kit.rng(seed + 5);
       // the rock over the mouth, the dark inside, rails going in, the frame
       B.f(B.poly([{ x: -ow / 2 - 8, y: -oh + 2 }, { x: -ow * 0.2, y: -oh - 16 }, { x: ow * 0.3, y: -oh - 14 }, { x: ow / 2 + 9, y: -oh + 2 }, { x: ow / 2 + 6, y: -oh + 6 }, { x: -ow / 2 - 5, y: -oh + 6 }]), '#5e584e');
@@ -161,18 +166,19 @@
   }
   function steps(C, T, m, shut, seed) {
     const { L, add, thing, kit, P } = C, O = opening(L, m), snowy = C.season === 'winter';
-    add([O.x0 - 40, O.y0 - 30, O.x1 + 40, O.y1 + 30], seed, (B, r) => {
-      wear(B, r, O, P, false);
+    add([O.x0 - 40, O.y0 - 30, O.x1 + 40, O.y1 + 30], seed, (B, r) => wear(B, r, O, P, false));
+    const ax = O.cx, ay = O.y1;
+    thing({ key: 'dp-steps|' + T.id + '|' + m.i + '|' + (shut ? 1 : 0) + '|' + C.season, x: ax, y: ay, depth: O.y0 - 7, K: 1.6, shade: false, box: [O.x0 - ax - 10, O.y0 - ay - 10, O.x1 - ax + 10, 10], foot: [-(O.x1 - O.x0) / 2 + 1, (O.x1 - O.x0) / 2 - 1, O.y1 - O.y0 - 1], draw: (B) => { const r = kit.rng(seed); B.cx.save(); B.cx.translate(-ax, -ay);
       kerb(B, r, O, ['#7e7868', '#a29a86', '#c2b8a0']);
       if (shut) {   // fallen rock fills it, daylight would show only from below
         B.f(B.rect(O.x0, O.y0, O.x1 - O.x0, O.y1 - O.y0), '#14110e');
         for (let i = 0; i < 11; i++) { const bx = O.x0 + 3 + r() * (O.x1 - O.x0 - 6), by = O.y0 + 2 + r() * (O.y1 - O.y0 - 3), rx = 3 + r() * 4.5, ry = rx * 0.66; B.f(B.ell(bx + 1, by + 1, rx, ry), '#2e2a24', 0.6).f(B.ell(bx, by, rx, ry), r() < 0.5 ? '#7a7062' : '#948a7a').f(B.ell(bx - rx * 0.3, by - ry * 0.3, rx * 0.45, ry * 0.32), '#c2b8a4', 0.6); }
       } else treads(B, O, 6, '#c2b8a0');
       if (snowy) B.f(B.ell((O.x0 + O.x1) / 2, O.y0 - 2, (O.x1 - O.x0) / 2 + 5, 2.4), '#f2f4f6', 0.85);
-    });
-    thing({ key: 'dp-steps-foot|' + T.id + '|' + m.i, x: (O.x0 + O.x1) / 2, y: O.y1, foot: [-(O.x1 - O.x0) / 2 + 1, (O.x1 - O.x0) / 2 - 1, O.y1 - O.y0 - 1], make: () => null });
-    // the marker stone beside it, a mark cut in its face (two strokes and a ring: "way under")
-    const side = m.fx ? 0 : 1, sx = side ? O.x1 + 9 : (O.x0 + O.x1) / 2 + 8, sy = side ? O.y1 - 1 : O.y1 + 7;
+      B.cx.restore();
+    } });
+    // the marker stone beside it, a mark cut in its face (two strokes and a ring: "way under"): at its far corner, away from where you stand
+    const sx = m.fx < 0 ? O.x0 - 9 : O.x1 + 9, sy = O.y0 + 5;
     thing({ key: 'dp-marker-stone|' + T.id + '|' + m.i + '|' + C.season, x: sx, y: sy, K: 1.6, box: [-10, -28, 10, 5], foot: [-5, 5, 5], draw: B => {
       const r = kit.rng(seed + 9), h = Hpx() * 0.56;
       B.shadow(2.6, 1.2, 8, 2.2, 0.32);

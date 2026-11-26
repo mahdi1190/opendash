@@ -225,6 +225,10 @@ function gardenTunnelGlow(A, on) {
   const W = GARDEN_WORLD, t = performance.now() / 1000;
   g.setVisible(true).setPosition(A.x * W.cellW, W.sky + A.y * W.cellH - 6).setDisplaySize(W.cellW * 2.2, W.cellH * 2.2).setAlpha(0.26 + 0.05 * Math.sin(t * 3.1 + A.w));
 }
+/** A friend gone from the garden, or back in the daylight: their glow goes too. */
+function gardenTunnelGlowSweep() {
+  for (const [w, g] of _gdiFriendGlow) { const A = typeof _gll !== 'undefined' && _gll.actors ? _gll.actors.get(w) : null; if (!A || !A.dpT) { if (g.active && g.visible) g.setVisible(false); if (!A) { try { g.destroy(); } catch (e) { /* gone */ } _gdiFriendGlow.delete(w); } } }
+}
 /* ---------- the picture of a tunnel, painted in slices ---------- */
 /** The bake record of a tunnel's picture (made on first need). */
 function _gdiBake(T, sc) {
@@ -334,7 +338,15 @@ function _gdiStepFloor(rec) {   // the floor: flags, packed earth or gravel, wor
     }
     for (let i = 0; i < bw * bh / 260; i++) { const sx = bx0 + r() * bw, sy = by0 + r() * bh; x.fillStyle = r() < 0.5 ? '#c8b88a' : '#5a5040'; x.globalAlpha = 0.35; x.fillRect(sx, sy, 2 + r() * 3, 0.7); x.globalAlpha = 1; }
   } else {
-    for (let i = 0; i < bw * bh / (St.floor === 'gravel' ? 45 : 80); i++) { const sx = bx0 + r() * bw, sy = by0 + r() * bh, rr = St.floor === 'gravel' ? 0.8 + r() * 1.6 : 0.6 + r() * 2.2, t = r(); x.fillStyle = t < 0.4 ? S.floorLo : t < 0.85 ? S.floorHi : '#2e2822'; x.globalAlpha = 0.7; x.beginPath(); x.ellipse(sx, sy, rr, rr * 0.6, 0, 0, Math.PI * 2); x.fill(); x.globalAlpha = 1; }
+    x.save(); x.filter = 'blur(' + Math.round(3 * rec.K) + 'px)';
+    for (let i = 0; i < bw * bh / 700; i++) { const sx = bx0 + r() * bw, sy = by0 + r() * bh, rr = 6 + r() * 14; x.fillStyle = r() < 0.5 ? S.floorLo : S.floorHi; x.globalAlpha = 0.35; x.beginPath(); x.ellipse(sx, sy, rr, rr * 0.55, 0, 0, Math.PI * 2); x.fill(); }
+    x.restore(); x.globalAlpha = 1;
+    const grit = St.floor === 'gravel' ? 120 : 210;
+    for (let i = 0; i < bw * bh / grit; i++) { const sx = bx0 + r() * bw, sy = by0 + r() * bh, big = r() < 0.08, rr = big ? 2.6 + r() * 2.6 : St.floor === 'gravel' ? 0.5 + r() * 1.1 : 0.5 + r() * 1.4, t = r();
+      if (big) { x.fillStyle = '#1e1a16'; x.globalAlpha = 0.4; x.beginPath(); x.ellipse(sx + 0.8, sy + 0.8, rr, rr * 0.55, 0, 0, Math.PI * 2); x.fill(); }
+      x.fillStyle = t < 0.45 ? S.floorLo : t < 0.9 ? S.floorHi : '#2e2822'; x.globalAlpha = big ? 0.95 : 0.55; x.beginPath(); x.ellipse(sx, sy, rr, rr * 0.55, r() * 0.6, 0, Math.PI * 2); x.fill();
+      if (big) { x.fillStyle = '#ffffff'; x.globalAlpha = 0.18; x.beginPath(); x.ellipse(sx - rr * 0.3, sy - rr * 0.18, rr * 0.45, rr * 0.2, 0, 0, Math.PI * 2); x.fill(); }
+      x.globalAlpha = 1; }
   }
   // the way worn by feet: paler down the middle of each passage
   x.lineCap = 'round'; for (const s of T.segs) { x.strokeStyle = S.floorHi; x.globalAlpha = 0.22; x.lineWidth = s.r * 0.9; x.beginPath(); x.moveTo(s.ax, s.ay); x.lineTo(s.bx, s.by); x.stroke(); x.globalAlpha = 1; }
@@ -398,9 +410,40 @@ function _gdiStepPieces(rec) {   // each chamber's piece against its back wall (
     for (let t = 0; t < L; t += 9) { const px = s.ax + ux * t, py = s.ay + uy * t; x.strokeStyle = '#4a3624'; x.lineWidth = 3; x.beginPath(); x.moveTo(px - nx * 9, py - ny * 9); x.lineTo(px + nx * 9, py + ny * 9); x.stroke(); }
     for (const o of [-6, 6]) { x.strokeStyle = '#5a5e62'; x.lineWidth = 1.6; x.beginPath(); x.moveTo(s.ax + nx * o, s.ay + ny * o); x.lineTo(s.bx + nx * o, s.by + ny * o); x.stroke(); x.strokeStyle = '#a8acae'; x.globalAlpha = 0.5; x.lineWidth = 0.6; x.stroke(); x.globalAlpha = 1; }
   }
-  if (St.props) for (const s of T.segs) {   // timber props against the back walls of the way, two posts and a cap
-    const L = Math.hypot(s.bx - s.ax, s.by - s.ay); if (L < 30) continue;
-    for (let t = 20; t < L - 10; t += 62) { const px = s.ax + (s.bx - s.ax) * t / L, py = s.ay + (s.by - s.ay) * t / L, top = py - s.r - F * 0.98, base = py - s.r + 4; for (const dx of [-s.r * 0.55, s.r * 0.55]) { x.fillStyle = '#3a2a1c'; x.fillRect(px + dx - 3, top, 6, base - top); x.fillStyle = '#7a5a3a'; x.fillRect(px + dx - 3, top, 2.2, base - top); } x.fillStyle = '#5e4630'; x.fillRect(px - s.r * 0.7, top - 4, s.r * 1.4, 6); x.fillStyle = '#8a6a48'; x.fillRect(px - s.r * 0.7, top - 4, s.r * 1.4, 1.6); }
+  if (St.props) {   // timber props against the back wall of the way: a post where the wall really stands (not in a chamber, not over the way), its cap and a brace
+    const inRoom = (px, py) => T.ells.some(c => ((px - c.x) / (c.rx + 20)) ** 2 + ((py - c.y) / (c.ry + 16)) ** 2 < 1);
+    for (const s of T.segs) {
+      const L = Math.hypot(s.bx - s.ax, s.by - s.ay); if (L < 40) continue;
+      for (let t = 24; t < L - 16; t += 58) {
+        const cx = s.ax + (s.bx - s.ax) * t / L; let wy = null;
+        for (let yy = s.ay + (s.by - s.ay) * t / L; yy > s.ay + (s.by - s.ay) * t / L - s.r - 20; yy -= 2) if (!gardenTunnelFree(T, cx, yy, 0, null)) { wy = yy + 2; break; }
+        if (wy == null || inRoom(cx, wy) || !gardenTunnelFree(T, cx, wy + 6, 0, null)) continue;
+        const top = wy - F * 0.95, base = wy + 3;
+        x.fillStyle = '#1a120c'; x.globalAlpha = 0.5; x.fillRect(cx - 2, top + 2, 8, base - top); x.globalAlpha = 1;
+        x.fillStyle = '#4a3624'; x.fillRect(cx - 3.4, top, 6.8, base - top); x.fillStyle = '#7a5a3a'; x.fillRect(cx - 3.4, top, 2.2, base - top);
+        x.fillStyle = '#5e4630'; x.fillRect(cx - 11, top - 5, 22, 6); x.fillStyle = '#8a6a48'; x.fillRect(cx - 11, top - 5, 22, 1.6);
+        x.strokeStyle = '#4a3624'; x.lineWidth = 2.6; x.beginPath(); x.moveTo(cx + 3, top + 10); x.lineTo(cx + 13, top + 1); x.stroke();
+      }
+      // a passage running up the screen: its props stand against its side walls, seen from above (a square of timber, its lit top)
+      const ux = (s.bx - s.ax) / L, uy = (s.by - s.ay) / L; if (Math.abs(uy) < 0.6) continue;
+      for (let t = 22; t < L - 14; t += 46) for (const sd of [-1, 1]) {
+        const px = s.ax + ux * t - uy * (s.r - 2) * sd, py = s.ay + uy * t + ux * (s.r - 2) * sd;
+        if (inRoom(px, py) || T.mouths.some(m => Math.hypot(m.pin.x - px, m.pin.y - py) < 26)) continue;
+        x.fillStyle = '#120c08'; x.globalAlpha = 0.5; x.fillRect(px - 3, py - 2, 9, 7); x.globalAlpha = 1;
+        x.fillStyle = '#4a3624'; x.fillRect(px - 4, py - 6, 8, 9); x.fillStyle = '#8a6a48'; x.fillRect(px - 4, py - 6, 8, 2.6); x.fillStyle = '#6e5236'; x.fillRect(px - 4, py - 6, 2.4, 9);
+        x.strokeStyle = '#5e4630'; x.globalAlpha = 0.55; x.lineWidth = 3; x.beginPath(); x.moveTo(px - sd * 4, py - 4); x.lineTo(px + sd * (s.r - 12), py - 4); x.stroke(); x.globalAlpha = 1;   // (its cap reaching out over the way)
+      }
+    }
+  }
+  // what lies about at the floor's edges: rubble and old timber in a mine or a passage; sacks and crates in a cellar or a vault
+  { const r2 = _gdiRng(rec.seed + 77), built = St.wall === 'brick' || St.wall === 'stone';
+    for (let i = 0; i < (built ? 6 : 14); i++) {
+      const c = T.ells[Math.floor(r2() * T.ells.length)], s = T.segs[Math.floor(r2() * T.segs.length)]; let px, py;
+      if (built && c) { px = c.x + (r2() < 0.5 ? -1 : 1) * (c.rx - 10 - r2() * 8); py = c.y - c.ry * (0.2 - r2() * 0.9); } else if (s) { const t = r2(); px = s.ax + (s.bx - s.ax) * t; py = s.ay + (s.by - s.ay) * t; const L = Math.hypot(s.bx - s.ax, s.by - s.ay) || 1, side = r2() < 0.5 ? -1 : 1; px += -(s.by - s.ay) / L * (s.r - 7) * side; py += (s.bx - s.ax) / L * (s.r - 7) * side; } else continue;
+      if (!gardenTunnelFree(T, px, py, 0, null) || T.mouths.some(m => Math.hypot(m.pin.x - px, m.pin.y - py) < 30)) continue;
+      if (built) { if (r2() < 0.5) { x.fillStyle = '#1a140e'; x.globalAlpha = 0.45; x.fillRect(px - 6, py - 1, 14, 3); x.globalAlpha = 1; x.fillStyle = '#7a5a3a'; x.fillRect(px - 7, py - 10, 13, 10); x.fillStyle = '#a07e58'; x.fillRect(px - 7, py - 10, 13, 2); x.strokeStyle = '#4a3624'; x.lineWidth = 0.8; x.strokeRect(px - 7, py - 10, 13, 10); } else { x.fillStyle = '#1a140e'; x.globalAlpha = 0.4; x.beginPath(); x.ellipse(px + 1, py + 1, 7, 2.4, 0, 0, Math.PI * 2); x.fill(); x.globalAlpha = 1; x.fillStyle = '#b09a70'; x.beginPath(); x.ellipse(px, py - 5, 6, 6.4, 0, 0, Math.PI * 2); x.fill(); x.fillStyle = '#ccb88c'; x.beginPath(); x.ellipse(px - 1.6, py - 7, 3, 3, 0, 0, Math.PI * 2); x.fill(); x.strokeStyle = '#7a6440'; x.lineWidth = 1; x.beginPath(); x.moveTo(px - 2, py - 11); x.lineTo(px + 2, py - 10); x.stroke(); } }
+      else for (let k = 0; k < 4; k++) { const bx = px + (r2() - 0.5) * 9, by = py + (r2() - 0.5) * 4, rr = 1.6 + r2() * 2.6; x.fillStyle = '#1e1a16'; x.globalAlpha = 0.45; x.beginPath(); x.ellipse(bx + 0.8, by + 0.8, rr, rr * 0.6, 0, 0, Math.PI * 2); x.fill(); x.globalAlpha = 1; x.fillStyle = r2() < 0.5 ? S.wall : S.wallHi; x.beginPath(); x.ellipse(bx, by, rr, rr * 0.6, 0, 0, Math.PI * 2); x.fill(); }
+    }
   }
   for (const c of T.ells) {
     const R = GARDEN_CHAMBERS[c.what], back = c.y - c.ry, cx = c.x + (c.pieceDx || 0);
@@ -417,8 +460,16 @@ function _gdiStepPieces(rec) {   // each chamber's piece against its back wall (
       x.fillStyle = '#4a4036'; x.beginPath(); x.moveTo(cx + 14, back + 2); x.quadraticCurveTo(cx + 26, back - 18, cx + 40, back + 2); x.fill(); x.fillStyle = '#6a5e50'; x.beginPath(); x.moveTo(cx + 18, back); x.quadraticCurveTo(cx + 26, back - 14, cx + 34, back); x.fill();
       x.fillStyle = '#2f3336'; x.fillRect(cx - 22, back - 16, 26, 14); x.fillStyle = '#5a5e62'; x.fillRect(cx - 22, back - 16, 26, 2.5); x.fillStyle = '#6a5e50'; x.beginPath(); x.ellipse(cx - 9, back - 16, 11, 4, 0, Math.PI, 0); x.fill(); x.fillStyle = '#1a1a1a'; for (const wx of [cx - 17, cx - 1]) { x.beginPath(); x.ellipse(wx, back - 1, 3.4, 3.4, 0, 0, Math.PI * 2); x.fill(); }
       x.strokeStyle = '#6e5236'; x.lineWidth = 2; x.beginPath(); x.moveTo(cx - 34, back - 2); x.lineTo(cx - 28, back - 34); x.stroke(); x.strokeStyle = '#5a5e62'; x.lineWidth = 2.4; x.beginPath(); x.moveTo(cx - 34, back - 32); x.quadraticCurveTo(cx - 28, back - 37, cx - 21, back - 33); x.stroke();
-    } else if (R.piece === 'crystals') {   // clusters of pale blue crystal out of the back wall and the floor's edges
-      for (let i = 0; i < 9; i++) { const kx = cx + (r() - 0.5) * c.rx * 1.6, ky = back - r() * F * 0.7, h = 6 + r() * 12, a = (r() - 0.5) * 0.9; x.save(); x.translate(kx, ky); x.rotate(a); x.fillStyle = '#5a7a9a'; x.beginPath(); x.moveTo(-2.4, 0); x.lineTo(0, -h); x.lineTo(2.4, 0); x.closePath(); x.fill(); x.fillStyle = '#bfe4ff'; x.beginPath(); x.moveTo(-1.2, 0); x.lineTo(0, -h); x.lineTo(0.6, 0); x.closePath(); x.fill(); x.restore(); }
+    } else if (R.piece === 'crystals') {   // clusters of six-sided points out of the back wall and the floor's edges, a lit facet and a dark one, a cold glow at each foot
+      const cluster = (kx, ky, n, big) => {
+        const g = x.createRadialGradient(kx, ky - 4, 0, kx, ky - 4, 18 * big); g.addColorStop(0, 'rgba(160,220,255,.45)'); g.addColorStop(1, 'rgba(160,220,255,0)'); x.fillStyle = g; x.beginPath(); x.ellipse(kx, ky - 4, 18 * big, 12 * big, 0, 0, Math.PI * 2); x.fill();
+        for (let k = 0; k < n; k++) { const a = (k - (n - 1) / 2) * 0.32 + (r() - 0.5) * 0.2, h = (9 + r() * 12) * big, w = (2.4 + r() * 1.4) * big; x.save(); x.translate(kx + (k - (n - 1) / 2) * 2.4 * big, ky); x.rotate(a);
+          x.fillStyle = '#4a6a8a'; x.beginPath(); x.moveTo(-w, 0); x.lineTo(-w, -h * 0.72); x.lineTo(0, -h); x.lineTo(w, -h * 0.72); x.lineTo(w, 0); x.closePath(); x.fill();
+          x.fillStyle = '#a8d8f8'; x.beginPath(); x.moveTo(-w, 0); x.lineTo(-w, -h * 0.72); x.lineTo(0, -h); x.lineTo(0, 0); x.closePath(); x.fill();
+          x.fillStyle = '#e8f8ff'; x.globalAlpha = 0.8; x.beginPath(); x.moveTo(-w * 0.6, -h * 0.7); x.lineTo(0, -h * 0.98); x.lineTo(-w * 0.15, -h * 0.66); x.closePath(); x.fill(); x.globalAlpha = 1; x.restore(); }
+      };
+      for (let i = 0; i < 4; i++) cluster(cx + (i - 1.5) * c.rx * 0.48 + (r() - 0.5) * 8, back - 3 - r() * F * 0.45, 3 + Math.floor(r() * 3), 0.9 + r() * 0.35);
+      for (const s of [-1, 1]) cluster(c.x + s * (c.rx - 12), c.y + c.ry * 0.25, 2 + Math.floor(r() * 2), 0.7);
     } else if (R.piece === 'pool') {   // a still pool with a lip of stone (it holds the feet off: its hole in the floor)
       const px = c.x + c.rx * 0.12, py = c.y + c.ry * 0.12, prx = c.rx * 0.5, pry = c.ry * 0.45;
       x.fillStyle = '#2a2622'; x.beginPath(); x.ellipse(px, py, prx + 3, pry + 2.4, 0, 0, Math.PI * 2); x.fill(); x.fillStyle = '#20343c'; x.beginPath(); x.ellipse(px, py, prx, pry, 0, 0, Math.PI * 2); x.fill();
