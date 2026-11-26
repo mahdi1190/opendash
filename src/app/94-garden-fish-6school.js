@@ -4,7 +4,7 @@
    limits as long as you can see the fish ... 2 friends can see the same fish, only one of us can catch it, and we can see the fish approaching someone's bait."
 
    Every bite comes from a shadow you can see. A fish swims about, notices a float near it (how near and how keenly depends on the bait and how shy the fish is), turns and swims to it, nibbles
-   a few times and then really bites. Strike on the bite, then fight it in the reel: the kind of fish and its size decide how hard. Strike on a nibble, cast right on top of it or stomp along the bank above one near the surface (creep: hold Shift), and it bolts. A big hunter scares small fish off too. There is no daily count of casts: what limits you is what is
+   a few times and then really bites. Strike on the bite, then fight it in the reel: the kind of fish and its size decide how hard. Strike on a nibble, cast right on top of it or stomp along the bank above one near the surface (creep: hold Z; Shift in the Classic look), and it bolts. A big hunter scares small fish off too. There is no daily count of casts: what limits you is what is
    swimming there, and a caught fish is replaced after a while (GF_SCHOOL.gap). The market's daily limits and GARDEN_CATCH_ECON.xpFish keep it from being a farm.
 
    ONE WATER, ONE TRUTH. On your own, this computer runs the fish. In a live garden THE HOST'S PAGE runs them and sends the whole list (gl:fs) when something changes and every 6 seconds, so a
@@ -839,7 +839,7 @@ function _gfsStomps() {
   if (typeof _gll !== 'undefined' && _gll.role === 'host') for (const A of _gll.actors.values()) if (A.moving && !A.stationaryPosition && !A.hLv && !A.swimming && !(A.sneakUntil > t)) { const point = gardenLiveActorPosition(A); if (point) out.push(point); }
   return out;
 }
-function _gfsStompSaid() { if (_gfs.stompSaid) return; _gfs.stompSaid = true; _gfsSay2('Your footsteps scared a fish. Hold Shift to creep near the water.'); }
+function _gfsStompSaid() { if (_gfs.stompSaid) return; _gfs.stompSaid = true; _gfsSay2(`Your footsteps scared a fish. Hold ${gardenCreepKey()} to creep near the water.`); }
 /** A shadow somewhere in view, for a leap: it really is one of the fish there. */
 function _gfsLeaper() {
   const l = [..._gfs.list.values()].filter(f => f.x < GARDEN_ROOM_X && f.st === GF_ST.swim && f.def.cat === 'fish' && _gwInView(f.x, f.y, 0));
