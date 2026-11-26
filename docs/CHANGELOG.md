@@ -10,6 +10,83 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.76.0] - 2026-11-26
+
+### Added
+
+**Under and underground**
+
+- Swim under the footbridges, through the arches of the Millwater bridge and between the pier's piles. The bridge fades over you, so you never lose sight of yourself.
+- Six ways underground: the cellar under the Land Office, the drovers' way from the old house in the woods up to the moor, the tower undercroft with its wishing well, the cider run under the river, the lantern mine at Cloudbreak, and a secret cutters' way you have to find and heave open. Inside it is dark, and your lantern lights the way.
+- Creatures live underneath: a dipper under the footbridges in the morning, bats under the arches at dusk, a crab on the pier's piles, a toad under the log, a blind shrimp in the mine's pool and a moth asleep on the rock.
+- Lost things glint under the bridges every day, and the chambers hold an old map, a drover's bell, a cider token, crystals to chip and stone for building. Everything pays coins and goes on a new "Under the vale" page in your Field Journal.
+- Where a river runs on into land that isn't open yet, a line of floats stops you, and a shut bridge has logs chained across its arches.
+- Friends see where you are, under a bridge or as a warm glow under the hill, and can follow you in.
+
+**Your tools, your pockets and the museum**
+
+- A ring of tools is always with you: hands, watering can, shears, spade, rod, net, path kit, hoe and moving stakes. Press 1 to 9, or T, to change tool.
+- Your pockets fill with what you pick, catch, find or buy. When they are full, Perpetua the snail takes things home, and a storage chest you put down anywhere opens everything you keep.
+- Every fish or bug can go to the museum, be sold, be let go (you see it swim or fly away), or go on show at home in an aquarium or bug case.
+- The lake hall is now the Vale Museum, with four wings: the River Hall, the Glasshouse, the Stone Gallery and the Curio Cabinet. Each keeper thanks you, tells you a fact and gives you a present when their wing opens. Friends can give to your museum too.
+- Build right in the game: hold something and a glowing square shows where it will go. E puts it down, R turns it and X puts it back.
+- The spade lifts a plant whole, the path kit lays a path as you walk, the hoe lays beds, moss, sand and bark, and the moving stakes move the vale's benches, lamps, stalls and shops. Signs, flags, statues and your saved plans are under Menu > Build.
+
+**Your own cottage**
+
+- The free cottage nearest the middle of the village is yours. Walk up to its door and press E to go in.
+- Inside is a painted kitchen with a fire, a bed, a table and a dresser. Move everything about, hang wallpaper and lay new floors.
+- Build on room by room: fill the builders' jar with coins, timber and stone, and the next morning the parlour is ready, then the loft, then a guest room. The cottage grows outside to match, with a bay window, a dormer and a second chimney.
+- Villagers come to a housewarming in each new room and give it cosy stars.
+- Dye rugs, quilts and the armchair with crops from your garden, string fairy lights that come on at dusk, design a banner to fly from the roof, and read the letters in your new mailbox.
+- Friends can come in, help set out your rooms, add to the builders' jar, lend the builders a hand, sign your guest book and have the guest room named after them.
+- Seven new ribbons pay out in furniture and building materials.
+
+**Games and days with the vale's folk**
+
+- Play with the villagers: race them past the flags to a podium, play hide and seek (you seek, or you hide), skim stones, and dig for treasure from Bramble's map.
+- Wins bring keepsakes for your garden (a ribbon rack, a race cup, a seeker's lantern and more), new ribbons, and a Games board on every notice board.
+- The vale keeps a week: market stalls round the green on Saturdays, each with a little gift, and a card table under the lamp on Wednesday evenings.
+- The Frost Fair comes on 19 to 21 December, with stalls, a brazier, lanterns and bunting, opened by a short scene with everyone gathered.
+- Some story moments now play out in the garden instead of in a text box (Esc skips them).
+- A new Chronicle page in the Field Journal fills in the vale's history as you go.
+
+**The tide**
+
+- The tide comes in and goes out on every beach and river mouth, twice a day: low water at half past seven, morning and evening, and high water at half past one. It runs a little higher near the full and new moon.
+- At low water the wet sand glints with shells, sea glass, driftwood and pebbles to pick up for your journal.
+- The rock pool on the orchard shore and the loose stones on rocky shores hide crabs and little fish. Scoop them up if you are quick.
+- After a stormy night a sea chest and a bottle wash up for you to haul in and open.
+- A tide table on the lamp posts and signs by each shore tells you when the tide turns.
+- New games on the sand: sandcastles the tide washes away, crab races, pebble pits and a skimming league with the folk, lost things to give back, bottles with notes, a weekly spotter card shared with friends, and six decorations to win.
+- Friends see the same tide and the same finds.
+
+**After dark**
+
+- Every full moon has a name: the Snow Moon, the Owl Moon, the Harvest Moon and the rest, and now and then a Blue Moon. On its night something small happens near you, with a keepsake to find. The moon calendar shows which moon is next.
+- A few nights a year green lights ripple across the sky, a comet stays for a week, and on shooting-star nights a star may fall. Next morning, follow the thin line of smoke to a little crater and pick up a warm star stone: it makes a star lantern.
+- After rain, mushrooms come up under the trees, and Mother Thistle tells you which are for the pot. When a shower passes, race to where the rainbow really touches the ground.
+- Hang a moth sheet to see who visits after dark, follow a trail of glow-worms to a hidden glade, and tell the weathervane what tomorrow's weather will be.
+- With friends: join the stars half each and name one together while Wick tells its story, float paper lanterns on lantern night, busk for a hat of coins and a crowd, and dance at the Saturday barn dance.
+
+### Changed
+
+- Freeflo is ready in a little over half the time. The vale's map is now worked out as the garden needs it, not all at once before the dashboard shows.
+- The garden does about half the work each frame: things far off screen are not drawn, bugs out of view are not painted every frame, and water checks are quicker.
+- When you leave the garden, its timers and animation stop, so the rest of the app stays idle.
+- The dashboard saves to the browser once per burst of changes instead of on every click. Switching pages does less work, and Home no longer rebuilds its whole grid as each card loads.
+- The bag and hotbar are replaced by the tool ring and your pockets. The separate garden designer is gone: you build in the game now.
+- Groups are checked every five minutes when you are not on the Friends pages.
+
+### Fixed
+
+- The garden no longer freezes on a flat green screen now and then when the time of day changes while you zoom or move about.
+- Villagers' own walks are no longer pushed to the back of the queue.
+- The weekly review's summary shows the week's numbers again.
+- A big late-game garden is no longer refused by friends' apps.
+- The woods no longer flash blank squares when the garden opens.
+- A garden extra that keeps failing is now switched off quietly instead of filling the log with errors.
+
 ## [2.75.7] - 2026-11-26
 
 ### Fixed
