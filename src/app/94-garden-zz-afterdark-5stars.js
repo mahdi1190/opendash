@@ -43,6 +43,11 @@ function _adfScan(rows) {
 /** Where the star of that night came down: { x, y } or null (the scan not done yet, or nowhere fit). */
 function adStarSpot(iso, N, m) {
   const C = _adf.done ? _adf.cands : null; if (!C || !C.length) return null;
+  const ck = iso + '|' + N.key + '|' + (m.areas || []).length + '|' + C.length; if (!_adf.spots) _adf.spots = new Map(); if (_adf.spots.has(ck)) return _adf.spots.get(ck);   // (worked out once a night, not every tick)
+  const p = _adfSpotPick(iso, N, m, C); if (p || (typeof _gw !== 'undefined' && _gw.grid)) { if (_adf.spots.size > 40) _adf.spots.clear(); _adf.spots.set(ck, p); }
+  return p;
+}
+function _adfSpotPick(iso, N, m, C) {
   const open = C.filter(p => adOpen(p.x, p.y, m)); if (!open.length) return null;
   const h = gardenHash('ad-sfp|' + N.key + '|' + gtgDayNum(iso));
   for (let i = 0; i < Math.min(8, open.length); i++) {

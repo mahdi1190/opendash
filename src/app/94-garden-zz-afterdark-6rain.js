@@ -201,7 +201,7 @@ function _adrRainbowTrigger(m) {
   try { GARDEN_LIFE_EFFECTS.rainbow(e, e.effect, _gl.W); if (typeof gardenLiveEgg === 'function') gardenLiveEgg('rainbow'); } catch (err) { /* no sky layer */ }
 }
 adHear('bow', (A, ev) => { if (adRole() !== 'visit') return; _adrBowStart({ i: String(ev.i), x: ev.x + 0.5, y: ev.y + 0.5, tt: Number(ev.tt) || 120 }); });
-adHear('bowin', (A, ev) => { const B = _adr.bow; if (adRole() !== 'host' || !B || B.i !== ev.i || !A || !Number.isInteger(A.w)) return; if (!B.order.includes(A.w)) { B.order.push(A.w); _adrBowTell(B); } });
+adHear('bowin', (A, ev) => { const B = _adr.bow, w = Number.isInteger(ev.w) ? ev.w : A && A.w; if (adRole() !== 'host' || !B || B.i !== ev.i || !Number.isInteger(w)) return; if (!B.order.includes(w)) { B.order.push(w); _adrBowTell(B); } });   // (ev.w: the slot of whoever sent it)
 adHear('bowgot', (A, ev) => { const B = _adr.bow; if (adRole() !== 'visit' || !B || B.i !== ev.i) return; let me = -1; try { me = _glv.w; } catch (e) { me = -1; } const row = (ev.l || []).find(r => r[0] === me); if (row) _adrPay(B, row[1]); });
 adJoin((f) => { const B = _adr.bow; if (B && B.host && performance.now() < B.until) adLiveTo(f, 'bow', { i: B.i, x: Math.floor(B.x), y: Math.floor(B.y), tt: Math.max(1, Math.round((B.until - performance.now()) / 1000)) }); });
 /* ---------- weather sayings ---------- */
@@ -272,7 +272,7 @@ function _adrSay(m, N) {
     const k = N.dn + s.id; if (_adr.said.has(k) || adGet('say.' + N.dn + '.' + s.id)) continue;
     _adr.said.add(k); adSet('say.' + N.dn + '.' + s.id, 1); if (!adGet('sy.' + s.id)) adSet('sy.' + s.id, N.day);
     const at = { gulls: 'looking at the gulls', 'swallows-high': 'watching the swallows', 'swallows-low': 'watching the swallows', dew: 'looking at the grass', 'moon-ring': 'looking up', 'red-dusk': 'looking at the water', 'red-dawn': 'looking at the water', 'clear-moon': 'looking up', webs: 'stopping at a hedge', 'early-rain': 'shaking out a coat' }[s.sign] || 'looking about';
-    wdAmbient(`${String(who.name).split(/\s+/).pop()}, ${at}: “${s.words}”`, 7000, 'saying');
+    wdAmbient(`${String(who.name)}, ${at}: “${s.words}”`, 7000, 'saying');
     adGive('sy.' + s.id, { x: 1 });
     break;
   }
@@ -325,10 +325,10 @@ function gardenNightVaneOpen() {
     for (const s of heard) el.appendChild(gpEl('p', 'ad-saying', `“${s.words}” ${s.note}`));
   });
 }
-gardenPlayAdd({ id: 'weather-vane', name: 'The weathervane', verb: 'Guess tomorrow', icon: 'wind', group: 'secret', blurb: 'Say what tomorrow’s weather will be. A right guess is worth a seed packet.',
+gardenPlayAdd({ id: 'weather-vane', name: 'The weathervane', verb: 'Guess tomorrow', icon: 'compass', group: 'secret', blurb: 'Say what tomorrow’s weather will be. A right guess is worth a seed packet.',
   status: () => { try { const v = Number(adGet('vg.' + gtgDayNum(gtgToday()))) || 0; return v ? 'Tomorrow: ' + AD_GUESS[v].toLowerCase() : ''; } catch (e) { return ''; } },
   open: gardenNightVaneOpen,
-  bubble: (d, items) => { if (gardenHere().visit) return; const m = gardenHere(); for (const v of (m.season === 'winter' ? [1, 2, 3] : [1, 2])) items.push({ ic: v === 1 ? 'sun' : v === 2 ? 'cloud-rain' : 'snowflake', label: AD_GUESS[v] + ' tomorrow', run: () => { gardenBubbleClose(); adGuess(v); } }); } });
+  bubble: (d, items) => { if (gardenHere().visit) return; const m = gardenHere(); for (const v of (m.season === 'winter' ? [1, 2, 3] : [1, 2])) items.push({ ic: v === 1 ? 'sun' : v === 2 ? 'umbrella' : 'snowflake', label: AD_GUESS[v] + ' tomorrow', run: () => { gardenBubbleClose(); adGuess(v); } }); } });
 /* ---------- the loop ---------- */
 wdMod({
   id: 'ad-rain', pref: 'night', visit: true,
