@@ -19,6 +19,8 @@ const GART_MOMENTS = Object.freeze({
   crop: { verb: () => 'picked', def: (id) => gardenPlant(id), name: (d) => (d.yield && d.yield.item ? d.yield.item : d.name), art: (id, px) => _gdxItemIcon('crop:' + id, px) },
   // a find from the shore at low water (94-garden-tide-0rules.js): a shell, sea glass, driftwood, the storm's set
   shore: { verb: () => 'found', def: (id) => (typeof gardenTideFindDef === 'function' ? gardenTideFindDef(id) : null), name: (d) => d.name, art: (id, px) => (typeof gardenTideFindSvg === 'function' ? gardenTideFindSvg(id, px) : '') },
+  // something one of the folk lost, found (94-garden-tide-a-lost.js)
+  lost: { verb: () => 'found', def: (id) => (typeof gardenLostDef === 'function' ? gardenLostDef(id) : null), name: (d) => d.name, art: (id, px) => (typeof gardenLostSvg === 'function' ? gardenLostSvg(id, px) : '') },
 });
 const GART_MOMENT_MS = 2700;
 function gardenMomentSpec(kind, id, o) {
