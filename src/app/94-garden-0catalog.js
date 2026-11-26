@@ -726,6 +726,9 @@ const GARDEN_RIBBONS = _gdRows([
   // ── end garden-social ──
   // (the depth lane) under things: facts from gardenDepthFacts() (94-garden-zz-8depth-1under.js), counted from the layout's own bridges and piers
   { id: 'under-every-bridge', label: 'Under every bridge', hint: 'Swim under every bridge and pier you can reach.', icon: 'waves', fact: 'underAll', of: 1, reward: { c: 120 } },
+  // (the depth lane) the ways underground (94-garden-zz-8depth-3tunnel.js), counted from the layout's own tunnels
+  { id: 'down-below', label: 'Down below', hint: 'Find a way underground and come out again.', icon: 'lamp', fact: 'tunnelsSeen', of: 1, reward: { c: 40, i: { 'mat:stone': 4 } } },
+  { id: 'knows-the-way-under', label: 'Knows the way under', hint: 'Explore every way underground in the vale.', icon: 'map', fact: 'tunnelsAll', of: 1, reward: { c: 150, i: { 'mat:timber': 6 } } },
 ]);
 
 /* ---------- daily garden tasks and weekly garden quests ----------

@@ -115,3 +115,114 @@ function gardenDepthClean(raw, out) {
   }
   return out;
 }
+/* ============================================================
+   TUNNELS (26 Nov 2026, the depth lane, its second part). "maybe even add tunnels etc, add more depth into the game and locations".
+   A way underground is a placed thing of KIND tunnel (GARDEN_KINDS.tunnel), a row of layout data (assets/garden/vale-depth.json), so a new
+   one anywhere needs only data: its mouths (where you go in, how each is built, the way you walk in), the lines of its passages and its
+   chambers. Nothing here names a place. The game (94-garden-zz-8depth-3tunnel.js) and a tool can both read a row with these:
+     gardenTunnelGeom(row, x, y, W)         the row placed at (x, y) (cells: its first mouth's threshold), in world px: mouths, passages,
+                                            chambers, stairs, its box; fault: why it cannot be used ('' when it can)
+     gardenTunnelFree(G, px, py, e, open)   can the feet be at (px, py) inside it, e px in from its walls (open[i]: mouth i's stair is open)
+   GARDEN_TUNNEL_STYLES  how each kind of way is built and sounds: a cellar (flags, a brick vault), a drift (a rough passage through rock),
+                         an adit (a mine: timber props, a rail), a vault (dressed stone)
+   GARDEN_CHAMBERS       what a chamber is (store, rest, well, vault, gallery, crystal, pool, glow, echo): its set piece, a lamp of its own
+   ============================================================ */
+const GARDEN_TUNNEL = Object.freeze({
+  inner: 0.62,     // cells from a mouth's threshold (outside, where you stand) to its stair foot (inside)
+  pr: 20,          // px of a passage's half width for each cell of its row's width (1.5 cells: 60 px across, two abreast)
+  stairR: 15,      // px: a stair's half width
+  foot: 5,         // px: how near a wall the feet go
+  out: 0.34,       // cells: this near the top of an open stair, you go out
+  arm: 0.95,       // cells: ...once you have been this far from it since you came in
+  face: 1.2,       // H: the back wall's face, seen above the floor's far edge
+  margin: 2.4,     // cells round the floor that the inside is drawn (as far as any light really shows the rock)
+  light: Object.freeze({ lantern: 3.1, candle: 2.0, lamp: 2.3 }),   // cells: the reach of your own light (a lantern if you have one), a hung lamp's
+});
+const GARDEN_TUNNEL_STYLES = Object.freeze({
+  cellar: Object.freeze({ name: 'the cellar', floor: 'flags', wall: 'brick', props: false, rail: false, echo: 0.3, drip: 0.05, col: Object.freeze({ rock: '#2b2420', rockHi: '#3d332b', floor: '#8a7c68', floorLo: '#6c604f', floorHi: '#a69680', grout: '#4c4338', wall: '#8e5a40', wallLo: '#6a412e', wallHi: '#b07a58', mortar: '#5a4636', light: '#ffc878' }) }),
+  drift: Object.freeze({ name: 'the passage', floor: 'earth', wall: 'rock', props: false, rail: false, echo: 0.55, drip: 0.22, col: Object.freeze({ rock: '#26231f', rockHi: '#38332c', floor: '#7a6a52', floorLo: '#5e5140', floorHi: '#96846a', grout: '#4a4034', wall: '#6e665a', wallLo: '#4e483f', wallHi: '#948a7a', mortar: '#3e3a33', light: '#ffcc80' }) }),
+  adit: Object.freeze({ name: 'the mine', floor: 'gravel', wall: 'rock', props: true, rail: true, echo: 0.6, drip: 0.4, col: Object.freeze({ rock: '#221f1c', rockHi: '#34302a', floor: '#6e6252', floorLo: '#544a3e', floorHi: '#8a7c68', grout: '#40372e', wall: '#665e54', wallLo: '#48423a', wallHi: '#8c8274', mortar: '#3a352f', light: '#ffc070' }) }),
+  vault: Object.freeze({ name: 'the vault', floor: 'flags', wall: 'stone', props: false, rail: false, echo: 0.7, drip: 0.12, col: Object.freeze({ rock: '#272422', rockHi: '#3a3632', floor: '#867c6c', floorLo: '#6a6154', floorHi: '#a29684', grout: '#4a443a', wall: '#9a9080', wallLo: '#726a5c', wallHi: '#bab09e', mortar: '#585246', light: '#ffd08a' }) }),
+});
+const GARDEN_CHAMBERS = Object.freeze({
+  store: Object.freeze({ piece: 'shelves', lamp: true, words: 'a store' }),
+  rest: Object.freeze({ piece: 'bench', lamp: false, echo: true, words: 'a resting place' }),
+  well: Object.freeze({ piece: 'well', lamp: true, words: 'a well' }),
+  vault: Object.freeze({ piece: 'barrels', lamp: true, words: 'a vault' }),
+  gallery: Object.freeze({ piece: 'tub', lamp: true, words: 'a working' }),
+  crystal: Object.freeze({ piece: 'crystals', lamp: false, glow: '#9fd8ff', words: 'a crystal chamber' }),
+  pool: Object.freeze({ piece: 'pool', lamp: false, echo: true, words: 'a still pool' }),
+  glow: Object.freeze({ piece: 'worms', lamp: false, words: 'a glow-worm chamber' }),
+  echo: Object.freeze({ piece: 'none', lamp: false, echo: true, words: 'an echoing chamber' }),
+});
+const GT_FACE = Object.freeze({ n: Object.freeze([0, -1]), s: Object.freeze([0, 1]), e: Object.freeze([1, 0]), w: Object.freeze([-1, 0]) });
+const GT_BY = Object.freeze(['hatch', 'arch', 'adit', 'steps']);
+/** A tunnel row placed at (x, y) (cells: its first mouth's threshold), in world px. Pure. */
+function gardenTunnelGeom(row, x, y, W) {
+  const T = GARDEN_TUNNEL, cw = W.cellW, chh = W.cellH, P = (cx, cy) => ({ x: cx * cw, y: W.sky + cy * chh });
+  const out = { id: String(row && row.id || ''), name: String(row && row.name || 'the tunnel').slice(0, 40), style: GARDEN_TUNNEL_STYLES[row && row.style] ? row.style : 'drift', x, y, mouths: [], segs: [], ells: [], stairs: [], fault: '', box: [0, 0, 0, 0], cbox: [0, 0, 0, 0] };
+  if (!/^[a-z0-9-]{1,32}$/.test(out.id)) { out.fault = 'its id'; return out; }
+  if (!Number.isFinite(x) || !Number.isFinite(y)) { out.fault = 'no place'; return out; }
+  const width = Math.max(1, Math.min(3, Number(row.width) || 1.5)), r = width * T.pr;
+  const pts = (a) => Array.isArray(a) && a.length === 2 && Number.isFinite(+a[0]) && Number.isFinite(+a[1]) ? [x + +a[0], y + +a[1]] : null;
+  (Array.isArray(row.mouths) ? row.mouths : []).slice(0, 4).forEach((m, i) => {
+    const at = pts(m && m.at), face = m && GT_FACE[m.face] ? m.face : 'n', f = GT_FACE[face]; if (!at) return;
+    const by = GT_BY.includes(m.by) ? m.by : 'arch', ix = at[0] + f[0] * T.inner, iy = at[1] + f[1] * T.inner, ox = at[0] + f[0] * 0.2, oy = at[1] + f[1] * 0.2;
+    out.mouths.push({ i, by, face, fx: f[0], fy: f[1], x: at[0], y: at[1], ix, iy, ox, oy, px: P(at[0], at[1]), pin: P(ix, iy), pout: P(ox, oy) });
+  });
+  if (!out.mouths.length) { out.fault = 'no mouth'; return out; }
+  // a path's point on a mouth's threshold is that mouth's stair foot
+  const snap = (p) => { for (const m of out.mouths) if (Math.hypot(p[0] - m.x, p[1] - m.y) < 0.05) return [m.ix, m.iy]; return p; };
+  for (const line of (Array.isArray(row.paths) ? row.paths : []).slice(0, 8)) {
+    const L = (Array.isArray(line) ? line : []).map(pts).filter(Boolean).map(snap); if (L.length < 2) continue;
+    for (let k = 1; k < L.length; k++) { const a = P(L[k - 1][0], L[k - 1][1]), b = P(L[k][0], L[k][1]); out.segs.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y, r }); }
+  }
+  (Array.isArray(row.chambers) ? row.chambers : []).slice(0, 15).forEach((c, i) => {
+    const at = pts(c && c.at), rr = Array.isArray(c && c.r) ? c.r : [1.2, 0.8]; if (!at) return;
+    const p = P(at[0], at[1]); out.ells.push({ i, x: p.x, y: p.y, rx: Math.max(30, Math.min(150, (+rr[0] || 1.2) * cw)), ry: Math.max(22, Math.min(80, (+rr[1] || 0.8) * chh)), what: GARDEN_CHAMBERS[c.what] ? c.what : 'echo', cx: at[0], cy: at[1], rect: out.style === 'cellar' || out.style === 'vault' });   // (a built room is square, a cave rounded)
+  });
+  for (const m of out.mouths) out.stairs.push({ m: m.i, ax: m.pin.x, ay: m.pin.y, bx: m.pout.x, by: m.pout.y, r: T.stairR });
+  if (!out.segs.length && !out.ells.length) { out.fault = 'no passage'; return out; }
+  // each chamber's piece: against its back wall (shelves, barrels, a bench, a tub, crystals: the feet keep in front of it), or standing in
+  // it (a well head, a pool: a hole in the floor). A passage that goes on out of a chamber's back keeps its way clear: the piece stands to
+  // one side of it, and the old lamp to the other.
+  for (const c of out.ells) {
+    const piece = GARDEN_CHAMBERS[c.what].piece, through = out.segs.some(s => (Math.hypot(s.ax - c.x, s.ay - c.y) < 6 && s.by < c.y - c.ry * 0.6) || (Math.hypot(s.bx - c.x, s.by - c.y) < 6 && s.ay < c.y - c.ry * 0.6));
+    c.pieceDx = through ? -c.rx * 0.5 : 0; c.lampDx = through ? c.rx * 0.55 : 0;
+    if (piece === 'well') c.hole = { x: c.x, y: c.y - 2, rx: 24, ry: 9 };
+    else if (piece === 'pool') c.hole = { x: c.x + c.rx * 0.12, y: c.y + c.ry * 0.12, rx: c.rx * 0.5, ry: c.ry * 0.45 };
+    else if (piece !== 'none' && piece !== 'worms') { c.back = c.y - c.ry + 10; c.backX = through ? [c.x - c.rx - 4, c.x - 18] : [c.x - c.rx - 4, c.x + c.rx + 4]; }
+  }
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  const take = (px, py, rx, ry) => { x0 = Math.min(x0, px - rx); x1 = Math.max(x1, px + rx); y0 = Math.min(y0, py - ry); y1 = Math.max(y1, py + ry); };
+  for (const s of out.segs.concat(out.stairs)) { take(s.ax, s.ay, s.r, s.r); take(s.bx, s.by, s.r, s.r); }
+  for (const e of out.ells) take(e.x, e.y, e.rx, e.ry);
+  for (const m of out.mouths) take(m.px.x, m.px.y, 4, 4);
+  out.box = [x0, y0, x1, y1];   // px: the floor and stairs
+  out.cbox = [x0 / cw, (y0 - W.sky) / chh, x1 / cw, (y1 - W.sky) / chh];   // cells
+  // every mouth's stair foot is on a passage or in a chamber, or that mouth leads nowhere
+  for (const m of out.mouths) if (!gardenTunnelFree(out, m.pin.x, m.pin.y, 0, null)) { out.fault = 'mouth ' + m.i + ' leads nowhere'; break; }
+  return out;
+}
+/** Squared distance (px) from p to the segment a-b. */
+function _gtSeg2(px, py, ax, ay, bx, by) { const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy; let t = L ? ((px - ax) * dx + (py - ay) * dy) / L : 0; t = t < 0 ? 0 : t > 1 ? 1 : t; const qx = ax + dx * t - px, qy = ay + dy * t - py; return qx * qx + qy * qy; }
+/** Can the feet be at (px, py) (world px) inside the tunnel, e px in from its walls? open: [bool] per mouth (a shut mouth's stair is
+ *  rock); null: every stair counts. Pure, no allocation. */
+function gardenTunnelFree(G, px, py, e, open) {
+  if (!G || px < G.box[0] - 2 || px > G.box[2] + 2 || py < G.box[1] - 2 || py > G.box[3] + 2) return false;
+  for (let i = 0; i < G.ells.length; i++) {   // (a chamber's piece holds the feet off)
+    const c = G.ells[i];
+    if (c.hole) { const u = (px - c.hole.x) / (c.hole.rx + e), v = (py - c.hole.y) / (c.hole.ry + e * 0.6); if (u * u + v * v <= 1) return false; }
+    if (c.back != null && py < c.back + e * 0.6 && px >= c.backX[0] && px <= c.backX[1]) { const u = (px - c.x) / (c.rx + 6), v = (py - c.y) / (c.ry + 6); if (u * u + v * v <= 1) return false; }
+  }
+  for (let i = 0; i < G.segs.length; i++) { const s = G.segs[i], r = s.r - e; if (r > 0 && _gtSeg2(px, py, s.ax, s.ay, s.bx, s.by) <= r * r) return true; }
+  for (let i = 0; i < G.ells.length; i++) { const c = G.ells[i], rx = c.rx - e, ry = c.ry - e * 0.7; if (rx <= 0 || ry <= 0) continue; if (c.rect) { if (Math.abs(px - c.x) <= rx && Math.abs(py - c.y) <= ry) return true; continue; } const u = (px - c.x) / rx, v = (py - c.y) / ry; if (u * u + v * v <= 1) return true; }
+  for (let i = 0; i < G.stairs.length; i++) { const s = G.stairs[i]; if (open && !open[s.m]) continue; const r = s.r - e * 0.6; if (r > 0 && _gtSeg2(px, py, s.ax, s.ay, s.bx, s.by) <= r * r) return true; }
+  return false;
+}
+/** Which chamber (its index) you are in at (px, py), or -1. Pure. */
+function gardenTunnelChamberAt(G, px, py) {
+  let best = -1, bd = 1.0001;
+  for (const c of G.ells) { const u = (px - c.x) / (c.rx + 18), v = (py - c.y) / (c.ry + 14), d = u * u + v * v; if (d < bd) { bd = d; best = c.i; } }
+  return best;
+}

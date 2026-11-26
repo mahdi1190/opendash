@@ -1,0 +1,30 @@
+{
+  "note": "The depth lane's ways underground (26 Nov 2026): tunnels, cellars and a mine, each a placed thing of KIND tunnel (src/app/94-garden-zz-7act-0kinds.js), read by lib/garden-things.mjs like every vale-<x>.json. Not part of the saved-world identity: nothing here edits a region's cells. A row: id, kind 'tunnel', style (cellar | drift | adit | vault: GARDEN_TUNNEL_STYLES), name, on + at (against a fixed thing: it moves with it) or x, y (cells: the first mouth's threshold, on open ground), mouths [{ at (from the row's place), by (hatch | arch | adit | steps: how it is built), face (the way you walk in: n s e w) }], paths (lines from mouth to chamber, from the row's place; a point on a mouth's threshold means that mouth's stair foot), width (cells), chambers [{ at, r [rx, ry] (cells), what (GARDEN_CHAMBERS) }]. A mouth whose ground is not open yet is shut (a rockfall, a locked gate) until its land opens; the game checks every row (94-garden-zz-8depth-3tunnel.js) and leaves out what does not fit.",
+  "things": [
+    { "id": "dp-deeds", "kind": "tunnel", "style": "cellar", "name": "the deeds cellar", "on": "land-office", "at": [3.0, -0.1], "x": 48.0, "y": 45.9,
+      "mouths": [{ "at": [0, 0], "by": "hatch", "face": "w" }],
+      "paths": [[[0, 0], [-1.5, -0.6], [-3.0, -1.2]]], "width": 1.5,
+      "chambers": [{ "at": [-3.0, -1.2], "r": [1.75, 1.05], "what": "store" }],
+      "note": "Cellar flaps in the paving against the Land Office's east wall, south of its lamp: a flagged cellar of shelves and an old plan chest under the office. One mouth: you come back up the way you went." },
+    { "id": "dp-drovers", "kind": "tunnel", "style": "drift", "name": "the drovers' way", "on": "ld-oldhouse", "at": [-3.1, -1.1], "x": 19.9, "y": 25.9,
+      "mouths": [{ "at": [0, 0], "by": "hatch", "face": "e" }, { "at": [1.5, -7.15], "by": "steps", "face": "s" }],
+      "paths": [[[0, 0], [2.6, -0.5], [3.3, -0.5]], [[0, 0], [1.2, -1.6], [1.0, -3.6], [1.4, -5.3], [1.5, -7.15]]], "width": 1.5,
+      "chambers": [{ "at": [3.3, -0.5], "r": [1.45, 0.9], "what": "store" }, { "at": [1.0, -3.6], "r": [1.2, 0.8], "what": "rest" }],
+      "note": "A hatch in the yard on the empty old house's west side; under the house a store, and a long passage north under the fell scarp, up steps through the moor turf on the cliff top: the woodland's way on to the fells, eight cells for a walk round of forty-six." },
+    { "id": "dp-undercroft", "kind": "tunnel", "style": "vault", "name": "the tower undercroft", "on": "ld-tower", "at": [1.2, 0.35], "x": 31.7, "y": 67.35,
+      "mouths": [{ "at": [0, 0], "by": "arch", "face": "n" }],
+      "paths": [[[0, 0], [-0.2, -0.9], [-1.1, -1.35]]], "width": 1.5,
+      "chambers": [{ "at": [-1.1, -1.35], "r": [1.35, 0.85], "what": "well" }],
+      "note": "A low half-sunk arch in the old tower's south face, east of its stair door, down to a vaulted room with a well shaft under the tower." },
+    { "id": "dp-cider", "kind": "tunnel", "style": "vault", "name": "the cider run", "x": 65.5, "y": 50.8,
+      "mouths": [{ "at": [0, 0], "by": "steps", "face": "n" }, { "at": [-0.15, -4.25], "by": "steps", "face": "s" }],
+      "paths": [[[0, 0], [0.3, -1.65], [1.4, -2.4], [0.6, -3.25], [-0.15, -4.25]]], "width": 1.5,
+      "chambers": [{ "at": [1.4, -2.4], "r": [1.3, 0.8], "what": "vault" }],
+      "note": "Steps down on the river bank below the end of the terrace wall, a vault for the cider under the terraces, steps up on the orchard side by the river: the valley's way up to the High orchard without the long road round." },
+    { "id": "dp-mine", "kind": "tunnel", "style": "adit", "name": "the lantern mine", "x": 15.4, "y": 10.4,
+      "mouths": [{ "at": [0, 0], "by": "adit", "face": "n" }],
+      "paths": [[[0, 0], [-0.1, -1.6], [-0.2, -2.4]], [[-0.2, -2.4], [-1.1, -2.9], [-2.0, -3.3]], [[-0.2, -2.4], [0.3, -3.6], [0.4, -4.6]]], "width": 1.6,
+      "chambers": [{ "at": [-0.2, -2.4], "r": [1.5, 0.85], "what": "gallery" }, { "at": [-2.0, -3.3], "r": [1.3, 0.95], "what": "crystal" }, { "at": [0.4, -4.6], "r": [1.4, 0.9], "what": "pool" }],
+      "note": "An old timbered adit in the south-east foot of Cloudbreak's west peak, by the Cloudbreak Way: a gallery, a crystal chamber and a still pool in the rock." }
+  ]
+}

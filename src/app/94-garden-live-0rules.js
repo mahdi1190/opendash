@@ -83,7 +83,9 @@ const GL_EMOTES = Object.freeze(['wave', 'cheer', 'clap', 'bow', 'shrug', 'sit',
   // and back on the ground (down from a floor or out of the water any way at all, a reset, a floor no longer drawn): their copy comes down
   'act-onground',
   // music (20 Nov): the band's other places at a pitch
-  'act-whistle', 'act-squeeze', 'act-drum']);
+  'act-whistle', 'act-squeeze', 'act-drum',
+  // (the depth lane) into a tunnel at its mouth, out at a mouth, and where someone is underground (told to whoever arrives): 94-garden-zz-8depth-3tunnel.js
+  'act-tunnelin', 'act-tunnelout', 'act-intunnel']);
 const GL_PHRASES = Object.freeze([
   Object.freeze({ id: 'hi', t: 'Hello!' }), Object.freeze({ id: 'lovely', t: 'Your garden is lovely' }), Object.freeze({ id: 'look', t: 'Look at this!' }),
   Object.freeze({ id: 'help', t: 'Can I help?' }), Object.freeze({ id: 'thanks', t: 'Thank you!' }), Object.freeze({ id: 'follow', t: 'Follow me!' }),
