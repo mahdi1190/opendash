@@ -297,7 +297,8 @@ export function lastStopFromLog(text) {
   const lines = String(text || '').split(/\r?\n/);
   let start = -1;
   for (let i = lines.length - 1; i >= 0; i--) if (/\bserver started on\b/.test(lines[i])) { start = i; break; }
-  if (start < 0) return null;
+  // A long session pushes its start line out of the tail (every request logs a line): the stop, crash and exit lines
+  // at the end still say why it ended. With no start line in view only those count (a first start has none).
   let stop = null, exit = null, crash = null, sup = null;
   for (let i = start + 1; i < lines.length; i++) {
     const m = LINE.exec(lines[i]);
@@ -311,6 +312,7 @@ export function lastStopFromLog(text) {
   if (stop) return { ...stop, source: 'log' };
   if (crash) return { reason: crash.reason.slice(0, 300), at: crash.at, source: 'log' };
   if (exit) return { reason: exit.code === 0 ? 'stopped (exit code 0)' : `crashed (exit code ${exit.code})`, at: exit.at, source: 'log' };
+  if (start < 0) return null;
   if (sup) return { reason: sup.reason, at: sup.at, source: 'log' };
   return { reason: 'unknown: the previous server ended without logging a stop (ended from outside, e.g. Task Manager, or the computer shut down)', at: null, source: 'log' };
 }
