@@ -286,10 +286,14 @@ function czTagItems(tag, el, at) {
     { label: 'Delete', icon: 'trash-2', danger: true, hint: c.n ? `${c.n} task${c.n === 1 ? '' : 's'}` : '', run: () => czTagDelete(tag) },
   ];
 }
-/** This tab follows a renamed or merged tag: its view and that view's sort/group (UI keys stay per tab). */
+/** This tab follows a renamed or merged tag: its view and that view's sort/group (UI keys stay per tab).
+ *  Only those: the data naming the tag (boards, smart lists, pins, Home widgets) comes from the server's op
+ *  and its undo, so undoing a merge never renames the target tag's own boards back (B9). */
 function czFollowTag(from, to) {
   const before = state.view;
-  tglRenameRefs(state, from, to);
+  const ui = { view: state.view, viewFilter: state.viewFilter, taskViewPrefs: state.taskViewPrefs };
+  tglRenameRefs(ui, from, to);
+  for (const k of ['view', 'viewFilter', 'taskViewPrefs']) if (ui[k] !== state[k]) state[k] = ui[k];
   if (state.view !== before) { saveUI(); _syncViewHash(); }
 }
 async function czRenameTag(tag, raw) {

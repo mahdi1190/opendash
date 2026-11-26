@@ -285,8 +285,15 @@ function _pkLongPressStart(e, fire) {
     _pkLongPressEnd();
     // Until the finger lifts: the click that ends this press must not count as a tap.
     _pk.suppress = Infinity;
-    document.addEventListener('pointerup', () => { _pk.suppress = Date.now() + 60; }, { once: true, capture: true });
-    document.addEventListener('pointercancel', () => { _pk.suppress = 0; }, { once: true, capture: true });
+    // One handler for both ends, removing both: a press that turns into a scroll (pointercancel) must not leave
+    // the pointerup one armed to swallow the next tap (LEAK-5).
+    const lift = (ev) => {
+      document.removeEventListener('pointerup', lift, true);
+      document.removeEventListener('pointercancel', lift, true);
+      _pk.suppress = ev.type === 'pointerup' ? Date.now() + 60 : 0;
+    };
+    document.addEventListener('pointerup', lift, true);
+    document.addEventListener('pointercancel', lift, true);
     try { if (navigator.vibrate) navigator.vibrate(12); } catch (err) { /* not on this device */ }
     _pkNoTextPick();
     fire();

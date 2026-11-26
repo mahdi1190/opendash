@@ -43,9 +43,22 @@ function owdSplitDialog(pre) {
   if (edit && edit.kind === 'expect') return owdExpectDialog({ edit: edit.id });
   const fx = pre.fromExpense || null;
   const v = edit || (fx ? { title: fx.title, total: fx.amount, date: fx.date, merchant: fx.merchant, note: fx.note, source: fx.source && fx.source.k ? fx.source : { type: 'expense' } } : pre);
-  const S = { method: edit ? edit.method : 'equal', meIn: edit ? edit.meIn : true, myWeight: edit && edit.myWeight != null ? edit.myWeight : 1, myExtra: edit && edit.myExtra || 0, people: [], paidBy: '', source: v.source || { type: 'manual' }, merchant: v.merchant || '' };
+  // payer: the share typed for whoever paid, when someone else did (their own row, kept while the name is changed).
+  const S = { method: edit ? edit.method : 'equal', meIn: edit ? edit.meIn : true, myWeight: edit && edit.myWeight != null ? edit.myWeight : 1, myExtra: edit && edit.myExtra || 0, people: [], paidBy: '', payer: { weight: 1 }, source: v.source || { type: 'manual' }, merchant: v.merchant || '' };
   if (edit) {
-    if (edit.kind === 'iowe') { S.paidBy = edit.lines[0].name; S.people = (edit.others || []).map(o => ({ name: owdPersonName(o.key), key: o.key })); }
+    if (edit.kind === 'iowe') {
+      S.paidBy = edit.lines[0].name;
+      S.people = (edit.others || []).map(o => ({ name: owdPersonName(o.key), key: o.key, weight: o.weight, pct: o.pct, exact: o.exact, extra: o.extra, what: o.what }));
+      S.payer = { weight: 1, ...(edit.payerShare || {}) };
+      // Saved before everyone's share was kept: what each part came to is known, so it opens as exact amounts and saves the same.
+      if (edit.method !== 'equal' && !edit.payerShare) {
+        const theirs = (n) => (edit.fx ? Math.round(n * edit.fx.rate * 100) / 100 : n);
+        S.method = 'exact';
+        S.people.forEach((p, i) => { p.exact = theirs(edit.others[i].amount); });
+        const T = edit.fx ? edit.fx.amount : edit.total, mine = edit.fx && edit.myFx != null ? edit.myFx : theirs(edit.myShare);
+        S.payer.exact = Math.max(0, Math.round((T - mine - S.people.reduce((a, p) => a + p.exact, 0)) * 100) / 100);
+      }
+    }
     else S.people = edit.lines.map(l => ({ name: l.name, key: l.key, weight: l.weight, pct: l.pct, exact: l.exact, extra: l.extra, what: l.what }));
   }
   if (fx && fx.payer) S.people.push({ name: fx.payer, key: owdKey(fx.payer) });
@@ -70,6 +83,12 @@ function owdSplitDialog(pre) {
   const note = _xInput('text', v.note || '', 'optional');
   let someone = !!(pre.someoneElse || S.paidBy);
   const total = () => Number(amount.value) || 0;
+  /** Who is in the sum. Someone else paid: their row is S.payer, unless they are in "With" too. */
+  const everyoneNow = () => {
+    const payKey = someone ? owdKey(payerIn.value) : '';
+    if (!payKey || S.people.some(p => p.key === payKey)) return S.people;
+    return [...S.people, Object.assign(S.payer, { name: payerIn.value.trim(), key: payKey, isPayer: true })];
+  };
   const addPerson = (p) => {
     const name = String(p.name || '').trim(); if (!name) return;
     const key = p.key || owdKey(name); if (!key || S.people.some(x => x.key === key)) return;
@@ -109,8 +128,7 @@ function owdSplitDialog(pre) {
   };
   /** The sum, as it stands: a row each, the headline and where the pennies went. */
   const paintList = () => {
-    const payKey = someone ? owdKey(payerIn.value) : '';
-    const everyone = payKey && !S.people.some(p => p.key === payKey) ? [...S.people, { name: payerIn.value.trim(), key: payKey, isPayer: true, weight: 1 }] : S.people;
+    const everyone = everyoneNow();
     const r = owdSplit(total(), everyone, { method: S.method, meIn: someone ? true : S.meIn, myWeight: S.myWeight, myExtra: S.myExtra, cur: fxReady() ? FX.cur : undefined });
     errEl.textContent = total() > 0 && r.error ? r.error : '';
     errEl.hidden = !errEl.textContent;
@@ -149,8 +167,7 @@ function owdSplitDialog(pre) {
   };
   /** Only the sums change while typing: inputs keep their focus. */
   const paintAmounts = () => {
-    const payKey = someone ? owdKey(payerIn.value) : '';
-    const everyone = payKey && !S.people.some(p => p.key === payKey) ? [...S.people, { name: payerIn.value.trim(), key: payKey, weight: 1 }] : S.people;
+    const everyone = everyoneNow();
     const r = owdSplit(total(), everyone, { method: S.method, meIn: someone ? true : S.meIn, myWeight: S.myWeight, myExtra: S.myExtra, cur: fxReady() ? FX.cur : undefined });
     errEl.textContent = total() > 0 && r.error ? r.error : ''; errEl.hidden = !errEl.textContent;
     for (const o of listEl.querySelectorAll('.owd-sr-am')) { const k = o.dataset.key; o.textContent = fmtP(k === '_me' ? r.me : (r.lines.get(k) || 0)); }
@@ -293,7 +310,7 @@ function owdSplitDialog(pre) {
       if (FX.on && !(Number(FX.rate) > 0)) { fxRateIn.focus(); toast(`Put in the rate: how much ${FX.cur} for 1 of yours.`, { kind: 'err' }); return false; }
       const thing = { kind: 'split', title: title.value.trim(), total: FX.on ? fxHomeTotal() : total(), date: date.value, ...(FX.on ? { fx: { cur: FX.cur, amount: total(), rate: Number(FX.rate), at: FX.at || date.value, source: FX.source } } : {}), method: S.method, meIn: someone ? true : S.meIn, myWeight: S.myWeight, myExtra: S.myExtra, merchant: S.merchant, note: note.value.trim(), source: S.source,
         people: S.people.map(p => ({ name: p.name, pid: p.pid, weight: p.weight, pct: p.pct, exact: p.exact, extra: p.extra, what: p.what })), tripName: tripIn.value.trim(), saveGroup: groupIn.value.trim(), groupId: S.groupId, fromExpense: fx || undefined };
-      if (someone) thing.paidBy = payerIn.value.trim();
+      if (someone) { thing.paidBy = payerIn.value.trim(); thing.payerShare = { weight: S.payer.weight, pct: S.payer.pct, exact: S.payer.exact, extra: S.payer.extra }; }
       if (edit) {
         const j = await owdDo('/update', { id: edit.id, thing }, { done: 'Saved', what: 'save that' });
         return j ? undefined : false;

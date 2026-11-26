@@ -30,7 +30,7 @@
 
 import { HttpError } from '../http.mjs';
 import * as O from '../../lib/owed.mjs';
-import { readStore as readExpenses, creditsFromAnalysis, sniffReceipt, storeReceiptFile } from '../../lib/expenses.mjs';
+import { readStore as readExpenses, creditsFromAnalysis, sniffReceipt, storeReceiptFile, RECEIPT_MAX as KEEP_MAX } from '../../lib/expenses.mjs';
 import { readReceiptFile, checkReceipt } from '../../lib/owed-receipt.mjs';
 import { randomBytes } from 'node:crypto';
 import { runClaude } from '../../lib/claude-runner.mjs';
@@ -75,7 +75,7 @@ export default function register(app) {
   /** What Expenses has already used: a payment is only used once. */
   const takenByExpenses = async () => { const X = await readExpenses(dataDir, { home: home() }); const s = new Set(); for (const e of Object.values(X.items)) { if (e.paidTxKey) s.add(e.paidTxKey); if (e.source && e.source.k) s.add(e.source.k); if (e.source && e.source.txKey) s.add(e.source.txKey); } return s; };
 
-  /** The money plan's rows with a "Split with" (or none): only worked out when the plan names someone. */
+  /** The money plan's rows with a "Split with" (or none): only worked out when the plan names someone. null: the plan could not be read. */
   async function planRows(d, today) {
     try {
       const plan = cleanPlan((await getPlan()).plan);
@@ -93,26 +93,33 @@ export default function register(app) {
         if (link && link.by === 'guess' && !varies && i.amount > 0) { const g = regular.get(link.m); if (!g || Math.abs(g.last_amount - i.amount) > i.amount * 0.3) link = null; }
         return { id: i.id, name: r.name || i.name, state: r.state, splitWith: i.splitWith, varies, starts: i.starts, ends: i.ends, status: i.status, paused: i.paused, amount: i.amount, rule: i.when || r.rule || null, link };
       });
-    } catch { return []; }
+    } catch { return null; }
   }
   /** Rent and bills: follow the plan, then split what has left the bank. A computer showing another's finances leaves that to the other. */
   async function runRepeats(today, d) {
     if (d && d.meta && d.meta.remote) return { made: [], planAdded: [] };
-    const sync = await O.syncPlanRepeats(dataDir, await planRows(d, today), { today, home: home() });
+    // A plan that could not be read (locked, say) is not an empty one: its repeats stay as they are until the next look.
+    const rows = await planRows(d, today);
+    const sync = rows ? await O.syncPlanRepeats(dataDir, rows, { today, home: home() }) : { added: [] };
     const r = await O.runRepeats(dataDir, d ? O.debitsFromAnalysis(d.analysis, { today, days: 365 }) : [], { today, home: home(), skip: await takenByExpenses() });
     if (r.made.length) log('info', `owed: ${r.made.length} repeating split(s) made`);
     return { made: r.made, madeUndo: r.undo, planAdded: sync.added };
   }
-  /** Who is on a plan's repeat was changed here: the plan's "Split with" says the same. */
-  async function namesBackToPlan(S, repeat) {
-    if (!S || !repeat || !repeat.planItem) return;
+  /** Set who a money plan item splits with ('' takes the names off). -> false when the plan could not be changed. */
+  async function planSplitWith(itemId, names) {
     try {
       const plan = cleanPlan((await getPlan()).plan);
-      const it = plan.items.find(i => i.id === repeat.planItem);
-      if (!it) return;
-      const names = repeat.people.map(p => (S.people[p.key] && S.people[p.key].name) || p.key).join(', ').slice(0, 120);
-      if (it.splitWith !== names) { it.splitWith = names; await setPlan(plan); }
-    } catch { /* the plan catches up the next time it is changed */ }
+      const it = plan.items.find(i => i.id === itemId);
+      if (!it || (it.splitWith || '') === names) return true;
+      if (names) it.splitWith = names; else delete it.splitWith;
+      await setPlan(plan);
+      return true;
+    } catch { return false; }
+  }
+  /** Who is on a plan's repeat was changed here: the plan's "Split with" says the same. If that fails, the plan catches up the next time it is changed. */
+  async function namesBackToPlan(S, repeat) {
+    if (!S || !repeat || !repeat.planItem) return;
+    await planSplitWith(repeat.planItem, repeat.people.map(p => (S.people[p.key] && S.people[p.key].name) || p.key).join(', ').slice(0, 120));
   }
   async function suggestions(c, S, d) {
     if (!d) return [];
@@ -156,7 +163,9 @@ export default function register(app) {
     let thing = b && b.thing;
     if (held && thing && typeof thing === 'object') {
       const kept = await storeReceiptFile(dataDir, { data: held.buf.toString('base64') }).catch(() => null);
-      if (kept && kept.ref) { thing = { ...thing, receiptRef: kept.ref }; try { const bl = app.ctx.sync && app.ctx.sync.blobs; if (bl) bl.noteLocal(); } catch { /* sync is optional */ } }
+      // Asked to keep it and it could not be: say so, rather than save the split without it and throw the file away.
+      if (!kept || !kept.ref) throw new HttpError(kept && kept.status === 413 ? 413 : 503, kept && kept.status === 413 ? `The receipt is too big to keep (${Math.round(KEEP_MAX / 1048576)} MB at most). Untick “Keep the picture with this split” and save again.` : 'The receipt could not be kept just now. Try again, or untick “Keep the picture with this split”.');
+      thing = { ...thing, receiptRef: kept.ref }; try { const bl = app.ctx.sync && app.ctx.sync.blobs; if (bl) bl.noteLocal(); } catch { /* sync is optional */ }
     }
     const r = await O.createThing(dataDir, thing, { today: todayOf(c), home: home() });
     if (!r.error) { log('info', 'owed: one added'); if (held) receipts.delete(b.receiptToken); }
@@ -188,7 +197,8 @@ export default function register(app) {
     receipts.set(token, { buf, at: Date.now() });
     for (const [k, v] of receipts) if (Date.now() - v.at > 3600e3) receipts.delete(k);
     log('info', `owed: receipt read, ${receipt.items.length} items`);
-    return { ok: true, token, receipt, checks: checkReceipt(receipt) };
+    // keepable: whether the file can be kept with the split (receipts are kept with Expenses' own limit).
+    return { ok: true, token, receipt, checks: checkReceipt(receipt), keepable: buf.length <= KEEP_MAX };
   }, Math.ceil(RECEIPT_MAX * 4 / 3) + 4096);
   post('receipt/cancel', async (c, b) => { receipts.delete(String(b && b.token || '')); return { ok: true }; }, 1024);
   post('create-batch', async (c, b) => { const r = await O.createThings(dataDir, b && b.things, { today: todayOf(c), home: home() }); return done(c, r, { ids: r.ids, skipped: r.skipped }); }, 512 * 1024);
@@ -269,12 +279,21 @@ export default function register(app) {
     if (!r.error) await namesBackToPlan(r.S, r.repeat);
     return done(c, r, { id: r.id });
   });
-  post('repeat/remove', async (c, b) => done(c, await O.removeRepeat(dataDir, String(b && b.id || ''), { home: home() })));
+  post('repeat/remove', async (c, b) => {
+    const id = String(b && b.id || '');
+    // One from the money plan: the plan's "Split with" is emptied first, or the next look at the plan would make it again.
+    const was = (await read()).repeats[id];
+    if (was && was.planItem && !(await planSplitWith(was.planItem, ''))) throw new HttpError(503, 'Your money plan could not be changed just now, so this still repeats. Try again in a moment.');
+    return done(c, await O.removeRepeat(dataDir, id, { home: home() }));
+  });
   post('repeat/pause', async (c, b) => done(c, await O.pauseRepeat(dataDir, String(b && b.id || ''), !!(b && b.paused === true), { home: home() })));
   post('nudge-later', async (c, b) => done(c, await O.nudgeLater(dataDir, refs(b), { today: todayOf(c), home: home() })));
   post('undo', async (c, b) => {
+    const had = new Set(Object.keys((await read()).repeats));
     const r = await O.undoChange(dataDir, String(b && b.undo || ''), { home: home() });
     if (!r.ok) throw new HttpError(409, r.error);
+    // Undo after Stop it: a repeat from the money plan is back, so the plan names its people again (else the next look would stop it).
+    for (const [id, x] of Object.entries((r.S && r.S.repeats) || {})) if (x.planItem && !had.has(id)) await namesBackToPlan(r.S, x);
     return done(c, { S: r.S }, { label: r.label });
   });
   post('find-payment', async (c, b) => {

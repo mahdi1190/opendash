@@ -102,8 +102,9 @@ function owdPayDialog(o) {
       const d = _xe('details', 'owd-pg owd-pg-x'); d.open = expSel.size > 0 || !!nq;
       d.appendChild(_xe('summary', '', `An expense (${exps.length})`));
       for (const e of exps.slice(0, 30)) {
-        const lab = _xe('label', 'owd-pl-l owd-pl', `<input type="checkbox"${expSel.has(e.id) ? ' checked' : ''} aria-label="${escAttr(e.title)}"><span class="owd-pl-n">${esc(e.title)}<small>${esc(e.payer || 'no payer yet')} · ${esc(_xpDate(e.date))}</small></span><b class="num">${esc(owdMoney(e.amount))}</b>`);
-        lab.querySelector('input').onchange = (ev) => { if (ev.target.checked) expSel.add(e.id); else expSel.delete(e.id); paintBar(); };
+        // A payment out is the one you made for one expense (an expense has one payment), so it is a choice of one; money in can pay back several.
+        const lab = _xe('label', 'owd-pl-l owd-pl', `<input type="${out ? 'radio' : 'checkbox'}"${out ? ' name="owd-exp"' : ''}${expSel.has(e.id) ? ' checked' : ''} aria-label="${escAttr(e.title)}"><span class="owd-pl-n">${esc(e.title)}<small>${esc(e.payer || 'no payer yet')} · ${esc(_xpDate(e.date))}</small></span><b class="num">${esc(owdMoney(e.amount))}</b>`);
+        lab.querySelector('input').onchange = (ev) => { if (out) expSel.clear(); if (ev.target.checked) expSel.add(e.id); else expSel.delete(e.id); paintBar(); };
         d.appendChild(lab);
       }
       listEl.appendChild(d);
