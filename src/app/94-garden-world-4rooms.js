@@ -545,6 +545,7 @@ function gardenRoomHear(A, ev) {
   if (!A || A.me || !ev) return;
   const e = String(ev.e || ''), R = GRM_ROOMS.find(r => r.id === ev.i) || (typeof gardenHouseRoomRow === 'function' ? gardenHouseRoomRow(ev.i) : null); if (!R) return;   // (or a room of a house: 94-garden-house-2room.js)
   if (e === 'out') { A.rm = ''; _grmChipCheck(); _grmShow(A, false); const Q = _grm.m.get(A.w); if (Q && _grm.R === R) { Q.g.remove(); if (Q.fxr) Q.fxr.remove(); _grm.m.delete(A.w); } return; }
+  if (e === 'hold') { if (_grm.on && _grm.R === R && typeof gardenHouseHold === 'function') gardenHouseHold(A, R, ev); return; }   // (what someone carries in a house: 94-garden-house-6share.js)
   if ((e !== 'in' && e !== 'at') || !Number.isInteger(ev.x) || !Number.isInteger(ev.y)) return;
   _grmShow(A, true); A.rm = R.id; _grmChipCheck();
   if (typeof _gll !== 'undefined' && _gll.role === 'host') _grwStock(R);   // (a fish for them, from whoever runs the water)

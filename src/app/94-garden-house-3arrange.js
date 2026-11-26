@@ -134,6 +134,7 @@ function _hsCarryStart(R, S) {
   } else _grmPaint();
   S.blocks = houseBlocks(C.others, S.slot);
   _hsHint(R, S); S.promptKey = null;
+  if (typeof _hsHoldSend === 'function') _hsHoldSend(S, C.d);   // (friends here see it in your arms)
   try { if (typeof _fxSound === 'function') _fxSound('tick'); } catch (e) { /* no sound */ }
 }
 function _hsGhostTexture(S) {
@@ -144,6 +145,7 @@ function _hsGhostTexture(S) {
 }
 function _hsCarryClear(S) {
   const G = S.ghost; if (G) { try { if (G.im.active) G.im.destroy(); if (G.fp.active) G.fp.destroy(); } catch (e) { /* gone with the room */ } }
+  if (S.carry && typeof _hsHoldSend === 'function') _hsHoldSend(S, '');
   S.ghost = null; S.carry = null;
 }
 /** Put it back where it was (Esc), or out of your hands (it came from your things: it stays in them). */
@@ -164,33 +166,33 @@ function _hsInFront(S, def, M) {
   return { x: mx + face * (sh.w / 2 + 26), y: my + 4, z: 0 };
 }
 /** Does it fit here? '' or why. Feet in the room count for floor things. */
-function _hsFitWhy(S, def, x, y, z) {
+function _hsFitWhy(S, def, x, y, z, feet) {
   const C = S.carry, why = houseFits(C.others, def, x, y, z, C.u || '', null); if (why) return why;
   const sh = houseShape(def); if (z || sh.hp !== 'floor') return '';
-  const b = houseBox({ x, y }, def), feet = _hsFeet(S);
+  const b = houseBox({ x, y }, def); feet = feet || _hsFeet(S);
   for (const [fx, fy] of feet) if (fx > b.x0 - 6 && fx < b.x1 + 6 && fy > b.y0 - 6 && fy < b.y1 + 8) return 'Someone is standing there';
   return '';
 }
 /** The nearest place it fits to where it is wanted (up to HOUSE_SNAP room px), or the wanted place with why it does not. */
 function _hsSnap(S, def, tx, ty, tz) {
-  const sh = houseShape(def), C = S.carry;
+  const sh = houseShape(def), C = S.carry, feet = _hsFeet(S);
   // a small thing over a top stands on it
   if (sh.hp === 'top') {
     for (const q of C.others) {
       const top = houseTopOf(q, gardenDecor(q.d)); if (!top) continue;
       const qd = houseDrawn(q, gardenDecor(q.d)); if (tx < top.x0 - 10 || tx > top.x1 + 10 || ty < qd.y0 - 20 || ty > q.y + 6) continue;
       const lo = top.x0 + sh.w / 2 + 1, hi = top.x1 - sh.w / 2 - 1; if (hi < lo) continue;
-      for (const dx of [0, 8, -8, 16, -16, 24, -24, 32, -32, 40, -40]) { const x = Math.round(Math.max(lo, Math.min(hi, tx + dx))); if (!_hsFitWhy(S, def, x, top.y, top.z)) return { x, y: top.y, z: top.z, ok: true, why: '', moved: dx !== 0 }; }
+      for (const dx of [0, 8, -8, 16, -16, 24, -24, 32, -32, 40, -40]) { const x = Math.round(Math.max(lo, Math.min(hi, tx + dx))); if (!_hsFitWhy(S, def, x, top.y, top.z, feet)) return { x, y: top.y, z: top.z, ok: true, why: '', moved: dx !== 0 }; }
     }
     tz = 0;
   }
   if (sh.hp === 'wall') ty = Math.max(HOUSE_SHELL.hang.y0 + sh.h, Math.min(HOUSE_SHELL.hang.y1, ty));
   else { const F = HOUSE_SHELL.floor; ty = Math.max(F.y0 + (sh.hp === 'rug' ? sh.d : sh.d) - 2, Math.min(F.y1, ty)); }
   tx = Math.round(tx); ty = Math.round(ty);
-  const first = _hsFitWhy(S, def, tx, ty, 0); if (!first) return { x: tx, y: ty, z: 0, ok: true, why: '', moved: false };
+  const first = _hsFitWhy(S, def, tx, ty, 0, feet); if (!first) return { x: tx, y: ty, z: 0, ok: true, why: '', moved: false };
   for (let r = 6; r <= HOUSE_SNAP; r += 6) for (let a = 0; a < 16; a++) {
     const ang = a / 16 * Math.PI * 2, x = Math.round(tx + Math.cos(ang) * r), y = Math.round(ty + Math.sin(ang) * r * (sh.hp === 'wall' ? 1 : .6));
-    if (!_hsFitWhy(S, def, x, y, 0)) return { x, y, z: 0, ok: true, why: '', moved: true };
+    if (!_hsFitWhy(S, def, x, y, 0, feet)) return { x, y, z: 0, ok: true, why: '', moved: true };
   }
   return { x: tx, y: ty, z: 0, ok: false, why: first, moved: false };
 }

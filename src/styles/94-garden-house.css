@@ -1,5 +1,6 @@
 /* Your own house (src/app/94-garden-house-*.js): the room's own controls. The room itself is the hidden rooms' (94-garden-rooms.css, 94-garden-native.css). */
 .grm-native-room > .ee-ui, .grm-room > .ee-ui { flex-wrap: wrap; }
+.ee-ui .hs-move { margin-left: auto; }   /* (Go out on the left; Move things and Undo together on the right) */
 .ee-ui .hs-move.is-on { background: #6a4a26 !important; border-color: #ffd28a !important; }
 .ee-ui .hs-undo[hidden] { display: none; }
 .hs-bag { flex: 1 0 100%; display: flex; flex-direction: column; gap: 6px; max-width: min(760px, 100%); padding: 8px 10px; border-radius: 12px; background: rgba(20, 14, 10, .9); border: 1px solid rgba(255, 220, 160, .35); box-shadow: 0 4px 14px rgba(0, 0, 0, .25); color: #ffeccd; pointer-events: auto; cursor: default; }

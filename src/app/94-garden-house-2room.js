@@ -71,7 +71,7 @@ function gardenHouseMine() {
   if (!t) t = houseFindHome(things, GARDEN_LAND_HEART, _hsTaken(null), _hsDoorOf, q => { const d = _hsDoorOf(q); return !!d && _hsOpenAt(d); });
   if (!t) { _hs.mine = null; return null; }
   const word = houseHomeWord(t), door = _hsDoorOf(t);
-  _hs.mine = door ? { id: t.id, word, look: visit ? (hs.l || houseLookOf(word)) : (g.hs.look || houseLookOf(word)), name: _hsNameOf(t, word), door, visit: !!visit, moved: visit ? true : !!g.hs.home } : null;
+  _hs.mine = door ? { id: t.id, word, look: (visit ? hs.l : hs.look) || houseLookOf(word), name: _hsNameOf(t, word), door, visit: !!visit, moved: visit ? true : !!hs.home } : null;
   return _hs.mine;
 }
 /** For the villagers' home solver: your house, so nobody new moves into it. */
@@ -82,7 +82,7 @@ function gardenHouseReserve(things, saved) {
     return t ? [t.id] : [];
   } catch (e) { return []; }
 }
-function gardenHouseDoorPt(R) { const H = gardenHouseMine(); return H && (!R || !R.home || R.home === H.id) ? { x: H.door.x, y: H.door.y } : null; }
+function gardenHouseDoorPt(R) { try { const H = gardenHouseMine(); return H && (!R || !R.home || R.home === H.id) ? { x: H.door.x, y: H.door.y } : null; } catch (e) { return null; } }
 
 /* ---------- the way in, outside ---------- */
 function _hsSym() {
@@ -92,15 +92,19 @@ function _hsSym() {
     + '<path d="M-21 0H21V3H-21Z" fill="#a8a296"/>';
 }
 function gardenHouseActRows(px, py) {
+  try { return _hsActRows(px, py); } catch (e) { if (!_hs.warned) { _hs.warned = true; console.error('[house]', e); } return []; }   // (the house never stops the garden's prompt)
+}
+function _hsActRows(px, py) {
   if (typeof _gw === 'undefined' || !_gw.on) return [];
   const H = gardenHouseMine(); if (!H) return [];
   const d = Math.hypot(H.door.x - px, (H.door.y - py) * 1.3);
   if (!H.visit && !H.moved && !_hs.saidNear && d < 4) { _hs.saidNear = true; try { gardenMessage(`${H.name} stands empty, its door on the latch. A note pinned to it says: “For whoever keeps the garden now.”`, { ambient: true, source: 'house-near', icon: 'home' }); } catch (e) { /* only words */ } }
   if (d > HOUSE_DOOR_REACH) return [];
-  return [{ key: 'house:' + H.id, act: 'house', house: H.id, src: 'house:' + H.id, words: H.visit ? 'Go in' : H.moved ? 'Go in' : 'Go in: it is yours', name: H.name, x: H.door.x, y: H.door.y, pri: 0.8 }];
+  // (anchored on the doorstep, so standing there it is offered whichever way you face; the prompt itself floats over the door)
+  return [{ key: 'house:' + H.id, act: 'house', house: H.id, src: 'house:' + H.id, words: H.visit ? 'Go in' : H.moved ? 'Go in' : 'Go in: it is yours', name: H.name, x: H.door.x, y: H.door.y + .45, promptY: H.door.y - 1.7, pri: 0.8 }];
 }
 function gardenHouseItems(id, items) {
-  const H = gardenHouseMine(); if (!H || H.id !== id) return;
+  let H = null; try { H = gardenHouseMine(); } catch (e) { H = null; } if (!H || H.id !== id) return;
   items.unshift({ svg: `<svg viewBox="-30 -60 60 66" width="26" height="26" aria-hidden="true">${_hsSym()}</svg>`, label: 'Go in', cls: 'is-go grm-way', run: () => gardenHouseGo() });
 }
 /** Walk to the door and go in. */
@@ -218,6 +222,7 @@ const HOUSE_PLAY = {
     if (S.lampList.length && gardenMotionOn()) for (let i = 0; i < S.lampList.length; i++) { const L = S.lampList[i]; if (L.glow.active) L.glow.setAlpha(L.a * (.86 + Math.sin(S.t * 8.3 + L.ph) * .08 + Math.sin(S.t * 19.7 + L.ph * 2) * .05)); }
     if (S.clocks.size && (S.clockAt == null || S.t - S.clockAt > 5)) { S.clockAt = S.t; _hsClocks(S); }
     if (S.pend.size && typeof _hsGuestPendTick === 'function') _hsGuestPendTick(R, S);
+    if (S.heldList && S.heldList.length) _hsHeldFrame(S);
   },
 };
 function _hsSnapRef() { try { const m = gardenHere(); return m && m.visit && m.visit.snap ? m.visit.snap.hs || null : null; } catch (e) { return null; } }
@@ -491,8 +496,14 @@ function _hsEnd(R, S) {
 
 /* ---------- the standard room (no Phaser): the same pieces as SVG spots on a plain painted room ---------- */
 function _hsSvgSpots(R, S) {
-  const out = [];
+  const out = [], C = S.carry;
+  if (C) {   // the carried piece where it would go, with its footprint (green: it fits; red: it does not)
+    const def = gardenDecor(C.d), sh = houseShape(def), b = houseArtBox(C.d), col = C.ok ? '#8ae08a' : '#f06a5a', fb = sh.hp === 'wall' ? houseBox(C, def) : houseBox({ x: C.x, y: C.y }, def);
+    out.push({ id: 'carry-fp', still: true, x: 0, y: 0, w: 0, h: 0, art: `<rect x="${fb.x0 - 2}" y="${fb.y0 - 2}" width="${fb.x1 - fb.x0 + 4}" height="${fb.y1 - fb.y0 + 4}" rx="6" fill="${col}" fill-opacity="${sh.hp === 'wall' ? 0 : .26}" stroke="${col}" stroke-width="2"/>` });
+    out.push({ id: 'carry', still: true, x: C.x, y: C.y - (C.z || 0) + 0.01, w: 0, h: 0, art: `<g opacity="${C.ok ? .86 : .55}"${C.r ? ' transform="scale(-1 1)"' : ''}><image href="${houseArtUrl(C.d, C.v, C.lit)}" x="${b[0]}" y="${b[1]}" width="${b[2] - b[0]}" height="${b[3] - b[1]}"/></g>` });
+  }
   for (const p of S.pieces) {
+    if (C && C.u === p.u) continue;
     const def = gardenDecor(p.d), sh = houseShape(def); if (!sh) continue;
     const b = houseArtBox(p.d), url = houseArtUrl(p.d, p.v, _hsLitKey(p)), use = _hsUseOf(p);
     out.push({ id: 'p:' + p.u, x: p.x, y: p.y - (p.z || 0), w: Math.max(30, sh.w), h: Math.max(24, sh.hp === 'rug' ? 40 : sh.h), still: !S.move && !use, tip: S.move ? 'Pick it up' : use || def.name, art: `<g${p.r ? ' transform="scale(-1 1)"' : ''}><image href="${url}" x="${b[0]}" y="${b[1]}" width="${b[2] - b[0]}" height="${b[3] - b[1]}"/></g>` });

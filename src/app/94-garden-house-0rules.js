@@ -67,9 +67,12 @@ const _hsCopy = v => v === undefined ? undefined : JSON.parse(JSON.stringify(v))
 const _hsInt = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
 function _hsDecor(id) { return typeof gardenDecor === 'function' ? gardenDecor(id) : null; }
 /** A home row's own shape: where it goes and how big it is (a row without the numbers is a small floor thing). */
+const _HS_SHAPES = new Map();   // (a row's shape, worked out once: it is asked for every piece every frame while one is carried)
 function houseShape(def) {
   if (!def || !def.indoor) return null;
-  return { hp: def.hp || 'floor', w: def.hw || 40, d: def.hd || 18, h: def.hh || 40, top: def.top || null, fk: def.fk || '', lit: !!def.lit, rot: !!def.rot };
+  const had = _HS_SHAPES.get(def.id); if (had && had.def === def) return had.s;
+  const s = Object.freeze({ hp: def.hp || 'floor', w: def.hw || 40, d: def.hd || 18, h: def.hh || 40, top: def.top || null, fk: def.fk || '', lit: !!def.lit, rot: !!def.rot });
+  _HS_SHAPES.set(def.id, { def, s }); return s;
 }
 /** The home word of a thing (cottage, bothy...), or '' when it is not a house. By kind and the words in its id, as the folk read homes. */
 function houseHomeWord(t) {

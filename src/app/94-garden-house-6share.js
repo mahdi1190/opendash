@@ -45,7 +45,9 @@ function gardenHouseHostDo(ev, put, g) {
   houseOpApply(g, op, ev.f, { now: _gdNow(), today: _gdToday() });
   _hsSnapSoon();
   if (_hsInside()) _grm.S.dirty = true;
-  return put(mark, { hi: ev.item, p: d, u: op.u || '', mp: 'hf', ...(op.o === 'use' ? { on: g.hf[op.u] && g.hf[op.u].l ? 1 : 0 } : {}) });
+  // (what a friend brought, a piece or a paper, is a gift to the house: like a gift outdoors it stays, so it has no Undo in the diary)
+  const gift = op.o === 'put' || ((op.o === 'wall' || op.o === 'floor') && op.d !== HOUSE_WALL0 && op.d !== HOUSE_FLOOR0);
+  return put(mark, { hi: ev.item, p: d, u: op.u || '', mp: 'hf', ...(gift ? { noUndo: true } : {}), ...(op.o === 'use' ? { on: g.hf[op.u] && g.hf[op.u].l ? 1 : 0 } : {}) });
 }
 /** The friend diary's words for a change in your house. */
 function gardenHouseDiary(e, who, n) {
@@ -109,4 +111,24 @@ function _hsGuestPendTick(R, S) {
   const now = Date.now(); let gone = false;   // clock-ok: how long a change waits for its answer
   for (const [k, P] of S.pend) if (now - P.at > 6000) { S.pend.delete(k); gone = true; }
   if (gone) _hsRoomRefresh(R, S, false);
+}
+
+/* ---------- what someone carries: they see it in your arms, you see it in theirs (gl:fx 'hall', step 'hold', p: the piece or 'none') ---------- */
+function _hsHoldSend(S, d) {
+  try { if (typeof gardenLiveFx !== 'function' || !_grm.R || !_grm.me) return; gardenLiveFx('hall', 'hold', { i: _grm.R.id, x: Math.max(0, Math.min(59, Math.round(_grm.me.x / GRM.U))), y: Math.max(0, Math.min(37, Math.round(_grm.me.y / GRM.U))), p: d || 'none' }); } catch (e) { /* only a picture */ }
+}
+function gardenHouseHold(A, R, ev) {
+  const S = _hsInside() ? _grm.S : null, s = _hsNative(); if (!S || !s || !A) return;
+  const held = S.held || (S.held = new Map()), had = held.get(A.w);
+  if (had) { if (had.im.active) had.im.destroy(); held.delete(A.w); }
+  const def = _hsDefOf(String(ev.p || '')); if (!def) { S.heldList = [...held.values()]; return; }
+  const key = houseTexture(s.context.scene, def.id, 0, false); if (!key) { S.heldList = [...held.values()]; return; }
+  const b = houseArtBox(def.id), k = Math.min(.55, 60 / Math.max(1, b[3] - b[1]));
+  const im = s.context.scene.add.image(0, 0, key).setOrigin(-b[0] / (b[2] - b[0]), 1).setScale(k / HOUSE_TEX_K).setAlpha(.95); s.root.add(im);
+  held.set(A.w, { im, w: A.w }); S.heldList = [...held.values()];
+}
+/** Each frame: what friends carry rides over their heads. */
+function _hsHeldFrame(S) {
+  const L = S.heldList; if (!L || !L.length) return;
+  for (let i = 0; i < L.length; i++) { const H = L[i], Q = _grm.m.get(H.w); if (!Q || !H.im.active) { H.im.setVisible(false); continue; } H.im.setVisible(true).setPosition(Q.x, Q.y - 96).setDepth(1000 + Q.y + .5); }
 }
