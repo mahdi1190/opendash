@@ -121,6 +121,8 @@ function sidebarCounts() {
     open,
     today: open.filter(i => matchesView(i, 'today')).length,   // same rule as the Today list (21-task-query.js)
     overdue: open.filter(i => { const d = due(i); return d !== null && d < 0; }).length,
+    // The overdue ones the Today list shows (waiting and blocked tasks leave it): the Today row's badge (DASH-12).
+    todayOverdue: open.filter(i => { const d = due(i); return d !== null && d < 0 && matchesView(i, 'today'); }).length,
     tomorrow: open.filter(i => due(i) === 1).length,
     week: open.filter(i => matchesView(i, 'week')).length,
     all: open.length,
@@ -214,7 +216,7 @@ function sbTaskViewRows(c) {
   const files = typeof resList === 'function' ? resList().length : 0;
   const extra = {
     inbox: { count: c.inbox || '', title: c.inbox ? `${c.inbox} to sort` : 'Quick capture lands here' },   // 24-quick-capture.js
-    today: { count: c.today || '', countAlert: c.overdue > 0, title: c.overdue ? `${c.overdue} overdue` : '' },
+    today: { count: c.today || '', countAlert: c.todayOverdue > 0, title: c.todayOverdue ? `${c.todayOverdue} overdue` : '' },
     now: { count: c.now || '', title: 'What can I do now?', need: typeof doNowActive === 'function' && doNowActive() },   // 24-do-now.js
     week: { title: quiet(c.week, 'coming up') },
     all: { title: quiet(c.all, 'open') },
