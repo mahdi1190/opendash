@@ -119,7 +119,7 @@ window.GardenPaintedProps = (function () {
         if (dead || !node.target.visible || !node.target.active) return false;
         for (let i = parts.length - 1; i >= 0; i--) {
           const im = parts[i], frame = im.frame;
-          if (!im.active || !im.visible || im.alpha <= .025 || !frame || !im.texture) continue;
+          if (!im.active || !im.visible || im.alpha <= .025 || !frame || !frame.source || !im.texture) continue;   // (2.76: a picture whose texture was let go has no size to test)
           const m = im.getWorldTransformMatrix(); if (Math.abs(m.a * m.d - m.b * m.c) < 1e-10) continue;
           const p = m.applyInverse(x, y), width = frame.realWidth, height = frame.realHeight;
           let px = Math.floor(p.x + im.displayOriginX), py = Math.floor(p.y + im.displayOriginY);

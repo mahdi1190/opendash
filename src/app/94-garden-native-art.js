@@ -150,7 +150,7 @@ window.GardenNativeArt = (function () {
     while (i < css.length) { const open = css.indexOf('{', i); if (open < 0) break; const head = css.slice(i, open).trim(); let depth = 1, end = open + 1, quote = ''; for (; end < css.length && depth; end++) { const c = css[end]; if (quote) { if (c === quote && css[end - 1] !== '\\') quote = ''; } else if (c === '"' || c === "'") quote = c; else if (c === '{') depth++; else if (c === '}') depth--; } callback(head, css.slice(open + 1, end - 1)); i = end; }
   }
   function configure(cssText, renderer) {
-    if (renderer) { installNativeTriangleBatch(renderer); installOffTargetCull(renderer); }
+    if (renderer) { installNativeTriangleBatch(renderer); installOffTargetCull(renderer); installRenderGuard(renderer); }
     if (cssText === null && renderer) return { rules: rules.length, keyframes: keyframes.size };
     rules.length = 0; indexedRules.clear(); keyframes.clear(); matchedRules.clear(); selectorAttrs.clear(); selectorClasses.clear(); selectorIds.clear(); compiledSelectors.clear(); compiledAtoms.clear(); candidateRules.clear(); styleClassKeys.clear(); ruleOrder = 0; styleVersion++; positionalSelectors = false; positionalAny = false; positionalNeeds.length = 0;
     const css = String(cssText || '').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -606,6 +606,66 @@ window.GardenNativeArt = (function () {
     batch.batch = batchIndependentTriangle; triangleBatchStates.set(renderer, activity);
     if (typeof matrixX === 'function' && typeof matrixY === 'function') { fusedRun = fusedFillTri; fill.run = fusedFillTri; }
   }
+  // (2.76 fix) A picture whose texture was let go while it was still on the stage keeps a destroyed frame (no source, no data), and
+  // Phaser throws as it draws one ("Cannot read properties of null (reading 'resolution')"): the frame stopped half drawn, the game's
+  // clock stopped with it, and the garden stayed flat green until it was opened again. The cause found (a ground ghost showing a
+  // texture the new layer had let go: 94-garden-paint-ground-0kit.js) is mended where it starts. Whatever else ever does the same,
+  // such a frame is never drawn: the picture shows the texture baked anew under its own key, or else the clear default (it draws
+  // nothing) until whoever owns it gives it a new picture or takes it away. Found and mended in the drawing itself, so it costs one
+  // check of a field per picture drawn.
+  const frameGuard = { mended: 0, rekeyed: 0, cleared: 0, renderFaults: 0, leftOut: 0, lastKey: '', lastFault: '' }, renderFaultsSaid = new Set();
+  function sayFault(said, error, words) { if (renderFaultsSaid.has(said)) return; if (renderFaultsSaid.size > 20) renderFaultsSaid.clear(); renderFaultsSaid.add(said); console.error('[native garden] ' + words + ':', error); }
+  // A picture that throws as it is drawn (whatever the reason) is left out, hidden until its owner shows it again, and said once:
+  // the rest of the frame draws, so one bad picture never takes the whole world with it.
+  function leaveOut(object, error) {
+    frameGuard.renderFaults++; const said = String(error && error.message || error).slice(0, 160); frameGuard.lastFault = said; frameGuard.leftOut++;
+    try { object.setVisible(false); } catch (e) { /* not drawn all the same */ }
+    sayFault(said, error, 'a picture could not be drawn and is left out; the garden carries on');
+  }
+  function mendFrame(object) {
+    frameGuard.mended++; const texture = object.texture, key = texture && texture.key, frame = object.frame, name = frame ? frame.name : undefined, textures = object.scene && object.scene.sys && object.scene.sys.textures;
+    frameGuard.lastKey = String(key || '').slice(0, 96);
+    if (textures && typeof object.setTexture === 'function') {
+      try { if (key && textures.exists(key) && textures.get(key) !== texture) { const again = textures.get(key); object.setTexture(key, name != null && again.has(name) ? name : undefined); if (object.frame && object.frame.source) { frameGuard.rekeyed++; return true; } } } catch (e) { /* cleared below */ }
+      try { if (textures.exists('__DEFAULT')) { object.setTexture('__DEFAULT'); if (object.frame && object.frame.source) { frameGuard.cleared++; return false; } } } catch (e) { /* hidden below */ }
+    }
+    try { object.setVisible(false); } catch (e) { /* not drawn all the same */ }
+    return false;
+  }
+  // every picture under the scene's stage with a destroyed frame, mended (after a frame that could not be drawn)
+  function mendStage(scene) {
+    let mended = 0;
+    const walk = (list, depth) => { for (const o of list) { if (!o) continue; const f = o.frame; if (f !== undefined && (f === null || !f.source) && o.scene) { mendFrame(o); mended++; } if (o.list && depth < 24) walk(o.list, depth + 1); } };
+    try { if (scene && scene.children && scene.children.list) walk(scene.children.list, 0); } catch (e) { /* as far as it got */ }
+    return mended;
+  }
+  // The default image submitter refuses a destroyed frame (every image, sprite and capture tile goes through it, whatever holds it).
+  function guardSubmitter(submitter) {
+    if (!submitter || submitter._nativeFrameGuard || typeof submitter.run !== 'function') return; const run = submitter.run;
+    submitter.run = function (context, object) { const frame = object && object.frame; if (frame !== undefined && (frame === null || !frame.source) && !mendFrame(object)) return; return run.apply(this, arguments); };
+    submitter._nativeFrameGuard = true;
+  }
+  // Should anything still throw while a camera draws the world, that camera's frame is let go, every picture on the stage is checked
+  // and mended, and the next frame draws: the game's clock is never stopped by a picture again. A fault that comes back frame after
+  // frame with no picture to mend (not this kind) goes through after a few frames, as before, so it is seen, not hidden, and a frame
+  // abandoned half drawn (its drawing target is not given back) cannot repeat without end.
+  function installRenderGuard(renderer) {
+    if (!renderer || renderer._nativeRenderGuard || typeof renderer.render !== 'function') return;
+    const render = renderer.render; let streak = 0, lastFrame = -2;
+    renderer._nativeRenderGuard = true;
+    renderer.render = function (scene, children, camera) {
+      try { return render.apply(this, arguments); }
+      catch (error) {
+        this.currentViewCamera = null; frameGuard.renderFaults++; frameGuard.lastFault = String(error && error.message || error).slice(0, 160);
+        try { if (this.renderNodes && typeof this.renderNodes.finishBatch === 'function') this.renderNodes.finishBatch(); } catch (e) { /* the next frame starts its own */ }
+        const loop = scene && scene.sys && scene.sys.game && scene.sys.game.loop, frameNo = loop && Number.isFinite(loop.frame) ? loop.frame : lastFrame + 1;
+        if (frameNo !== lastFrame) { streak = frameNo === lastFrame + 1 ? streak + 1 : 1; lastFrame = frameNo; }
+        const mended = mendStage(scene);
+        if (!mended && streak > 8) throw error;
+        sayFault(frameGuard.lastFault, error, 'a frame could not be drawn; ' + mended + ' picture(s) mended, and the garden carries on');
+      }
+    };
+  }
   // (speed pass) Phaser submits every image whose flags say visible, wherever it is: in the vale nine in ten of the images drawn
   // each frame (the painted ground's chunks, the woods' shade, trees and sprites far from the view) lay off the screen, and each
   // still went through the batch, its texture binding and the flushes those cause. Here the default image submitter works out
@@ -618,12 +678,13 @@ window.GardenNativeArt = (function () {
     if (!renderer || offTargetStates.has(renderer)) return;
     const engine = window.Phaser, webgl = engine && engine.Renderer && engine.Renderer.WebGL, nodes = webgl && webgl.RenderNodes;
     const manager = renderer.renderNodes, existing = manager && manager._nodes, submitter = existing && existing.SubmitterQuad;
-    if (!engine || engine.VERSION !== '4.2.1' || !nodes || !nodes.SubmitterQuad || !nodes.TexturerImage || !nodes.TransformerImage || !nodes.RenderNode) { offTargetStates.set(renderer, null); return; }
+    if (!engine || engine.VERSION !== '4.2.1' || !nodes || !nodes.SubmitterQuad || !nodes.TexturerImage || !nodes.TransformerImage || !nodes.RenderNode) { if (!submitter) return; offTargetStates.set(renderer, null); guardSubmitter(submitter); return; }
     if (!submitter) return;   // (made with the first image: asked again from updateAll)
     const proto = nodes.SubmitterQuad.prototype, run = proto.run, base = nodes.RenderNode.prototype, texturerProto = nodes.TexturerImage.prototype, transformerProto = nodes.TransformerImage.prototype, texturerRun = texturerProto.run, transformerRun = transformerProto.run;
-    if (Object.getPrototypeOf(submitter) !== proto || submitter.run !== run || typeof run !== 'function' || typeof texturerRun !== 'function' || typeof transformerRun !== 'function' || submitter.onRunBegin !== base.onRunBegin || submitter.onRunEnd !== base.onRunEnd || manager.debug) { offTargetStates.set(renderer, null); return; }
+    if (Object.getPrototypeOf(submitter) !== proto || submitter.run !== run || typeof run !== 'function' || typeof texturerRun !== 'function' || typeof transformerRun !== 'function' || submitter.onRunBegin !== base.onRunBegin || submitter.onRunEnd !== base.onRunEnd || manager.debug) { offTargetStates.set(renderer, null); guardSubmitter(submitter); return; }
     const activity = { culled: 0, submitted: 0 };
     function submitUnlessOffTarget(context, object, parentMatrix, elementIndex, texturer, transformer) {
+      { const frame = object && object.frame; if (frame !== undefined && (frame === null || !frame.source) && !mendFrame(object)) return; }   // (2.76 fix: never a destroyed frame)
       if (this === submitter && context && texturer && transformer && texturer.run === texturerRun && transformer.run === transformerRun && Object.getPrototypeOf(texturer) === texturerProto && Object.getPrototypeOf(transformer) === transformerProto && !manager.debug) {
         const width = context.width, height = context.height;
         if (width > 0 && height > 0) {
@@ -672,6 +733,7 @@ window.GardenNativeArt = (function () {
     let current = context;
     for (let i = 0; i < count; i++) {
       const child = children[i]; if (!child.willRender(camera)) continue;
+      { const frame = child.frame; if (frame !== undefined && (frame === null || !frame.source) && !mendFrame(child)) continue; }   // (2.76 fix: a destroyed frame is mended or not drawn; the cull below reads its size)
       if (culling && child.type === 'Image' && child.rotation === 0 && !child.flipX && !child.flipY && child.scrollFactorX === 1 && child.scrollFactorY === 1 && child.frame) {
         // (a frame's full size, read once per frame object: its getter walks the frame's data each time)
         if (child._ncFrame !== child.frame) { child._ncFrame = child.frame; child._ncW = child.frame.realWidth; child._ncH = child.frame.realHeight; }
@@ -692,7 +754,8 @@ window.GardenNativeArt = (function () {
       if (!neutralScroll && child.setScrollFactor) child.setScrollFactor(scrollX * container.scrollFactorX, scrollY * container.scrollFactorY);
       if (!neutralAlpha && child.setAlpha) child.setAlpha(topLeft * container.alpha, topRight * container.alpha, bottomLeft * container.alpha, bottomRight * container.alpha);
       if (neutralAlpha && neutralScroll) counts.nativeChildren++; else counts.ordinaryChildren++;
-      child.renderWebGLStep(renderer, child, current, transform, undefined, children, i);
+      try { child.renderWebGLStep(renderer, child, current, transform, undefined, children, i); }
+      catch (error) { leaveOut(child, error); }   // (2.76 fix: a picture that throws is left out; the rest of the frame draws)
       if (!neutralAlpha && child.setAlpha) child.setAlpha(topLeft, topRight, bottomLeft, bottomRight);
       if (!neutralScroll && child.setScrollFactor) child.setScrollFactor(scrollX, scrollY);
     }
@@ -1469,7 +1532,7 @@ window.GardenNativeArt = (function () {
     } catch (e) { state.cacheFailures = (state.cacheFailures || 0) + 1; node._inner.setRotation(oldRotation).setScale(oldScaleX, oldScaleY).setAlpha(oldAlpha); for (const tile of tiles) tile.destroy(); if (previous && node._cache === previous) showCache(node, true); else { for (const original of originals) if (original.active) original.setVisible(visible.get(original)); restoreBase(node); } }
   }
   function element(scene, tag, attrs) { const node = new NativeNode(scene, tag, attrs, { defs: stateFor(scene).defs, options: {} }); stateFor(scene).roots.add(node); return node; }
-  function stats(scene) { const s = stateFor(scene), triangleBatch = scene.sys && triangleBatchStates.get(scene.sys.renderer), cacheQualities = {}; let croppedCaches = 0, pinnedBases = 0, pinnedBaseBytes = 0, radialLeaves = 0, radialLeafCaches = 0, radialLeafVectors = 0; for (const node of s.cacheTrackedNodes) { if (node._cacheRecipe && node._cacheRecipe.radialLeaf) { radialLeaves++; if (node._cache) { radialLeafCaches++; if (node._cache.showingVectors) radialLeafVectors++; } } const base = node._cacheBase || node._cache && node._cache.recipe.retainBase && !node._cache.cropped && node._cache.quality === (node._cache.recipe.baseQuality || 1) && node._cache; if (base) { pinnedBases++; pinnedBaseBytes += base.bytes; } } for (const node of s.cachedNodes) if (node._cache) { cacheQualities[node._cache.quality] = (cacheQualities[node._cache.quality] || 0) + 1; if (node._cache.cropped) croppedCaches++; } return { created: s.created, shapes: s.shapes, animations: s.animations.size, motionOn: s.motionOn, roots: s.roots.size, labels: s.labels.size, cachedTiles: s.cachedTiles, cacheBytes: s.cacheBytes, cacheBudgetBytes: s.cacheBudget, cacheQualities, croppedCaches, trackedCaches: s.cacheTrackedNodes.size, pendingRecaches: s.recaches.size, capturesThisFrame: s.captureCount || 0, cacheEvictions: s.cacheEvictions || 0, cachePressureDeferrals: s.cachePressureDeferrals || 0, cacheFailures: s.cacheFailures || 0, pinnedBases, pinnedBaseBytes, staticBaseCopies: s.baseCopies || 0, unknownImages: s.unknownImages, radialLeaves: { tracked: radialLeaves, cached: radialLeafCaches, showingVectors: radialLeafVectors }, innerRender: s.innerRender ? { ...s.innerRender } : null, triangleBatch: triangleBatch ? { ...triangleBatch } : null, offTarget: scene.sys && offTargetStates.get(scene.sys.renderer) ? { ...offTargetStates.get(scene.sys.renderer) } : null, parsedAssets: parsed.size, cachedPaths: paths.size, styleRules: rules.length, matchedStyleCache: matchedRules.size }; }
+  function stats(scene) { const s = stateFor(scene), triangleBatch = scene.sys && triangleBatchStates.get(scene.sys.renderer), cacheQualities = {}; let croppedCaches = 0, pinnedBases = 0, pinnedBaseBytes = 0, radialLeaves = 0, radialLeafCaches = 0, radialLeafVectors = 0; for (const node of s.cacheTrackedNodes) { if (node._cacheRecipe && node._cacheRecipe.radialLeaf) { radialLeaves++; if (node._cache) { radialLeafCaches++; if (node._cache.showingVectors) radialLeafVectors++; } } const base = node._cacheBase || node._cache && node._cache.recipe.retainBase && !node._cache.cropped && node._cache.quality === (node._cache.recipe.baseQuality || 1) && node._cache; if (base) { pinnedBases++; pinnedBaseBytes += base.bytes; } } for (const node of s.cachedNodes) if (node._cache) { cacheQualities[node._cache.quality] = (cacheQualities[node._cache.quality] || 0) + 1; if (node._cache.cropped) croppedCaches++; } return { created: s.created, shapes: s.shapes, animations: s.animations.size, motionOn: s.motionOn, roots: s.roots.size, labels: s.labels.size, cachedTiles: s.cachedTiles, cacheBytes: s.cacheBytes, cacheBudgetBytes: s.cacheBudget, cacheQualities, croppedCaches, trackedCaches: s.cacheTrackedNodes.size, pendingRecaches: s.recaches.size, capturesThisFrame: s.captureCount || 0, cacheEvictions: s.cacheEvictions || 0, cachePressureDeferrals: s.cachePressureDeferrals || 0, cacheFailures: s.cacheFailures || 0, pinnedBases, pinnedBaseBytes, staticBaseCopies: s.baseCopies || 0, unknownImages: s.unknownImages, radialLeaves: { tracked: radialLeaves, cached: radialLeafCaches, showingVectors: radialLeafVectors }, innerRender: s.innerRender ? { ...s.innerRender } : null, triangleBatch: triangleBatch ? { ...triangleBatch } : null, offTarget: scene.sys && offTargetStates.get(scene.sys.renderer) ? { ...offTargetStates.get(scene.sys.renderer) } : null, frameGuard: { ...frameGuard }, parsedAssets: parsed.size, cachedPaths: paths.size, styleRules: rules.length, matchedStyleCache: matchedRules.size }; }
   function pauseAmbient(next) {
     next = { hush: !!(next && next.hush), frozen: !!(next && next.frozen) }; if (next.hush === ambientPause.hush && next.frozen === ambientPause.frozen) return;
     ambientPause = next; const now = performance.now();
