@@ -604,7 +604,7 @@ function _gfsLinesNow() {
   const out = new Map(), F = _gw.fishing;
   if (F && (F.state === 'wait' || F.state === 'bite' || F.state === 'reel')) out.set(_gfsSlot(), { x: F.bx, y: F.by, bait: F.plan.baitDef || GARDEN_BAITS[0], me: true, setup: typeof gardenTackleInUse === 'function' ? gardenTackleInUse() : { rod: gardenRod().tier, bait: (F.plan.baitDef || GARDEN_BAITS[0]).id } });
   if (typeof _gll !== 'undefined' && _gll.role === 'host') for (const A of _gll.actors.values()) {
-    const L = A.fish; if (!L || L.state === 'land' || GARDEN_WORLD.v >= 4 && gardenWaterNo(L.bx, L.by, _gfs.m || gardenHere())) continue;
+    const L = A.fish; if (!L || L.state === 'land' || L.help || GARDEN_WORLD.v >= 4 && gardenWaterNo(L.bx, L.by, _gfs.m || gardenHere())) continue;   // (help: the second line on a friend's monster pulls with them; fish never come to it)
     const d = L.bait ? gardenGearDef(L.bait) : null;
     out.set(A.w, { x: L.bx, y: L.by, bait: d && d.kind === 'bait' ? d : GARDEN_BAITS[0], setup: typeof gardenSetOfLook === 'function' ? gardenSetOfLook(A.g, L.bait) : { rod: A.g && A.g.r, bait: L.bait } });   // (their reel, line and hook: the look they send)
   }
