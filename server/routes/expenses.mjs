@@ -17,7 +17,7 @@
 //   GET  /api/expenses/receipt-matches?id=    receipt emails that look like the expense (read only, from the inbox snapshot)
 //   POST /api/expenses/scan             {} -> {auto, ask, undo?, data}: marks confident matches paid, returns the questions
 //   POST /api/expenses/answer           {ask, yes} -> {ok, data, undo?}
-//   POST /api/expenses/pack             {ids, claimId?, format: 'zip'|'html'|'csv'|'text'} -> the file (text: JSON {text})
+//   POST /api/expenses/pack             {ids, claimId?, format: 'zip'|'html'|'csv'|'text'} -> the file (text: JSON {text}); {all: true, format: 'csv'}: every expense
 //   GET  /api/expenses/year?year=       the yearly summary
 //   POST /api/expenses/report/plan      {ids} -> {rows: [{id, date, description, col, label, amount, hasReceipt}], columns, name, signature: {set}, missing}
 //   POST /api/expenses/report           {ids, cols?: {id: column}, advances?, payer?, name?, unsigned?} -> {ok, report, dir, count, receipts, missing, data}: PDF + Receipts.zip in Documents/Expense reports/, folder opened, the expenses moved to submitted, the report listed
@@ -200,10 +200,11 @@ export default function register(app) {
   post('pack', async (c, b) => {
     const S = await X.readStore(dataDir, { home: home() });
     const claim = b && b.claimId ? S.claims[b.claimId] : null;
-    const list = (claim ? claim.expenseIds : ids(b)).map(id => S.items[id]).filter(Boolean);
+    // all (Download all as CSV): every expense, not just the 200 ids a request carries. Only for the CSV: a zip of everything could be huge.
+    const list = !claim && b && b.all === true && b.format === 'csv' ? Object.values(S.items) : (claim ? claim.expenseIds : ids(b)).map(id => S.items[id]).filter(Boolean);
     if (!list.length) throw new HttpError(400, 'Choose at least one expense.');
     const cfg = typeof getConfig === 'function' ? getConfig() || {} : {};
-    const sum = X.claimSummary(list, { payer: claim ? claim.payer : (b.payer || list[0].payer || ''), submittedAt: claim ? claim.submittedAt : '', method: claim ? claim.method : '', note: claim ? claim.note || '' : '', homeName: typeof cfg.name === 'string' ? cfg.name : '' });
+    const sum = X.claimSummary(list, { payer: claim ? claim.payer : (b.payer || list[0].payer || ''), submittedAt: claim ? claim.submittedAt : '', method: claim ? claim.method : '', note: claim ? claim.note || '' : '', homeName: typeof cfg.name === 'string' ? cfg.name : '', currency: home() });
     const fmtName = b.format;
     if (fmtName === 'text') return { ok: true, text: sum.text, total: sum.total };
     if (fmtName === 'csv') { c.send(200, '﻿' + sum.csv, 'text/csv; charset=utf-8', { 'Content-Disposition': 'attachment; filename="expenses.csv"', 'Cache-Control': 'no-store' }); return undefined; }

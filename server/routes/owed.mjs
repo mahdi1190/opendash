@@ -30,7 +30,7 @@
 
 import { HttpError } from '../http.mjs';
 import * as O from '../../lib/owed.mjs';
-import { readStore as readExpenses, creditsFromAnalysis, sniffReceipt, storeReceiptFile } from '../../lib/expenses.mjs';
+import { readStore as readExpenses, creditsFromAnalysis, sniffReceipt, storeReceiptFile, RECEIPT_MAX as KEEP_MAX } from '../../lib/expenses.mjs';
 import { readReceiptFile, checkReceipt } from '../../lib/owed-receipt.mjs';
 import { randomBytes } from 'node:crypto';
 import { runClaude } from '../../lib/claude-runner.mjs';
@@ -163,7 +163,9 @@ export default function register(app) {
     let thing = b && b.thing;
     if (held && thing && typeof thing === 'object') {
       const kept = await storeReceiptFile(dataDir, { data: held.buf.toString('base64') }).catch(() => null);
-      if (kept && kept.ref) { thing = { ...thing, receiptRef: kept.ref }; try { const bl = app.ctx.sync && app.ctx.sync.blobs; if (bl) bl.noteLocal(); } catch { /* sync is optional */ } }
+      // Asked to keep it and it could not be: say so, rather than save the split without it and throw the file away.
+      if (!kept || !kept.ref) throw new HttpError(kept && kept.status === 413 ? 413 : 503, kept && kept.status === 413 ? `The receipt is too big to keep (${Math.round(KEEP_MAX / 1048576)} MB at most). Untick “Keep the picture with this split” and save again.` : 'The receipt could not be kept just now. Try again, or untick “Keep the picture with this split”.');
+      thing = { ...thing, receiptRef: kept.ref }; try { const bl = app.ctx.sync && app.ctx.sync.blobs; if (bl) bl.noteLocal(); } catch { /* sync is optional */ }
     }
     const r = await O.createThing(dataDir, thing, { today: todayOf(c), home: home() });
     if (!r.error) { log('info', 'owed: one added'); if (held) receipts.delete(b.receiptToken); }
@@ -195,7 +197,8 @@ export default function register(app) {
     receipts.set(token, { buf, at: Date.now() });
     for (const [k, v] of receipts) if (Date.now() - v.at > 3600e3) receipts.delete(k);
     log('info', `owed: receipt read, ${receipt.items.length} items`);
-    return { ok: true, token, receipt, checks: checkReceipt(receipt) };
+    // keepable: whether the file can be kept with the split (receipts are kept with Expenses' own limit).
+    return { ok: true, token, receipt, checks: checkReceipt(receipt), keepable: buf.length <= KEEP_MAX };
   }, Math.ceil(RECEIPT_MAX * 4 / 3) + 4096);
   post('receipt/cancel', async (c, b) => { receipts.delete(String(b && b.token || '')); return { ok: true }; }, 1024);
   post('create-batch', async (c, b) => { const r = await O.createThings(dataDir, b && b.things, { today: todayOf(c), home: home() }); return done(c, r, { ids: r.ids, skipped: r.skipped }); }, 512 * 1024);
