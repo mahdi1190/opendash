@@ -64,6 +64,16 @@ if (typeof gartActRun === 'function') {
     return _gdqRun0(id, spot);
   };
 }
+/* E while swimming: the height file makes E do nothing in the water (2.75.7: a door, a net or a cast was done from mid-water), but the
+   lane's own rows are meant to be done from the water (a glint under a bridge, mussels on a pile, the mason's mark): the prompt shows
+   them, so E does what the prompt says. Only a row of this lane; anything else stays as the water has it. */
+if (typeof gartActInteract === 'function') {
+  const _gdqE0 = gartActInteract;
+  gartActInteract = function () {   // eslint-disable-line no-func-assign
+    if (_gdqSwimming() && typeof _ga !== 'undefined' && _ga.near && _ga.near.dq && GDQ.acts[_ga.near.act] && _ga.el && !_ga.el.hidden) { gartActRun(_ga.near.act, _ga.near); return true; }
+    return _gdqE0();
+  };
+}
 /* ---------- shared small things ---------- */
 function _gdqHash(s) { let h = 2166136261; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 /** A number in [0, 1) that is the same on every screen for this key today. */
