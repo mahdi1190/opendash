@@ -49,10 +49,11 @@ function _vscRole(role, near, r) {
   return _vscBase(t);
 }
 function _vscWet(x, y) { try { const t = typeof gardenTerrainAt === 'function' ? gardenTerrainAt(x, y) : ''; return t === 'water' || t === 'deep'; } catch (e) { return false; } }
-/** Room for a standing figure here (feet free, clear of drawn things), or the nearest such place within a cell; null when there is none. */
-function _vscStand(x, y) {
+/** Room for a standing figure here (feet free, clear of drawn things), or the nearest such place within a cell; null when there is none.
+ *  strict: clear of everything drawn or nothing (a crowd's ring: the relaxed pass let Tam stand in the market cross's height, hidden). */
+function _vscStand(x, y, strict) {
   // (clear of everything drawn first: never just behind a pillar or a sign; then, only if nothing is, just clear of standing on it)
-  for (const relaxed of [false, true]) {
+  for (const relaxed of strict ? [false] : [false, true]) {
     const ok = (a, b) => (typeof _vfrBodyOk !== 'function' || _vfrBodyOk(a, b, '', relaxed)) && (typeof _gwFree !== 'function' || _gwFree(a, b));
     if (ok(x, y)) return { x, y };
     for (const [dx, dy] of [[0.4, 0], [-0.4, 0], [0, 0.35], [0, -0.35], [0.7, 0.2], [-0.7, 0.2], [0.5, 0.5], [-0.5, 0.5], [1, 0], [-1, 0]]) if (ok(x + dx, y + dy)) return { x: x + dx, y: y + dy };
@@ -87,10 +88,14 @@ function _vscResolve(sc, o) {
     else if (mk.of === 'stage') p = _vscStand(stage.x + (mk.u || 0) * stage.w, stage.y + (mk.dy || 0));
     else if (mk.wet) { if (!wetSide) continue; p = _vscStand(stage.x + wetSide * (mk.u || 0.4) * stage.w, stage.y + (mk.dy || 0.9)); }
     else if (mk.ring) {
-      const c = mk.ring.about === 'middle' && R.marks.get('middle') ? R.marks.get('middle') : { x: stage.x, y: stage.y + (mk.ring.dy || 2.6) }, pts = [];
-      for (let k = 0; k < (mk.ring.n || 5) * 3 && pts.length < (mk.ring.n || 5); k++) {
-        const a = Math.PI * (0.12 + 0.76 * ((k * 0.381966) % 1)), x = c.x + Math.cos(a) * mk.ring.r * (k % 2 ? 1 : -1), y = c.y + Math.sin(a) * mk.ring.r * 0.55;
-        const q = _vscStand(x, y); if (q && !pts.some(o2 => Math.hypot(o2.x - q.x, (o2.y - q.y) * 1.6) < 1.05)) pts.push(q);
+      const c = mk.ring.about === 'middle' && R.marks.get('middle') ? R.marks.get('middle') : { x: stage.x, y: stage.y + (mk.ring.dy || 2.6) }, pts = [], n = mk.ring.n || 5;
+      // (a ring a little wider when the near one is short of places: a plaza's middle has its sundial and its cross)
+      for (const rr of [mk.ring.r, mk.ring.r * 1.35, mk.ring.r * 1.7]) {
+        for (let k = 0; k < n * 3 && pts.length < n; k++) {
+          const a = Math.PI * (0.12 + 0.76 * ((k * 0.381966) % 1)), x = c.x + Math.cos(a) * rr * (k % 2 ? 1 : -1), y = c.y + Math.sin(a) * rr * 0.55;
+          const q = _vscStand(x, y, true); if (q && !pts.some(o2 => Math.hypot(o2.x - q.x, (o2.y - q.y) * 1.6) < 1.05)) pts.push(q);
+        }
+        if (pts.length >= n) break;
       }
       if (pts.length) R.marks.set(name, pts.sort((a, b) => a.x - b.x));
       continue;

@@ -125,10 +125,11 @@ function gardenYearCards(q, row) {
   wdTalk({ name: 'Card evening', art: _vyArt(at[0]), lines: [`“Sit in, sit in. There’s always room for one more loser.” ${a} deals you a hand.`].concat(hand), at: { x: q.x, y: q.y }, bye: 'Good night',
     actions: first ? [{ label: 'Thank them for the game', primary: true, run: (T) => {
       if (W[wk]) return; W[wk] = m.today; W.vyc = (Number(W.vyc) || 0) + 1;
-      let warm = 0; for (const id of at) if (_vyWarm(id, 'cards', m)) warm++;
+      const warmed = []; for (const id of at) if (_vyWarm(id, 'cards', m)) warmed.push(_vyWho(id));   // (the one named is the one who is fonder)
       let xp = false; try { xp = !!(typeof _grGive === 'function' && _grGive('vy.cards', { x: 1 })); } catch (e) { xp = false; }
       _wdSave();
-      T.say([xp ? '+1 XP' : '', warm ? (warm === 1 ? `${a} is a little fonder of you` : 'everyone at the table is a little fonder of you') : ''].filter(Boolean).join('. ').replace(/^./, c => c.toUpperCase()) + (xp || warm ? '.' : '“Same time next week.”'), []);
+      const said = [xp ? '+1 XP' : '', warmed.length === 1 ? `${warmed[0]} is a little fonder of you` : warmed.length ? 'Everyone at the table is a little fonder of you' : ''].filter(Boolean);
+      T.say(said.length ? said.join('. ') + '.' : '“Same time next week.”', []);
     } }] : [] });
   return true;
 }

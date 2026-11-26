@@ -80,8 +80,24 @@ const VK_SPOTS = Object.freeze({
 });
 function _vkThings() { let L = []; try { L = gardenAffordThings(); } catch (e) { L = []; } return L; }
 function _vkFlat(t) { const K = (t && typeof GARDEN_KINDS !== 'undefined' && GARDEN_KINDS[t.kind]) || {}; return !t.kind || K.solid === 'free' || /^(pier|bridge|fishing-bank|ball|leaf-pile|log$|stepping|road|plaza|path|field|plot|pond|crossing|ford|basket|finds|water-edge|open-grass|sand|snow|slope|puddle|deep|person)/.test(t.kind); }
-/** Can a piece stand with its foot middle at x, y? '' or why not (kept for gardenKitDev). own: pieces already placed today. */
+/** Can a piece stand with its foot middle at x, y? '' or why not (kept for gardenKitDev). own: pieces already placed today.
+ *  What does not depend on today's other pieces is worked out once a place and kept (ctx.memo): a market's row search asks about the
+ *  same feet over and over (four stalls in a row, then three, then two), and it was ten seconds of laying out before a stall stood. */
 function _vkFits(kind, x, y, ctx, own) {
+  const mk = kind + '|' + x.toFixed(2) + '|' + y.toFixed(2);
+  let w = ctx.memo.get(mk); if (w === undefined) { w = _vkFitsAlone(kind, x, y, ctx); ctx.memo.set(mk, w); }
+  if (w) return w;
+  const P = VK_PIECES[kind];
+  for (const q of own) {
+    const Q = VK_PIECES[q.kind]; if (!Q) continue;
+    const inRow = kind === 'stall' && q.kind === 'stall' && Math.abs(q.y - y) < 0.3, gap = inRow ? 0.5 : q.kind === 'lantern' || kind === 'lantern' ? 0.8 : 1.2;   // (stalls side by side in a row: half a cell between them)
+    if (Math.abs(q.x - x) >= Q.hw + P.hw + gap) continue;
+    const [fy, fr, by] = q.y >= y ? [q.y, Q.rise, y] : [y, P.rise, q.y];   // (the one in front, its picture's height, and the foot of the one behind)
+    if (by > fy - fr - 0.5 || Math.abs(q.y - y) < 1.2) return 'by today’s ' + q.kind;   // (never inside another piece's picture)
+  }
+  return '';
+}
+function _vkFitsAlone(kind, x, y, ctx) {
   const P = VK_PIECES[kind], m = ctx.m;
   // its base: free to walk on now (or under a piece of today's own), open land, no water, no lawn or bed
   for (let px = x - P.hw; px <= x + P.hw + 1e-6; px += Math.max(0.2, P.hw / 2)) for (const py of [y - P.dp, y - P.dp / 2, y]) {
@@ -95,7 +111,7 @@ function _vkFits(kind, x, y, ctx, own) {
   for (const s of VK_SPOTS[kind] || []) { const sx = x + s.dx, sy = y + s.dy; if (!ctx.free(sx, sy) || !ctx.free(sx - 0.25, sy) || !ctx.free(sx + 0.25, sy)) return 'no room for ' + s.k; if (typeof _vfpBedAt === 'function' && _vfpBedAt(sx, sy)) return 'a place on the lawn'; }
   // never on a lane: each route's own width kept clear (the ring's too: the walk round the plaza stays a walk)
   const onPlaza = ctx.onPlaza(x, y - P.dp / 2);
-  for (const r of ctx.routes) { const h = (onPlaza || r.ring ? Math.min(r.half, 0.8) : r.half) + (kind === 'lantern' ? 0.05 : 0.2), S = r.segs; for (let i = 0; i < S.length; i += 4) { if (Math.abs(S[i] - x) > 9 && Math.abs(S[i + 2] - x) > 9) continue; if (_vkSegD(x, y - P.dp / 2, S[i], S[i + 1], S[i + 2], S[i + 3]) < h || _vkSegD(x - P.hw, y - P.dp / 2, S[i], S[i + 1], S[i + 2], S[i + 3]) < h || _vkSegD(x + P.hw, y - P.dp / 2, S[i], S[i + 1], S[i + 2], S[i + 3]) < h) return 'on a lane'; } }
+  for (const r of ctx.routes) { const h = (onPlaza || r.ring ? Math.min(r.half, 0.8) : r.half) + (kind === 'lantern' ? 0.05 : 0.2), S = r.segs, g = h + P.hw + 0.5; for (let i = 0; i < S.length; i += 4) { if ((S[i] > x + g && S[i + 2] > x + g) || (S[i] < x - g && S[i + 2] < x - g) || (S[i + 1] > y + g && S[i + 3] > y + g) || (S[i + 1] < y - g && S[i + 3] < y - g)) continue; if (_vkSegD(x, y - P.dp / 2, S[i], S[i + 1], S[i + 2], S[i + 3]) < h || _vkSegD(x - P.hw, y - P.dp / 2, S[i], S[i + 1], S[i + 2], S[i + 3]) < h || _vkSegD(x + P.hw, y - P.dp / 2, S[i], S[i + 1], S[i + 2], S[i + 3]) < h) return 'on a lane'; } }
   // one step clear of everything drawn, its picture's height behind it included (rule 12), and never in front of a door
   const x0 = x - P.hw - 0.5, x1 = x + P.hw + 0.5, y0 = y - P.rise - 0.7, y1 = y + 0.9;
   for (const t of ctx.things) {
@@ -107,13 +123,6 @@ function _vkFits(kind, x, y, ctx, own) {
   }
   for (const b of ctx.trunks) if (Math.abs(b.x - x) < P.hw + 1.6 && b.y > y - P.rise - 0.6 && b.y < y + 3.2) return 'under a tree';   // (the painted trees that are no thing of their own: an orchard's young trees, a wood's edge)
   for (const d of ctx.doors) if (Math.abs(d.x - x) < P.hw + 1.1 && d.y - y < 2.2 && y - d.y < 1.2) return 'a doorway';
-  for (const q of own) {
-    const Q = VK_PIECES[q.kind]; if (!Q) continue;
-    const inRow = kind === 'stall' && q.kind === 'stall' && Math.abs(q.y - y) < 0.3, gap = inRow ? 0.5 : q.kind === 'lantern' || kind === 'lantern' ? 0.8 : 1.2;   // (stalls side by side in a row: half a cell between them)
-    if (Math.abs(q.x - x) >= Q.hw + P.hw + gap) continue;
-    const [fy, fr, by] = q.y >= y ? [q.y, Q.rise, y] : [y, P.rise, q.y];   // (the one in front, its picture's height, and the foot of the one behind)
-    if (by > fy - fr - 0.5 || Math.abs(q.y - y) < 1.2) return 'by today’s ' + q.kind;   // (never inside another piece's picture)
-  }
   return '';
 }
 function _vkCtx(m, P) {
@@ -130,9 +139,19 @@ function _vkCtx(m, P) {
   const mine = (x, y) => own.some(q => { const Q = VK_PIECES[q.kind]; return !!Q && Math.abs(q.x - x) <= Q.hw + 0.05 && y <= q.y + 0.05 && y >= q.y - Q.dp - 0.05; });
   const baseMemo = new Map();
   const polys = [P && P.square, P && P.shape].filter(Boolean);
-  return { m, things, routes, doors, trunks, onPlaza: (x, y) => polys.some(q => _vkIn(q, x, y)),
+  return { m, things, routes, doors, trunks, memo: new Map(), onPlaza: (x, y) => polys.some(q => _vkIn(q, x, y)),
     free: (x, y) => (typeof _gwFree !== 'function' || _gwFree(x, y)) || mine(x, y),
     base(t) { if (!baseMemo.has(t.id)) { let B = { x: t.x, y: t.y, w: t.w || 1 }; try { if (typeof gardenAffordDrawnBase === 'function') B = gardenAffordDrawnBase(t); } catch (e) { /* the plan's */ } let h = 1.2; try { const w = window.GardenNative && GardenNative.world(), rec = w && w.entities instanceof Map ? w.entities.get('prop:' + t.id) : null; if (rec && rec.bounds && rec.bounds.height) h = rec.bounds.height / GARDEN_WORLD.cellH; } catch (e) { /* not drawn yet */ } baseMemo.set(t.id, Object.assign({}, B, { h: Math.min(8, h) })); } return baseMemo.get(t.id); } };
+}
+/** Someone standing here is clear of everything drawn: not over a thing's foot, not inside its picture's height behind it. */
+function _vkClearFig(ctx, x, y) {
+  for (const t of ctx.things) {
+    if (_vkFlat(t) || t.kit || Math.abs(t.x - x) > 4 || Math.abs(t.y - y) > 9) continue;
+    let B = t; try { B = ctx.base(t); } catch (e) { B = t; }
+    const tree = /tree|oak|trunk/.test(t.kind), hw = (tree ? 0.5 : Math.max(0.4, B.w || t.w || 1) / 2) + 0.45, up = tree ? 1.4 : Math.max(1.4, (B.h || 1.2) + 0.6);
+    if (Math.abs(x - B.x) < hw && y > B.y - up && y < B.y + 0.7) return false;
+  }
+  return true;
 }
 /** Places along the ring, every `step` cells: each with the way out from the plaza (nx, ny) and how far along the ring it is. */
 function _vkRingWalk(P, step) {
@@ -219,8 +238,10 @@ function* _vkPlanGen(row, m) {
     for (const L of lamps) { const C = []; for (const [dx, dy] of [[2.2, 0.9], [-2.2, 0.9], [2.6, 1.6], [-2.6, 1.6], [0, 2.1], [3, 0.4], [-3, 0.4], [1.6, 2.4], [-1.6, 2.4]]) C.push({ x: L.x + dx, y: L.y + dy, s: 0 }); got = yield* place('table', C, { extra: { lamp: { x: L.x, y: L.y } } }); if (got) break; why.pop(); }
     if (!got) yield* place('table', _vkCands(P, 'table'), {});
   }
-  // the plaza's middle, for a moment's opening: free ground nearest it
-  let mid = null; for (let r = 0; r <= 4 && !mid; r += 0.5) for (let k = 0; k < (r ? 12 : 1); k++) { const a = k / 12 * Math.PI * 2, x = P.cx + Math.cos(a) * r, y = P.cy + 0.4 + Math.sin(a) * r * 0.7; if (ctx.free(x, y) && !pieces.some(p => Math.hypot(p.x - x, p.y - y) < 1.6)) { mid = { x, y }; break; } }
+  // the plaza's middle, for a moment's opening: free ground nearest it, where someone standing is clear of everything drawn (the opener's
+  // raised hand was over the sundial)
+  let mid = null; for (let r = 0; r <= 4 && !mid; r += 0.5) for (let k = 0; k < (r ? 12 : 1); k++) { const a = k / 12 * Math.PI * 2, x = P.cx + Math.cos(a) * r, y = P.cy + 0.4 + Math.sin(a) * r * 0.7; if (ctx.free(x, y) && !pieces.some(p => Math.hypot(p.x - x, p.y - y) < 1.6) && _vkClearFig(ctx, x, y)) { mid = { x, y }; break; } }
+  if (!mid) for (let r = 0; r <= 4 && !mid; r += 0.5) for (let k = 0; k < (r ? 12 : 1); k++) { const a = k / 12 * Math.PI * 2, x = P.cx + Math.cos(a) * r, y = P.cy + 0.4 + Math.sin(a) * r * 0.7; if (ctx.free(x, y) && !pieces.some(p => Math.hypot(p.x - x, p.y - y) < 1.6)) { mid = { x, y }; break; } }
   return { pieces, why: why.concat([...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, n]) => k + ' x' + n)), mid, plaza: P.id };
 }
 /* ---------- today ---------- */
@@ -251,6 +272,12 @@ function _vkStep(budget) {
   finally { if (typeof _gw !== 'undefined') _gw.folkSolid = fs; }
   if (!r.done) return;
   _vk.job = null; _vk.key = J.key; _vk.row = J.row; _vk.plan = r.value; _vk.why = r.value.why; _vk.ms = Math.round(performance.now() - J.t0); _vk.things = null; _vk.solids = null; _vkSolidsChanged();
+  _vkClearCovered();
+}
+/** What the vale set down before today's kit was laid out, and the kit now covers, is set down again by its own module (wdFreeNear keeps
+ *  it clear of the kit): the night's rug for the stars, when the garden opens on a fair evening (it lay under the brazier). */
+function _vkClearCovered() {
+  try { if (typeof _wdk !== 'undefined' && _wdk.rug && gardenKitCovers(_wdk.rug.x, _wdk.rug.y)) { _wdk.rug.remove(); _wdk.rug = null; } } catch (e) { /* set down again tonight */ }
 }
 function _vkPlanNow(row, m) { const g = _vkPlanGen(row, m), fs = _gw.folkSolid; _gw.folkSolid = false; let r; try { do { r = g.next(); } while (!r.done); } finally { _gw.folkSolid = fs; } return r.value; }
 function gardenKitMark(name) { if (!_vk.plan) return null; if (name === 'middle') return _vk.plan.mid || null; return null; }
@@ -292,6 +319,26 @@ function gardenKitSolids() {
     else if (q.kind === 'lantern') out.push({ x0: q.x - 0.12, y0: q.y - 0.12, x1: q.x + 0.12, y1: q.y + 0.03, src: 'lantern post' });
   }
   _vk.solids = out; return out;
+}
+/** Is a point inside what today's kit draws (a stall's picture and its back, the brazier, the table, a lantern post), with a margin for
+ *  something set down there? wdFreeNear asks (94-garden-wonder-0kit.js): the night's rug for the stars came down under the fair's
+ *  brazier, and a caller's spot or a puddle could land in a stall. Today's plan counts all day, out or not, so it is the same at any hour. */
+function gardenKitCovers(x, y, mg) {
+  if (!_vk.plan || !_vk.plan.pieces.length) return false;
+  const g = mg == null ? 0.6 : mg;
+  for (const q of _vk.plan.pieces) {
+    const P = VK_PIECES[q.kind]; if (!P) continue;
+    if (Math.abs(x - q.x) < P.hw + 0.35 + g && y > q.y - P.rise - (q.kind === 'stall' ? VK_STALL_BACK : 0) - 0.2 && y < q.y + 0.35 + g * 0.5) return true;
+  }
+  return false;
+}
+/** The nearest free ground to a point that the kit does not cover (rings out half a cell at a time), or null. */
+function gardenKitFreeNear(x, y, r) {
+  for (let d = 0.5; d <= (r || 3) + 1e-6; d += 0.5) {
+    const n = Math.max(8, Math.round(d * 8));
+    for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2, px = x + Math.cos(a) * d, py = y + Math.sin(a) * d * 0.7; if ((typeof _gwFree !== 'function' || _gwFree(px, py)) && !gardenKitCovers(px, py)) return { x: px, y: py }; }
+  }
+  return null;
 }
 /** The walker's solids are rebuilt when the scan's revision moves: the kit coming or going is such a change. */
 function _vkSolidsChanged() { try { if (typeof _gks !== 'undefined') _gks.rev = (_gks.rev || 0) + 1; } catch (e) { /* walking will catch up */ } }
@@ -427,16 +474,24 @@ function _vkBuildOne() {
     S = wdSprite(Object.assign({ id: 'vk-' + k.split('|')[0], x: q.x, y: q.y, still: true, ground: true, hit: q.kind === 'lantern' ? 0 : q.kind === 'stall' ? 1.05 : 0.55, hitUp: q.kind === 'stall' ? 40 : 16, label: q.kind === 'stall' ? ((VALE_STALLS[q.look] || {}).sign || 'Stall') : P.name.replace(/^the /, 'The '), svg: _vkPieceSvg(q, o.i, _vk.lit), lift: 0, update() { } }, click ? { cursor: 'hand', onClick: click } : {})); }
   if (S) { S._vk = o; _vk.S.set(k, S); }
 }
+const VK_GLOW = Object.freeze({
+  lantern: '<circle cx="15" cy="-62" r="30" fill="#ffc768" opacity="0.2"/><circle cx="15" cy="-62" r="11" fill="#ffe2a0" opacity="0.42"/>',
+  brazier: '<circle cy="-40" r="44" fill="#ff9a3a" opacity="0.22"/><circle cy="-40" r="16" fill="#ffc768" opacity="0.45"/>',
+  table: '<circle cx="15" cy="-28" r="26" fill="#ffd27a" opacity="0.2"/>',
+});
 function _vkGlows(m) {
-  if (!_vk.plan || !_vk.lit || !_vk.out) { for (const id of _vk.glowIds || []) wdGlowOff(id); _vk.glowIds = []; return; }
-  const ids = [];
+  if (!_vk.plan || !_vk.lit || !_vk.out) { for (const id of _vk.glowIds || []) wdGlowOff(id); _vk.glowIds = []; _vk.glowLeft = 0; return; }
+  // (two new glows a tick, the rest soon after: lighting a fair's six at once was a 35 ms frame)
+  const ids = []; let made = 0, left = 0;
   _vk.plan.pieces.forEach((q, i) => {
-    if (q.kind === 'lantern') { const id = 'vkg' + i; ids.push(id); wdGlow(id, '<circle cx="15" cy="-62" r="30" fill="#ffc768" opacity="0.2"/><circle cx="15" cy="-62" r="11" fill="#ffe2a0" opacity="0.42"/>', q.x, q.y); }
-    else if (q.kind === 'brazier') { const id = 'vkg' + i; ids.push(id); wdGlow(id, '<circle cy="-40" r="44" fill="#ff9a3a" opacity="0.22"/><circle cy="-40" r="16" fill="#ffc768" opacity="0.45"/>', q.x, q.y); }
-    else if (q.kind === 'table') { const id = 'vkg' + i; ids.push(id); wdGlow(id, '<circle cx="15" cy="-28" r="26" fill="#ffd27a" opacity="0.2"/>', q.x, q.y); }
+    const mk = VK_GLOW[q.kind]; if (!mk) return;
+    const id = 'vkg' + i, g = typeof _wd !== 'undefined' && _wd.glows ? _wd.glows.get(id) : null, has = !!(g && g.isConnected); ids.push(id);
+    if (!has && made >= 2) { left++; return; }
+    if (!has) made++;
+    wdGlow(id, mk, q.x, q.y);
   });
   for (const id of _vk.glowIds || []) if (!ids.includes(id)) wdGlowOff(id);
-  _vk.glowIds = ids;
+  _vk.glowIds = ids; _vk.glowLeft = left;
 }
 function _vkDown() { for (const S of _vk.S.values()) { try { S.remove(); } catch (e) { /* gone */ } } _vk.S.clear(); _vk.queue = []; for (const id of _vk.glowIds || []) wdGlowOff(id); _vk.glowIds = []; }
 /** The runner planned the day before the kit could be placed (walking not known yet): it plans again once the kit is out. */
@@ -481,7 +536,7 @@ wdMod({
     try {
       if (!(typeof gardenFolkLive === 'function' && (gardenFolkLive() || m.visit))) { if (_vk.S.size) _vkDown(); return; }
       _vkUp(m); _vkReplan(m);
-      if (performance.now() - _vk.glowT > 1800) { _vk.glowT = performance.now(); _vkGlows(m); }
+      if (performance.now() - _vk.glowT > (_vk.glowLeft ? 250 : 1800)) { _vk.glowT = performance.now(); _vkGlows(m); }
     } catch (e) { console.error('[kit]', e); }
   },
   end() { _vkDown(); _vk.job = null; if (_vk.plan) { _vk.plan = null; _vk.key = ''; _vk.things = null; _vk.solids = null; _vkSolidsChanged(); } },

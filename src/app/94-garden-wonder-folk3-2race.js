@@ -65,7 +65,12 @@ function _vgrFlagSpot(p, used) {
     if (C && typeof _vfrClearOfThings === 'function' && !_vfrClearOfThings(C, x, y, '', true)) return true;
     let c = null; try { c = gardenIslandBaseCell(x, y); } catch (e) { c = null; }
     if (c && (c.reservation === 'plot' || c.plot || c.bed || c.gateId)) return true;
-    for (const t of C ? C.things : []) { if ((t.kind === 'bridge' || t.kind === 'crossing' || t.kind === 'ford') && Math.abs(t.x - x) < (t.w || 1) / 2 + 1.2 && Math.abs(t.y - y) < 1.6) return true; if (t.kind === 'building' && Math.abs(t.x - x) < 1.5 && y > t.y - 0.4 && y < t.y + 1.6) return true; }
+    for (const t of C ? C.things : []) {
+      if ((t.kind === 'bridge' || t.kind === 'crossing' || t.kind === 'ford') && Math.abs(t.x - x) < (t.w || 1) / 2 + 1.2 && Math.abs(t.y - y) < 1.6) return true;
+      if (t.kind === 'building' && Math.abs(t.x - x) < 1.5 && y > t.y - 0.4 && y < t.y + 1.6) return true;
+      // (the cloth flies a third of a cell to the right of the pole, at head height: clear of a lamp's lantern, a sign's arms, a post's top)
+      if (_VGR_TALL.has(t.kind)) { let B = t; try { if (C.base) B = C.base(t); } catch (e) { B = t; } if (Math.abs(B.x - (x + 0.15)) < 1.25 && Math.abs(B.y - y) < 1.2) return true; }
+    }
     for (const q of used) if (Math.hypot(q.x - x, q.y - y) < 2.5) return true;
     return false;
   };
@@ -77,6 +82,7 @@ function _vgrFlagSpot(p, used) {
   return null;
 }
 const _VGR_FLAG_C = Object.freeze([['#d8452a', '#f4ead8'], ['#e8b830', '#7a3a1a'], ['#3a7ab8', '#f4ead8']]);
+const _VGR_TALL = new Set(['lamp', 'signpost', 'post', 'maypole']);   // (kinds drawn tall and slender with a wide head: a flag keeps its cloth clear of them)
 /** A race flag: a pennant on a pole, its foot in a tuft, a contact shadow; the cloth stirs (CSS on its own group). */
 function _vgrFlagSvg(k, finish) {
   const H = typeof GARDEN_H === 'number' ? GARDEN_H : 41, h = Math.round(H * (finish ? 1.35 : 1.1)), c = _VGR_FLAG_C[k % 3];

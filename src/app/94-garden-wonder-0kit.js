@@ -170,7 +170,11 @@ function wdGlow(id, markup, x, y) {
 function wdGlowOff(id) { const g = _wd.glows.get(id); if (g) { g.remove(); _wd.glows.delete(id); } }
 function wdNear(x, y, r) { return typeof _gw !== 'undefined' && Math.hypot(_gw.px - x, _gw.py - y) <= r; }
 /** A free point near this one, or null. */
-function wdFreeNear(x, y, r) { return typeof _gwNearestFreePt === 'function' ? _gwNearestFreePt(x, y, r || 3) : null; }
+function wdFreeNear(x, y, r) {
+  const p = typeof _gwNearestFreePt === 'function' ? _gwNearestFreePt(x, y, r || 3) : null;
+  if (p && typeof gardenKitCovers === 'function' && gardenKitCovers(p.x, p.y)) return gardenKitFreeNear(x, y, r || 3);   // (folk3: never on the day's stalls, brazier or card table: 94-garden-wonder-folk3-6kit.js)
+  return p;
+}
 /* ---------- sound: only if the game's Sounds are on ---------- */
 function wdSound(list) {
   try {

@@ -68,12 +68,22 @@ function _vghChestSvg(open) {
     + '<rect x="-8" y="-8.6" width="16" height="8" rx="1" fill="#a06a3a"/><rect x="-8" y="-8.6" width="16" height="2" fill="#c88a4e"/><path d="M-4 -8.6v8M4 -8.6v8" stroke="#d8b050" stroke-width="1.1"/><rect x="-1.4" y="-6.6" width="2.8" height="2.8" rx=".5" fill="#e8c860"/>'
     + lid + '<circle cx="-10" cy="-1.4" r=".9" fill="#4a3220"/><circle cx="10.4" cy="-.8" r=".8" fill="#4a3220"/></g>';
 }
+/** Where the chest comes up: the dig spot, or a step to its side when your own figure stands over it (you dig standing on the spot,
+ *  and the chest came up hidden behind your legs). */
+function _vghChestAt(s) {
+  const d = s.dig; if (typeof _gw === 'undefined' || !Number.isFinite(_gw.px)) return d;
+  const dx = d.x - _gw.px, dy = d.y - _gw.py;
+  if (Math.abs(dx) > 0.75 || dy > 0.35 || dy < -1.4) return d;   // (clear of your figure: where it was buried)
+  const sd = dx >= 0 ? 1 : -1;
+  for (const k of [sd, -sd]) { const x = _gw.px + k * 0.85, y = Math.max(d.y, _gw.py - 0.1); if ((typeof _gwFree !== 'function' || _gwFree(x, y)) && (typeof gardenTerrainTakes !== 'function' || gardenTerrainTakes('hole', x, y))) return { x, y }; }
+  return d;
+}
 function _vghChest(s, list) {
   if (typeof wdSprite !== 'function') return;
-  const W = GARDEN_WORLD;
-  try { if (window.GardenNativeActions) { GardenNativeActions.effect('soil', s.dig.x * W.cellW, W.sky + s.dig.y * W.cellH, { width: 30 }); setTimeout(() => { try { GardenNativeActions.effect('gold', s.dig.x * W.cellW, W.sky + (s.dig.y - 0.4) * W.cellH, { width: 26 }); } catch (e) { /* quiet */ } }, 450); } } catch (e) { /* quiet */ }
+  const W = GARDEN_WORLD, at = _vghChestAt(s);
+  try { if (window.GardenNativeActions) { GardenNativeActions.effect('soil', at.x * W.cellW, W.sky + at.y * W.cellH, { width: 30 }); setTimeout(() => { try { GardenNativeActions.effect('gold', at.x * W.cellW, W.sky + (at.y - 0.4) * W.cellH, { width: 26 }); } catch (e) { /* quiet */ } }, 450); } } catch (e) { /* quiet */ }
   try { gardenSfx('dig'); } catch (e) { /* quiet */ }
-  const S = wdSprite({ id: 'vg-chest', x: s.dig.x, y: s.dig.y, hit: 0.3, hitUp: 2, label: 'A little tin chest', ground: true, svg: _vghChestSvg(false), lift: 0, update() { } });
+  const S = wdSprite({ id: 'vg-chest', x: at.x, y: at.y, hit: 0.3, hitUp: 2, label: 'A little tin chest', ground: true, svg: _vghChestSvg(false), lift: 0, update() { } });
   setTimeout(() => { try { wdArt(S, _vghChestSvg(true)); gardenSfx('sparkle'); } catch (e) { /* gone */ } }, 520);
   list.push(S);
 }

@@ -64,6 +64,8 @@ function _vgtFly(from, n, list) {
   }, last.t + 240);
   return hops.length;
 }
+/** Is the still water frozen (winter: 94-garden-zz-2season.js)? Ice is ground to the skim act, so no edge is found on it. */
+function _vgtFrozen() { return typeof _GD_ICE !== 'undefined' && _GD_ICE.size > 0; }
 /** Whose turn it is: people and folk taken turn about, three rounds. */
 function _vgtTurn(R) { const T = R.data.turns; return T && R.data.k < T.length ? T[R.data.k] : null; }
 function _vgtNext(R) { R.data.k++; R.data.turnT = performance.now(); R.data.thrown = false; R.dirty = true; const T = _vgtTurn(R); if (T && T.w === _vgMeSlot()) { R.data.meterT0 = performance.now(); try { gardenSfx('tick'); } catch (e) { /* quiet */ } } }
@@ -97,11 +99,11 @@ function gardenGameSkips(cur) {
 }
 valeGameAdd('stones', {
   late: false,
-  can(at) { return _vgtEdges(at, 25, 1).length ? '' : 'No still water near here to skim on.'; },
+  can(at) { return _vgtEdges(at, 25, 1).length ? '' : _vgtFrozen() ? 'The ponds are frozen. Skimming waits for the thaw.' : 'No still water near here to skim on.'; },
   askAt() { return 'the water'; },
   finding() { return 'To the water’s edge!'; },
   setup(R, cb) {
-    const near = _vgtEdges(R.at, 25, 1); if (!near.length) { cb(false, 'No still water near here! Somewhere with a calm edge.'); return; }
+    const near = _vgtEdges(R.at, 25, 1); if (!near.length) { cb(false, _vgtFrozen() ? 'The ponds are frozen! Skimming waits for the thaw.' : 'No still water near here! Somewhere with a calm edge.'); return; }
     const spots = _vgtEdges(near[0], 7, 1 + R.folk.length + 3).sort((a, b) => Math.hypot(a.x - near[0].x, a.y - near[0].y) - Math.hypot(b.x - near[0].x, b.y - near[0].y));
     R.at = { x: near[0].x, y: near[0].y }; R.data.spots = spots; R.data.throws = {}; R.data.k = 0;
     cb(true);
