@@ -100,8 +100,8 @@ function _hsActRows(px, py) {
   const d = Math.hypot(H.door.x - px, (H.door.y - py) * 1.3);
   if (!H.visit && !H.moved && !_hs.saidNear && d < 4) { _hs.saidNear = true; try { gardenMessage(`${H.name} stands empty, its door on the latch. A note pinned to it says: “For whoever keeps the garden now.”`, { ambient: true, source: 'house-near', icon: 'home' }); } catch (e) { /* only words */ } }
   if (d > HOUSE_DOOR_REACH) return [];
-  // (anchored on the doorstep, so standing there it is offered whichever way you face; the prompt itself floats over the door)
-  return [{ key: 'house:' + H.id, act: 'house', house: H.id, src: 'house:' + H.id, words: H.visit ? 'Go in' : H.moved ? 'Go in' : 'Go in: it is yours', name: H.name, x: H.door.x, y: H.door.y + .45, promptY: H.door.y - 1.7, pri: 0.8 }];
+  // (at the door, with the doorstep as where you stand: in the doorway or on the step it is offered whichever way you face; the prompt floats over the door)
+  return [{ key: 'house:' + H.id, act: 'house', house: H.id, src: 'house:' + H.id, words: H.visit ? 'Go in' : H.moved ? 'Go in' : 'Go in: it is yours', name: H.name, x: H.door.x, y: H.door.y, stand: { x: H.door.x, y: H.door.y + .75 }, promptY: H.door.y - 1.7, pri: 0.8 }];
 }
 function gardenHouseItems(id, items) {
   let H = null; try { H = gardenHouseMine(); } catch (e) { H = null; } if (!H || H.id !== id) return;
@@ -184,7 +184,7 @@ const HOUSE_PLAY = {
     S.spawn = HOUSE_SHELL.spawn; S.native = !!_hsNative(); S.t = 0; S.lightAt = 0; S.keyNow = R.paintKey; S.near = null; S.nearAt = 0;
     S.leave = () => _hsEnd(R, S);
     if (!gpVisiting()) _hsMoveIn(R, S);
-    { const s = _hsNative(); if (s && s.doorMark && s.doorMark.root) s.doorMark.root.setPosition(0, -62); }   // (the way-out badge on the wall over the front door, not on its panels)
+    { const s = _hsNative(); if (s && s.doorMark && s.doorMark.root) s.doorMark.root.setPosition(0, -82); }   // (the way-out badge on the wall over the front door, not on its panels)
     _hsRoomRefresh(R, S, true);
     _hsUi(R, S);
     try { if (typeof _fxSound === 'function') _fxSound('pop'); } catch (e) { /* no sound */ }
@@ -237,8 +237,17 @@ function _hsMoveIn(R, S) {
   const op = { o: 'home', h: H.id, k: H.word, l: houseLookOf(H.word), day: _gdToday(), us: HOUSE_START.map(() => _gdUid('h')) };
   const r = houseDo(op, 'Moved in', { noUndo: true }); if (!r.ok) return;
   S.movedIn = true;
-  const gift = gpGrant('hs-home', { 'mat:timber': 2, 'mat:stone': 1 });
+  const gift = _hsGrant('hs-home', { 'mat:timber': 2, 'mat:stone': 1 });
   if (typeof _grmLater === 'function') _grmLater(R, S, () => _grmSay(`It is yours now: the bed, the table, the chest and the rest. ${gift ? 'Behind the door you find 2 timber and a good stone, left for you. ' : ''}Click Move things to set it out your way.`, 10000), 9400);
+}
+/** A once-ever gift (as gpGrant, the same ledger line and mark), saved quietly: the garden outside is hidden while you are in, and is drawn
+ *  again once as you leave (a full repaint behind the room was a long task on going in). */
+function _hsGrant(key, items) {
+  const g = _gdG(), k = 'plg.' + key;
+  if (g.led[k] || g.seen['pl.gr.' + key]) return false;
+  g.led[k] = { d: _gdToday(), k: 'pl', i: items, n: 1 }; g.seen['pl.gr.' + key] = _gdToday();
+  _gdSaveQuiet(); if (_hsInside()) _grm.S.dirty = true;
+  return true;
 }
 /** One change to your own house, through the rules file: checked, applied once, saved (quietly: the garden outside is not drawn again), with Undo. */
 function houseDo(op, label, o) {

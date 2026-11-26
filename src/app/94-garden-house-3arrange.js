@@ -281,9 +281,9 @@ function _hsPuff(S, x, y) {
 /** Rewards for setting out your own house: the first thing, then ten, then twenty-five. */
 function _hsPutReward(R, S) {
   const g = _gdG(), n = (Number(g.hs.puts) || 0) + 1; g.hs.puts = n;
-  if (n === 1 && gpGrant('hs-first-piece', { 'mat:stone': 1 })) { _grmSay('It looks more like yours already. Under the floorboard you find a good stone.', 7000); try { GardenNativeRooms.burst(); } catch (e) { /* fine */ } return; }
-  if (n === 10 && gpGrant('hs-ten', { 'decor:hf-rocking-chair': 1 })) { _grmSay('Ten things set out: it is a home now. Somebody has left a rocking chair in your chest, with a ribbon on it.', 9000); try { GardenNativeRooms.burst(); } catch (e) { /* fine */ } return; }
-  if (n === 25 && gpGrant('hs-25', { 'decor:hf-wall-clock': 1 })) { _grmSay('Every corner just so. A wall clock turns up in your chest, ticking already.', 9000); try { GardenNativeRooms.burst(); } catch (e) { /* fine */ } }
+  if (n === 1 && _hsGrant('hs-first-piece', { 'mat:stone': 1 })) { _grmSay('It looks more like yours already. Under the floorboard you find a good stone.', 7000); try { GardenNativeRooms.burst(); } catch (e) { /* fine */ } return; }
+  if (n === 10 && _hsGrant('hs-ten', { 'decor:hf-rocking-chair': 1 })) { _grmSay('Ten things set out: it is a home now. Somebody has left a rocking chair in your chest, with a ribbon on it.', 9000); try { GardenNativeRooms.burst(); } catch (e) { /* fine */ } return; }
+  if (n === 25 && _hsGrant('hs-25', { 'decor:hf-wall-clock': 1 })) { _grmSay('Every corner just so. A wall clock turns up in your chest, ticking already.', 9000); try { GardenNativeRooms.burst(); } catch (e) { /* fine */ } }
 }
 
 /* ---------- papers and floors ---------- */
@@ -296,7 +296,7 @@ function _hsFinish(R, S, id) {
   _hsSweep(S, def.finish);
   _hsRoomRefresh(R, S, false); _hsBagPaint(R, S); _hsHint(R, S);
   const base = def.finish === 'wall' ? HOUSE_WALL0 : HOUSE_FLOOR0;
-  const gift = id !== base && gpGrant('hs-first-finish', { 'mat:timber': 1 });
+  const gift = id !== base && _hsGrant('hs-first-finish', { 'mat:timber': 1 });
   _grmSay(id === base ? (def.finish === 'wall' ? 'Back to plain limewash. The paper is in your things.' : 'Back to bare boards. The old floor is in your things.') : `${def.name}, all done.${gift ? ' Behind the old one you find a good length of timber.' : ' The old one is in your things.'}`, 6000);
   try { if (typeof _fxSound === 'function') _fxSound('chime'); } catch (e) { /* no sound */ }
 }

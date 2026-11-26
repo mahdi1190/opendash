@@ -290,10 +290,11 @@ function _hsPaintDoor(T, P, L) {
   }
   T.ell(D.x1 - 14, D.y0 + h * .52, 4, 4, '#2a2a2e'); T.stroke(`M${D.x1 - 30} ${D.y0 + h * .52}h16`, '#2a2a2e', 3.2); T.ell(D.x1 - 14.6, D.y0 + h * .52 - .8, 1.4, 1.4, '#8a8a90', .8);
   const S = HOUSE_SKY[P.tod] || HOUSE_SKY.day; T.rect(D.x0 + 2, D.y1 - 3, w - 4, 3, S.low, P.tod === 'night' ? .25 : .7);
-  // a coat on a peg beside the door
-  T.ell(D.x1 + 34, D.y0 + 18, 3, 3, '#3a2818');
-  T.fill(`M${D.x1 + 22} ${D.y0 + 24}Q${D.x1 + 34} ${D.y0 + 14} ${D.x1 + 46} ${D.y0 + 24}L${D.x1 + 50} ${D.y0 + 96}Q${D.x1 + 34} ${D.y0 + 104} ${D.x1 + 18} ${D.y0 + 96}Z`, T.lin(D.x1 + 18, 0, D.x1 + 50, 0, [[0, '#5a6a4a'], [.5, '#4a5a3c'], [1, '#2a3422']]));
-  T.stroke(`M${D.x1 + 34} ${D.y0 + 22}V${D.y0 + 100}`, '#2a3422', 1.5, .8); T.soft(D.x1 + 36, D.y0 + 104, 20, 4, .25);
+  // a coat on a peg beside the door (a coat's length: about half the figure)
+  const kx = D.x1 + 30, ky = D.y0 + 12;
+  T.ell(kx, ky, 2.6, 2.6, '#3a2818');
+  T.fill(`M${kx - 10} ${ky + 5}Q${kx} ${ky - 3} ${kx + 10} ${ky + 5}L${kx + 13} ${ky + 44}Q${kx} ${ky + 50} ${kx - 13} ${ky + 44}Z`, T.lin(kx - 13, 0, kx + 13, 0, [[0, '#5a6a4a'], [.5, '#4a5a3c'], [1, '#2a3422']]));
+  T.stroke(`M${kx} ${ky + 4}V${ky + 46}`, '#2a3422', 1.2, .8); T.rect(kx - 6, ky + 24, 5, 7, '#3a4630', .7); T.soft(kx + 2, ky + 52, 14, 3, .22);
 }
 function _hsPaintFloor(T, P, L) {
   const paint = HOUSE_FLOORS[P.floor] || HOUSE_FLOORS['hff-boards'];
