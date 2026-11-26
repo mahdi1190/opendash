@@ -24,10 +24,12 @@ function _gdiH() { return typeof GARDEN_H === 'number' ? GARDEN_H : 41.44; }
 function _gdiRng(seed) { let s = (seed >>> 0) % 2147483647 || 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
 function _gdiHash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 /** Your own light: a lantern if you have one (the bug lantern, the old lantern from the ruins), else a candle. */
+const _gdiLightOf = { t: -1e9, v: null };
 function gardenTunnelLight() {
+  const now = performance.now(); if (_gdiLightOf.v && now - _gdiLightOf.t < 1000) return _gdiLightOf.v; _gdiLightOf.t = now;   // (looked at once a second: the same answer every frame, nothing made)
   let lantern = false;
   try { lantern = (typeof gardenHas === 'function' && gardenHas('gear:bug-lantern') > 0) || (typeof gardenGateHas === 'function' && gardenGateHas('lantern')); } catch (e) { lantern = false; }
-  return { lantern, r: lantern ? GARDEN_TUNNEL.light.lantern : GARDEN_TUNNEL.light.candle };
+  return (_gdiLightOf.v = { lantern, r: lantern ? GARDEN_TUNNEL.light.lantern : GARDEN_TUNNEL.light.candle });
 }
 /* ---------- textures shared by every stage ---------- */
 function _gdiTextures(sc) {
@@ -156,16 +158,18 @@ function _gdiShut(rec, T, a) {
 }
 /** The lights now: yours (at your hand), friends' with you, the old lamps in the chambers, daylight down open stairs. Reused list. */
 const _gdiL = [];
+/** One light into the reused list (no allocation once the list has grown). */
+function _gdiPut(out, n, x, y, r, col, a, day) { const W = GARDEN_WORLD; let L = out[n]; if (!L) L = out[n] = { x: 0, y: 0, rx: 0, ry: 0, col: 0, a: 0, day: false }; L.x = x; L.y = y; L.rx = r * W.cellW; L.ry = r * W.cellH * 1.25; L.col = col; L.a = a; L.day = !!day; return n + 1; }
+/** A flame's flicker, its own beat (s). */
+function _gdiFlick(t, s) { return 1 + 0.03 * Math.sin(t * 8.7 + s) + 0.02 * Math.sin(t * 21.3 + s * 3) + 0.015 * Math.sin(t * 2.1 + s); }
 function _gdiLights(C, now) {
-  const W = GARDEN_WORLD, H = _gdiH(), T = C.T, out = _gdiL; let n = 0;
-  const put = (x, y, r, col, a, day) => { let L = out[n]; if (!L) L = out[n] = { x: 0, y: 0, rx: 0, ry: 0, col: 0, a: 0, day: false }; L.x = x; L.y = y; L.rx = r * W.cellW; L.ry = r * W.cellH * 1.25; L.col = col; L.a = a; L.day = !!day; n++; };
-  const t = now / 1000, flick = (s) => 1 + 0.03 * Math.sin(t * 8.7 + s) + 0.02 * Math.sin(t * 21.3 + s * 3) + 0.015 * Math.sin(t * 2.1 + s);
+  const W = GARDEN_WORLD, H = _gdiH(), T = C.T, out = _gdiL, t = now / 1000; let n = 0;
   const me = gardenTunnelLight();
-  put(_gw.px * W.cellW + 6, W.sky + _gw.py * W.cellH - H * 0.55, me.r * flick(0), me.lantern ? 0xffb860 : 0xffc888, me.lantern ? 0.32 : 0.26);
-  try { if (typeof _gll !== 'undefined' && _gll.actors) for (const A of _gll.actors.values()) { if (!A || A.me || A.dpT !== T.id || !Number.isFinite(A.x)) continue; put(A.x * W.cellW + 6, W.sky + A.y * W.cellH - H * 0.55, GARDEN_TUNNEL.light.lantern * flick(A.w * 1.7 + 1), 0xffb860, 0.3); if (n > 6) break; } } catch (e) { /* alone */ }
-  for (const c of T.ells) { const R = GARDEN_CHAMBERS[c.what]; if (R && R.lamp) put(c.x + (c.lampDx || 0), c.y - c.ry - 26, GARDEN_TUNNEL.light.lamp * flick(c.i * 2.3 + 4), 0xffb050, 0.28); if (R && R.glow) put(c.x, c.y - c.ry * 0.4, 1.7 * (1 + 0.06 * Math.sin(t * 1.3 + c.i)), 0x8fd0ff, 0.2); }
+  n = _gdiPut(out, n, _gw.px * W.cellW + 6, W.sky + _gw.py * W.cellH - H * 0.55, me.r * _gdiFlick(t, 0), me.lantern ? 0xffb860 : 0xffc888, me.lantern ? 0.32 : 0.26);
+  try { if (typeof _gll !== 'undefined' && _gll.actors && _gll.actors.size) _gll.actors.forEach(A => { if (n > 7 || !A || A.me || A.dpT !== T.id || !Number.isFinite(A.x)) return; n = _gdiPut(out, n, A.x * W.cellW + 6, W.sky + A.y * W.cellH - H * 0.55, GARDEN_TUNNEL.light.lantern * _gdiFlick(t, A.w * 1.7 + 1), 0xffb860, 0.3); }); } catch (e) { /* alone */ }
+  for (let i = 0; i < T.ells.length; i++) { const c = T.ells[i], R = GARDEN_CHAMBERS[c.what]; if (R && R.lamp) n = _gdiPut(out, n, c.x + (c.lampDx || 0), c.y - c.ry - 26, GARDEN_TUNNEL.light.lamp * _gdiFlick(t, c.i * 2.3 + 4), 0xffb050, 0.28); if (R && R.glow) n = _gdiPut(out, n, c.x, c.y - c.ry * 0.4, 1.7 * (1 + 0.06 * Math.sin(t * 1.3 + c.i)), 0x8fd0ff, 0.2); }
   const open = _gdtOpen(T), dayK = _gdiDaylight();
-  for (const m of T.mouths) if (open[m.i] && dayK > 0.05) put(m.pout.x * 0.7 + m.pin.x * 0.3, m.pout.y * 0.7 + m.pin.y * 0.3 - 6, 1.75 * (0.6 + 0.4 * dayK), dayK > 0.5 ? 0xfff6dc : 0xb8c8f0, 0.34 * dayK, true);
+  for (let i = 0; i < T.mouths.length; i++) { const m = T.mouths[i]; if (open[m.i] && dayK > 0.05) n = _gdiPut(out, n, m.pout.x * 0.7 + m.pin.x * 0.3, m.pout.y * 0.7 + m.pin.y * 0.3 - 6, 1.75 * (0.6 + 0.4 * dayK), dayK > 0.5 ? 0xfff6dc : 0xb8c8f0, 0.34 * dayK, true); }
   out.n = n;
   return out;
 }
