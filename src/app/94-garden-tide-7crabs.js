@@ -266,7 +266,7 @@ function _gtrCrabPaint(B, c, frame) {
 function _gtrCrabSvg(c) {
   return `<g transform="translate(0 -4) scale(2.4)"><ellipse cx="0" cy="1" rx="7" ry="2" fill="#3a3020" opacity="0.25"/><path d="M-4.2 -4L-6 -5.6M4.2 -4L6 -5.6" stroke="${c.c2}" stroke-width="1.2"/><ellipse cx="-6" cy="-6" rx="1.9" ry="1.5" fill="${c.c}"/><ellipse cx="6" cy="-6" rx="1.9" ry="1.5" fill="${c.c}"/><path d="M-3.4 -2l-2.4 -1.4l-1.2 2.6M-4.3 -1.3l-2.4 -1.4l-1.2 2.6M3.4 -2l2.4 -1.4l1.2 2.6M4.3 -1.3l2.4 -1.4l1.2 2.6" stroke="${c.c2}" stroke-width="0.9" fill="none"/><ellipse cx="0" cy="-3" rx="5" ry="3" fill="${c.c}"/><ellipse cx="-1.8" cy="-4.4" rx="1.8" ry="0.8" fill="#fff" opacity="0.35"/><path d="M-1.3 -5.4l-.3 -1.9M1.3 -5.4l.3 -1.9" stroke="${c.c2}" stroke-width="0.6"/><circle cx="-1.6" cy="-7.5" r="0.85" fill="#1a1612"/><circle cx="1.6" cy="-7.5" r="0.85" fill="#1a1612"/></g>`;
 }
-const GT_TRBOX = Object.freeze([-6, -12, GT_RACE.lenPx + 10, GT_RACE.laneW * 4 + 6]);
+const GT_TRBOX = Object.freeze([-6, -18, GT_RACE.lenPx + 10, GT_RACE.laneW * 4 + 6]);
 function _gtrTrackPaint(B) {
   const L = GT_RACE.lenPx, H = GT_RACE.laneW * 4, S = { line: '#9a845c', lineHi: '#f2e4bc', peb: ['#8a867c', '#a8a094', '#6e6a62', '#c8c0b0'] }, r = gardenRand(91);
   B.f(B.rect(0, 0, L, H), '#c4ae7e', .18);   // (sand smoothed flat for the track)
@@ -274,7 +274,7 @@ function _gtrTrackPaint(B) {
   // the start: a row of pebbles; the finish: a stick dragged across, and a little stick with a strip of weed for a flag
   for (let k = 0; k < 9; k++) B.f(B.ell(6 + (r() - .5) * 2, H * (k / 8) * .96 + 1, 1.6 + r(), 1.1 + r() * .5), S.peb[k % 4]).f(B.ell(5.6, H * (k / 8) * .96 + .4, .7, .4), '#ffffff', .35);
   let d = `M${L - 6} -2`; for (let y = 2; y <= H + 2; y += 4) d += `L${L - 6 + (r() - .5) * 1.6} ${y}`; B.s(d, S.line, 1.4, .7);
-  B.s(`M${L - 2} ${H + 2}L${L} -9`, '#7a5a3a', 1.1).f(`M${L} -9l6 1.6l-6 2.4z`, '#4f6a34', .9);
+  B.f(B.ell(L - 1, 2.4, 3, 1.1), '#3a3020', .25).s(`M${L - 1.4} 2L${L} -16`, '#7a5a3a', 1.2).s(`M${L - 1.6} 2L${L - .2} -16`, '#a8845a', .5, .7).f(`M${L} -16l7 2l-7 2.6z`, '#4f6a34', .9).f(`M${L} -16l5 1.4l-5 .6z`, '#7a9a4a', .8);   // (a short stick at the finish, a strip of weed for its flag)
 }
 const GardenTideRaceSprites = {
   id: 'crab-race',
@@ -282,7 +282,8 @@ const GardenTideRaceSprites = {
   clear() { for (const im of this.crabs || []) { try { im.destroy(); } catch (e) { /* gone */ } } if (this.track) { try { this.track.destroy(); } catch (e) { /* gone */ } } if (this.mark) { try { this.mark.destroy(); } catch (e) { /* gone */ } } this.crabs = []; this.track = null; this.mark = null; this.scene = null; },
   tick(time, view) {
     const scene = this.scene; if (!scene) return;
-    const dt = Math.min(.25, (time - (this.last || time)) / 1000); this.last = time;   // (real time: a slow frame does not slow the race)
+    let dt = Math.min(2, (time - (this.last || time)) / 1000); this.last = time;   // (real time: a slow frame does not slow the race; worked in small steps)
+    while (dt > .06) { _gtrStep(.06); dt -= .06; }
     _gtrFrame(time, dt);
     const R = _gtcr.R;
     if (!R || (R.done && performance.now() - R.endAt > 8000)) { if (this.track) this.clear0(); return; }
