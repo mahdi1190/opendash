@@ -240,7 +240,7 @@ html[data-theme="dark"] .modal.gd-popup-museum { --mu-wall: #33281e; --mu-wall-2
 .gmu-say.is-new { animation: gmu-pop .5s cubic-bezier(.2, .9, .3, 1.3); }
 @keyframes gmu-pop { from { transform: scale(.92); opacity: .4; } to { transform: none; opacity: 1; } }
 .gmu-hall { min-width: 0; padding: 12px 12px 14px; border-radius: 14px; border: 2px solid var(--mu-line);
-  background: linear-gradient(180deg, var(--mu-wall) 0%, var(--mu-wall) calc(100% - 46px), var(--mu-wood) calc(100% - 46px), var(--mu-wood) calc(100% - 40px), var(--mu-wood-2) calc(100% - 40px), var(--mu-wood-2) 100%); }
+  padding-bottom: 26px; background: linear-gradient(180deg, var(--mu-wall) 0%, var(--mu-wall) calc(100% - 16px), var(--mu-wood) calc(100% - 16px), var(--mu-wood) calc(100% - 12px), var(--mu-wood-2) calc(100% - 12px), var(--mu-wood-2) 100%); }   /* (a skirting board below the cases, never under their labels) */
 .gmu-hall-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 10px; }
 .gmu-hall-h h3 { margin: 0; font-family: var(--mu-serif); font-size: 1.15rem; }
 .gmu-hall-h p { margin: 0; color: var(--mu-ink-2); font-size: .82rem; }
@@ -273,12 +273,12 @@ html[data-theme="dark"] .modal.gd-popup-museum { --mu-wall: #33281e; --mu-wall-2
 .gmu-perch svg { width: 48px; height: 48px; }
 @keyframes gmu-bob { 0%, 100% { transform: translate(-50%, -50%); } 50% { transform: translate(-50%, -56%) rotate(2deg); } }
 /* a plinth of stone in the gallery, the bone on top; a whole skeleton across two places */
-.gmu-case-plinth .gmu-ex.is-on .gmu-case { background: linear-gradient(180deg, #f2ebda, #e2d6bc); border: 2px solid #cfc3a8; }
+.gmu-case-plinth .gmu-ex.is-on .gmu-case { background: radial-gradient(ellipse at 50% 30%, #8d97a0 0%, #6d767e 70%, #5c646b 100%); border: 2px solid #4f565c; box-shadow: inset 0 2px 6px rgba(0, 0, 0, .25); }   /* (the gallery's slate-grey wall: the pale bones stand out on it) */
 .gmu-on { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); }
 .gmu-on svg { width: 54px; height: 54px; }
 .gmu-plinthbg { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 26px; }
 .gmu-skel { grid-column: span 2; cursor: default; }
-.gmu-skelcase { display: flex !important; align-items: flex-end; justify-content: center; gap: 2px; background: linear-gradient(180deg, #f2ebda, #ddd0b2); border: 2px solid var(--mu-brass); }
+.gmu-skelcase { display: flex !important; align-items: flex-end; justify-content: center; gap: 2px; background: radial-gradient(ellipse at 50% 30%, #8d97a0 0%, #6d767e 70%, #5c646b 100%); border: 2px solid var(--mu-brass); }
 .gmu-skelcase svg { max-height: 82px; width: auto; }
 /* a framed shadow box, the curio pinned on felt */
 .gmu-case-frame .gmu-ex.is-on .gmu-case { padding: 6px; background: linear-gradient(135deg, #9a6a40, #6a4426); box-shadow: inset 0 0 0 1px rgba(255, 220, 170, .3), 0 3px 0 rgba(40, 26, 12, .3); }
@@ -291,13 +291,13 @@ html[data-theme="dark"] .gmu-ex.is-empty .gmu-case { background: rgba(0, 0, 0, .
 .gmu-q { font: 700 1.6rem var(--mu-serif); color: var(--mu-line-2); }
 .gmu-plate { display: block; min-width: 0; padding: 3px 6px 4px; border-radius: 4px; background: linear-gradient(180deg, #ecca72, #c8962e); color: #3a2a10; box-shadow: 0 1px 0 rgba(40, 26, 10, .3), inset 0 1px 0 rgba(255, 248, 220, .6); }
 .gmu-plate b { display: block; font-family: var(--mu-serif); font-size: .8rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gmu-plate small { display: block; font-size: .66rem; line-height: 1.2; color: #5a4220; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gmu-plate small { display: block; min-height: 1.2em; font-size: .66rem; line-height: 1.2; color: #5a4220; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* (an empty second line keeps the plates level) */
 .gmu-ex.is-empty .gmu-plate { background: none; box-shadow: none; color: var(--mu-ink-2); border: 1px dashed var(--mu-line); }
 .gmu-ex.is-empty .gmu-plate small { color: var(--mu-ink-2); }
 .gmu-pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; }
 .gmu-pg { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--mu-line-2); background: var(--mu-card); color: var(--mu-ink); cursor: pointer; }
 .gmu-pg:disabled { opacity: .4; cursor: default; }
-.gmu-pgat { color: #fff6e4; font-size: .82rem; text-shadow: 0 1px 0 rgba(0, 0, 0, .4); }
+.gmu-pgat { color: var(--mu-ink-2); font-size: .82rem; }
 .gmu-give { padding: 10px 12px 12px; border-radius: 14px; border: 2px solid var(--mu-line); background: var(--mu-card); }
 .gmu-give h4 { margin: 0 0 8px; font-family: var(--mu-serif); font-size: 1rem; }
 .gmu-chips { display: flex; flex-wrap: wrap; gap: 8px; }

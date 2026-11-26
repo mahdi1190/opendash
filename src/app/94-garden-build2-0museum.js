@@ -4,8 +4,8 @@
    when you give it its first piece ... Each wing has a keeper from the cast who says one line about every new piece ... Empty spaces show
    as outlines ... Every piece has a small plaque, 'Given by Taylor'."
 
-   A KIND, NOT A PLACE. Any thing of the kind `museum` (94-garden-zz-7act-0kinds.js: the building placed through layout data,
-   assets/garden/vale-museum.json; the lake hall; the Little museum you can build) opens THE SAME collection, as every chest opens the
+   A KIND, NOT A PLACE. Any thing of the kind `museum` (94-garden-zz-7act-0kinds.js: the lake hall by the village; the Little museum you can
+   build; a museum building any layout places through its data where it has room) opens THE SAME collection, as every chest opens the
    same storage. One collection per garden, saved as g.mu (one entry per exhibit, so two devices add up):
      mu['f.perch'] = { d: day given, q?: quality, cm?: size, by?: a friend's id (a friend gave it) }   keys f. fish, b. bugs, o. fossil
      pieces, c. curios (a later lane adds a wing with gardenB2WingAdd: shells, stones)
@@ -32,7 +32,7 @@ const GB2_WINGS = [
   Object.freeze({ id: 'c', name: 'The Curio Cabinet', short: 'Curio Cabinet', item: 'cur', what: 'curios', keeper: 'bramble', case: 'frame', keep: true, icon: 'gem', gift: 'decor:dc-snow-globe', giftSay: 'A curio for your own shelf. Somebody left it on my step.', blurb: 'Odd little things people lost, each with a story and a tidy label.' }),
 ];
 /** Another wing (a lane's shells, stones): { id (one letter, unused), name, short, item (the item kind: its ids are what `ids` lists),
- *  keeper, case ('tank' | 'jar' | 'plinth' | 'frame'), keep, icon, ids() -> [id], name(id) -> words, svg(id, px) -> markup }. */
+ *  keeper, case ('tank' | 'jar' | 'plinth' | 'frame'), keep, icon, ids() -> [id], nameOf(id) -> words, svg(id, px) -> markup }. */
 function gardenB2WingAdd(row) {
   if (!row || !/^[a-z]$/.test(String(row.id || '')) || GB2_WINGS.some(w => w.id === row.id || w.item === row.item) || typeof row.ids !== 'function') return false;
   GB2_WINGS.push(Object.freeze(Object.assign({ case: 'frame', icon: 'gem', keeper: 'bramble', what: 'things' }, row)));

@@ -1,8 +1,8 @@
 /* ============================================================
-   BUILD 2: THE VALE MUSEUM, IN THE GAME. The rules are in 94-garden-build2-0museum.js; the building is painted by
-   94-garden-native-painted-zb2museum.js and placed through layout data (assets/garden/vale-museum.json, a row of the kind `museum`).
+   BUILD 2: THE VALE MUSEUM, IN THE GAME. The rules are in 94-garden-build2-0museum.js; a museum building a layout places
+   through its data (a `things` row of the kind `museum`) is painted by 94-garden-native-painted-zb2museum.js.
 
-   Walk up to any museum (the Vale Museum by the west road, the lake hall, the Little museum you can build: all of the kind `museum`) and
+   Walk up to any museum (the lake hall by the village, the Little museum you can build, any museum a layout places: all of the kind `museum`) and
    press E, or click it: the museum opens. Four wings, each with a keeper from the vale (Pip keeps the River Hall's fish, Quince the
    Glasshouse's bugs, Tam the Stone Gallery's fossils, Bramble the Curio Cabinet). Every exhibit is drawn in its own case (a tank you can
    watch it swim in, a glass dome, a plinth, a frame) with a brass label; what is missing shows as an outline. The strip at the foot lists
@@ -31,7 +31,7 @@ function _gb2mSig(g) { const mu = g.mu || {}, hall = (g.prefs && g.prefs.ca && g
 /** Every exhibit you have: g.mu, and the old lake hall's fish and bugs (given before the museum opened). */
 function gardenMuseumRows() {
   const g = _gdG(), sig = _gb2mSig(g);
-  if (_gb2m.rows && _gb2m.sig === sig && _gb2m.g === g) return _gb2m.rows;
+  if (_gb2m.rows && _gb2m.sig === sig && _gb2m.g === g && _gb2m.mo === g.mu) return _gb2m.rows;   // (another device's copy is a new map: read again)
   const out = new Map(), hall = (g.prefs && g.prefs.ca && g.prefs.ca.hall) || {};
   for (const w of ['f', 'b']) for (const id of Object.keys(hall[w] || {})) { const key = w + '.' + id; if (gardenMuseumIds(w).includes(id)) out.set(key, { key, w, id, d: String(hall[w][id] || ''), old: true }); }
   for (const [key, r] of Object.entries(g.mu || {})) {
@@ -39,7 +39,7 @@ function gardenMuseumRows() {
     const w = key.slice(0, 1), id = key.slice(2); if (key.charAt(1) !== '.' || !gardenMuseumIds(w).includes(id)) continue;   // (a wing or a kind a newer app knows: kept, not shown)
     out.set(key, { key, w, id, d: String(r.d || ''), q: Number(r.q) || 0, cm: Number(r.cm) || 0, by: r.by ? String(r.by) : '' });
   }
-  _gb2m.rows = out; _gb2m.sig = sig; _gb2m.g = g;
+  _gb2m.rows = out; _gb2m.sig = sig; _gb2m.g = g; _gb2m.mo = g.mu;
   return out;
 }
 function gardenMuseumHas(key) { return gardenMuseumRows().has(key); }
@@ -47,10 +47,10 @@ function gardenMuseumCount() { return gardenMuseumRows().size; }
 function _gb2mWingN(rows, w) { let n = 0; for (const r of rows.values()) if (r.w === w) n++; return n; }
 /** Fossils and curios on show stay yours (every "found" count keeps working), but they are no longer in your pockets or at home. */
 function gardenB2Kept() {
-  const sig = _gb2mSig(_gdG()); if (_gb2m.kept && _gb2m.keptSig === sig) return _gb2m.kept;
+  const g = _gdG(), sig = _gb2mSig(g); if (_gb2m.kept && _gb2m.keptSig === sig && _gb2m.keptMo === g.mu) return _gb2m.kept;
   const out = {};
   for (const r of gardenMuseumRows().values()) { const W = gardenMuseumWing(r.w); if (W && W.keep) out[W.item + ':' + r.id] = 1; }
-  _gb2m.kept = out; _gb2m.keptSig = sig; return out;
+  _gb2m.kept = out; _gb2m.keptSig = sig; _gb2m.keptMo = g.mu; return out;
 }
 /** For the snapshot: { n, f: [[id, cm]], b, o, c, g: [[wing, id]] given by a friend }. Always there (empty: a museum with nothing yet), so a
  *  friend's page knows this one can be given to. */
@@ -86,7 +86,7 @@ function gardenMuseumName(w, id) {
     const d = _gb2mDef(w, id); if (d) return d.name;
     if (w === 'o' && typeof GP_FOSSILS !== 'undefined') for (const F of GP_FOSSILS) for (const P of F.parts) if (F.id + '-' + P[0] === id) return P[1];
     if (w === 'c' && typeof GARDEN_LAND_CURIOS !== 'undefined') { const c = GARDEN_LAND_CURIOS.find(x => x.id === id); if (c) return c.name; }
-    const W = gardenMuseumWing(w); if (W && typeof W.name === 'function') return W.name(id);
+    const W = gardenMuseumWing(w); if (W && typeof W.nameOf === 'function') return W.nameOf(id);
   } catch (e) { /* below */ }
   return 'Something old';
 }
@@ -234,11 +234,11 @@ function _gb2mGuide(body, W, here, rows) {
   let lines = [];
   const S = _gb2m.say;
   if (S && S.who === who) lines = S.lines;
-  else if (_gb2m.pick && rows.has(_gb2m.pick) && _gb2m.pick.charAt(0) === W.id) { const r = rows.get(_gb2m.pick), fact = _gb2mFact(r.w, r.id); lines = [gardenMuseumName(r.w, r.id) + '.', fact || 'One of the vale’s own.']; }
+  else if (_gb2m.pick && rows.has(_gb2m.pick) && _gb2m.pick.charAt(0) === W.id) { const r = rows.get(_gb2m.pick), fact = _gb2mFact(r.w, r.id), who = r.by === 'you' || (!r.by && !here.visit) ? 'Given by you' : r.by === 'friend' ? 'Given by a friend' : r.by ? 'Given by ' + (typeof _gscFirst === 'function' ? _gscFirst(r.by) : 'a friend') : ''; lines = [gardenMuseumName(r.w, r.id) + (r.w === 'f' && r.cm ? `, ${Math.round(r.cm)} cm` : '') + '.', fact || 'One of the vale’s own.'].concat(who ? [who + (r.d && typeof _gjDay === 'function' ? ', ' + _gjDay(r.d) : '') + '.'] : []); }
   else if (_gb2m.pick && _gb2m.pick.charAt(0) === W.id) lines = [here.visit ? 'Not in this museum yet.' : 'Not in the museum yet. Bring me one and I’ll find it a place.'];
   else if (here.visit) lines = [`This is ${here.first}’s museum. Have a look round.`, here.can ? `Give ${here.first}’s museum something it hasn’t got, and the label will say your name.` : here.live ? 'Their museum is older than yours: it can be looked at, not given to.' : 'Come back while they are in their garden to give them something.'];
   else lines = [(GB2_KEEPER_SAYS[who] || {}).hi || 'Welcome to the museum.'];
-  if (_gb2m.from === 'lake-hall' && !S && !_gb2m.pick && !here.visit) lines = lines.concat(['The lake hall is part of the museum now. Everything you gave it is on show in here.']);
+  if (/hall/.test(_gb2m.from) && !S && !_gb2m.pick && !here.visit && !Object.keys(_gdG().mu || {}).length) lines = lines.concat(['The lake hall is the museum now: four wings, and everything you gave the hall is on show in here.']);   // (until your first gift to it)
   lines.forEach((t, i) => say.appendChild(_gb2mEl('p', i === 0 ? 'gmu-say-a' : 'gmu-say-b', t)));
   if (S && S.fresh) { S.fresh = false; say.classList.add('is-new'); }
 }
@@ -262,12 +262,13 @@ function _gb2mHall(body, W, here, rows) {
       const day = r.d && typeof _gjDay === 'function' ? _gjDay(r.d) : '';
       b.innerHTML = `<span class="gmu-case">${_gb2mCase(W, id, r)}</span><span class="gmu-plate"><b></b><small></small></span>`;
       b.querySelector('b').textContent = name;
-      b.querySelector('small').textContent = [size, by + (day && !here.visit ? ' · ' + day : '')].filter(Boolean).join(' · ');
+      const short = r.by === 'you' ? 'yours' : r.by === 'friend' ? 'from a friend' : r.by ? 'from ' + (typeof _gscFirst === 'function' ? _gscFirst(r.by) : 'a friend') : here.visit ? '' : day;   // (the plate's second line, short: the whole of it is in the keeper's words when you choose it)
+      b.querySelector('small').textContent = [size, short].filter(Boolean).join(' · ');
       b.setAttribute('aria-label', `${name}${size ? ', ' + size : ''}. ${by}${day ? ', ' + day : ''}`);
     } else {
       b.innerHTML = `<span class="gmu-case gmu-outline">${known && W.id !== 'o' && W.id !== 'c' ? `<span class="gmu-sil">${gardenMuseumArt(W.id, id, 54, { sil: true })}</span>` : '<span class="gmu-q">?</span>'}</span><span class="gmu-plate"><b></b><small></small></span>`;
       b.querySelector('b').textContent = known ? name : (def && def.legend ? 'A legend' : 'No. ' + no);
-      b.querySelector('small').textContent = known ? (here.visit ? 'Not here yet' : 'You have found one: bring it in') : 'Not found yet';
+      b.querySelector('small').textContent = known ? (here.visit ? 'Not here yet' : 'Bring one in') : '';
       b.setAttribute('aria-label', known ? `${name}: not in the museum yet` : 'An empty place: not found yet');
     }
     b.onclick = () => { _gb2m.pick = key; _gb2m.say = null; try { gardenSfx('tab'); } catch (e) { /* quiet */ } _gb2mRepaint(); };
@@ -356,7 +357,7 @@ function gardenB2PropAt(id) {
   if (!id || typeof gardenAffordThings !== 'function') return null;
   const t = gardenAffordThings().find(q => q.id === id && q.src === 'thing'); if (!t || !_gb2mIsMuseum(t)) return null;
   const w = t.w || 1, h = t.h || 1;
-  return { id: t.id, b2museum: true, act: 'b2museum', name: 'The Vale Museum', x: t.x - w / 2, y: t.y - h, w, h, door: { x: Math.floor(t.x), y: Math.floor(t.y) } };
+  return { id: t.id, b2museum: true, act: 'b2museum', name: t.name || 'The Vale Museum', x: t.x - w / 2, y: t.y - h, w, h, door: { x: t.x - 0.5, y: t.y - 0.1 } };   // (the walker stands at the door's cell + half: just in front of the steps)
 }
 /** The E prompt at any museum's door: "Go into the museum". */
 function gardenMuseumActRows(px, py, rows) {
@@ -419,9 +420,10 @@ function gardenB2VisitDone(b, P) {
 /** On the host's page: a friend's gift to this museum. '' when done (written with whose it was), else why not. */
 function gardenB2HostIntent(ev, put) {
   if (!ev || ev.t !== 'donate') return 'kind';
-  const W = GB2_WINGS.find(x => x.item === ev.k); if (!W) return 'gift';
-  const id = String(ev.item || ''), key = W.id + '.' + id; if (!gardenMuseumIds(W.id).includes(id)) return 'gift';
-  if (gardenMuseumHas(key)) return 'have';
+  // (said on the visitor's screen as it is, so in plain words: their page puts what it held back in their pockets)
+  const W = GB2_WINGS.find(x => x.item === ev.k); if (!W) return 'That cannot go in a museum';
+  const id = String(ev.item || ''), key = W.id + '.' + id; if (!gardenMuseumIds(W.id).includes(id)) return 'That cannot go in this museum yet';
+  if (gardenMuseumHas(key)) return 'This museum has one already. Yours is back in your pockets';
   const g = _gdG(), today = _gdToday(), mark = _gdMark([['mu', key]]), m = /^(\d{1,3})-([0-3])$/.exec(String(ev.u || ''));
   const rec = { d: today, by: String(ev.f || '') };
   if (W.id === 'f' && m) { const cm = Number(m[1]); if (cm > 0) rec.cm = Math.min(400, cm); rec.q = Number(m[2]); }

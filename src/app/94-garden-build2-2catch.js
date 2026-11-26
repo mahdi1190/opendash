@@ -1,7 +1,7 @@
 /* ============================================================
    BUILD 2: EVERY CATCH OR FIND, FOUR CHOICES (the owner, 21 Nov 2026: "place fish in museums or sell them or let them free or display them").
    From a pocket (94-garden-zz-8build2-store.js), from the catch card the moment you land it, and from the Bag & tackle list:
-     - Give to the museum: at any museum (a thing of the kind `museum`: the Vale Museum, the lake hall, the Little museum), or in its
+     - Give to the museum: at any museum (a thing of the kind `museum`: the lake hall, the Little museum, a museum a layout places), or in its
        pop-up. Anywhere else the pocket says it is new for the museum, and where to take it.
      - Sell: the market, as ever (94-garden-build2-1pockets.js 'sell').
      - Let it go: a fish arcs from your hands into the nearest water (read from the cells round you, any water on any layout, not a named
@@ -104,12 +104,12 @@ function gardenB2ReleasePicture(kind, def) {
   const a = _gwActors(); if (!a) return false;
   const W = GARDEN_WORLD, S = typeof GARDEN_ACTOR_SCALE === 'number' ? GARDEN_ACTOR_SCALE : 0.8, [fx, fy] = _gwFeet(), hy = fy - 46 * S;
   if (!gardenMotionOn()) return true;
-  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'gb2-rel'); g.setAttribute('pointer-events', 'none');
+  const g = _gwEl('g', { class: 'gb2-rel', 'pointer-events': 'none', transform: `translate(${fx.toFixed(1)} ${hy.toFixed(1)})` });   // (the world's own element: the painted world draws it and runs its animation)
   let art = '';
   try { art = kind === 'fish' ? gardenFishArt(def.id, { uid: 'rel' + def.id }) : gardenBugArt(def.id, { uid: 'relb' + def.id }); } catch (e) { art = ''; }
   if (!art) return false;
-  const inner = document.createElementNS('http://www.w3.org/2000/svg', 'g'); inner.innerHTML = `<g transform="scale(${(kind === 'fish' ? 0.5 : 0.62) * S})">${art}</g>`;
-  g.appendChild(inner); a.appendChild(g); _gb2Rel.n++;
+  g.innerHTML = `<g transform="scale(${(kind === 'fish' ? 0.5 : 0.62) * S})">${art}</g>`;
+  a.appendChild(g); _gb2Rel.n++;
   const done = () => { g.remove(); _gb2Rel.n = Math.max(0, _gb2Rel.n - 1); };
   if (kind === 'fish') {
     const wet = _gb2WaterNear(_gw.px, _gw.py, 3.4);
@@ -141,16 +141,16 @@ function gardenB2ReleasePicture(kind, def) {
 }
 function _gb2Splash(a, x, y, S) {
   try {
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('pointer-events', 'none'); g.setAttribute('class', 'gb2-splash');
+    const g = _gwEl('g', { class: 'gb2-splash', 'pointer-events': 'none' });
     g.innerHTML = `<ellipse cx="0" cy="0" rx="${10 * S}" ry="${3.4 * S}" fill="none" stroke="#eafaf6" stroke-width="1.6"/><ellipse cx="0" cy="0" rx="${4 * S}" ry="${1.4 * S}" fill="#ffffff" opacity=".7"/>` + [-1, 0, 1].map(i => `<path d="M${i * 3 * S} ${-2 * S}q${i * 4 * S} ${-9 * S} ${i * 7 * S} ${-3 * S}" stroke="#ffffff" stroke-width="1.4" fill="none" stroke-linecap="round"/>`).join('');
-    g.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`); a.appendChild(g);
+    a.appendChild(g);
     const an = g.animate([{ opacity: 1, transform: `translate(${x}px, ${y}px) scale(.6)` }, { opacity: 0, transform: `translate(${x}px, ${y}px) scale(1.8)` }], { duration: 900, easing: 'ease-out' });
     an.onfinish = an.oncancel = () => g.remove();
   } catch (e) { /* quiet */ }
 }
 function _gb2Sparkle(a, x, y) {
   try {
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('pointer-events', 'none');
+    const g = _gwEl('g', { class: 'gb2-sparkle', 'pointer-events': 'none' });
     g.innerHTML = [0, 1, 2, 3, 4, 5].map(i => { const an = i / 6 * Math.PI * 2; return `<path d="M${(Math.cos(an) * 6).toFixed(1)} ${(Math.sin(an) * 6).toFixed(1)}l${(Math.cos(an) * 5).toFixed(1)} ${(Math.sin(an) * 5).toFixed(1)}" stroke="#fff6c8" stroke-width="1.6" stroke-linecap="round"/>`; }).join('');
     a.appendChild(g);
     const an = g.animate([{ opacity: 1, transform: `translate(${x}px, ${y}px) scale(.5)` }, { opacity: 0, transform: `translate(${x}px, ${y}px) scale(1.6)` }], { duration: 600, easing: 'ease-out' });

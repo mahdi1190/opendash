@@ -1,5 +1,5 @@
 /* The Vale Museum, painted (build2): any placed thing of the kind `museum` whose painter is 'vale-museum' (94-garden-zz-7act-0kinds.js)
- * is drawn by this, where its row of layout data puts it (assets/garden/vale-museum.json). In the opening scenes' house style: honey
+ * is drawn by this, where its row of layout data puts it (a `things` row, wherever a layout has a lot for it). In the opening scenes' house style: honey
  * limestone in ashlar courses lit from the upper left, a portico of four columns under a pediment with the museum's name cut in its
  * frieze, a lead-domed cupola with a fish for a weathervane, tall arched windows in the two wings, a flight of three steps, lamps,
  * stone urns, ivy up the west corner, moss and grass at its foot, a flagged forecourt worn in front of the door.
@@ -24,6 +24,13 @@
     } catch (e) { return '||0'; }
   }
   const parse = (more) => { const p = String(more || '').split('|'); return { wings: p[1] || '', tier: Number(p[2]) || 0 }; };
+  /* how wide it is drawn: its footprint (cells) gives the wings' width; the portico, the door and every height stay sized against H.
+     half: the wall's half width in px; wins: each wing's window middles; bx: a wing's banner; lamp: the lamps on the forecourt */
+  function geo(prop) {
+    const half = Math.max(84, Math.min(118, Math.round((Number(prop && prop.w) || 5) * 24 - 4))), span = half - 42, two = span >= 66;
+    const wins = two ? [42 + span * .3, 42 + span * .78] : [42 + span * .38];   // (one window: in toward the portico, the banner outside it)
+    return { half, wins, bx: two ? (wins[0] + wins[1]) / 2 : half - 7, lamp: half >= 100 ? 76 : half - 10 };
+  }
   /* courses of dressed stone across a rectangle: bed joints, staggered perpends, a stone here and there a shade off */
   function ashlar(B, r, x, y, w, h, pal, course) {
     B.f(B.rect(x, y, w, h), pal[0]);
@@ -97,18 +104,18 @@
     B.f('M-12 -7q6 -5 14 -1q4 2 6 0l-1 3l1 3q-2 -2 -6 0q-8 4 -14 -1z', c[0]).f('M-12 -7q6 -5 14 -1l-2 1q-6 -2 -12 0z', c[2], .55).f(B.circ(-8, -7.4, .9), c[1]);
   }
   GP.paintTable['sight:vale-museum'] = {
-    box: [-156, -228, 156, 36],
-    sig: () => sig(),
+    box: [-160, -228, 160, 36],
+    sig: (prop) => sig() + '|' + geo(prop).half,
     draw(B, o) {
-      const r = rng(hash('vale-museum')), s = o.season || 'summer', night = !!o.night, winter = s === 'winter', st = parse(o.more), L = leafOf(s);
+      const r = rng(hash('vale-museum')), s = o.season || 'summer', night = !!o.night, winter = s === 'winter', st = parse(o.more), L = leafOf(s), G = geo(o.prop), HW = G.half;
       // the ground: the soft contact shadow of the whole building, a flagged forecourt worn in front of the door
-      B.shadow(0, 2, 138, 14, .24);
+      B.shadow(0, 2, HW + 22, 14, .24);
       B.f(D().blob(r, 0, 16, 78, 16, 11, .22), '#8a7a5e', .28);
       for (let row = 0; row < 3; row++) for (let i = -4; i <= 4; i++) { const w0 = 15 + r() * 5, x = i * 16.5 + (row % 2 ? 8 : 0) + (r() - .5) * 2, y = 4 + row * 8.6 + (r() - .5) * 1.2, half = (70 - row * 8) ; if (Math.abs(x) > half) continue; B.f(B.rr(x - w0 / 2, y, w0, 7.4, 2.2), ['#c8bea6', '#b8ad94', '#d6cdb6'][(i + row + 9) % 3]).f(B.rr(x - w0 / 2, y, w0, 1.6, 1), '#e6dfcc', .65); }
       for (let i = 0; i < 16; i++) { const x = (r() - .5) * 130, y = 4 + r() * 22; if (Math.abs(x) > 62 - (y - 4) * .4) B.f(D().blob(r, x, y, 4 + r() * 4, 1.6, 6, .5), MOSS[r() < .5 ? 0 : 1], .55); }   // (grass and moss in the joints at the forecourt's edge)
       // the wings' roofs, seen going back from their cornice: slate in courses, hipped at the ends, lead along the ridge
       for (const sx of [-1, 1]) {
-        const xa = sx < 0 ? -118 : 40, xb = sx < 0 ? -40 : 118, ex = sx < 0 ? xa : xb;
+        const xa = sx < 0 ? -HW - 2 : 40, xb = sx < 0 ? -40 : HW + 2, ex = sx < 0 ? xa : xb;
         B.f(B.poly([[xa - 4, -96], [xa + (sx < 0 ? 14 : 0), -120], [xb - (sx > 0 ? 14 : 0), -120], [xb + 4, -96]]), ROOF[0]);
         for (let y = -99; y > -119; y -= 3.6) { const k = (-96 - y) / 24, a = xa - 4 + (sx < 0 ? 18 : 4) * k, b = xb + 4 - (sx > 0 ? 18 : 4) * k; B.s(`M${a.toFixed(1)} ${y.toFixed(1)}H${b.toFixed(1)}`, ROOF[1], .7, .55); }
         B.f(B.poly([[xa - 4, -96], [xa + (sx < 0 ? 14 : 0), -120], [xa + (sx < 0 ? 26 : 12), -120], [xa + 10, -96]]), ROOF[2], .35);   // the light on the west slopes
@@ -132,16 +139,16 @@
         if (winter) B.f('M-12 -188Q-12 -200 0 -203Q-6 -196 -12 -188Z', '#f4f8fa', .85);
       }
       // the wings: honey limestone in courses, set back a little from the portico; their cornice, frieze and base course
-      for (const [xa, xb] of [[-116, -42], [42, 116]]) {
+      for (const [xa, xb] of [[-HW, -42], [42, HW]]) {
         ashlar(B, r, xa, -94, xb - xa, 86, LIME, 9);
         B.f(B.rect(xa - 4, -100, xb - xa + 8, 6), LIME[2]).f(B.rect(xa - 4, -94, xb - xa + 8, 2.4), 'rgba(50,34,16,.25)').f(B.rect(xa - 2, -103, xb - xa + 4, 3), LIME[0]);   // the cornice and the shadow it casts
         B.f(B.rect(xa - 3, -10, xb - xa + 6, 10), DEEP[0]).f(B.rect(xa - 3, -10, xb - xa + 6, 2), DEEP[2], .85);   // the plinth course
         for (let x = xa + 6; x < xb - 4; x += 13) B.s(`M${x} -8v6`, DEEP[1], .6, .5);
       }
       // the windows: the River Hall in the west wing, the Glasshouse in the east (lit inside once they have something on show)
-      for (const x of [-98, -62]) archWin(B, r, x, -80, 16, 50, o, st.wings.includes('f') ? 'f' : '');
-      for (const x of [62, 98]) archWin(B, r, x, -80, 16, 50, o, st.wings.includes('b') ? 'b' : '');
-      if (st.tier >= 1) for (const x of [-98, -62, 62, 98]) {   // window boxes, at twenty-five on show
+      for (const x of G.wins) archWin(B, r, -x, -80, 16, 50, o, st.wings.includes('f') ? 'f' : '');
+      for (const x of G.wins) archWin(B, r, x, -80, 16, 50, o, st.wings.includes('b') ? 'b' : '');
+      if (st.tier >= 1) for (const x of G.wins.flatMap(v => [-v, v])) {   // window boxes, at twenty-five on show
         B.f(B.rr(x - 10, -27, 20, 5, 1), OAK[1]).f(B.rect(x - 10, -27, 20, 1.4), OAK[2], .8);
         if (!winter) for (let i = 0; i < 6; i++) { const px = x - 8 + i * 3.2; B.f(B.circ(px, -29 - (i % 2), 1.7), L[1]).f(B.circ(px, -30.4 - (i % 2), 1.1), ['#d8405a', '#f4f2ec', '#e8b040'][i % 3]); }
       }
@@ -175,24 +182,25 @@
         for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; B.f(B.ell(Math.cos(a) * 7.2, -124 + Math.sin(a) * 7.2, 1.6, .9), gc[0], .9); }
       }
       B.s('M-56 -112L0 -144L56 -112', LIME[2], 2.6).s('M-55 -111.4L0 -143L55 -111.4', '#fff4dc', .8, .6);
-      if (winter) B.f('M-56 -112L0 -144L56 -112L50 -112L0 -141L-50 -112Z', '#f4f8fa', .9).f(B.rect(-118, -104, 76, 2.6), '#f4f8fa', .85).f(B.rect(42, -104, 76, 2.6), '#f4f8fa', .85);
+      if (winter) B.f('M-56 -112L0 -144L56 -112L50 -112L0 -141L-50 -112Z', '#f4f8fa', .9).f(B.rect(-HW - 2, -104, HW - 40, 2.6), '#f4f8fa', .85).f(B.rect(42, -104, HW - 40, 2.6), '#f4f8fa', .85);
       // the steps up to the door, each tread lit along its front edge
       for (let i = 0; i < 3; i++) { const w = 104 - i * 7, y = -4 - i * 4; B.f(B.rect(-w / 2, y, w, 4), i % 2 ? LIME[1] : DEEP[0]).f(B.rect(-w / 2, y, w, 1.2), LIME[2], .85); }
       B.f(B.rect(-52, -1, 104, 1.4), 'rgba(40,28,14,.25)');
       // ivy up the west corner, moss on the plinth, grass grown in at the foot
-      if (!winter) { for (let i = 0; i < 26; i++) { const t = i / 26, x = -116 + Math.sin(t * 9) * 4 + r() * 8, y = -6 - t * 88 * (.6 + r() * .5); B.f(D().blob(r, x, y, 3.4 + r() * 2, 2.4 + r(), 6, .45), r() < .5 ? L[0] : L[1], .92); } B.s('M-114 -4q4 -30 -1 -56q-4 -20 2 -34', '#5a4630', .9, .6); }
-      for (const [x, w] of [[-100, 18], [-70, 10], [84, 14], [108, 10]]) B.f(D().blob(r, x, -3, w, 2.4, 7, .5), MOSS[0], .6);
-      B.tufts(r, -124, 0, 14, 9, s).tufts(r, 124, 0, 14, 9, s).tufts(r, -80, 2, 50, 10, s).tufts(r, 80, 2, 50, 10, s);
-      if (s === 'spring' || s === 'summer') B.flowers(r, -96, 3, 36, 6, ['#f4f2ec', '#f2c84a', '#c8a0e0']).flowers(r, 98, 3, 30, 5, ['#f4f2ec', '#e86a8a']);
+      if (!winter) { for (let i = 0; i < 26; i++) { const t = i / 26, x = -HW + Math.sin(t * 9) * 4 + r() * 8, y = -6 - t * 88 * (.6 + r() * .5); B.f(D().blob(r, x, y, 3.4 + r() * 2, 2.4 + r(), 6, .45), r() < .5 ? L[0] : L[1], .92); } B.s(`M${2 - HW} -4q4 -30 -1 -56q-4 -20 2 -34`, '#5a4630', .9, .6); }
+      for (const [x, w] of [[16 - HW, 18], [-70 * HW / 116, 10], [84 * HW / 116, 14], [HW - 8, 10]]) B.f(D().blob(r, x, -3, w, 2.4, 7, .5), MOSS[0], .6);
+      B.tufts(r, -HW - 8, 0, 14, 9, s).tufts(r, HW + 8, 0, 14, 9, s).tufts(r, -(HW + 44) / 2, 2, HW - 62, 10, s).tufts(r, (HW + 44) / 2, 2, HW - 62, 10, s);
+      if (s === 'spring' || s === 'summer') B.flowers(r, 20 - HW, 3, 36, 6, ['#f4f2ec', '#f2c84a', '#c8a0e0']).flowers(r, HW - 18, 3, 30, 5, ['#f4f2ec', '#e86a8a']);
       // urns at the foot of the steps, lamps on the forecourt
       urn(B, r, -58, 6, s); urn(B, r, 58, 6, s);
-      lamp(B, -76, 16, night); lamp(B, 76, 16, night);
-      if (night) for (const x of [-98, -62, 62, 98]) B.f(B.ell(x, -2, 12, 4), 'rgba(255,214,140,.16)');   // (window light on the ground)
+      lamp(B, -G.lamp, 16, night); lamp(B, G.lamp, 16, night);
+      if (night) for (const x of G.wins.flatMap(v => [-v, v])) B.f(B.ell(x, -2, 12, 4), 'rgba(255,214,140,.16)');   // (window light on the ground)
     },
     // what moves: each opened wing's banner sways from its arm, the fish on the cupola turns in the wind, the lamps glow at night
     extra(scene, h, fx, foot, o) {
-      const st = parse(o.more), sc = o.scale || 1;
-      for (const [id, bx] of WINGS) {
+      const st = parse(o.more), sc = o.scale || 1, G = geo(o.prop);
+      for (const [id, b0] of WINGS) {
+        const bx = Math.abs(b0) > 40 ? Math.sign(b0) * G.bx : b0;
         if (!st.wings.includes(id)) continue;
         const key = K.bake(scene, 'vale-museum-banner|' + id, [-9, -2, 9, 32], B => banner(B, id)); if (!key) continue;
         const y = bx < -40 || bx > 40 ? -90 : -99, im = h.add(K.image(scene, key, fx + bx * sc, foot + y * sc)); if (!im) continue;
@@ -201,7 +209,7 @@
       }
       const vk = K.bake(scene, 'vale-museum-vane|' + (st.tier >= 3 ? 'g' : 'i'), [-14, -12, 10, 6], B => vane(B, st.tier >= 3));
       if (vk) { const vim = h.add(K.image(scene, vk, fx, foot - 208 * sc)); if (vim) { const s0 = vim.scaleX * sc; vim.setScale(s0, vim.scaleY * sc); h.move(vim, (node, t, motion) => { if (motion) node.setScale(s0 * (Math.cos(t * .21) * .85 + Math.sign(Math.cos(t * .21)) * .15), node.scaleY); }); } }
-      for (const x of [-76, 76]) { h.lights.push({ x: fx + x * sc, y: foot - 62 * sc, radius: 110, pool: true }); if (o.night && typeof GP.glowPool === 'function') GP.glowPool(scene, h, fx + x * sc, foot + 16 * sc, 90, foot - 64 * sc); }
+      for (const x of [-G.lamp, G.lamp]) { h.lights.push({ x: fx + x * sc, y: foot - 62 * sc, radius: 110, pool: true }); if (o.night && typeof GP.glowPool === 'function') GP.glowPool(scene, h, fx + x * sc, foot + 16 * sc, 90, foot - 64 * sc); }
     },
   };
 })();
