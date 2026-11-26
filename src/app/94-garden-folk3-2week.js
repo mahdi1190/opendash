@@ -41,7 +41,7 @@ const VALE_YEAR_ROWS = Object.freeze([
     players: Object.freeze(['bramble', 'quince', 'angler', 'perpetua', 'pip']),
     blurb: 'Wednesday evenings: a card table under the lamp by the green. Anyone may sit in.', line: 'Card evening tonight, under the lamp.' }),
   Object.freeze({ id: 'frost-fair', kind: 'fest', rule: Object.freeze({ k: 'fixed', mo: 12, d: 19, len: 3 }), name: 'The Frost Fair', blocks: Object.freeze(['afternoon', 'dusk', 'evening']), hours: Object.freeze([13, 21]), kit: 'fair',
-    keepers: Object.freeze([['quince', 'quince-cakes'], ['perpetua', 'perpetua-cards']]), warm: 1, open: 'frost-open', thing: 'vy-star-lantern', season: 'winter',
+    keepers: Object.freeze([['quince', 'quince-cakes'], ['perpetua', 'perpetua-cards']]), warm: 1, open: 'frost-open', thing: 'vy-star-lantern', season: 'winter', apart: Object.freeze(['hollin']),
     blurb: 'Three days before midwinter: stalls, a brazier, bunting and lanterns on the green, and everyone at it.', line: 'The Frost Fair is on, on the green.',
     notice: 'The Frost Fair is coming: stalls and a brazier on the green, and lanterns at dusk.' }),
 ]);
@@ -124,7 +124,7 @@ function valeWeekBlock(row, blk, ctx) {
     if (K.keep.has(row.id)) return [['vy:keep:' + row.id, 10]];
     const out = [];
     if (K.browse) out.push(['vy:browse', R.kit === 'fair' ? 3 : 5]);
-    if (R.kit === 'fair') { if (K.warm) out.push(['vy:warm', 5]); if (K.watch) out.push(['vy:watch', 4]); }
+    if (R.kit === 'fair') { if ((R.apart || []).includes(row.id)) return K.watch ? [['vy:watch', 5]] : null; if (K.warm) out.push(['vy:warm', 5]); if (K.watch) out.push(['vy:watch', 4]); }   // (one who stands apart keeps to the edge: Hollin is never at the brazier beside Quince or Thistle)
     if (!out.length) return null;
     // (market day: the rest of the day is still theirs, a browse among their usual things; at the fair everyone is at the fair)
     return R.kit === 'fair' ? out : out.concat(own.filter(c => c[0] !== 'sleep'));

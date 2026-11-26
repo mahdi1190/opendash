@@ -334,7 +334,7 @@ function gardenGameTalkActs(row, F, S) {
 /* ---------- the folk ask you to play ---------- */
 const VG_ASK = Object.freeze({ gap: 9 * 60000, near: 16, still: 4000 });
 function _vgAskTick(m) {
-  if (m.visit || !_vgOn() || gardenGameBusy() || _vgm.inv || (typeof _wd !== 'undefined' && (_wd.talk || _wd.t < 40))) return;
+  if (m.visit || !_vgOn() || gardenGameBusy() || _vgm.inv || (typeof gardenSceneBusy === 'function' && gardenSceneBusy()) || (typeof _wd !== 'undefined' && (_wd.talk || _wd.t < 40))) return;   // (never during a moment)
   if (typeof wdWalkingLately === 'function' && wdWalkingLately()) { _vgm.stillT = performance.now(); return; }
   if (performance.now() - (_vgm.stillT || 0) < VG_ASK.still) return;
   try { if ((typeof _wtHeavyToday === 'function' && _wtHeavyToday()) || (typeof _gwFishBusy === 'function' && _gwFishBusy()) || (typeof gartActBusy === 'function' && gartActBusy()) || (typeof gardenWorldCovered === 'function' && gardenWorldCovered())) return; } catch (e) { return; }

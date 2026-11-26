@@ -120,6 +120,10 @@ function gardenChronicleTab(left, right, m) {
   // the right page: the era in a line, what it holds, what filling it brings
   const any = pieces.some(r => W['ch.' + r.id]), whole = pieces.every(r => W['ch.' + r.id]);
   const head = right.appendChild(_gdpEl('div', 'gj-etitle')); head.innerHTML = `<h3>${esc(era.n)}. ${esc(any ? era.name : 'Not yet known')}</h3><small>${esc(any ? era.line : 'Something happened here, long ago. Nobody has told you yet.')}</small>`;
+  // the era's picture, large: the latest piece you found in it (an empty frame until you have one)
+  const latest = pieces.filter(r => W['ch.' + r.id]).sort((a, b) => String(W['ch.' + b.id]).localeCompare(String(W['ch.' + a.id])))[0];
+  const big = right.appendChild(_gdpEl('div', 'vch-big' + (latest ? '' : ' is-empty'))); big.innerHTML = latest ? _vchArt(latest, true) : _vchArt(pieces[0] || VALE_HISTORY[0], false);
+  if (latest) big.appendChild(_gdpEl('p', 'vch-line gj-hand', !deep && latest.soft ? latest.soft : latest.line));
   const note = right.appendChild(_gdpEl('div', 'vch-note wd-box'));
   if (era.reward) { const def = typeof gardenDecor === 'function' ? gardenDecor(era.reward) : null; note.appendChild(_gdpEl('p', 'gj-hand', whole ? `You have the whole of it. ${def ? def.name : 'A keepsake'} is yours, for the garden.` : `When this part of the story is whole, there is something for your garden: ${def ? def.name.toLowerCase() : 'a keepsake'}.`)); }
   note.appendChild(_gdpEl('p', 'muted', 'Pieces come from what you do: listening to people, finding things, being in the right place at the right hour, and what you get up to yourself.'));

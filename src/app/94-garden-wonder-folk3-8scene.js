@@ -51,9 +51,12 @@ function _vscRole(role, near, r) {
 function _vscWet(x, y) { try { const t = typeof gardenTerrainAt === 'function' ? gardenTerrainAt(x, y) : ''; return t === 'water' || t === 'deep'; } catch (e) { return false; } }
 /** Room for a standing figure here (feet free, clear of drawn things), or the nearest such place within a cell; null when there is none. */
 function _vscStand(x, y) {
-  const ok = (a, b) => (typeof _vfrBodyOk !== 'function' || _vfrBodyOk(a, b, '', true)) && (typeof _gwFree !== 'function' || _gwFree(a, b));
-  if (ok(x, y)) return { x, y };
-  for (const [dx, dy] of [[0.4, 0], [-0.4, 0], [0, 0.35], [0, -0.35], [0.7, 0.2], [-0.7, 0.2], [0.5, 0.5], [-0.5, 0.5], [1, 0], [-1, 0]]) if (ok(x + dx, y + dy)) return { x: x + dx, y: y + dy };
+  // (clear of everything drawn first: never just behind a pillar or a sign; then, only if nothing is, just clear of standing on it)
+  for (const relaxed of [false, true]) {
+    const ok = (a, b) => (typeof _vfrBodyOk !== 'function' || _vfrBodyOk(a, b, '', relaxed)) && (typeof _gwFree !== 'function' || _gwFree(a, b));
+    if (ok(x, y)) return { x, y };
+    for (const [dx, dy] of [[0.4, 0], [-0.4, 0], [0, 0.35], [0, -0.35], [0.7, 0.2], [-0.7, 0.2], [0.5, 0.5], [-0.5, 0.5], [1, 0], [-1, 0]]) if (ok(x + dx, y + dy)) return { x: x + dx, y: y + dy };
+  }
   return null;
 }
 /** Resolve a moment against today's world: its stage, marks, cast. null: it cannot play here (the beat is told as lines). */
@@ -65,6 +68,7 @@ function _vscResolve(sc, o) {
   if (sc.stage.at === 'teller') { const V = _vscV(tellerId); if (!V || V.x == null) { R.why = 'teller'; return null; } stage = { x: V.x, y: V.y, w: 0.8, h: 1.6 }; }
   else if (sc.stage.at === 'plaza') { const mid = (o.stage) || (typeof gardenKitMark === 'function' ? gardenKitMark('middle') : null); if (!mid) { R.why = 'plaza'; return null; } stage = { x: mid.x, y: mid.y, w: 4, h: 2.4 }; }
   else if (sc.stage.role) { stage = _vscRole(sc.stage.role, you, sc.stage.r); if (!stage) { R.why = 'no ' + sc.stage.role + ' near'; return null; } }
+  if (Math.hypot(stage.x - you.x, stage.y - you.y) > 26) { R.why = 'too far off'; return null; }   // (a moment is played where you can see it: a replay of one far off is remembered as words)
   R.stage = stage; R.names.set('stage', { x: stage.x, y: stage.y, w: stage.w, h: stage.h });
   R.names.set('you', { x: you.x, y: you.y, fig: 1 });
   // the teller (or the opener) and the crowd
@@ -73,7 +77,7 @@ function _vscResolve(sc, o) {
   if (sc.opener) { const pick = sc.opener.find(id => _vscOut(id) && _vscFree(id) && Math.hypot(_vscV(id).x - stage.x, _vscV(id).y - stage.y) < 30); if (!pick) { R.why = 'no opener'; return null; } actors.push(['opener', pick]); }
   for (const [role, id] of actors) { R.actors.set(role, id); const V = _vscV(id); R.names.set(role, { x: V.x, y: V.y, fig: 1, id }); }
   // the look (the angler pointing down the water to the mill)
-  if (sc.look) { const V = _vscV(tellerId); const L = V ? _vscRole(sc.look.role, { x: V.x, y: V.y }, sc.look.r) : null; if (L) { R.names.set('look', L); if (Math.hypot(L.x - V.x, L.y - V.y) < 19) R.names.set('lookNear', L); } }
+  if (sc.look) { const V = _vscV(tellerId); const L = V ? _vscRole(sc.look.role, { x: V.x, y: V.y }, sc.look.r) : null; if (L) { R.names.set('look', L); if (Math.hypot(L.x - V.x, L.y - V.y) < 12) R.names.set('lookNear', L); } }
   // marks, relative to the stage's drawn footprint
   const wetSide = (() => { for (const s of [-1, 1]) for (const dy of [-0.5, -1.5, 0.3]) if (_vscWet(stage.x + s * (stage.w / 2 + 1.1), stage.y + dy)) return s; return 0; })();
   if (wetSide) R.names.set('wet', { x: stage.x + wetSide * (stage.w / 2 + 2), y: stage.y - 0.8, side: wetSide });
@@ -133,7 +137,7 @@ function _vscShot(R, names) {
   if (!Number.isFinite(x0)) return null;
   const base = R.baseH, ar = R.ar || 1.6, padX = 0.16, padTop = 0.1, padBot = 0.4;   // (the bottom two fifths hold the talk card and the bar)
   let h = Math.max(base * 0.82, ((y1 - y0) * W.cellH) / (1 - padTop - padBot), ((x1 - x0) * W.cellW) / (ar * (1 - padX * 2)));
-  h = Math.min(h, base * 1.75);
+  h = Math.min(Math.max(h, base), base * 1.45);   // (about the zoom you had: never closer, a little wider at most, so the painted ground is ready where the shot goes)
   const w = h * ar, cx = (x0 + x1) / 2 * W.cellW, cyTop = W.sky + y0 * W.cellH, cyBot = W.sky + y1 * W.cellH;
   const y = (cyTop + cyBot) / 2 - h * (0.5 + (padTop - padBot) / 2);
   return { x: cx - w / 2, y, w, h };
@@ -178,7 +182,7 @@ function _vscKeys() {
   window.addEventListener('keydown', (ev) => {   // (on the window, so it comes before the garden's own keys: Esc never reached it on the page)
     if (!gardenSceneBusy() || ev.ctrlKey || ev.metaKey || ev.altKey) return;
     const tg = ev.target; if (tg && (tg.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName))) return;
-    if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    const dlg = document.querySelector('[role="dialog"][aria-modal="true"]'); if (dlg && dlg.getClientRects().length && getComputedStyle(dlg).visibility !== 'hidden') return;   // (a dialog really open over the garden has the keys; a hidden one left in the page does not)
     if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); gardenSceneSkip(); return; }
     const talk = typeof _wd !== 'undefined' && _wd.talk;
     if (/^(Arrow(Up|Down|Left|Right)|[wasdWASDzZ ]|Shift)$/.test(ev.key) || (!talk && /^[eE]$|^Enter$/.test(ev.key))) { ev.preventDefault(); ev.stopPropagation(); }   // (you stand and watch: walking, running and the act keys rest)
@@ -353,14 +357,15 @@ function _vscGuestEnd() { const G = _vsc.G; if (!G) return; _vsc.G = null; _vsc.
 /* ---------- the Journal: moments you have seen, to watch again ---------- */
 function gardenMomentsBox(el, m) {
   try {
-    const W = _wdG(), seen = Object.values(VALE_SCENES).filter(s => W['vx.' + s.id]); if (!seen.length) return;
+    // (seen, or its beat heard in words when you were far from its place: it can be watched where it happened)
+    const W = _wdG(), heard = (s) => !!s.beat && typeof wdTaleSeen === 'function' && !!wdTaleSeen(s.beat), seen = Object.values(VALE_SCENES).filter(s => W['vx.' + s.id] || heard(s)); if (!seen.length) return;
     el.appendChild(_gdpEl('h4', 'wd-tale-h', 'Moments'));
     const box = el.appendChild(_gdpEl('div', 'vsc-moments'));
     for (const s of seen) {
       const row = box.appendChild(_gdpEl('div', 'vsc-moment'));
       row.appendChild(_gdpEl('span', 'vsc-mname', s.name));
-      row.appendChild(_gdpEl('small', 'muted', 'seen ' + (typeof _gjDay === 'function' ? _gjDay(W['vx.' + s.id]) : W['vx.' + s.id])));
-      const b = row.appendChild(_gdpBtn('Watch again', { icon: 'play', kind: 'btn-ghost', run: () => {
+      row.appendChild(_gdpEl('small', 'muted', W['vx.' + s.id] ? 'seen ' + (typeof _gjDay === 'function' ? _gjDay(W['vx.' + s.id]) : W['vx.' + s.id]) : 'heard; watch it where it happened'));
+      const b = row.appendChild(_gdpBtn(W['vx.' + s.id] ? 'Watch again' : 'Watch', { icon: 'play', kind: 'btn-ghost', run: () => {
         try { if (typeof gardenPopupClose === 'function') gardenPopupClose(); } catch (e) { /* not a pop-up */ }
         setTimeout(() => { if (!gardenScenePlay(s.id, { replay: true, teller: s.teller, public: false })) _vscRemember(s); }, 420);
       } }));
@@ -373,7 +378,8 @@ function _vscRemember(s) {
   let lines = [];
   if (s.beat) { const [sid, bid] = s.beat.split('.'), st = WD_TALE_BY.get(sid), b = st && st.steps.find(x => x.id === bid); lines = b ? (b.lines || []).map(l => (typeof _wtLine === 'function' ? _wtLine(l) : l)).filter(Boolean) : []; }
   else lines = (s.lines || []).slice();
-  try { wdTalk({ name: s.name, art: s.teller ? _vscArt(s.teller) : '', lines: ['You remember it like this.'].concat(lines), actions: [], at: null, bye: 'Close' }); } catch (e) { /* fine */ }
+  const where = s.stage && s.stage.role === 'mill' ? ' Go down to the mill to see it played.' : '';
+  try { wdTalk({ name: s.name, art: s.teller ? _vscArt(s.teller) : '', lines: ['You remember it like this.' + where].concat(lines), actions: [], at: null, bye: 'Close' }); } catch (e) { /* fine */ }
 }
 /** Console only (and the sandbox check): play a moment now, as a replay (no flags, no gifts). */
 function gardenSceneDev(id, o) { const sc = VALE_SCENES[id || 'still']; if (!sc) return 'no such moment'; const ok = gardenScenePlay(sc.id, Object.assign({ replay: !sc.public, teller: sc.teller }, o || {})); return ok ? 'playing' : 'cannot play here: ' + (_vscWhy(sc) || 'unknown'); }

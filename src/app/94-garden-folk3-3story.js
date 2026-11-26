@@ -75,7 +75,7 @@ const VALE_SCENES = Object.freeze({
       { pose: 'crowd', p: 'clap', face: 'stage' },
       { say: 1 },
       { cam: ['hollin'], t: 2.2, if: 'hollinDeep' },
-      { say: 2, if: 'hollinDeep' },
+      { say: 2 },   // (the line is the beat's own: said whether or not Hollin could be there; the gentle telling leaves it out)
       { cam: ['angler'], t: 2.6, if: 'angler' },
       { say: 3 },
       { end: 1 },
