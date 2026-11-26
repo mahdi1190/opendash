@@ -18,7 +18,9 @@ window.GardenRoomArt = (function () {
   const K = 2, W = 960, H = 600, SLICE = 10, KEEP = 3;
   const baked = new Map();                        // room id -> { key, canvas }
   let fxSerial = 0;
-  function wanted(room) { try { return !!(room && GRA_ROOMS[room.id] && window.GardenNativePainted && GardenNativePainted.wanted()); } catch (e) { return false; } }
+  // (a room may say which picture it wants now, paintKey: a house room's finishes and window light; its id stays the same for friends, 94-garden-house-*.js)
+  const keyOf = room => room && (room.paintKey || room.id);
+  function wanted(room) { try { return !!(room && GRA_ROOMS[keyOf(room)] && window.GardenNativePainted && GardenNativePainted.wanted()); } catch (e) { return false; } }
   function rng(seed) { let s = 0; for (const ch of String(seed)) s = (s * 31 + ch.charCodeAt(0)) >>> 0; s = s % 2147483647 || 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
   const hex = c => { c = String(c).replace('#', ''); if (c.length === 3) c = c.split('').map(x => x + x).join(''); const n = parseInt(c, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
   const toHex = ([r, g, b]) => '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
@@ -187,9 +189,9 @@ window.GardenRoomArt = (function () {
    * for a sixth of its pixels; each strip is uploaded on its own frame. */
   const BANDS = 8, BH = H / BANDS;
   function begin(scene, room) {
-    const spec = GRA_ROOMS[room.id], have = baked.get(room.id);
-    if (have && have.keys.every(k => scene.textures.exists(k))) { baked.delete(room.id); baked.set(room.id, have); return { spec, keys: have.keys, done: true, ms: 0 }; }
-    return { spec, band: -1, keys: [], canvases: [], gen: null, cx: null, done: false, ms: 0, uploads: 0 };
+    const pk = keyOf(room), spec = GRA_ROOMS[pk], have = baked.get(pk);
+    if (have && have.keys.every(k => scene.textures.exists(k))) { baked.delete(pk); baked.set(pk, have); return { spec, keys: have.keys, done: true, ms: 0, pk }; }
+    return { spec, band: -1, keys: [], canvases: [], gen: null, cx: null, done: false, ms: 0, uploads: 0, pk };
   }
   function nextBand(room, job) {
     job.band++; if (job.band >= BANDS) return false;
@@ -213,7 +215,7 @@ window.GardenRoomArt = (function () {
       } else {
         const i = job.keys.length, key = 'gdroom-' + room.id + '-' + (++fxSerial);
         scene.textures.addCanvas(key, job.canvases[i]); job.keys.push(key); job.canvases[i] = null;
-        if (job.keys.length === BANDS) { job.done = true; baked.set(room.id, { keys: job.keys }); while (baked.size > KEEP) { const [id, old] = baked.entries().next().value; baked.delete(id); for (const k of old.keys) if (scene.textures.exists(k)) scene.textures.remove(k); } }
+        if (job.keys.length === BANDS) { job.done = true; baked.set(job.pk || room.id, { keys: job.keys }); while (baked.size > KEEP) { const [id, old] = baked.entries().next().value; baked.delete(id); for (const k of old.keys) if (scene.textures.exists(k)) scene.textures.remove(k); } }
       }
     } catch (e) { job.failed = String(e && e.stack || e); job.done = true; job.keys = []; if (window.GardenNativePainted) GardenNativePainted.lastError = job.failed; }
     const spent = performance.now() - t0; job.ms += spent; job.maxSlice = Math.max(job.maxSlice || 0, spent);
@@ -290,7 +292,7 @@ window.GardenRoomArt = (function () {
   /** The room's picture as a native-art-shaped handle: a placeholder plate
    * until the slices finish, then the baked texture fading in. */
   function create(s, room) {
-    const scene = s.context.scene, spec = GRA_ROOMS[room.id], root = scene.add.container(0, 0).setDepth(0);
+    const scene = s.context.scene, spec = GRA_ROOMS[keyOf(room)], root = scene.add.container(0, 0).setDepth(0);
     s.root.add(root);
     const plate = scene.add.rectangle(0, 0, W, H, parseInt(String(spec.plate || room.bg || '#101010').replace('#', ''), 16)).setOrigin(0, 0); root.add(plate);
     let job = begin(scene, room), image = null, fx = null, fade = 0, dead = false;
@@ -320,6 +322,6 @@ window.GardenRoomArt = (function () {
     };
     return handle;
   }
-  function spec(room) { return room && GRA_ROOMS[room.id] || null; }
+  function spec(room) { return room && GRA_ROOMS[keyOf(room)] || null; }
   return { wanted, create, spec, kit, rng, mix, shade, rgba, status: () => ({ rooms: Object.keys(GRA_ROOMS), baked: [...baked.keys()] }) };
 })();

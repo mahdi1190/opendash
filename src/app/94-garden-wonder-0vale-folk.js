@@ -121,7 +121,7 @@ function _vfrBegin(m) {
   try { if (typeof gardenFolkFieldNow === 'function') gardenFolkFieldNow(); } catch (e) { /* planned without it: found as they go */ }
   const ctx = _vfrCtx(m), rows = _vfrRows(m), W = _wdG(), saved = {};
   for (const r of rows) if (W['vh.' + r.id]) saved[r.id] = W['vh.' + r.id];
-  const homes = valeFolkSolveHomes(rows, ctx.things, saved, Object.assign({}, ctx, { open: null }));
+  const homes = valeFolkSolveHomes(rows, ctx.things, saved, Object.assign({}, ctx, { open: null, reserved: typeof gardenHouseReserve === 'function' ? gardenHouseReserve(ctx.things, saved) : [] }));
   const today = m.today; let dirty = false;
   for (const [id, hid] of homes) if (W['vh.' + id] !== hid) { W['vh.' + id] = hid; W['vm.' + id] = today; dirty = true; }
   if (dirty) _wdSave();

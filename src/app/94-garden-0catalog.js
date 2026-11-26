@@ -291,6 +291,8 @@ function _gD(id, name, cat, more) {
   if (r.areas) r.areas = _gdF(r.areas);
   return r;
 }
+/** Things for indoors (your own house, 94-garden-house-*.js): [id, name, price, more] rows of cat 'home'. */
+function _gdHouseRows(rows) { return rows.map(([id, name, price, more]) => _gD(id, name, 'home', Object.assign({ indoor: 1, price }, more))); }
 const GARDEN_DECOR_CATS = _gdF({
   path: _gdF({ label: 'Paths', icon: 'footprints' }), fence: _gdF({ label: 'Fences and hedges', icon: 'fence' }),
   seat: _gdF({ label: 'Seats', icon: 'armchair' }), water: _gdF({ label: 'Water', icon: 'droplets' }),
@@ -298,8 +300,9 @@ const GARDEN_DECOR_CATS = _gdF({
   wildlife: _gdF({ label: 'Wildlife homes', icon: 'bird' }), ornament: _gdF({ label: 'Ornaments', icon: 'sparkles' }),
   planter: _gdF({ label: 'Pots and planters', icon: 'flower-2' }), seasonal: _gdF({ label: 'Seasonal', icon: 'calendar-heart' }),
   angling: _gdF({ label: 'Angling and bugs', icon: 'fish' }),
+  home: _gdF({ label: 'Home', icon: 'armchair' }),   // for indoors, your own house (94-garden-house-*.js)
 });
-const GARDEN_DECOR_CAT_ORDER = _gdF(['path', 'fence', 'seat', 'water', 'light', 'structure', 'wildlife', 'angling', 'ornament', 'planter', 'seasonal']);
+const GARDEN_DECOR_CAT_ORDER = _gdF(['path', 'fence', 'seat', 'water', 'light', 'structure', 'wildlife', 'angling', 'ornament', 'planter', 'seasonal', 'home']);
 const GARDEN_DECOR = _gdRows([
   /* paths (ground layer) */
   _gD('stepping-stones', 'Stepping stones', 'path', { layer: 'ground', price: 2, look: { c: '#b9b2a4', c2: '#8f877a', h: 0 }, blurb: 'Hop from one to the next.' }),
@@ -476,6 +479,50 @@ const GARDEN_DECOR = _gdRows([
   _gD('dc-washing-line', 'Washing line', 'structure', { w: 2, price: 22, lv: 4, look: { c: '#7a5a3a', c2: '#e8607a', h: 1.1 }, blurb: 'Cottage. Friends can see your socks.' }),
   _gD('dc-clay-oven', 'Clay oven', 'structure', { price: 40, lv: 7, effect: { kind: 'light' }, look: { c: '#c8855a', c2: '#a39b8c', h: 0.9 }, blurb: 'Cottage. It glows at dusk and smells of bread.' }),
   _gD('dc-cottage-gate', 'Cottage gate', 'fence', { craft: 1, price: 0, rot: 1, col: 'none', look: { c: '#efe8d8', c2: '#6a4a2a', h: 0.8 }, blurb: 'Cottage. White pickets, and it never quite shuts.' }),
+  /* your own house (94-garden-house-*.js): things for indoors. indoor: never set out in the garden. hp: where it goes (floor, wall,
+     rug, top: a small thing on a table or the floor), hw/hd/hh: width, depth on the floor and height in room px (the player is about
+     72 tall indoors), top: a surface small things stand on, fk: what it does, lit: a light you switch, rot: it can face the other way */
+  ..._gdHouseRows([
+    ['hf-cottage-bed', 'Cottage bed', 85, { dye: 1, hp: 'floor', hw: 154, hd: 38, hh: 67, fk: 'bed', look: { c: '#9a6a3c', c2: '#c8584a' }, blurb: 'Home. A wooden bed with a patchwork quilt, still warm from the morning.' }],
+    ['hf-brass-bed', 'Brass bed', 130, { lv: 8, dye: 1, hp: 'floor', hw: 149, hd: 38, hh: 79, fk: 'bed', look: { c: '#d8b45a', c2: '#e8eef4' }, blurb: 'Home. Brass rails, a white quilt, and a squeak only on the left.' }],
+    ['hf-stool', 'Three-legged stool', 12, { hp: 'floor', hw: 28, hd: 13, hh: 26, fk: 'seat', look: { c: '#a87c4f', c2: '#6f4a28' }, blurb: 'Home. Never wobbles, whatever the floor.' }],
+    ['hf-ladder-chair', 'Ladder-back chair', 24, { hp: 'floor', hw: 34, hd: 18, hh: 74, fk: 'seat', rot: 1, look: { c: '#8a5a32', c2: '#d8c08a' }, blurb: 'Home. A rush seat and a back like a little ladder.' }],
+    ['hf-armchair', 'Fireside armchair', 65, { dye: 1, hp: 'floor', hw: 67, hd: 30, hh: 72, fk: 'seat', rot: 1, look: { c: '#7a3a3a', c2: '#d8b888' }, blurb: 'Home. Deep, worn, and shaped to whoever sat in it last.' }],
+    ['hf-rocking-chair', 'Rocking chair', 60, { lv: 4, hp: 'floor', hw: 49, hd: 25, hh: 79, fk: 'seat', rot: 1, look: { c: '#6a4426', c2: '#e8d8b0' }, blurb: 'Home. It rocks a little on its own when the door is opened.' }],
+    ['hf-settle', 'Oak settle', 70, { lv: 6, dye: 1, hp: 'floor', hw: 108, hd: 25, hh: 85, fk: 'seat', look: { c: '#6a4a2a', c2: '#a8603a' }, blurb: 'Home. A high-backed bench that keeps the draught off.' }],
+    ['hf-kitchen-table', 'Scrubbed kitchen table', 50, { hp: 'floor', hw: 118, hd: 33, hh: 48, top: _gdF({ h: 48, w: 108 }), fk: 'table', look: { c: '#c8a878', c2: '#8a6a40' }, blurb: 'Home. Pale with scrubbing. Things can stand on it.' }],
+    ['hf-tea-table', 'Round tea table', 36, { lv: 2, hp: 'floor', hw: 52, hd: 21, hh: 44, top: _gdF({ h: 44, w: 46 }), fk: 'table', look: { c: '#8a5a32', c2: '#f4ecd8' }, blurb: 'Home. Just big enough for a pot and two cups.' }],
+    ['hf-oak-chest', 'Oak chest', 40, { hp: 'floor', hw: 71, hd: 25, hh: 41, top: _gdF({ h: 41, w: 61 }), fk: 'store', look: { c: '#7a5432', c2: '#d8b45a' }, blurb: 'Home. Your cottage chest: everything for indoors is kept in it.' }],
+    ['hf-dresser', 'Kitchen dresser', 80, { hp: 'floor', hw: 93, hd: 23, hh: 125, fk: 'store', look: { c: '#5a7a8a', c2: '#f4f0e6' }, blurb: 'Home. Plates on the rack, and a drawer that sticks.' }],
+    ['hf-bookcase', 'Bookcase', 70, { lv: 5, hp: 'floor', hw: 75, hd: 21, hh: 131, fk: 'books', look: { c: '#6a4426', c2: '#a83a3a' }, blurb: 'Home. Almanacs, seed lists and a very long novel.' }],
+    ['hf-geranium', 'Geranium on a stand', 28, { hp: 'floor', hw: 38, hd: 16, hh: 71, fk: 'plant', look: { c: '#7a5432', c2: '#e04a4a' }, blurb: 'Home. Red as a pillar box, and it wants the light.' }],
+    ['hf-standard-lamp', 'Standard lamp', 45, { lv: 3, hp: 'floor', hw: 39, hd: 18, hh: 116, fk: 'light', lit: 1, look: { c: '#6a5038', c2: '#f0d8a0' }, blurb: 'Home. A tall lamp with a fringed shade. Click it to switch it on.' }],
+    ['hf-candlestick', 'Brass candlestick', 12, { hp: 'top', hw: 13, hd: 8, hh: 28, fk: 'light', lit: 1, look: { c: '#d8b45a', c2: '#f4ecd8' }, blurb: 'Home. One candle in a brass holder. Stands on a table or on the floor.' }],
+    ['hf-oil-lamp', 'Oil lamp', 28, { lv: 2, hp: 'top', hw: 20, hd: 10, hh: 38, fk: 'light', lit: 1, look: { c: '#3a6a5a', c2: '#fff0c0' }, blurb: 'Home. A glass chimney and a warm, steady flame.' }],
+    ['hf-fern-pot', 'Fern in a pot', 16, { hp: 'top', hw: 33, hd: 11, hh: 38, fk: 'plant', look: { c: '#b86a44', c2: '#4f8f46' }, blurb: 'Home. Happy anywhere a little out of the sun.' }],
+    ['hf-rag-rug', 'Rag rug', 20, { dye: 1, hp: 'rug', hw: 108, hd: 34, hh: 5, fk: 'rug', look: { c: '#a8604a', c2: '#c8b078' }, blurb: 'Home. Made from old shirts. Chairs and tables can stand on it.' }],
+    ['hf-braided-rug', 'Braided oval rug', 36, { lv: 2, dye: 1, hp: 'rug', hw: 123, hd: 41, hh: 5, fk: 'rug', look: { c: '#5a7a9a', c2: '#e8c070' }, blurb: 'Home. Round and round, in blue and honey.' }],
+    ['hf-wall-shelf', 'Wall shelf with jars', 24, { hp: 'wall', hw: 82, hd: 0, hh: 34, fk: 'shelf', look: { c: '#8a5a32', c2: '#e8b84a' }, blurb: 'Home. Jam, pickles and one jar nobody can open.' }],
+    ['hf-picture', 'A painted picture', 32, { hp: 'wall', hw: 54, hd: 0, hh: 44, fk: 'picture', v: 3, look: { c: '#c8a050', c2: '#6a9ac8' }, blurb: 'Home. The hills, the falls or the quay, in a gilt frame.' }],
+    ['hf-mirror', 'Little mirror', 36, { lv: 3, hp: 'wall', hw: 38, hd: 0, hh: 49, fk: 'picture', look: { c: '#d8b45a', c2: '#cfe4ec' }, blurb: 'Home. Just right for checking your hat on the way out.' }],
+    ['hf-wall-clock', 'Wall clock', 45, { lv: 5, hp: 'wall', hw: 41, hd: 0, hh: 54, fk: 'clock', look: { c: '#6a4426', c2: '#f4ecd8' }, blurb: 'Home. It keeps the real time, and ticks.' }],
+    ['hf-fairy-lights', 'Fairy lights', 35, { lv: 2, hp: 'string', hw: 140, hd: 0, hh: 30, fk: 'lights', look: { c: '#2e3a2a', c2: '#ffd86a' }, blurb: 'Home. A reel of little lights: pin one end up, walk, pin the other. They come on by themselves at dusk.' }],
+    ['hf-guest-book', 'Guest book on a stand', 30, { hp: 'floor', hw: 30, hd: 14, hh: 58, fk: 'guestbook', look: { c: '#6a4426', c2: '#f4ecd8' }, blurb: 'Home. An open book on a little stand: friends who come in write a line in it.' }],
+    ['hf-dye-pot', 'Dye pot', 40, { lv: 2, hp: 'floor', hw: 46, hd: 20, hh: 46, fk: 'dye', look: { c: '#b87333', c2: '#3f6ea8' }, blurb: 'Home. A copper pot on a trivet: boil a crop in it and dip your rugs, quilts and cushions.' }],
+    ['hf-banner', 'Your banner, framed', 0, { craft: 1, hp: 'wall', hw: 42, hd: 0, hh: 58, fk: 'banner', look: { c: '#f4ecd8', c2: '#c8402e' }, blurb: 'Home. Your own banner, the one that flies outside, on a little pole for the wall.' }],
+    // finishes: pressed on to a room's walls or floor; the old one goes back in your things (limewash and bare boards are always yours)
+    ['hfw-limewash', 'Limewash', 0, { finish: 'wall', craft: 1, look: { c: '#efe6d2', c2: '#d8ccb0' }, blurb: 'Home. Plain chalky white, the way the cottage began.' }],
+    ['hfw-rose-sprig', 'Rose sprig paper', 40, { finish: 'wall', look: { c: '#f2e6d4', c2: '#d86a7a' }, blurb: 'Home. Little pink roses on cream, for the walls.' }],
+    ['hfw-sage-stripe', 'Sage stripe paper', 40, { lv: 2, finish: 'wall', look: { c: '#c8d4b0', c2: '#8aa07a' }, blurb: 'Home. Soft green stripes, for the walls.' }],
+    ['hfw-matchboard', 'Painted matchboard', 46, { lv: 3, finish: 'wall', look: { c: '#9ab8b4', c2: '#6a8a86' }, blurb: 'Home. Boarding painted duck-egg blue, waist high and up.' }],
+    ['hfw-willow-tile', 'Willow pattern tiles', 55, { lv: 5, finish: 'wall', look: { c: '#f4f6f8', c2: '#3a64a8' }, blurb: 'Home. Blue and white tiles, each with its own little scene.' }],
+    ['hfw-night-stars', 'Night sky paper', 55, { lv: 7, finish: 'wall', look: { c: '#243a6a', c2: '#f4d878' }, blurb: 'Home. Deep blue with gold stars, for the walls.' }],
+    ['hff-boards', 'Bare boards', 0, { finish: 'floor', craft: 1, look: { c: '#9a6a3c', c2: '#6a4426' }, blurb: 'Home. Old oak boards, worn pale where people walk.' }],
+    ['hff-flags', 'Flagstone floor', 40, { finish: 'floor', look: { c: '#a8a296', c2: '#6e6a60' }, blurb: 'Home. Big cool slabs of stone, laid with care.' }],
+    ['hff-red-tiles', 'Red quarry tiles', 40, { lv: 2, finish: 'floor', look: { c: '#b8583a', c2: '#7a3424' }, blurb: 'Home. Warm red tiles that shine when they are swept.' }],
+    ['hff-rush-matting', 'Rush matting', 30, { lv: 3, finish: 'floor', look: { c: '#c8b078', c2: '#9a8050' }, blurb: 'Home. Woven rushes, soft underfoot and smelling of summer.' }],
+    ['hff-chequer', 'Chequered tiles', 50, { lv: 6, finish: 'floor', look: { c: '#f0ece4', c2: '#2e3440' }, blurb: 'Home. Black and white, like a very tidy board game.' }],
+  ]),
   _gD('dc-tea-table', 'Tea table', 'seat', { price: 20, lv: 4, look: { c: '#fbf5ec', c2: '#3a8ac4', h: 0.8 }, blurb: 'Cottage. The pot is still warm.' }),
   _gD('dc-sleeping-cat', 'Sleeping cat', 'ornament', { price: 30, lv: 6, look: { c: '#e8903a', c2: '#fbf5ec', h: 0.4 }, blurb: 'Cottage. Made of stone, painted ginger, and just as hard to move.' }),
   _gD('dc-lavender-tub', 'Lavender tub', 'planter', { craft: 1, price: 0, look: { c: '#a87c4f', c2: '#8a6ac8', h: 0.8 }, blurb: 'Cottage. A half barrel of purple.' }),
@@ -694,6 +741,14 @@ const GARDEN_RIBBONS = _gdRows([
   { id: 'wildlife-friendly', label: 'Wildlife friendly', hint: 'Spot 5 kinds of visitor.', icon: 'bird', fact: 'visitorsFound', of: 5, reward: { c: 40, i: { 'decor:bug-hotel': 1 } } },
   { id: 'nature-reserve', label: 'Nature reserve', hint: 'Spot 18 kinds of visitor.', icon: 'binoculars', fact: 'visitorsFound', of: 18, reward: { c: 150, i: { 'decor:hare-statue': 1 } } },
   { id: 'pond-life', label: 'Pond life', hint: 'Spot a frog, a dragonfly and a duck.', icon: 'waves', fact: 'pondLife', of: 3, reward: { c: 60, i: { 'seed:lotus': 1 } } },
+  // your own house (94-garden-house-*.js): rewards are things for the house, never coins
+  { id: 'house-roof', label: 'A roof of your own', hint: 'Move into your own cottage.', icon: 'house', fact: 'hsHome', of: 1, reward: { i: { 'mat:timber': 2 } } },
+  { id: 'house-open', label: 'Open house', hint: 'Have a housewarming.', icon: 'party-popper', fact: 'hsWarm', of: 1, reward: { i: { 'decor:hf-tea-table': 1 } } },
+  { id: 'house-rooms', label: 'Room to breathe', hint: 'Build two rooms on your cottage.', icon: 'hammer', fact: 'hsRooms', of: 2, reward: { i: { 'decor:hf-rocking-chair': 1 } } },
+  { id: 'house-whole', label: 'A house, really', hint: 'Build every room your cottage can have.', icon: 'house', fact: 'hsRooms', of: 3, reward: { i: { 'decor:hf-brass-bed': 1 } } },
+  { id: 'house-snug', label: 'Snug', hint: 'Earn five cosy stars at a housewarming.', icon: 'star', fact: 'hsStars', of: 5, reward: { i: { 'decor:hf-standard-lamp': 1 } } },
+  { id: 'house-banner', label: 'Flying the flag', hint: 'Make your own banner.', icon: 'flag', fact: 'hsBanner', of: 1, reward: { i: { 'mat:stone': 2 } } },
+  { id: 'house-dyer', label: 'Dyed in the wool', hint: 'Dye three things in your house.', icon: 'palette', fact: 'hsDyed', of: 3, reward: { i: { 'decor:hf-braided-rug': 1 } } },
   { id: 'night-garden', label: 'Night garden', hint: 'Spot 3 visitors that only come out at night.', icon: 'moon', fact: 'nightVisitors', of: 3, reward: { c: 50, i: { 'seed:glowcap': 2 } } },
   { id: 'four-seasons', label: 'Four seasons', hint: 'Tend your garden in all four seasons.', icon: 'calendar-range', fact: 'seasons', of: 4, reward: { c: 120, i: { 'seed:sakura': 1 } } },
   { id: 'decorator', label: 'Decorator', hint: 'Place 12 decorations.', icon: 'paintbrush', fact: 'decorPlaced', of: 12, reward: { c: 50, i: { 'decor:gazing-ball': 1 } } },
@@ -922,6 +977,7 @@ function gardenIceAt(x, y) { const cx = Math.floor(x), cy = Math.floor(y); retur
 function gardenPropWalk(x, y) { if (_GD_WALK_EXTRA.has(x + ',' + y) || _GD_ICE.has(x + ',' + y) && gardenIceAt(x, y)) return true; const p = gardenPropAt(x, y); return !!(p && p.walk); }
 /** Can this plant (or decoration) go at x, y (its top-left cell) at this level? '' = yes, else why not (one short line). */
 function gardenCellOk(def, x, y, level, kind) {
+  if (kind === 'decor' && def && def.indoor) return 'That goes inside your house';   // (94-garden-house-*.js: furniture and finishes are for indoors)
   const W = GARDEN_WORLD;
   const fw = kind === 'decor' ? def.w || 1 : def.fp || 1, fh = kind === 'decor' ? def.h || 1 : def.fp || 1;
   if (x < 0 || y < 0 || x + fw > W.cols || y + fh > W.rows) return 'Off the edge of the garden';
@@ -1071,6 +1127,25 @@ function gardenSnapshotClean(raw) {
     const rf = {};
     for (const [k, l] of Object.entries(raw.rf).slice(0, 8)) { if (!/^[a-z0-9-]{1,24}$/.test(k) || !Array.isArray(l)) continue; const r = []; for (const d of l.slice(0, 12)) { if (!Array.isArray(d) || !_GD_DECOR.has(d[0])) continue; const x = int(d[1], 0, 960), y = int(d[2], 0, 600); if (x !== null && y !== null) r.push([d[0], x, y]); } if (r.length) rf[k] = r; }
     if (Object.keys(rf).length) out.rf = rf;
+  }
+  if (raw.hs && typeof raw.hs === 'object' && !Array.isArray(raw.hs) && typeof raw.hs.h === 'string' && /^[a-z][a-z0-9:,-]{0,40}$/.test(raw.hs.h)) {   // their own house (94-garden-house-0rules.js houseWire): the home's id, its rooms' finishes and the pieces in them; ids and numbers only. An older app drops it
+    const H = raw.hs, hs = { h: H.h, k: typeof H.k === 'string' && /^[a-z]{1,16}$/.test(H.k) ? H.k : 'cottage', l: typeof H.l === 'string' && /^[a-z]{1,16}$/.test(H.l) ? H.l : 'thatch', r: [], f: [] };
+    const fin = (v, k) => typeof v === 'string' && _GD_DECOR.has(v) && _GD_DECOR.get(v).finish === k ? v : '-', slots = new Set(), uids = new Set();
+    if (Array.isArray(H.r)) for (const r of H.r.slice(0, 8)) { if (!Array.isArray(r)) continue; const s = int(r[0], 0, 7), st = int(r[1], 0, 3); if (s === null || st === null || slots.has(s)) continue; slots.add(s); hs.r.push([s, st, fin(r[2], 'wall'), fin(r[3], 'floor'), int(r[4], 0, 255) || 0]); }
+    if (Array.isArray(H.f)) for (const f of H.f.slice(0, 72)) {
+      if (!Array.isArray(f) || typeof f[0] !== 'string' || !/^[A-Za-z0-9_-]{1,24}$/.test(f[0]) || uids.has(f[0])) continue;
+      const d = _GD_DECOR.get(f[1]), s = int(f[2], 0, 7), x = int(f[3], 0, 960), y = int(f[4], 0, 640), z = int(f[5], 0, 300);
+      if (!d || !d.indoor || d.finish || s === null || x === null || y === null || z === null) continue;
+      uids.add(f[0]); hs.f.push([f[0], f[1], s, x, y, z, int(f[6], 0, 3) || 0, int(f[7], 0, 7) || 0, int(f[8], 0, 3) || 0]);
+    }
+    // the builders' jar, the housewarming, the guest room's friend (only the name they show), their banner, cosy stars, helpers' handprints
+    if (Array.isArray(H.j) && int(H.j[0], 1, 7) !== null) hs.j = [int(H.j[0], 1, 7), int(H.j[1], 0, 99999) || 0, int(H.j[2], 0, 999) || 0, int(H.j[3], 0, 999) || 0];
+    if (Array.isArray(H.w) && int(H.w[0], 1, 7) !== null && int(H.w[1], 1, 99999) !== null) hs.w = [int(H.w[0], 1, 7), int(H.w[1], 1, 99999), int(H.w[2], 0, 9999) || 0];
+    if (Array.isArray(H.g) && int(H.g[0], 1, 7) !== null && typeof H.g[1] === 'string') { const n = typeof gsocText === 'function' ? gsocText(H.g[1]) : ''; if (n) hs.g = [int(H.g[0], 1, 7), n.slice(0, 22)]; }
+    if (typeof H.b === 'string' && /^[0-9ab]{48}$/.test(H.b)) hs.b = H.b;
+    if (int(H.s, 1, 5) !== null) hs.s = int(H.s, 1, 5);
+    if (Array.isArray(H.p)) { const p = []; for (const h of H.p.slice(0, 12)) if (Array.isArray(h) && typeof h[0] === 'string' && /^[A-Z?]$/.test(h[0]) && int(h[1], 0, 15) !== null && int(h[2], 0, 7) !== null) p.push([h[0], int(h[1], 0, 15), int(h[2], 0, 7)]); if (p.length) hs.p = p; }
+    out.hs = hs;
   }
   if (raw.dz && typeof gardenDesignClean === 'function') { const dz = gardenDesignClean(raw.dz); if (dz) out.dz = dz; }   // their garden design (94-garden-design-0rules.js); an older app drops the field
   return out;

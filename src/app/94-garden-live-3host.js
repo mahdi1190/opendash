@@ -453,6 +453,7 @@ function _glhApply(ev, key) {
   // (94-garden-build-0rules.js), so the two pages can never disagree about what is allowed. Their op costs this garden nothing.
   const W = gardenOpWorld(m), opDo = (op, extra) => { const why = gardenOpCheck(W, op, f); if (why) return why; const mark = _gdMark(gardenOpTouches(op, g, f)); gardenOpApply(g, op, f, W); return put(mark, extra); };
   switch (t) {
+    case 'house': return typeof gardenHouseHostDo === 'function' ? gardenHouseHostDo(ev, put, g) : 'kind';   // your house: the same house rules as your own page (94-garden-house-6share.js)
     case 'plant': {
       const def = gardenPlant(ev.p); if (!def) return 'Unknown seed';
       const uid = _gdUid('p'), variants = (def.look.v || []).length || 1;
@@ -858,6 +859,7 @@ function _glhDiaryWhat(e, n) {
     case 'solve': { const sg = typeof gardenLandSight === 'function' ? gardenLandSight(e.land || e.p) : null; return `${who} solved the trail puzzle to ${sg ? String(sg.name).replace(/^The /, 'the ') : 'a hidden place'} in your garden`; }
     case 'gate': { const gt = typeof gardenGateOf === 'function' ? gardenGateOf(e.land || e.p) : null, z = gt && gardenZone(gt.n); return `${who} opened the way into ${z ? String(z.name).replace(/^The /, 'the ') : 'a new part'} of your garden`; }
     case 'trade': return e.f2 ? `${who} and ${_glhByName(e.f2)} traded` : `${who} traded with you`;
+    case 'house': return typeof gardenHouseDiary === 'function' ? gardenHouseDiary(e, who, n) : `${who} helped in your house`;
     default: return `${who} was here`;
   }
 }

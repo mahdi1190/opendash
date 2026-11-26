@@ -233,6 +233,7 @@ function gartActNearby() {
   if (!_ga.list || now - _ga.listT > 2500) { _ga.list = _gaStaticRows(); _ga.listT = now; }
   const px = _gw.px, py = _gw.py, d = (r) => Math.hypot(r.x - px, (r.y - py) * 1.3);
   const rows = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src) && !gartActTaken(r));
+  if (typeof gardenHouseActRows === 'function') rows.push(...gardenHouseActRows(px, py));   // your own house's door: E  Go in (94-garden-house-2room.js)
   if (typeof gardenFolkActRows === 'function') rows.push(...gardenFolkActRows(px, py));   // the vale's folk, wherever they are: talk to them, or knock (94-garden-wonder-0vale-folk.js)   // (a ball off rolling, a pile kicked apart: nothing to do there just now)
   if (typeof gardenB2ActRows === 'function') { const own = gardenB2ActRows(px, py, rows); if (own) return own; }   // (build2) a chest in reach: open your storage (94-garden-zz-8build2-store.js)
   // where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near; and a tree offers each
@@ -266,7 +267,7 @@ function _gaPromptEl() {
   el.addEventListener('pointerdown', (ev) => ev.stopPropagation());
   box.appendChild(el); _ga.el = el; return el;
 }
-function _gaWords(r) { if (r.folk || r.b2) return r.words || ''; const row = GARDEN_ACTS[r.act]; if (!row) return ''; if (r.down) return 'Set it down'; if (r.boat && typeof gardenHas === 'function' && gardenHas('gear:rowing-boat') < 1) return 'Needs a rowing boat (the tackle shop)'; const v = row.verb; return /the |it$|a |under/.test(v) || !r.name ? v : r.act === 'sit' ? 'Sit on ' + r.name : v; }
+function _gaWords(r) { if (r.folk || r.b2 || r.house) return r.words || ''; const row = GARDEN_ACTS[r.act]; if (!row) return ''; if (r.down) return 'Set it down'; if (r.boat && typeof gardenHas === 'function' && gardenHas('gear:rowing-boat') < 1) return 'Needs a rowing boat (the tackle shop)'; const v = row.verb; return /the |it$|a |under/.test(v) || !r.name ? v : r.act === 'sit' ? 'Sit on ' + r.name : v; }
 /** Once a frame from the walker (cheap: looks round five times a second). */
 function gartActFrame() {
   if (typeof _gw === 'undefined' || !_gw.on) return;
@@ -436,6 +437,7 @@ function _gaFace(deg) {
 }
 function _gaDirDeg(row, spot) { return spot && spot.deg != null ? spot.deg : row.dir === 'n' ? -90 : row.dir === 'e' ? 0 : row.dir === 'w' ? 180 : 90; }
 function gartActRun(id, spot) {
+  if (spot && spot.house) return typeof gardenHouseGo === 'function' && gardenHouseGo(spot);   // in at your house's door (94-garden-house-2room.js)
   if (spot && spot.folk) return typeof gardenFolkTalkTo === 'function' && gardenFolkTalkTo(spot.folk);   // one of the vale's folk (94-garden-wonder-0vale-folk.js)
   if (spot && spot.b2) return !!spot.b2(spot);   // (build2) a row of its own: open your storage at a chest
   const row = GARDEN_ACTS[id]; if (!row || typeof _gw === 'undefined' || !_gw.on || _gw.boat) return false;   // (out on the water in your boat: the oars are your only move)

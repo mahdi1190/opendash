@@ -1036,7 +1036,7 @@
   const decor = { placed: 0, checked: 0, drawn: 0, families: {}, skipped: [] };
   if (!opts.noDecor) try {
     const G = _gdG(), uids = [], want = [];
-    for (const def of GARDEN_DECOR) for (let r = 0; r < (def.rot ? 4 : 1); r++) want.push({ def, r });
+    for (const def of GARDEN_DECOR) if (!def.indoor) for (let r = 0; r < (def.rot ? 4 : 1); r++) want.push({ def, r });   // (things for indoors never stand in the garden: 94-garden-house-*.js)
     const okCell = (x, y) => { if (x < 1 || y < 1 || x >= W.cols - 1 || y >= W.rows - 1) return false; const i = y * W.cols + x, b = gardenIslandBaseCell(x, y); return !grid.hard[i] && !grid[i] && b && b.land && !b.freshwater && !b.solid && !gardenIsWater(x, y) && !String(gardenAreaAt(x, y, lvl)).startsWith('locked:') && !m.occ.get(x + ',' + y) && !gardenPropAt(x, y) && free(x + .5, y + .5); };
     const taken = new Set(); let wi = 0;
     for (let y = 2; y < W.rows - 3 && wi < want.length; y += 1) for (let x = 2; x < W.cols - 4 && wi < want.length; x += 1) {

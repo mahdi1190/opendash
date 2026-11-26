@@ -880,6 +880,6 @@ function _gdpSeedList() {
 }
 function _gdpDecorList() {
   const w = gardenWallet(), out = [];
-  for (const [k, n] of Object.entries(w.items)) if (k.startsWith('decor:') && n > 0) { const d = gardenDecor(k.slice(6)); if (d) out.push({ id: d.id, def: d, n: Math.floor(n) }); }
+  for (const [k, n] of Object.entries(w.items)) if (k.startsWith('decor:') && n > 0) { const d = gardenDecor(k.slice(6)); if (d && !d.indoor) out.push({ id: d.id, def: d, n: Math.floor(n) }); }   // (things for indoors are set out in your house: 94-garden-house-*.js)
   return out.sort((a, b) => GARDEN_DECOR_CAT_ORDER.indexOf(a.def.cat) - GARDEN_DECOR_CAT_ORDER.indexOf(b.def.cat) || a.def.name.localeCompare(b.def.name));
 }

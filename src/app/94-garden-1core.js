@@ -699,6 +699,7 @@ function gardenSnapshot() {
     try { const tk = typeof petBookWire === 'function' ? petBookWire() : null; if (tk && tk.length) out.tk = tk; } catch (e) { /* tricks are optional */ }   // 2.23: ids of what your pet can do, for friends who visit
     try { const j = typeof gpJourney === 'function' ? gpJourney() : null; if (j && Number(j.back) > m.now) out.pa = Math.floor(j.back); } catch (e) { /* optional */ }   // their pet is away until then (94-garden-play-1pet.js): a time, so an old copy stops saying so by itself
     try { const rf = typeof gardenRoomsWire === 'function' ? gardenRoomsWire() : null; if (rf) out.rf = rf; } catch (e) { /* optional */ }   // what stands in your hidden rooms
+    try { const hs = typeof gardenHouseWire === 'function' ? gardenHouseWire() : null; if (hs) out.hs = hs; } catch (e) { /* optional */ }   // your own house: its rooms and what stands in them (94-garden-house-6share.js)
     try { const bk = typeof gardenBuildWire === 'function' ? gardenBuildWire() : null; if (bk) out.bk = bk; } catch (e) { /* optional */ }   // how you have painted your buildings: ids and small numbers, an older app drops the field
     try { const wd = typeof gardenWonderWire === 'function' ? gardenWonderWire() : null; if (wd) out.wd = wd; } catch (e) { /* optional */ }   // the sky you have learned, your cairn (94-garden-wonder-*.js)
     try { const tg = typeof gardenTogetherWire === 'function' ? gardenTogetherWire() : null; if (tg) out.tg = tg; } catch (e) { /* optional */ }   // what you share with friends (94-garden-zz-*.js)
@@ -759,8 +760,11 @@ function gardenFacts(mArg) {
   try { rgn = typeof gardenRegionFacts === 'function' ? gardenRegionFacts() : null; } catch (e) { rgn = null; }
   let dep = null;   // (the depth lane) the bridges and piers you have swum under (94-garden-zz-8depth-1under.js)
   try { dep = typeof gardenDepthFacts === 'function' ? gardenDepthFacts() : null; } catch (e) { dep = null; }
+  let hsf = null;   // your own house: rooms built, housewarmings, cosy stars (94-garden-house-4grow.js)
+  try { hsf = typeof gardenHouseFacts === 'function' ? gardenHouseFacts() : null; } catch (e) { hsf = null; }
   return {
     ...(dep || {}),
+    ...(hsf || {}),
     ...(rgn || {}),
     ...(soc || {}),
     ...(cat || {}),
