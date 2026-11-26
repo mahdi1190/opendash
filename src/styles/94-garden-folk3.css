@@ -1,0 +1,91 @@
+/* The vale's folk, driven (94-garden-wonder-folk3-0drive.js): poses for games, the week and moments. Transforms only, on the named groups
+   every drawing of a villager carries (side on and from the front and behind): gca-up the body, gca-hd the head, gca-ar / gca-lg with
+   gca-a the near (right) limb and gca-b the far (left) one. The front and back drawings are the root's gca-fv. The rest pose is the
+   transform; the animation moves round it, so with motion off the pose still holds. */
+/* cheer: both arms up and a hop (side on: up and a little forward; face on: up and out) */
+.gca-cheer { animation: gca3-hop .52s ease-in-out infinite; }
+@keyframes gca3-hop { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-4.2px); } 60% { transform: translateY(-3.6px); } }
+.gca-cheer .gca-ar.gca-a { transform: rotate(-166deg); animation: gca3-wavea .52s ease-in-out infinite alternate; }
+.gca-cheer .gca-ar.gca-b { transform: rotate(-152deg); animation: gca3-waveb .52s ease-in-out -.26s infinite alternate; }
+@keyframes gca3-wavea { from { transform: rotate(-158deg); } to { transform: rotate(-174deg); } }
+@keyframes gca3-waveb { from { transform: rotate(-144deg); } to { transform: rotate(-160deg); } }
+.gca-cheer .gca-hd { transform: rotate(-7deg); animation: none; }
+.gca-cheer.gca-fv .gca-ar.gca-a { transform: rotate(-148deg); animation: gca3-fva .52s ease-in-out infinite alternate; }
+.gca-cheer.gca-fv .gca-ar.gca-b { transform: rotate(148deg); animation: gca3-fvb .52s ease-in-out infinite alternate; }
+@keyframes gca3-fva { from { transform: rotate(-138deg); } to { transform: rotate(-158deg); } }
+@keyframes gca3-fvb { from { transform: rotate(138deg); } to { transform: rotate(158deg); } }
+.gca-cheer.gca-fv .gca-hd { transform: translateY(-.8px); }
+/* clap: face on, the hands meet in front of the chest and part */
+.gca-clap .gca-ar.gca-a { transform: rotate(-62deg); animation: gca3-clapa .3s ease-in-out infinite alternate; }
+.gca-clap .gca-ar.gca-b { transform: rotate(-70deg); animation: gca3-clapa .3s ease-in-out -.15s infinite alternate; }
+@keyframes gca3-clapa { from { transform: rotate(-56deg); } to { transform: rotate(-76deg); } }
+.gca-clap.gca-fv .gca-ar.gca-a { transform: rotate(52deg); animation: gca3-fclapa .3s ease-in-out infinite alternate; }
+.gca-clap.gca-fv .gca-ar.gca-b { transform: rotate(-52deg); animation: gca3-fclapb .3s ease-in-out infinite alternate; }
+@keyframes gca3-fclapa { from { transform: rotate(38deg); } to { transform: rotate(60deg); } }
+@keyframes gca3-fclapb { from { transform: rotate(-38deg); } to { transform: rotate(-60deg); } }
+.gca-clap .gca-up { animation: gca3-bounce .6s ease-in-out infinite; }
+@keyframes gca3-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.2px); } }
+/* point: the near arm straight out at what they mean, the head turned to it */
+.gca-point .gca-ar.gca-a { transform: rotate(-96deg); animation: none; }
+.gca-point .gca-hd { transform: rotate(-3deg); animation: none; }
+.gca-point.gca-fv .gca-ar.gca-a { transform: rotate(-84deg); }
+/* crouch (behind something, hiding): legs folded forward, the body low and hunched over them; peek: the head up out of it a moment */
+.gca-crouch .gca-lg.gca-a { animation: none; transform: rotate(-54deg); }
+.gca-crouch .gca-lg.gca-b { animation: none; transform: rotate(-36deg); }
+.gca-crouch .gca-up { animation: gca3-hold 2.4s ease-in-out infinite alternate; transform: translateY(3.6px) rotate(11deg); }
+@keyframes gca3-hold { from { transform: translateY(3.6px) rotate(11deg); } to { transform: translateY(3.9px) rotate(12.5deg); } }
+.gca-crouch .gca-ar.gca-a { animation: none; transform: rotate(-38deg); }
+.gca-crouch .gca-ar.gca-b { animation: none; transform: rotate(-30deg); }
+.gca-crouch .gca-hd { animation: none; transform: rotate(8deg); }
+.gca-crouch.gca-tam .gca-up, .gca-crouch.gca-thistle .gca-up { transform: translateY(2.2px) rotate(9deg); animation: none; }
+.gca-crouch.gca-angler .gca-up, .gca-crouch.gca-hollin .gca-up { transform: translateY(7.5px) rotate(12deg); animation: none; }
+.gca-peek .gca-up { animation: none; transform: translateY(.6px) rotate(3deg); }
+.gca-peek .gca-hd { animation: gca3-peek .6s ease-in-out infinite alternate; transform: rotate(-9deg); }
+@keyframes gca3-peek { from { transform: rotate(-12deg); } to { transform: rotate(-4deg); } }
+/* count: eyes hidden in the crook of the arm, head down, leaning on whatever they count against */
+.gca-count .gca-ar.gca-a { animation: none; transform: rotate(-146deg); }
+.gca-count .gca-ar.gca-b { animation: none; transform: rotate(-128deg); }
+.gca-count .gca-hd { animation: gca3-nodc 1s ease-in-out infinite; transform: rotate(15deg); }
+@keyframes gca3-nodc { 0%, 100% { transform: rotate(15deg); } 50% { transform: rotate(19deg); } }
+.gca-count .gca-up { animation: none; transform: rotate(5deg); }
+/* ready (on your marks): leaning in, one arm forward, one back, a leg ahead */
+.gca-ready .gca-up { animation: none; transform: rotate(13deg); }
+.gca-ready .gca-ar.gca-a { animation: none; transform: rotate(48deg); }
+.gca-ready .gca-ar.gca-b { animation: none; transform: rotate(-58deg); }
+.gca-ready .gca-lg.gca-a { animation: none; transform: rotate(-24deg); }
+.gca-ready .gca-lg.gca-b { animation: none; transform: rotate(22deg); }
+.gca-ready .gca-hd { animation: none; transform: rotate(-10deg); }
+/* seek: a hand shading the eyes, the head going slowly round */
+.gca-seekp .gca-ar.gca-a { animation: none; transform: rotate(-152deg); }
+.gca-seekp .gca-hd { animation: gca3-scan 3.2s ease-in-out infinite; transform: rotate(-4deg); }
+@keyframes gca3-scan { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(4deg); } }
+/* throw: a stone skimmed low (side on a swing out and through; from behind the arm goes out to the side and whips forward) */
+.gca-throw .gca-ar.gca-a { transform: rotate(-82deg); animation: gca3-throw .72s cubic-bezier(.3, .1, .2, 1) 1 both; }
+@keyframes gca3-throw { 0% { transform: rotate(46deg); } 42% { transform: rotate(62deg); } 64% { transform: rotate(-104deg); } 100% { transform: rotate(-82deg); } }
+.gca-throw .gca-up { transform: rotate(6deg); animation: gca3-lean .72s ease-out 1 both; }
+@keyframes gca3-lean { 0% { transform: rotate(-4deg); } 50% { transform: rotate(-6deg); } 70% { transform: rotate(9deg); } 100% { transform: rotate(6deg); } }
+.gca-throw.gca-fv .gca-ar.gca-a { transform: rotate(-78deg); animation: gca3-fthrow .72s cubic-bezier(.3, .1, .2, 1) 1 both; }
+@keyframes gca3-fthrow { 0% { transform: rotate(-12deg); } 40% { transform: rotate(-24deg); } 66% { transform: rotate(-104deg); } 100% { transform: rotate(-78deg); } }
+.gca-throw.gca-fv .gca-up { transform: none; animation: none; }
+/* dig: bent over, both arms working down at the ground */
+.gca-dig .gca-up { animation: none; transform: rotate(16deg); }
+.gca-dig .gca-ar.gca-a { transform: rotate(-30deg); animation: gca3-dig .46s ease-in-out infinite alternate; }
+.gca-dig .gca-ar.gca-b { transform: rotate(-24deg); animation: gca3-dig .46s ease-in-out -.23s infinite alternate; }
+@keyframes gca3-dig { from { transform: rotate(-12deg); } to { transform: rotate(-48deg); } }
+.gca-dig .gca-hd { animation: none; transform: rotate(10deg); }
+/* listen: the head on one side, a hand half raised; boots: looking down at them; shrug and laugh (face on) */
+.gca-listen .gca-hd { animation: none; transform: rotate(-9deg); }
+.gca-listen .gca-ar.gca-a { animation: none; transform: rotate(-118deg); }
+.gca-boots .gca-hd { animation: none; transform: rotate(17deg); }
+.gca-boots .gca-up { animation: none; transform: rotate(4deg); }
+.gca-shrug .gca-ar.gca-a { animation: none; transform: rotate(-34deg); }
+.gca-shrug .gca-ar.gca-b { animation: none; transform: rotate(-28deg); }
+.gca-shrug.gca-fv .gca-ar.gca-a { transform: rotate(-38deg); }
+.gca-shrug.gca-fv .gca-ar.gca-b { transform: rotate(38deg); }
+.gca-shrug .gca-hd { animation: none; transform: rotate(-6deg); }
+.gca-laugh .gca-up { animation: gca3-laugh .32s ease-in-out infinite; }
+@keyframes gca3-laugh { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.6px); } }
+.gca-laugh .gca-hd { animation: none; transform: rotate(-9deg); }
+.gca-laugh.gca-fv .gca-hd { transform: translateY(-.6px); }
+.gca-laugh.gca-fv .gca-ar.gca-a { transform: rotate(24deg); animation: none; }
+.gca-laugh.gca-fv .gca-ar.gca-b { transform: rotate(-24deg); animation: none; }
