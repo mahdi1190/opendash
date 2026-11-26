@@ -155,8 +155,10 @@ function _gb2hAimNow() {
   _gb2hDraw();
 }
 const GDZ_SNAP_R = 2;   // squares: how far a nearly-right spot slides to one that fits (GDZ_STRICT.snap, the designer's own number)
-/** The way you face, in four: 0 east, 1 towards you, 2 west, 3 away (the walker's heading, any angle). */
-function _gb2hDir() { const deg = typeof gartMoveFacingDeg === 'function' ? gartMoveFacingDeg() : 90, h = (Number.isFinite(deg) ? deg : 90) * Math.PI / 180, c = Math.cos(h), s = Math.sin(h); return Math.abs(c) >= Math.abs(s) ? (c > 0 ? 0 : 2) : (s > 0 ? 1 : 3); }
+/** The way you face, as where the square goes: 0 east, 1 towards you, 2 west (the walker's heading, any angle). Facing away, in front
+ *  of you is behind your own figure, where the thing and its ghost were hidden by you (the carry's set-down learnt the same: critic,
+ *  21 Nov): then it goes beside you, on the side you lean to. */
+function _gb2hDir() { const deg = typeof gartMoveFacingDeg === 'function' ? gartMoveFacingDeg() : 90, h = (Number.isFinite(deg) ? deg : 90) * Math.PI / 180, c = Math.cos(h), s = Math.sin(h); const d = Math.abs(c) >= Math.abs(s) ? (c > 0 ? 0 : 2) : (s > 0 ? 1 : 3); return d === 3 ? (c < -0.05 ? 2 : 0) : d; }
 /** Once a frame while something is held: only numbers, unless the square moves to another cell. */
 function _gb2hTick() {
   const A = _gb2h, H = A.held;

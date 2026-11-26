@@ -412,11 +412,11 @@ function _gb2lLift(row, rec) {
       d.m = d.m.filter(q => q[0] !== row.id);
       if (!(b && b.x === x && b.y === y)) { const dd = r.door || { x, y }; d.m.push([row.id, x, y, dd.x - x, dd.y - y]); }
       if (d.m.length > GDZ_LIMITS.moved) return _gdNo(`A garden can have ${GDZ_LIMITS.moved} things moved. Put one back where it started first.`);
-      return _gb2lCommit(d, { stage: true, label: 'moving ' + _gb2lThe(name), icon: 'move', say: `${_gb2lCap(_gb2lThe(name))} is in its new place${r.door ? ', its door facing the path' : ''}. Undo (Ctrl+Z) moves it back.`, edit: rec ? _gb2lRecovered(rec) : null, no: 'That earlier layout is not in use any more.' });
+      return _gb2lCommit(d, { stage: true, label: 'moving ' + _gb2lThe(name), icon: 'move', say: `${_gb2lCap(_gb2lThe(name))} is in its new place${r.door && gardenDesignClass(row) === 'building' ? ', its door facing the path' : ''}. Undo (Ctrl+Z) moves it back.`, edit: rec ? _gb2lRecovered(rec) : null, no: 'That earlier layout is not in use any more.' });
     },
     back: () => ({ msg: `${_gb2lCap(_gb2lThe(name))} stays where it is.` }) };
   if (!gardenB2HoldThing(H)) return false;
-  _gb2lFirst('stakes', `The stakes are round ${_gb2lThe(name)}. Walk to where it should stand and press E: it goes up there, its door facing a path. X or Esc leaves it where it is.`);
+  _gb2lFirst('stakes', `The stakes are round ${_gb2lThe(name)}. Walk to where it should stand and press E: it goes up there${gardenDesignClass(row) === 'building' ? ', its door facing a path' : ''}. X or Esc leaves it where it is.`);
   return true;
 }
 function _gb2lPropBack(row) {
@@ -620,3 +620,12 @@ function _gb2lDrawPlans(body) {
     body.appendChild(sec);
   }
 }
+
+/* ---------- the separate garden designer is gone (94-garden-design-2tools.js and -3panel.js were removed): building is done in the game,
+   with the tools above. Other parts of the garden still ask these names (guarded with typeof); they say what is true now. ---------- */
+function gardenDesignOn() { return false; }
+function gardenDesignCam() { return null; }
+function gardenDesignAbort() { /* nothing is ever drafted */ }
+function gardenDesignResume() { /* nothing waits to come back */ }
+function gardenDesignDecorDraft(list) { return list; }
+function gardenDesignEnter() { return typeof gardenB2BuildOpen === 'function' && gardenB2BuildOpen(); }
