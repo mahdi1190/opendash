@@ -153,6 +153,19 @@ function _qaPerson(name) {
     || people.find(p => String(p.name || '').toLowerCase().split(/\s+/)[0] === n)
     || null;
 }
+/** The @token a suggestion inserts for a person: the first name, First_Last when two people share it, and
+ *  the id when even that would find someone else (DASH-06). firstCount: {lower-case first name: count}. */
+function _qaPersonToken(p, firstCount) {
+  const parts = String((p && p.name) || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return p.id;
+  const token = firstCount && firstCount[parts[0].toLowerCase()] > 1 ? parts.join('_') : parts[0];
+  return _qaPerson(token) === p ? token : p.id;
+}
+function _qaFirstNameCounts() {
+  const n = {};
+  for (const p of (state.people || [])) { const f = String((p && p.name) || '').trim().split(/\s+/)[0].toLowerCase(); n[f] = (n[f] || 0) + 1; }
+  return n;
+}
 function _qaStream(word) {
   const w = String(word || '').toLowerCase();
   if (!w || typeof STREAMS === 'undefined') return null;

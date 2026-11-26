@@ -659,11 +659,12 @@ function _paintQaSuggest(sug, inp) {
       for (const c of ctxList()) if (c.id.startsWith(w.text) || c.label.toLowerCase().startsWith(w.text) || c.aliases.some(a => a.startsWith(w.text))) items.push({ kind: 'context', insert: '@' + c.id, label: '@' + c.label, icon: c.icon, hint: 'context' });
       for (const k of ['low', 'high']) if (k.startsWith(w.text)) items.push({ kind: 'energy', insert: '@' + k, label: TASK_ENERGY[k].label, icon: TASK_ENERGY[k].icon, hint: 'energy' });
     }
+    const firstCount = _qaFirstNameCounts();
     for (const p of (state.people || [])) {
       if (p.self) continue;
-      const first = String(p.name || '').split(/\s+/)[0].toLowerCase();
       const hay = [p.id, String(p.name || '').toLowerCase(), ...(p.aliases || []).map(a => String(a).toLowerCase())];
-      if (!w.text || hay.some(h => h.startsWith(w.text) || h.split(/\s+/).some(x => x.startsWith(w.text)))) items.push({ kind: 'person', insert: '@' + (first || p.id), label: p.name, color: p.color, hint: p.role || '' });
+      // The dialog's token rule: two people who share a first name get First_Last, so the pick links the right one (DASH-06).
+      if (!w.text || hay.some(h => h.startsWith(w.text) || h.split(/\s+/).some(x => x.startsWith(w.text)))) items.push({ kind: 'person', insert: '@' + _qaPersonToken(p, firstCount), label: p.name, color: p.color, hint: p.role || '' });
     }
     items = items.slice(0, 7);
     if (w.text && !items.some(x => x.kind === 'person' || x.kind === 'context')) items.push({ kind: 'new', insert: '@' + w.text, label: `Create “${w.text}”`, hint: 'new person' });
