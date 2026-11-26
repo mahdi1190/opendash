@@ -211,12 +211,17 @@ function _gb2hArt(H) {
   const W = GARDEN_WORLD; let m = null; try { m = gardenHere(); } catch (e) { return ''; }
   const plant = H.k === 'seed' || (H.k === 'move' && H.m === 'plants'), def = H.def; if (!def) return '';
   const ground = !plant && def.layer === 'ground';
+  // turned the way the world will draw it once it is down (94-garden-native-painted-decor-0kit.js sideOf / turnFlip): a painted piece
+  // with a side view (a fence run) shows it on a quarter turn; one without (the bench) is mirrored. The held bench showed the old
+  // drawing's side view, and went down facing the front.
+  let r = H.r || 0, mirror = false;
+  if (!plant && !ground) { try { const PD = window.GardenPaintedDecor, R = PD && PD.has && PD.row && PD.has(def.id) ? PD.row(def.id) : null; if (R && !R.ground) { mirror = R.side ? !!(r & 2) : r % 2 === 1; r = R.side && r % 2 === 1 ? 1 : 0; } } catch (e) { /* the old drawing's own turn */ } }
   const opts = plant ? { kind: 'plant', stage: H.k === 'seed' ? 1 : Math.max(1, H.stage || 1), variant: H.variant || 0, season: m.season, size: 'l', tod: m.tod, t: 0 }
-    : { kind: 'decor', season: m.season, variant: H.v || 0, v: H.v || 0, size: 'l', t: 0, tod: m.tod, r: H.r || 0, show: null };
+    : { kind: 'decor', season: m.season, variant: H.v || 0, v: H.v || 0, size: 'l', t: 0, tod: m.tod, r, show: null };
   let frag = ''; try { frag = _gdArt(def.id, opts); } catch (e) { frag = ''; }
   if (!frag) return '';
   const dx = (H.fw / 2 - 0.5) * W.cellW, dy = (H.fh - 1) * W.cellH + (ground ? 4 : 0);
-  return `<g transform="translate(${dx.toFixed(1)} ${dy.toFixed(1)}) ${ground ? `scale(${(W.cellW / 64).toFixed(3)} ${(W.cellH / 40).toFixed(3)})` : 'scale(0.75)'}">${frag}</g>`;
+  return `<g transform="translate(${dx.toFixed(1)} ${dy.toFixed(1)}) ${ground ? `scale(${(W.cellW / 64).toFixed(3)} ${(W.cellH / 40).toFixed(3)})` : mirror ? 'scale(-0.75 0.75)' : 'scale(0.75)'}">${frag}</g>`;
 }
 /** A thing picked up from where it stands is not drawn there while you carry it (again after a repaint of the world). */
 function _gb2hHideSource(hide) {

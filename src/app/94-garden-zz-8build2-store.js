@@ -338,7 +338,9 @@ function gardenB2ActRows(px, py, rows) {
   for (const t of gardenAffordThings()) {
     const K = t.kind && GARDEN_KINDS[t.kind]; if (!K || !K.store) continue;
     if (Math.hypot(t.x - px, (t.y - py) * 1.3) > GA_REACH) continue;
-    rows.push({ key: 'b2store:' + t.src + ':' + t.id, act: 'b2-store', b2: (spot) => gardenB2OpenStore(spot.thing), words: 'Open your storage', name: K.name, x: t.x, y: t.y, src: 'b2:' + t.id, promptY: t.y - 1.15, thing: t });
+    // (pri: E at a chest opens it; picking the chest up with your hands is the next row, Tab. Without it the pick-up row, measured from
+    // the side of the chest nearest you, came first and E lifted the chest you had just put down)
+    rows.push({ key: 'b2store:' + t.src + ':' + t.id, act: 'b2-store', b2: (spot) => gardenB2OpenStore(spot.thing), words: 'Open your storage', name: K.name, x: t.x, y: t.y, src: 'b2:' + t.id, promptY: t.y - 1.15, thing: t, pri: 0.5 });
   }
 }
 /** A chest's bubble opens your storage first (E on a bubble is its first button). */

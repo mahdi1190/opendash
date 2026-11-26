@@ -216,10 +216,14 @@ function gardenMuseumTab(el, m) {
     b.onclick = () => { _gb2m.wing = R.id; _gb2m.page = 0; _gb2m.pick = ''; _gb2m.say = null; try { gardenSfx('tab'); } catch (e) { /* quiet */ } _gb2mRepaint(); };
   }
   const body = root.appendChild(_gb2mEl('div', 'gmu-body'));
+  const fresh = _gb2m.say && _gb2m.say.fresh ? _gb2m.say.key : '';   // (read before the keeper's line marks it said)
   _gb2mGuide(body, W, here, rows);
   _gb2mHall(body, W, here, rows);
   _gb2mGiveStrip(root, W, here, rows);
   _gb2mFoot(root, here, rows);
+  // the piece you just gave, in view: further down the wing it was below the fold, and the thanks spoke of a case you could not see
+  // (at once, not smoothly: the pop-up's next refresh puts back the scroll it finds, and a smooth scroll still under way was cut short)
+  if (fresh) requestAnimationFrame(() => { try { const ex = (el.isConnected ? el : document).querySelector(`.gmu-ex[data-id="gmu-${fresh}"]`); if (ex && ex.isConnected) ex.scrollIntoView({ block: 'nearest' }); } catch (e) { /* stays where it is */ } });
 }
 /** The keeper of this wing, in an arched niche, saying a line: welcome, thank you, or about the piece you chose. */
 function _gb2mGuide(body, W, here, rows) {
