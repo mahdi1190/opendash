@@ -270,7 +270,7 @@ const GT_TRBOX = Object.freeze([-6, -12, GT_RACE.lenPx + 10, GT_RACE.laneW * 4 +
 function _gtrTrackPaint(B) {
   const L = GT_RACE.lenPx, H = GT_RACE.laneW * 4, S = { line: '#9a845c', lineHi: '#f2e4bc', peb: ['#8a867c', '#a8a094', '#6e6a62', '#c8c0b0'] }, r = gardenRand(91);
   B.f(B.rect(0, 0, L, H), '#c4ae7e', .18);   // (sand smoothed flat for the track)
-  for (let i = 0; i <= 4; i++) { const y = H * (.04 + i * .24); let d = `M2 ${y}`; for (let x = 12; x <= L - 2; x += 10) d += `L${x} ${y + (r() - .5) * 1.2}`; B.s(d, S.line, .8, .55).s(d.replace(/(\d+(\.\d+)?) (\d+(\.\d+)?)/g, (m, a, _b, c) => a + ' ' + (Number(c) + .8)), S.lineHi, .5, .35); }
+  for (let i = 0; i <= 4; i++) { const y = H * (.04 + i * .24); let d = `M2 ${y}`; for (let x = 12; x <= L - 2; x += 10) d += `L${x} ${y + (r() - .5) * 1.2}`; B.s(d, S.line, 1.1, .72).s(d.replace(/(\d+(\.\d+)?) (\d+(\.\d+)?)/g, (m, a, _b, c) => a + ' ' + (Number(c) + .8)), S.lineHi, .5, .35); }
   // the start: a row of pebbles; the finish: a stick dragged across, and a little stick with a strip of weed for a flag
   for (let k = 0; k < 9; k++) B.f(B.ell(6 + (r() - .5) * 2, H * (k / 8) * .96 + 1, 1.6 + r(), 1.1 + r() * .5), S.peb[k % 4]).f(B.ell(5.6, H * (k / 8) * .96 + .4, .7, .4), '#ffffff', .35);
   let d = `M${L - 6} -2`; for (let y = 2; y <= H + 2; y += 4) d += `L${L - 6 + (r() - .5) * 1.6} ${y}`; B.s(d, S.line, 1.4, .7);
@@ -282,7 +282,7 @@ const GardenTideRaceSprites = {
   clear() { for (const im of this.crabs || []) { try { im.destroy(); } catch (e) { /* gone */ } } if (this.track) { try { this.track.destroy(); } catch (e) { /* gone */ } } if (this.mark) { try { this.mark.destroy(); } catch (e) { /* gone */ } } this.crabs = []; this.track = null; this.mark = null; this.scene = null; },
   tick(time, view) {
     const scene = this.scene; if (!scene) return;
-    const dt = Math.min(.05, (time - (this.last || time)) / 1000); this.last = time;
+    const dt = Math.min(.25, (time - (this.last || time)) / 1000); this.last = time;   // (real time: a slow frame does not slow the race)
     _gtrFrame(time, dt);
     const R = _gtcr.R;
     if (!R || (R.done && performance.now() - R.endAt > 8000)) { if (this.track) this.clear0(); return; }

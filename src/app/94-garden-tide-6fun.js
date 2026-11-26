@@ -96,7 +96,7 @@ function gardenShoreFloat(x, y, text, o) {
   const box = typeof _gw !== 'undefined' && _gw.box; if (!box || typeof _ghProject !== 'function') return;
   const s = _ghProject(x, y); if (!s) return;
   const el = document.createElement('div'); el.className = 'gt-float'; el.textContent = text; el.setAttribute('aria-hidden', 'true');
-  el.style.cssText = `position:absolute;left:0;top:0;pointer-events:none;z-index:6;font:700 13px/1.2 system-ui,sans-serif;color:${(o && o.color) || '#fffdf4'};text-shadow:0 1px 2px rgba(40,30,20,.7),0 0 6px rgba(40,30,20,.35);white-space:nowrap;transform:translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, -100%)`;
+  el.style.cssText = `position:absolute;left:0;top:0;pointer-events:none;z-index:6;font:800 15px/1.2 system-ui,sans-serif;color:${(o && o.color) || '#fffdf4'};text-shadow:0 1px 2px rgba(40,30,20,.85),0 0 3px rgba(40,30,20,.7),0 0 8px rgba(40,30,20,.4);white-space:nowrap;transform:translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, -100%)`;
   box.appendChild(el);
   const motion = typeof gardenMotionOn !== 'function' || gardenMotionOn();
   if (motion && el.animate) el.animate([{ opacity: 0, translate: '0 6px' }, { opacity: 1, translate: '0 0', offset: .2 }, { opacity: 1, translate: '0 -10px', offset: .7 }, { opacity: 0, translate: '0 -18px' }], { duration: (o && o.ms) || 1100, easing: 'ease-out', fill: 'forwards' });
