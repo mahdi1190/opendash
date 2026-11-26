@@ -1,0 +1,17 @@
+/* Your own house (src/app/94-garden-house-*.js): the room's own controls. The room itself is the hidden rooms' (94-garden-rooms.css, 94-garden-native.css). */
+.grm-native-room > .ee-ui, .grm-room > .ee-ui { flex-wrap: wrap; }
+.ee-ui .hs-move.is-on { background: #6a4a26 !important; border-color: #ffd28a !important; }
+.ee-ui .hs-undo[hidden] { display: none; }
+.hs-bag { flex: 1 0 100%; display: flex; flex-direction: column; gap: 6px; max-width: min(760px, 100%); padding: 8px 10px; border-radius: 12px; background: rgba(20, 14, 10, .9); border: 1px solid rgba(255, 220, 160, .35); box-shadow: 0 4px 14px rgba(0, 0, 0, .25); color: #ffeccd; pointer-events: auto; cursor: default; }
+.hs-bag[hidden] { display: none; }
+.hs-bag-h { margin: 0; font-size: 13px; line-height: 1.35; color: #f4dcb4; }
+.hs-bag-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; max-height: 132px; overflow-y: auto; }
+.hs-bag-b { position: relative; width: 54px; height: 54px; padding: 3px; border-radius: 9px; background: rgba(255, 236, 205, .1); border: 1px solid transparent; cursor: pointer; }
+.hs-bag-b:hover, .hs-bag-b:focus-visible, .hs-bag-b.is-on { background: rgba(255, 236, 205, .26); border-color: #ffd28a; outline: none; }
+.hs-bag-b i { position: absolute; right: 4px; bottom: 2px; font-size: 11px; font-style: normal; font-weight: 700; color: #ffeccd; text-shadow: 0 1px 2px #000; }
+.hs-bag-sep { margin-left: 8px; font-size: 12px; color: #d8c4a0; }
+.hs-bag-none { font-size: 13px; color: #d8c4a0; }
+.hs-bag-close { margin-left: auto; }
+.hs-hint { position: absolute; left: 50%; bottom: 58px; transform: translateX(-50%); margin: 0; padding: 6px 14px; border-radius: 9px; background: rgba(14, 10, 8, .8); border: 1px solid rgba(255, 220, 160, .28); color: #ffe6c0; font-size: 13px; white-space: nowrap; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; pointer-events: none; z-index: 2; }
+.hs-hint[hidden] { display: none; }
+@media (max-width: 560px) { .hs-hint { white-space: normal; text-align: center; } .hs-bag-b { width: 46px; height: 46px; } }

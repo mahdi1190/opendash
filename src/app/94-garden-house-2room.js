@@ -1,0 +1,508 @@
+/* ============================================================
+   YOUR OWN HOUSE, going in and being there. Your house is found by kind (houseFindHome, 94-garden-house-0rules.js): the free
+   home-kind building with a door nearest the garden's heart. Walk to its door: "E  Go in" (or its bubble's "Go in"), and you are
+   inside, in the hidden rooms' engine (94-garden-world-4rooms.js, GardenNativeRooms): one room a screen, painted
+   (94-garden-house-1shell.js), its furniture drawn as itself (94-garden-house-1furn.js), sorted with the people so you walk
+   behind the table.
+
+     gardenHouseMine()            your house: { id, word, look, name, door } or null (on a visit: your friend's, from their snapshot)
+     gardenHouseReserve(things, saved)  the villagers' home solver leaves it alone (94-garden-wonder-0vale-folk.js)
+     gardenHouseActRows(px, py)   "E  Go in" at its door (94-garden-zz-7act-1core.js asks)
+     gardenHouseItems(id, items)  "Go in" in its bubble (94-garden-world-4rooms.js gardenRoomItems)
+     gardenHouseGo()              walk to the door and go in
+     gardenHouseRoomRow(id)       the room's row ('hs-0'), one object for good: friends' steps in and out find it (gardenRoomHear)
+     gardenHouseDoorPt(R)         its door, from the layout (_grmDoorPt)
+     GRM_PLAY.house               the room's play: begin, tap, key, esc, frame... (registered by _hsBoot, on first use)
+
+   Inside, by kind (rule 17: any piece of a kind does what its kind does): a light switches, a chest opens your things, a bed
+   gives a nap, a seat a rest, books a page, a clock the real time; the window looks out, the fire warms you, the door lets you out.
+   Moving and setting out things: 94-garden-house-3arrange.js. Friends: 94-garden-house-6share.js.
+   SAVES: g.hs (the house), g.hr (its rooms), g.hf (what stands in them); one op at a time through the rules file, with Undo.
+   No top-level calls: everything is registered on first use (_hsBoot), so the load order of the files never matters.
+   ============================================================ */
+const _hs = { booted: false, rows: new Map(), mine: null, mineKey: '', mineAt: 0, saidNear: false, keys: [] };
+const HOUSE_REACH = 92;            // room px: how near you stand to use a thing
+const HOUSE_DOOR_REACH = 1.8;      // cells: how near the door outside offers "Go in"
+
+/* ---------- which house ---------- */
+function _hsBoot() {
+  if (_hs.booted) return true;
+  if (typeof GRM_PLAY === 'undefined' || typeof GRM === 'undefined') return false;
+  GRM_PLAY.house = HOUSE_PLAY;
+  _hs.booted = true;
+  return true;
+}
+/** The villagers' saved homes (and the hidden rooms' buildings): nobody else's house is yours. */
+function _hsTaken(saved) {
+  const taken = new Set();
+  try {
+    if (saved) { for (const v of Object.values(saved)) if (v) taken.add(String(v)); }
+    else if (typeof _wdG === 'function') { for (const [k, v] of Object.entries(_wdG() || {})) if (k.startsWith('vh.') && v) taken.add(String(v)); }
+  } catch (e) { /* none */ }
+  try { if (typeof GRM_ROOMS !== 'undefined') for (const R of GRM_ROOMS) if (R.at) taken.add(R.at); } catch (e) { /* none */ }
+  return taken;
+}
+/** A house's door in the layout: its static row's door cell, or for a placed thing its foot. */
+function _hsDoorOf(t) {
+  if (!t) return null;
+  let row = null; try { row = (gardenIslandData().static || []).find(q => q.id === t.id) || null; } catch (e) { row = null; }
+  if (row && row.door && Number.isFinite(row.door.x)) return { x: row.door.x + .5, y: row.door.y + .5 };
+  if (t.src === 'thing') return { x: t.x, y: t.y + .42 };
+  return null;
+}
+function _hsOpenAt(d) { try { return !gardenZoneLockAt(Math.floor(d.x), Math.floor(d.y)); } catch (e) { return true; } }
+function _hsThings() { try { return typeof gardenAffordThings === 'function' ? gardenAffordThings() : []; } catch (e) { return []; } }
+function _hsNameOf(t, word) {
+  let n = ''; try { const s = typeof gardenLandSight === 'function' ? gardenLandSight(t.id) : null; n = (s && s.name) || t.name || ''; } catch (e) { n = t && t.name || ''; }
+  n = String(n || '').replace(/^the /i, ''); if (!n) n = word === 'cottage' ? 'Your cottage' : 'Your ' + (word || 'house');
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
+/** Your house (or, on a visit, your friend's). Worked out at most every 2 s, from the layout's own things. */
+function gardenHouseMine() {
+  let m = null; try { m = gardenHere(); } catch (e) { return null; }
+  const visit = m && m.visit, g = visit ? null : _gdG(), hs = visit ? (visit.snap && visit.snap.hs) : g.hs || {};
+  const want = visit ? (hs && hs.h) || '' : hs.home || '';
+  const now = performance.now(), key = (visit ? 'v:' + visit.fid : 'me') + '|' + want + '|' + (typeof gardenIslandData === 'function' ? gardenIslandData().id : '');
+  if (_hs.mineKey === key && now - _hs.mineAt < 2000) return _hs.mine;
+  _hs.mineKey = key; _hs.mineAt = now;
+  const things = _hsThings();
+  let t = want ? things.find(q => q.id === want && houseHomeWord(q)) : null;
+  if (!t && visit) { _hs.mine = null; return null; }   // (their house is not in this world's layout: no door)
+  if (!t) t = houseFindHome(things, GARDEN_LAND_HEART, _hsTaken(null), _hsDoorOf, q => { const d = _hsDoorOf(q); return !!d && _hsOpenAt(d); });
+  if (!t) { _hs.mine = null; return null; }
+  const word = houseHomeWord(t), door = _hsDoorOf(t);
+  _hs.mine = door ? { id: t.id, word, look: visit ? (hs.l || houseLookOf(word)) : (g.hs.look || houseLookOf(word)), name: _hsNameOf(t, word), door, visit: !!visit, moved: visit ? true : !!g.hs.home } : null;
+  return _hs.mine;
+}
+/** For the villagers' home solver: your house, so nobody new moves into it. */
+function gardenHouseReserve(things, saved) {
+  try {
+    const g = _gdG(); if (g.hs && g.hs.home) return [g.hs.home];
+    const t = houseFindHome(things, GARDEN_LAND_HEART, _hsTaken(saved || {}), _hsDoorOf, q => { const d = _hsDoorOf(q); return !!d && _hsOpenAt(d); });
+    return t ? [t.id] : [];
+  } catch (e) { return []; }
+}
+function gardenHouseDoorPt(R) { const H = gardenHouseMine(); return H && (!R || !R.home || R.home === H.id) ? { x: H.door.x, y: H.door.y } : null; }
+
+/* ---------- the way in, outside ---------- */
+function _hsSym() {
+  return '<path d="M-17 0V-30Q-17 -42 0 -42Q17 -42 17 -30V0Z" fill="#6a4a2e"/><path d="M-13 0V-29Q-13 -37 0 -37Q13 -37 13 -29V0Z" fill="#8a5e38"/>'
+    + '<path d="M-13 -22H13M-13 -11H13" stroke="#5a3a22" stroke-width="2"/><circle cx="8" cy="-16" r="1.8" fill="#d8b45a"/>'
+    + '<circle cx="-16" cy="-38" r="4" fill="#d8687a"/><circle cx="-20" cy="-31" r="3.4" fill="#e8909a"/><circle cx="16" cy="-40" r="3.6" fill="#d8687a"/><circle cx="-15" cy="-45" r="2.6" fill="#5a8a44"/><circle cx="19" cy="-34" r="2.6" fill="#5a8a44"/>'
+    + '<path d="M-21 0H21V3H-21Z" fill="#a8a296"/>';
+}
+function gardenHouseActRows(px, py) {
+  if (typeof _gw === 'undefined' || !_gw.on) return [];
+  const H = gardenHouseMine(); if (!H) return [];
+  const d = Math.hypot(H.door.x - px, (H.door.y - py) * 1.3);
+  if (!H.visit && !H.moved && !_hs.saidNear && d < 4) { _hs.saidNear = true; try { gardenMessage(`${H.name} stands empty, its door on the latch. A note pinned to it says: “For whoever keeps the garden now.”`, { ambient: true, source: 'house-near', icon: 'home' }); } catch (e) { /* only words */ } }
+  if (d > HOUSE_DOOR_REACH) return [];
+  return [{ key: 'house:' + H.id, act: 'house', house: H.id, src: 'house:' + H.id, words: H.visit ? 'Go in' : H.moved ? 'Go in' : 'Go in: it is yours', name: H.name, x: H.door.x, y: H.door.y, pri: 0.8 }];
+}
+function gardenHouseItems(id, items) {
+  const H = gardenHouseMine(); if (!H || H.id !== id) return;
+  items.unshift({ svg: `<svg viewBox="-30 -60 60 66" width="26" height="26" aria-hidden="true">${_hsSym()}</svg>`, label: 'Go in', cls: 'is-go grm-way', run: () => gardenHouseGo() });
+}
+/** Walk to the door and go in. */
+function gardenHouseGo() {
+  if (!_hsBoot()) return false;
+  const H = gardenHouseMine(); if (!H) return false;
+  const R = gardenHouseRoomRow('hs-0'); if (!R) return false;
+  try { _hsWarm(R); } catch (e) { /* drawn on the way in */ }
+  gardenRoomGo(R);
+  return true;
+}
+
+/* ---------- the room's row ---------- */
+/** The house as it is now: { home, kind, look, rooms, pieces } (your garden's, or your friend's from their snapshot, with what you asked for on top). */
+function _hsView() {
+  let m = null; try { m = gardenHere(); } catch (e) { return null; }
+  if (m && m.visit) { const v = houseFromWire(m.visit.snap && m.visit.snap.hs); return v && typeof _hsGuestOver === 'function' ? _hsGuestOver(v) : v; }
+  const g = _gdG(), hs = g.hs || {};
+  if (!hs.home) { const H = gardenHouseMine(); return H ? { home: H.id, kind: H.word, look: H.look, rooms: { 0: { st: 2, w: HOUSE_WALL0, f: HOUSE_FLOOR0 } }, pieces: [], fresh: true } : null; }
+  const rooms = {}; for (const [k, r] of Object.entries(g.hr || {})) if (r && typeof r === 'object') rooms[k] = { st: r.st || 0, w: r.w || HOUSE_WALL0, f: r.f || HOUSE_FLOOR0 };
+  return { home: hs.home, kind: hs.kind || 'cottage', look: HOUSE_LOOKS.includes(hs.look) ? hs.look : 'thatch', rooms, pieces: housePieces(g) };
+}
+/** The light outside now, as the window shows it. */
+function _hsLight() {
+  let m = null; try { m = gardenHere(); } catch (e) { m = null; }
+  return { tod: HOUSE_TOD.includes(m && m.tod) ? m.tod : 'day', season: (m && m.season) || 'summer', wx: m && m.rain ? (m.rain.snow ? 2 : m.rain.now ? 1 : 0) : 0 };
+}
+function _hsPaintParams(R) {
+  const v = _hsView(), room = (v && v.rooms[String(R.slot)]) || { w: HOUSE_WALL0, f: HOUSE_FLOOR0 }, L = _hsLight();
+  return { look: (v && v.look) || 'thatch', wall: room.w || HOUSE_WALL0, floor: room.f || HOUSE_FLOOR0, tod: L.tod, season: L.season, wx: L.wx };
+}
+/** The painting this room wants now, registered with the painted rooms under its own key (only the last few are kept). */
+function _hsPaintKey(R) {
+  const P = _hsPaintParams(R), key = houseShellKey(P);
+  if (typeof GRA_ROOMS !== 'undefined' && !GRA_ROOMS[key]) {
+    GRA_ROOMS[key] = houseShellSpec(P); _hs.keys.push(key);
+    while (_hs.keys.length > 10) { const old = _hs.keys.shift(); if (old !== key) delete GRA_ROOMS[old]; }
+  }
+  return key;
+}
+function gardenHouseRoomRow(id) {
+  const m = /^hs-([0-7])$/.exec(String(id || '')); if (!m) return null;
+  if (_hs.rows.has(id)) return _hs.rows.get(id);
+  if (!_hsBoot()) return null;
+  const slot = Number(m[1]);
+  const R = {
+    id, slot, house: true, play: 'house', door: 'plank', verb: 'Go in', bg: '#1a120c',
+    get home() { const H = gardenHouseMine(); return H ? H.id : ''; },
+    get name() { const H = gardenHouseMine(); return H ? H.name : 'The house'; },
+    floor: Object.freeze({ x0: 38, x1: 922, y0: 410, y1: 572 }),
+    get blocks() { const S = _grm.R === R && _grm.S; return (S && S.blocks) || []; },
+    get spawn() { const S = _grm.R === R && _grm.S; return (S && S.spawn) || HOUSE_SHELL.spawn; },
+    get paintKey() { return _hsPaintKey(R); },
+    get say() { return _hsSayIn(R); },
+    get how() { return gpVisiting() || (_grm.S && _grm.S.movedIn) ? '' : 'Move things (at the top) to set your room out. The chest keeps your things.'; },
+    sym: _hsSym,
+    art() { return _hsSvgRoom(R); },
+  };
+  _hs.rows.set(id, R);
+  return R;
+}
+function _hsSayIn(R) {
+  const H = gardenHouseMine(), L = _hsLight();
+  if (gpVisiting()) { let who = 'your friend'; try { who = _gdvFirst() || who; } catch (e) { /* the plain word */ } return `${who}’s ${H && H.word || 'house'}. You wipe your feet.`; }
+  if (!_gdG().hs || !_gdG().hs.home || (_grm.S && _grm.S.movedIn)) return `${H ? H.name : 'The cottage'}. Aired and swept, the fire laid and lit. A note on the table: “It is yours, dear. Mother Thistle.”`;
+  return { dawn: 'Home. The first light is at the window.', day: 'Home. The fire is in, and the kettle is on the hob.', dusk: 'Home. The fire is the brightest thing in the room.', night: 'Home. The fire has burned low and warm.' }[L.tod] || 'Home.';
+}
+
+/* ---------- inside: the play ---------- */
+/** The native room's state, while this is the room you are in. */
+function _hsNative() { const s = window.GardenNativeRooms && GardenNativeRooms.current(); return s && !s.music && s.R && s.R.house ? s : null; }
+function _hsInside() { return !!(_grm.on && _grm.R && _grm.R.house && _grm.S); }
+function _hsFeet(S) { const out = []; if (_grm.me) out.push([_grm.me.x, _grm.me.y]); for (const Q of _grm.m.values()) out.push([Q.x, Q.y]); return out; }
+const HOUSE_PLAY = {
+  begin(R, S) {
+    S.slot = R.slot; S.rev = -1; S.vrev = -1; S.snapRef = null; S.move = false; S.carry = null; S.imgs = new Map(); S.lamps = new Map(); S.lampList = []; S.clocks = new Map(); S.blocks = []; S.pieces = []; S.dirty = false; S.pend = new Map();
+    S.spawn = HOUSE_SHELL.spawn; S.native = !!_hsNative(); S.t = 0; S.lightAt = 0; S.keyNow = R.paintKey; S.near = null; S.nearAt = 0;
+    S.leave = () => _hsEnd(R, S);
+    if (!gpVisiting()) _hsMoveIn(R, S);
+    { const s = _hsNative(); if (s && s.doorMark && s.doorMark.root) s.doorMark.root.setPosition(0, -92); }   // (the way-out badge on the wall over the front door, not on its panels)
+    _hsRoomRefresh(R, S, true);
+    _hsUi(R, S);
+    try { if (typeof _fxSound === 'function') _fxSound('pop'); } catch (e) { /* no sound */ }
+  },
+  spots(R, S) { return S.native ? [] : _hsSvgSpots(R, S); },
+  act(R, S, id) { const u = String(id).replace(/^p:/, ''), p = S.pieces.find(q => q.u === u); if (!p) return; if (S.move) { if (typeof _hsPickUp === 'function') _hsPickUp(R, S, p); } else _hsUse(R, S, p); },
+  tap(R, S, p) {
+    if (S.move || S.carry) return typeof _hsMoveTap === 'function' && _hsMoveTap(R, S, p);
+    const hit = _hsHit(S, p.x, p.y);
+    if (hit) { const U = _hsUseOf(hit); if (!U) return false; _hsWalkTo(S, _hsStandAt(hit), () => _hsUse(R, S, hit)); return true; }
+    const D = HOUSE_SHELL.door; if (p.x >= D.x0 - 8 && p.x <= D.x1 + 8 && p.y >= D.y0 - 10 && p.y <= 444) { _hsWalkTo(S, HOUSE_SHELL.stand, () => gardenRoomLeave()); return true; }
+    const W = HOUSE_SHELL.window; if (p.x >= W.x0 && p.x <= W.x1 && p.y >= W.y0 && p.y <= W.y1) { _hsWalkTo(S, { x: (W.x0 + W.x1) / 2, y: 424 }, () => _hsShellUse(R, S, 'window')); return true; }
+    const F = HOUSE_SHELL.hearth; if (p.x >= F.x0 && p.x <= F.x1 && p.y >= HOUSE_SHELL.fire.y0 - 40 && p.y <= 452) { _hsWalkTo(S, { x: (F.x0 + F.x1) / 2, y: 462 }, () => _hsShellUse(R, S, 'fire')); return true; }
+    return false;
+  },
+  key(R, S, k) {
+    if (S.move || S.carry) return typeof _hsMoveKey === 'function' && _hsMoveKey(R, S, k);
+    if (k !== 'e' && k !== 'Enter' && k !== ' ') return false;
+    const n = _hsNearest(S); if (!n) return false;
+    if (n.shell === 'door') { gardenRoomLeave(); return true; }
+    if (n.shell) { _hsShellUse(R, S, n.shell); return true; }
+    _hsUse(R, S, n.p); return true;
+  },
+  esc(R, S) { return typeof _hsMoveEsc === 'function' && _hsMoveEsc(R, S); },
+  up(R, S) { if (typeof _hsMoveUp === 'function') _hsMoveUp(R, S); },
+  cancel(R, S) { if (typeof _hsMoveCancelDrag === 'function') _hsMoveCancelDrag(R, S); },
+  frame(R, S, dt) {
+    S.t += dt;
+    const fresh = gpVisiting() ? (typeof _gdv !== 'undefined' ? _gdv.rev : 0) !== S.vrev : _gd.rev !== S.rev;   // (no work a frame: a number compared)
+    if (fresh) { S.vrev = typeof _gdv !== 'undefined' ? _gdv.rev : 0; if (!gpVisiting() || _hsSnapRef() !== S.snapRef || S.pend.size) _hsRoomRefresh(R, S, false); }
+    if (S.t - S.lightAt > 60) { S.lightAt = S.t; if (R.paintKey !== S.keyNow) _hsShellSwap(R, S); }
+    if (S.swap) _hsShellSwapStep(S);
+    if (typeof _hsMoveFrame === 'function') _hsMoveFrame(R, S, dt);
+    if (S.t - S.nearAt > .16) { S.nearAt = S.t; _hsPrompt(R, S); }
+    if (S.lampList.length && gardenMotionOn()) for (let i = 0; i < S.lampList.length; i++) { const L = S.lampList[i]; if (L.glow.active) L.glow.setAlpha(L.a * (.86 + Math.sin(S.t * 8.3 + L.ph) * .08 + Math.sin(S.t * 19.7 + L.ph * 2) * .05)); }
+    if (S.clocks.size && (S.clockAt == null || S.t - S.clockAt > 5)) { S.clockAt = S.t; _hsClocks(S); }
+    if (S.pend.size && typeof _hsGuestPendTick === 'function') _hsGuestPendTick(R, S);
+  },
+};
+function _hsSnapRef() { try { const m = gardenHere(); return m && m.visit && m.visit.snap ? m.visit.snap.hs || null : null; } catch (e) { return null; } }
+/** Moving in, the first time you go in: the house is yours, with its first things (free). */
+function _hsMoveIn(R, S) {
+  const g = _gdG(); if (g.hs && g.hs.home) {
+    // (the layout moved your house: the same rooms, the new house)
+    const H = gardenHouseMine(); if (H && H.id !== g.hs.home && !_hsThings().some(t => t.id === g.hs.home)) { g.hs.home = H.id; g.hs.kind = H.word; g.hs.look = houseLookOf(H.word); _gdSaveQuiet(); }
+    return;
+  }
+  const H = gardenHouseMine(); if (!H) return;
+  const op = { o: 'home', h: H.id, k: H.word, l: houseLookOf(H.word), day: _gdToday(), us: HOUSE_START.map(() => _gdUid('h')) };
+  const r = houseDo(op, 'Moved in', { noUndo: true }); if (!r.ok) return;
+  S.movedIn = true;
+  const gift = gpGrant('hs-home', { 'mat:timber': 2, 'mat:stone': 1 });
+  if (typeof _grmLater === 'function') _grmLater(R, S, () => _grmSay(`It is yours now: the bed, the table, the chest and the rest. ${gift ? 'Behind the door you find 2 timber and a good stone, left for you. ' : ''}Click Move things to set it out your way.`, 10000), 9400);
+}
+/** One change to your own house, through the rules file: checked, applied once, saved (quietly: the garden outside is not drawn again), with Undo. */
+function houseDo(op, label, o) {
+  o = o || {};
+  const g = _gdG(), W = { g, has: gardenHas, feet: o.feet || null };
+  const why = houseOpCheck(W, op, '');
+  if (why) return { ok: false, msg: why };
+  const mark = _gdMark(houseOpTouches(op, g));
+  houseOpApply(g, op, '', { now: _gdNow(), today: _gdToday() });
+  if (!o.noUndo) _gdPushUndo(label || 'A change in your house', mark);
+  _gdSaveQuiet();
+  if (typeof _hsSnapSoon === 'function') _hsSnapSoon();
+  const S = _hsInside() ? _grm.S : null; if (S) S.dirty = true;
+  return { ok: true };
+}
+
+/* ---------- drawing what stands in the room (the painted rooms: Phaser images of their own, sorted with the people) ---------- */
+function _hsDepth(p, S) { const sh = houseShape(gardenDecor(p.d)); if (!sh) return 100; if (sh.hp === 'rug') return 110 + p.y / 1000; if (sh.hp === 'wall') return 120 + p.y / 1000; return 1000 + p.y + ((p.z || 0) > 0 ? 1.8 : -.3); }
+function _hsLitKey(p) { const sh = houseShape(gardenDecor(p.d)); return !!(sh && sh.lit && p.l); }
+function _hsTexInUse(key) { const S = _hsInside() ? _grm.S : null; if (!S || !S.imgs) return false; for (const it of S.imgs.values()) if (it.key === key) return true; return S.carry && S.carry.key === key; }
+/** Everything about the room again: the view, the people's blocks, the pictures. first: just come in. */
+function _hsRoomRefresh(R, S, first) {
+  S.rev = _gd.rev; S.snapRef = gpVisiting() ? _hsSnapRef() : null;
+  const v = _hsView(); S.view = v;
+  S.pieces = v ? v.pieces.filter(p => p.s === S.slot) : [];
+  if (S.carry && S.carry.u && !S.pieces.some(p => p.u === S.carry.u) && typeof _hsMoveDrop === 'function') _hsMoveDrop(R, S, 'gone');
+  S.blocks = houseBlocks(S.pieces.filter(p => !(S.carry && S.carry.u === p.u)), S.slot);
+  if (S.native) _hsSync(R, S); else if (!first) _grmPaint();
+  if (!first && R.paintKey !== S.keyNow) _hsShellSwap(R, S);
+  if (typeof _hsBagPaint === 'function') _hsBagPaint(R, S);
+}
+function _hsGlowKey(scene) {
+  const key = 'gdhouse-glow'; if (scene.textures.exists(key)) return key;
+  const c = document.createElement('canvas'); c.width = c.height = 64; const cx = c.getContext('2d'), g = cx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,240,200,1)'); g.addColorStop(.35, 'rgba(255,214,140,.45)'); g.addColorStop(1, 'rgba(255,200,120,0)'); cx.fillStyle = g; cx.fillRect(0, 0, 64, 64);
+  scene.textures.addCanvas(key, c); return key;
+}
+const _HS_FLAME = Object.freeze({ 'hf-candlestick': [0, -36, 150], 'hf-oil-lamp': [0, -34, 210], 'hf-standard-lamp': [0, -118, 280] });
+/** Make the room's pictures match its pieces: one image each (created when its texture is baked), lamps and their light, clocks' hands. */
+function _hsSync(R, S) {
+  const s = _hsNative(); if (!s) return;
+  const scene = s.context.scene, keep = new Set(), tod = _hsLight().tod, tint = { night: 0xa6a2b4, dusk: 0xe4d4cc, dawn: 0xf0e6e4 }[tod] || 0xffffff;   // (the room's own light on its things: dimmer and bluer at night)
+  _hst.onReady = () => { if (_hsInside() && _grm.S === S && _hsNative() === s) _hsSync(R, S); };
+  for (const p of S.pieces) {
+    if (S.carry && S.carry.u === p.u) continue;
+    const key = houseTexture(scene, p.d, p.v, _hsLitKey(p)); if (!key) continue;
+    keep.add(p.u);
+    let it = S.imgs.get(p.u);
+    if (!it || !it.im.active) { const im = scene.add.image(0, 0, key); s.root.add(im); it = { im, key: '' }; S.imgs.set(p.u, it); }
+    if (it.key !== key) { it.im.setTexture(key); it.key = key; const b = houseArtBox(p.d); it.im.setOrigin(-b[0] / (b[2] - b[0]), -b[1] / (b[3] - b[1])); }
+    it.im.setPosition(p.x, p.y - (p.z || 0)).setScale((p.r ? -1 : 1) / HOUSE_TEX_K, 1 / HOUSE_TEX_K).setDepth(_hsDepth(p, S)).setAlpha(p.pend ? .62 : 1);
+    if (it.tint !== (_hsLitKey(p) ? 0xffffff : tint)) { it.tint = _hsLitKey(p) ? 0xffffff : tint; if (it.tint === 0xffffff) it.im.clearTint(); else it.im.setTint(it.tint); }
+    it.p = p;
+  }
+  for (const [u, it] of S.imgs) if (!keep.has(u)) { if (it.im.active) it.im.destroy(); S.imgs.delete(u); }
+  // the lamps: a soft flame glow, and a light the room's lighting takes up (s.lights is read every frame)
+  const base = (s.paintSpec && s.paintSpec.lights ? s.paintSpec.lights : []).map(l => Object.assign({}, l)), lit = new Set();
+  for (const p of S.pieces) {
+    if (!_hsLitKey(p) || (S.carry && S.carry.u === p.u)) continue;
+    const f = _HS_FLAME[p.d] || [0, -30, 160], x = p.x + f[0] * (p.r ? -1 : 1), y = p.y - (p.z || 0) + f[1];
+    lit.add(p.u); base.push({ id: 'hs-lamp-' + p.u, x, y, radius: f[2], height: 60, color: '#ffcf80', intensity: .5, flicker: p.d !== 'hf-standard-lamp' });
+    let L = S.lamps.get(p.u);
+    if (!L || !L.glow.active) { const glow = scene.add.image(x, y, _hsGlowKey(scene)).setBlendMode(Phaser.BlendModes.ADD); s.root.add(glow); L = { glow, a: .55, ph: Math.random() * 6 }; S.lamps.set(p.u, L); }
+    L.glow.setPosition(x, y).setScale(f[2] / 150).setDepth(_hsDepth(p, S) + .05);
+  }
+  for (const [u, L] of S.lamps) if (!lit.has(u)) { if (L.glow.active) L.glow.destroy(); S.lamps.delete(u); }
+  S.lampList = [...S.lamps.values()];
+  s.lights = base;
+  // clocks keep the real time: two hands over the painted face
+  const clocks = new Set();
+  for (const p of S.pieces) {
+    if (p.d !== 'hf-wall-clock' || !S.imgs.has(p.u)) continue; clocks.add(p.u);
+    let C = S.clocks.get(p.u); if (!C || !C.g.active) { const gr = scene.add.graphics(); s.root.add(gr); C = { g: gr, min: -1 }; S.clocks.set(p.u, C); }
+    C.g.setPosition(p.x, p.y - 50).setDepth(_hsDepth(p, S) + .02); C.min = -1;
+  }
+  for (const [u, C] of S.clocks) if (!clocks.has(u)) { if (C.g.active) C.g.destroy(); S.clocks.delete(u); }
+  _hsClocks(S);
+}
+function _hsClocks(S) {
+  let h = 12, mi = 0; try { const p = Clock.parts(_gdNow()); h = p.h; mi = p.mi; } catch (e) { const d = new Date(); h = d.getHours(); mi = d.getMinutes(); }
+  for (const C of S.clocks.values()) {
+    if (!C.g.active || C.min === h * 60 + mi) continue; C.min = h * 60 + mi;
+    const am = (mi / 60) * Math.PI * 2 - Math.PI / 2, ah = ((h % 12) / 12 + mi / 720) * Math.PI * 2 - Math.PI / 2;
+    C.g.clear().lineStyle(2.4, 0x2a1a10, 1).lineBetween(0, 0, Math.cos(ah) * 9, Math.sin(ah) * 9).lineStyle(1.5, 0x2a1a10, 1).lineBetween(0, 0, Math.cos(am) * 14, Math.sin(am) * 14).fillStyle(0x2a1a10, 1).fillCircle(0, 0, 2);
+  }
+}
+/** Bake the room's pieces ahead, while you walk to the door. */
+function _hsWarm(R) {
+  const scene = window.GardenNative && GardenNative.scene && GardenNative.scene(); if (!scene) return;
+  const v = _hsView(); if (!v) return;
+  const list = v.fresh ? HOUSE_START.map(p => ({ d: p.d, v: 0, l: 0 })) : v.pieces.filter(p => p.s === R.slot);
+  for (const p of list) houseTexture(scene, p.d, p.v, _hsLitKey(p));
+}
+
+/* ---------- the room's painting: a new one (a new paper, the evening coming on) fades in over the old ---------- */
+function _hsShellSwap(R, S) {
+  const s = _hsNative(); S.keyNow = R.paintKey;
+  if (!s || !s.paintSpec || !window.GardenRoomArt) return;
+  const spec = GardenRoomArt.spec(R); if (!spec) return;
+  if (S.swap) { try { S.swap.next.destroy(); } catch (e) { /* gone */ } S.swap = null; }
+  const next = GardenRoomArt.create(s, R);
+  try { next.root.setDepth(.5); const plate = next.root.list && next.root.list[0]; if (plate && plate.type === 'Rectangle') plate.setVisible(false); } catch (e) { /* the plate shows: still a picture */ }
+  S.swap = { next, old: s.background, t: 0 };
+  s.background = next; s.paintSpec = spec;
+  if (S.native) _hsSync(R, S);   // (the room's own lights come from the new painting)
+}
+function _hsShellSwapStep(S) {
+  const W = S.swap; W.t++;
+  if (W.shownAt == null && W.next.status && W.next.status.fx != null) W.shownAt = S.t;   // (baked and fading in: the old picture goes once the new one is in)
+  if ((W.shownAt != null && S.t - W.shownAt > .6) || W.t > 900) { try { W.old.destroy(); } catch (e) { /* gone */ } try { W.next.root.setDepth(0); } catch (e) { /* fine */ } S.swap = null; }
+}
+
+/* ---------- what is where, and what it does ---------- */
+/** The piece under a point in the room (the topmost drawn), or null. */
+function _hsHit(S, x, y) {
+  let best = null, bd = -Infinity;
+  for (const p of S.pieces) {
+    if (S.carry && S.carry.u === p.u) continue;
+    const def = gardenDecor(p.d), sh = houseShape(def); if (!sh) continue;
+    let inside;
+    if (sh.hp === 'rug') { const cx0 = p.x, cy0 = p.y - sh.d / 2; inside = Math.hypot((x - cx0) / (sh.w / 2), (y - cy0) / (sh.d / 2 + 4)) <= 1; }
+    else { const b = houseDrawn(p, def), pad = sh.w < 30 ? 8 : 2; inside = x >= b.x0 - pad && x <= b.x1 + pad && y >= b.y0 - pad && y <= b.y1 + 4; }
+    if (!inside) continue;
+    const d = _hsDepth(p, S); if (d > bd) { bd = d; best = p; }
+  }
+  return best;
+}
+/** Where you stand to use a piece: in front of it, on the floor. */
+function _hsStandAt(p) {
+  const sh = houseShape(gardenDecor(p.d)) || { hp: 'floor', w: 40 }, F = _grm.R.floor || GRM.floor;
+  if (sh.hp === 'wall') return { x: p.x, y: Math.max(F.y0 + 6, 418) };
+  const me = _grm.me, side = me && me.x < p.x ? -1 : 1;
+  return { x: p.x, y: Math.min(F.y1 - 2, p.y + 22), side };
+}
+function _hsWalkTo(S, pt, then) { const c = _grmClamp(pt.x, pt.y); _grmWalk(c.x, c.y, then); }
+const HOUSE_USE = Object.freeze({
+  light: p => p.l ? 'Put it out' : 'Light it', store: () => 'Open the chest', bed: () => 'Have a nap', seat: () => 'Sit a while', books: () => 'Read a while',
+  clock: () => 'What time is it?', plant: () => 'Water it', picture: () => 'Look at it', shelf: () => 'Look at the jars',
+});
+function _hsUseOf(p) { const sh = houseShape(gardenDecor(p.d)); const f = sh && HOUSE_USE[sh.fk]; return f ? f(p) : ''; }
+/** The nearest thing to use, from where you stand: a piece by kind, or the door, the window, the fire. */
+function _hsNearest(S) {
+  const M = _grm.me; if (!M) return null;
+  let best = null, bd = HOUSE_REACH;
+  const consider = (x, y, row) => { const d = Math.hypot(M.x - x, (M.y - y) * 1.2); if (d < bd) { bd = d; best = row; } };
+  consider(HOUSE_SHELL.stand.x, HOUSE_SHELL.stand.y, { shell: 'door', words: 'Go out', x: HOUSE_SHELL.stand.x, y: HOUSE_SHELL.door.y0 });
+  const W = HOUSE_SHELL.window; if (M.y < 446) consider(Math.max(W.x0 + 10, Math.min(W.x1 - 10, M.x)), 418, { shell: 'window', words: 'Look out', x: (W.x0 + W.x1) / 2, y: W.y0 });
+  const F = HOUSE_SHELL.fire; consider(Math.max(F.x0, Math.min(F.x1, M.x)), 456, { shell: 'fire', words: 'Warm your hands', x: (F.x0 + F.x1) / 2, y: F.y0 - 20 });
+  for (const p of S.pieces) {
+    const w = _hsUseOf(p); if (!w) continue;
+    const sh = houseShape(gardenDecor(p.d)), fy = sh.hp === 'wall' ? 420 : p.y, fx = sh.hp === 'wall' ? p.x : Math.max(p.x - sh.w / 2, Math.min(p.x + sh.w / 2, M.x));
+    consider(fx, fy, { p, words: w + ' (' + String(gardenDecor(p.d).name).toLowerCase().replace(/^a /, '') + ')', x: p.x, y: p.y - (p.z || 0) - sh.h });
+  }
+  return best;
+}
+/** The prompt over the thing nearest you: "E  Light it (brass candlestick)". Drawn in the room (a Phaser text), moved only when it changes. */
+function _hsPrompt(R, S) {
+  const s = _hsNative(); if (!s) return;
+  const n = S.move || S.carry ? (typeof _hsMovePromptRow === 'function' ? _hsMovePromptRow(R, S) : null) : _hsNearest(S);
+  const words = n ? n.words : '', key = n ? words + '|' + Math.round(n.x) + '|' + Math.round(n.y) : '';
+  if (key === S.promptKey) return; S.promptKey = key;
+  if (!S.prompt || !S.prompt.c.active) {
+    const scene = s.context.scene, c = scene.add.container(0, 0).setDepth(9600), bg = scene.add.graphics(), kb = scene.add.graphics();
+    const t = scene.add.text(0, 0, '', { fontFamily: 'Inter, sans-serif', fontSize: '15px', color: '#fff2d8', resolution: 2 }).setOrigin(0, .5), e = scene.add.text(0, 0, 'E', { fontFamily: 'Inter, sans-serif', fontSize: '13px', fontStyle: 'bold', color: '#2a1a10', resolution: 2 }).setOrigin(.5, .5);
+    c.add([bg, kb, e, t]); s.root.add(c); S.prompt = { c, bg, kb, t, e };
+  }
+  const P = S.prompt; P.c.setVisible(!!n); if (!n) return;
+  P.t.setText(words); const w = P.t.width + 46, h = 28;
+  P.bg.clear().fillStyle(0x18120c, .9).fillRoundedRect(-w / 2, -h / 2, w, h, 9).lineStyle(1, 0xffdca0, .45).strokeRoundedRect(-w / 2, -h / 2, w, h, 9);
+  P.kb.clear().fillStyle(0xffe6b0, 1).fillRoundedRect(-w / 2 + 7, -9, 20, 18, 4); P.e.setPosition(-w / 2 + 17, 0); P.t.setPosition(-w / 2 + 34, 0);
+  P.c.setPosition(Math.max(w / 2 + 8, Math.min(960 - w / 2 - 8, n.x)), Math.max(24, n.y - 22));
+}
+/** Using a piece, by its kind. */
+function _hsUse(R, S, p) {
+  const def = gardenDecor(p.d), sh = houseShape(def); if (!sh) return;
+  const name = String(def.name).toLowerCase(), M = _grm.me;
+  if (M) { M.face = p.x >= M.x ? 1 : -1; }
+  _hsKick(S, p);
+  switch (sh.fk) {
+    case 'light': _hsDoOrAsk(R, S, { o: 'use', u: p.u }, p.l ? 'Put out the ' + name : 'Lit the ' + name, p.l ? `You put out the ${name}.` : `You light the ${name}. The room is warmer for it.`); return;
+    case 'store': if (typeof _hsChestOpen === 'function') _hsChestOpen(R, S, p); return;
+    case 'bed': _hsNap(R, S, p); return;
+    case 'seat': _grmSay(_hsLine('seat', p, [`You sit a while in the ${name}. Nothing needs doing just now.`, `You sit in the ${name} and listen to the fire.`, `You put your feet up. The ${name} creaks, kindly.`])); return;
+    case 'books': _grmSay(_hsLine('books', p, ['“Sow the sweet things late and the hardy things early.” A good rule, underlined twice.', 'An almanac from a year long gone. Every frost is circled in pencil.', 'A very long novel. Somebody has turned down the corner of page twelve, and then given up.', 'A book of knots. You learn the bowline, again.', 'A seed list, half crossed out. “Marigolds: the good ones.”'])); return;
+    case 'clock': _grmSay(`The clock says ${_hsTimeWords()}.`); return;
+    case 'plant': _grmSay(_hsLine('plant', p, [`You water the ${name}. It looks pleased about it.`, `The ${name} is doing well. You turn it to the light.`])); try { gpTone([660, 880], { force: true, len: .18, vol: .04 }); } catch (e) { /* no sound */ } return;
+    case 'picture': _grmSay(p.d === 'hf-mirror' ? 'You check your hat. It is fine. It was always fine.' : ['The hills, in a summer that went on and on.', 'The falls, painted from somewhere very wet.', 'The quay at evening, with one boat coming in.'][(p.v | 0) % 3]); return;
+    case 'shelf': _grmSay('Jam, pickled onions, and one jar nobody has ever managed to open.'); return;
+  }
+}
+function _hsLine(kind, p, lines) { return lines[gardenHash(kind + '|' + p.u + '|' + _gdToday()) % lines.length]; }
+function _hsTimeWords() {
+  let h = 12, mi = 0; try { const p = Clock.parts(_gdNow()); h = p.h; mi = p.mi; } catch (e) { const d = new Date(); h = d.getHours(); mi = d.getMinutes(); }
+  const words = ['twelve', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven'], r = Math.round(mi / 5) * 5, hh = r > 30 ? h + 1 : h, w = words[hh % 12];
+  if (r === 0 || r === 60) return w + ' o’clock'; if (r === 15) return 'quarter past ' + words[h % 12]; if (r === 30) return 'half past ' + words[h % 12]; if (r === 45) return 'quarter to ' + w;
+  return r < 30 ? `${r} past ${words[h % 12]}` : `${60 - r} to ${w}`;
+}
+function _hsKick(S, p) {
+  const it = S.imgs.get(p.u); if (!it || !it.im.active || !gardenMotionOn()) return;
+  const s = _hsNative(); if (!s) return;
+  const sx = it.im.scaleX, sy = it.im.scaleY;
+  s.context.scene.tweens.add({ targets: it.im, scaleX: sx * 1.06, scaleY: sy * .93, duration: 90, yoyo: true, ease: 'Sine.easeOut', onComplete: () => { if (it.im.active) it.im.setScale(sx, sy); } });
+}
+/** A nap, once a day something comes of it. */
+function _hsNap(R, S, p) {
+  const s = _hsNative();
+  if (s && gardenMotionOn()) { const r = s.context.scene.add.rectangle(0, 0, 960, 600, 0x0a0812, 0).setOrigin(0, 0).setDepth(9700); s.root.add(r); s.context.scene.tweens.add({ targets: r, alpha: .72, duration: 700, yoyo: true, hold: 900, onComplete: () => r.destroy() }); }
+  if (gpVisiting()) { _grmSay('You lie down for a moment on your friend’s bed. Very comfortable. You get up before anyone sees.'); return; }
+  const dream = _hsLine('nap', p, ['You dream the garden is very small and you are very large. Everything fits in a teacup.', 'You dream of rain on the roof, and wake to find it was only the fire.', 'You doze off and dream of a fish that tells a joke. You cannot remember the end.', 'A short sleep, and a long dream about bees.']);
+  const got = typeof _grGive === 'function' && _grGive('house.nap', { 'mat:timber': 1 });
+  setTimeout(() => { if (_grm.S === S) _grmSay(dream + (got ? ' You wake rested, and find a good piece of timber under the bed.' : ''), 9000); }, gardenMotionOn() ? 1600 : 0);
+  if (got) { try { GardenNativeRooms.burst(); } catch (e) { /* fine */ } }
+}
+/** The room's own things: the window, the fire. */
+function _hsShellUse(R, S, what) {
+  const M = _grm.me;
+  if (what === 'window') { if (M) M.face = 1; const L = _hsLight(); _grmSay(_hsWindowWords(L)); return; }
+  if (what === 'fire') {
+    if (M) M.face = 1;
+    if (gpVisiting()) { _grmSay('You warm your hands at your friend’s fire.'); return; }
+    const got = typeof _grGive === 'function' && _grGive('house.kettle', { 'mat:stone': 1 });
+    _grmSay(got ? 'You warm your hands and make a pot of tea. On the hearth, in the ash, a smooth stone that keeps the heat: you keep it.' : 'You warm your hands at the fire. The kettle sings to itself.');
+    if (got) { try { GardenNativeRooms.burst(); } catch (e) { /* fine */ } }
+  }
+}
+function _hsWindowWords(L) {
+  const sky = L.wx === 2 ? 'Snow is coming down, slow and serious.' : L.wx === 1 ? 'Rain on the glass, and the garden drinking it.' : { dawn: 'The sun is just over the hills.', day: 'A clear day over the hills.', dusk: 'The sky over the hills is going gold and then rose.', night: 'Stars over the hills, and the garden asleep.' }[L.tod];
+  const time = { spring: 'Blossom on the branch outside.', summer: 'Flowers all along the hedge.', autumn: 'The branch outside has gone to gold.', winter: 'The branch outside is bare, and very still.' }[L.season] || '';
+  return sky + ' ' + time;
+}
+/** A change: done here for your house, asked of your friend's computer for theirs. */
+function _hsDoOrAsk(R, S, op, label, said) {
+  if (gpVisiting()) { if (typeof _hsGuestDo === 'function' && _hsGuestDo(R, S, op)) { if (said) _grmSay(said); } return; }
+  const r = houseDo(op, label, { feet: _hsFeet(S) });
+  if (!r.ok) { _grmSay(r.msg + '.'); return; }
+  _hsRoomRefresh(R, S, false);
+  if (said) _grmSay(said);
+  try { if (typeof _fxSound === 'function') _fxSound(op.o === 'use' ? 'tick' : 'pop'); } catch (e) { /* no sound */ }
+}
+
+/* ---------- the room's own controls ---------- */
+function _hsUi(R, S) {
+  const root = _grm.root; if (!root) return;
+  const bar = root.querySelector('.ee-ui'); if (!bar) return;
+  const leave = bar.querySelector('.ee-leave'); if (leave) leave.textContent = 'Go out';
+  if (typeof _hsMoveUi === 'function') _hsMoveUi(R, S, bar);
+}
+function _hsEnd(R, S) {
+  if (typeof _hsMoveEnd === 'function') _hsMoveEnd(R, S);
+  _hst.onReady = null;
+  if (S.swap) { try { S.swap.old.destroy(); } catch (e) { /* gone with the room */ } S.swap = null; }
+  S.imgs = new Map(); S.lamps = new Map(); S.clocks = new Map(); S.prompt = null;
+  if (S.dirty) { try { gardenRepaintSoon(); gardenTickSoon(); } catch (e) { /* drawn at the next change */ } }
+}
+
+/* ---------- the standard room (no Phaser): the same pieces as SVG spots on a plain painted room ---------- */
+function _hsSvgSpots(R, S) {
+  const out = [];
+  for (const p of S.pieces) {
+    const def = gardenDecor(p.d), sh = houseShape(def); if (!sh) continue;
+    const b = houseArtBox(p.d), url = houseArtUrl(p.d, p.v, _hsLitKey(p)), use = _hsUseOf(p);
+    out.push({ id: 'p:' + p.u, x: p.x, y: p.y - (p.z || 0), w: Math.max(30, sh.w), h: Math.max(24, sh.hp === 'rug' ? 40 : sh.h), still: !S.move && !use, tip: S.move ? 'Pick it up' : use || def.name, art: `<g${p.r ? ' transform="scale(-1 1)"' : ''}><image href="${url}" x="${b[0]}" y="${b[1]}" width="${b[2] - b[0]}" height="${b[3] - b[1]}"/></g>` });
+  }
+  return out.sort((a, b) => a.y - b.y);
+}
+function _hsSvgRoom(R) {
+  const P = _hsPaintParams(R), A = _grmA, wall = (gardenDecor(P.wall) || {}).look || { c: '#ece2cc' }, floor = (gardenDecor(P.floor) || {}).look || { c: '#9a6a3c', c2: '#6a4426' }, S = HOUSE_SKY[P.tod] || HOUSE_SKY.day, W = HOUSE_SHELL.window, F = HOUSE_SHELL.fire, H = HOUSE_SHELL.hearth, D = HOUSE_SHELL.door;
+  return A.shell(wall.c, wall.c2 || wall.c, floor.c, floor.c2 || floor.c) + A.r(0, 0, 960, 150, '#5a4636') + A.r(0, 134, 960, 20, '#3e2a1a')
+    + A.r(W.x0, W.y0, W.x1 - W.x0, W.y1 - W.y0, '#5a3e26') + A.r(W.x0 + 12, W.y0 + 10, W.x1 - W.x0 - 24, W.y1 - W.y0 - 24, S.low) + A.r(W.x0 + 12, W.y0 + 66, W.x1 - W.x0 - 24, 40, '#5a8a48')
+    + A.r(H.x0, H.y0, H.x1 - H.x0, H.y1 - H.y0, '#b0a898') + A.r(F.x0, F.y0, F.x1 - F.x0, F.y1 - F.y0, '#1a0e08') + A.flame((F.x0 + F.x1) / 2, F.y1 - 12, 2) + A.glow((F.x0 + F.x1) / 2, F.y1 - 30, 90, .45)
+    + A.r(D.x0, D.y0, D.x1 - D.x0, D.y1 - D.y0, '#6a4a2e') + A.r(0, 388, 960, 13, '#4a3220');
+}

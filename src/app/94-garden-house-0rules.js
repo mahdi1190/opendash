@@ -107,7 +107,7 @@ function houseBox(p, def) {
 }
 /** Its drawn picture's box (for what it would cover on the wall): from its foot up its height. */
 function houseDrawn(p, def) { const S = houseShape(def); return S ? { x0: p.x - S.w / 2, x1: p.x + S.w / 2, y0: p.y - (p.z || 0) - S.h, y1: p.y - (p.z || 0) } : null; }
-const _hsHit = (a, b, m) => a.x0 < b.x1 - (m || 0) && a.x1 > b.x0 + (m || 0) && a.y0 < b.y1 - (m || 0) && a.y1 > b.y0 + (m || 0);
+const _hsOver = (a, b, m) => a.x0 < b.x1 - (m || 0) && a.x1 > b.x0 + (m || 0) && a.y0 < b.y1 - (m || 0) && a.y1 > b.y0 + (m || 0);
 /** The surface small things stand on, of a piece that has one: { x0, x1, y, z } (y: the foot small things take on it). */
 function houseTopOf(p, def) { const S = houseShape(def); if (!S || !S.top || (p.z || 0) > 0) return null; const hw = S.top.w / 2; return { x0: p.x - hw, x1: p.x + hw, y: p.y - 2, z: S.top.h, u: p.u }; }
 /** What stands on top of piece u (they go where it goes). */
@@ -127,13 +127,13 @@ function houseFits(pieces, def, x, y, z, self, skip) {
   if (S.hp === 'wall') {
     const b = houseBox(me, def), W = H.wall;
     if (b.x0 < W.x0 + 6 || b.x1 > W.x1 - 6 || b.y0 < H.hang.y0 || b.y1 > H.hang.y1) return 'That needs a bit of wall';
-    if (_hsHit(b, H.door, -6)) return 'Not over the door';
-    if (_hsHit(b, H.window, -6)) return 'Not over the window';
-    if (_hsHit(b, H.hearth, -4)) return 'Not on the chimney breast';
+    if (_hsOver(b, H.door, -6)) return 'Not over the door';
+    if (_hsOver(b, H.window, -6)) return 'Not over the window';
+    if (_hsOver(b, H.hearth, -4)) return 'Not on the chimney breast';
     for (const q of others) {
       const qd = _hsDecor(q.d), qs = houseShape(qd); if (!qs) continue;
-      if (qs.hp === 'wall') { if (_hsHit(b, houseBox(q, qd), -4)) return 'Something hangs there already'; continue; }
-      if (qs.hp === 'floor' && (q.z || 0) === 0 && q.y - qs.d < H.back && _hsHit(b, houseDrawn(q, qd), 2)) return 'Something tall stands in front of that wall';
+      if (qs.hp === 'wall') { if (_hsOver(b, houseBox(q, qd), -4)) return 'Something hangs there already'; continue; }
+      if (qs.hp === 'floor' && (q.z || 0) === 0 && q.y - qs.d < H.back && _hsOver(b, houseDrawn(q, qd), 2)) return 'Something tall stands in front of that wall';
     }
     return '';
   }
@@ -148,19 +148,19 @@ function houseFits(pieces, def, x, y, z, self, skip) {
   }
   const b = houseBox(me, def), F = H.floor;
   if (b.x0 < F.x0 || b.x1 > F.x1 || b.y0 < F.y0 - 2 || b.y1 > F.y1) return 'That would not fit there';
-  for (const k of H.keep) if (_hsHit(b, k, 1)) return k.why;
+  for (const k of H.keep) if (_hsOver(b, k, 1)) return k.why;
   if (S.hp !== 'rug' && b.y0 < H.back) {   // against the back wall: it must not cover the door, the window or the fire, nor a picture
     const d = houseDrawn(me, def);
-    if (_hsHit(d, H.window, 4)) return 'That would cover the window';
-    if (_hsHit(d, H.fire, 0) || _hsHit(d, H.hearth, 8) && d.y0 < H.hearth.y1 - 40) return 'Not in front of the fire';
-    for (const q of others) { const qd = _hsDecor(q.d), qs = houseShape(qd); if (qs && qs.hp === 'wall' && _hsHit(d, houseBox(q, qd), 2)) return 'That would hide the ' + String(qd.name).toLowerCase(); }
+    if (_hsOver(d, H.window, 4)) return 'That would cover the window';
+    if (_hsOver(d, H.fire, 0) || _hsOver(d, H.hearth, 8) && d.y0 < H.hearth.y1 - 40) return 'Not in front of the fire';
+    for (const q of others) { const qd = _hsDecor(q.d), qs = houseShape(qd); if (qs && qs.hp === 'wall' && _hsOver(d, houseBox(q, qd), 2)) return 'That would hide the ' + String(qd.name).toLowerCase(); }
   }
   for (const q of others) {
     if ((q.z || 0) > 0) continue;
     const qd = _hsDecor(q.d), qs = houseShape(qd); if (!qs || qs.hp === 'wall') continue;
     const rugs = (S.hp === 'rug') + (qs.hp === 'rug');
     if (rugs === 1) continue;   // a rug lies under a floor thing: meant to
-    if (_hsHit(b, houseBox(q, qd), 1)) return rugs ? 'Another rug is there' : 'Something is in the way there';
+    if (_hsOver(b, houseBox(q, qd), 1)) return rugs ? 'Another rug is there' : 'Something is in the way there';
   }
   return '';
 }
