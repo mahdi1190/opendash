@@ -275,6 +275,9 @@ const GARDEN_PLANTS = _gdRows([
   _gP('moonflower', 'Moonflower', 'exotic', 'epic', 'medium', ['summer'], { form: 'moon-trumpet', c: '#f5f7ff', c2: '#d9e4ff', leaf: '#3f7a4a', h: 1.2 }, { yield: _G_CUT(20, 48), price: 0, unlock: { ach: 'night-owl' }, night: 1, glow: 1, attracts: ['moth'], blurb: 'For night owls: it opens only after dark, and glows.' }),
   _gP('glowcap', 'Glowcaps', 'exotic', 'epic', 'fast', ['autumn'], { form: 'mushroom', c: '#7ef0d0', c2: '#f4f0e6', leaf: '#6a5a4a', h: 0.35 }, { price: 0, unlock: { ribbon: 'night-garden' }, glow: 1, thirst: 18, areas: ['greenhouse', 'orchard', 'meadow'], blurb: 'A ring of mushrooms that glows softly at dusk.' }),
   _gP('titan-arum', 'Titan arum', 'exotic', 'legendary', 'ancient', 'all', { form: 'titan', c: '#7a1a3a', c2: '#e6d36a', leaf: '#4f7f3a', h: 2.4 }, { price: 0, unlock: { ribbon: 'master-gardener' }, special: 'rare-bloom', blurb: 'Blooms for two days every few weeks. People travel to see it.' }),
+  /* after dark (94-garden-zz-afterdark-*.js): found, never sold */
+  _gP('starbloom', 'Starbloom', 'flower', 'epic', 'medium', 'all', { form: 'star', c: '#d8c8ff', c2: '#fff4c8', leaf: '#4a6a5a', h: 0.8, v: ['#d8c8ff', '#c8d8ff', '#f4e0ff'] }, { yield: _G_CUT(14, 48), price: 0, unlock: { find: 1 }, night: 1, glow: 1, attracts: ['moth'], blurb: 'It grows where a star fell. From a seed of it, it grows in your own beds too, and glows all night.' }),
+  _gP('field-mushroom', 'Field mushroom', 'veg', 'uncommon', 'fast', ['summer', 'autumn'], { form: 'mushroom', c: '#f2eadc', c2: '#a87a6a', leaf: '#6a5a4a', h: 0.3 }, { yield: { n: [1, 2], regrow: 0, sell: 4 }, price: 0, unlock: { find: 1 }, blurb: 'Under the trees the morning after rain. For the pot.' }),
 ]);
 const _GD_PLANT = new Map(GARDEN_PLANTS.map(p => [p.id, p]));
 
