@@ -127,8 +127,8 @@ function _gtrStep(dt) {
     c.s = Math.max(0, Math.min(1, c.s + v * dt)); c.v = v;
   }
   if (R.live && performance.now() - R.lastTell > 330) { R.lastTell = performance.now(); _gtrTell('rstate'); }
-  const first = R.crabs.filter(c => c.s >= 1).sort((a, b) => b.s - a.s)[0];
-  if (first || R.t > 22) _gtrEnd(first ? first.i : R.crabs.slice().sort((a, b) => b.s - a.s)[0].i);
+  let lead = R.crabs[0]; for (const c of R.crabs) if (c.s > lead.s) lead = c;   // (no lists made each frame)
+  if (lead.s >= 1 || R.t > 22) _gtrEnd(lead.i);
 }
 /** A cheer: on the beat, a spurt; off it, a puzzled look; too many, it stops to wave its claws. */
 function _gtrCheer(slot) {
