@@ -51,7 +51,8 @@ function gardenUnderZoneOfCrossing(c, W, data) {
   const id = String(c.crossing && c.crossing.id || ''); if (!/^[a-z0-9-]{1,32}$/.test(id)) return null;
   const pres = data && data.presentation || {}, weir = pres.weir;
   if (Array.isArray(weir) && c.support.some(p => Math.hypot(p.x - weir[0], p.y - weir[1]) < GARDEN_UNDER.weir)) return null;   // (the sill is under it)
-  if (!R.swim && !R.peek) return null;
+  const swim = !!R.swim && !(R.clear < GARDEN_UNDER.head);   // (room beneath it for a swimmer's head and shoulders, or no way under)
+  if (!swim && !R.peek) return null;
   const L = c.length, ux = (c.b.x - c.a.x) / L, uy = (c.b.y - c.a.y) / L, hw = c.halfWidth;
   // the near side: the one that faces you, lower on the screen (the side the painters draw the deck's beam and face on)
   const pa = c.deckPoint(0.5, hw), pb = c.deckPoint(0.5, -hw), near = (Math.abs(pa.y - pb.y) > 2 ? pa.y > pb.y : pa.x > pb.x) ? 1 : -1;
@@ -69,19 +70,19 @@ function gardenUnderZoneOfCrossing(c, W, data) {
   const vis = band.map(cell);
   // the trestles: posts standing in the water under the near side, evenly along the water's span
   const posts = [];
-  if (R.trestle && R.swim) {
+  if (R.trestle && swim) {
     const T = R.trestle, n = Math.max(0, Math.round((w1 - w0) / T.span) - 1);
     for (let k = 1; k <= n; k++) { const t = w0 + (w1 - w0) * k / (n + 1), e = P(t, hw), x = P(t, hw - T.edge).x, top = e.y + T.beam; posts.push({ t, x, y: top + T.drop, top: { x, y: top }, r: T.r }); }   // (top: just under the deck's side beam; x, y: its foot in the water, where it holds a swimmer off)
   }
   const xs = vis.map(p => p.x), ys = vis.map(p => p.y);
-  return { id, src: 'crossing', kind: c.kind, rule: R, name: R.name, swim: !!R.swim, peek: !!R.peek, deck, wet: [w0, w1], open, posts, face,
+  return { id, src: 'crossing', kind: c.kind, rule: R, name: R.name, swim, peek: !swim && !!R.peek, deck, wet: [w0, w1], open, posts, face,
     vis, support: c.support, ribbon: c.points, bbox: [Math.min(...xs) - .4, Math.min(...ys) - .4, Math.max(...xs) + .4, Math.max(...ys) + .4],
     nearY: Math.max(...band.map(p => p.y)), gate: R.gate && c.crossing.gateId ? String(c.crossing.gateId) : null, crossing: c };
 }
 /** The zone under a thing of a raised kind (a pier): its footprint over the water, its piles from the world's own drawing of them
  *  (piles: [{x, y} px], or none). t: a row of gardenAffordThings() (x, y its foot's middle, w, h in cells). */
 function gardenUnderZoneOfThing(t, W, piles) {
-  const R = t && t.kind ? GARDEN_UNDER.kind[t.kind] : null; if (!R || !R.swim) return null;
+  const R = t && t.kind ? GARDEN_UNDER.kind[t.kind] : null; if (!R || !R.swim || R.clear < GARDEN_UNDER.head) return null;
   const id = String(t.id || ''); if (!/^[a-z0-9-]{1,32}$/.test(id)) return null;
   const w = Math.max(.5, Number(t.w) || 1), h = Math.max(.5, Number(t.h) || 1), x0 = t.x - w / 2, x1 = t.x + w / 2, y0 = t.y - h, y1 = t.y;
   const vis = [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
