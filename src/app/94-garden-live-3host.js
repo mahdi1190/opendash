@@ -615,7 +615,10 @@ function _glhSolve(ev, put, m) {
   if (typeof gpSet === 'function') gpSet('explore.' + id, m.today);
   g.led[lk] = { d: m.today, k: 'gl', i: {}, n: 0, by: ev.f };
   let out = typeof gardenIslandDefaultSight === 'function' && gardenIslandDefaultSight(id);   // (a place the layout already holds stands where it is)
-  if (!out && typeof gardenSightSetNearby === 'function' && typeof gardenSightIsSetOut === 'function' && !gardenSightIsSetOut(id)) { try { out = !!(gardenSightSetNearby(id).ok && gardenSightIsSetOut(id)); } catch (e) { out = false; } }
+  if (!out && typeof gardenSightSetNearby === 'function' && typeof gardenSightIsSetOut === 'function' && !gardenSightIsSetOut(id)) {
+    const A = _gll.actors.get(ev.w), them = ev.x != null ? { x: ev.x, y: ev.y } : A && Number.isFinite(A.x) ? { x: Math.floor(A.x), y: Math.floor(A.y) } : null;   // (next to them, else by you)
+    for (const at of them ? [them, null] : [null]) { try { if (gardenSightSetNearby(id, at).ok && gardenSightIsSetOut(id)) { out = true; break; } } catch (e) { /* by you, then the land office */ } }
+  }
   _gdEmit('landshow', {});
   setTimeout(() => { try { _glhSnapAll(); } catch (e) { /* the next world check */ } }, 60);
   return put(mark, { noUndo: true, land: id, solve: 1, ...(out ? {} : { wait: 1 }) });

@@ -189,6 +189,11 @@ function gartActTaken(r) {
     if (typeof _gll === 'undefined' || !_gll.actors || !_gll.actors.size) return false;
     for (const A of _gll.actors.values()) {
       if (!A || A.me || A.rm || A.away) continue;
+      // (a ladder or a stair is taken only by someone on it, climbing: a friend waiting at the top of the lighthouse or the treehouse
+      // is held a few hundredths of a cell from its foot, and nobody could climb until they walked off. Someone up on a floor stands on
+      // nothing of the ground below it.)
+      if (r.way) { const C = A.ghtClimb && A.ghtClimb.w; if (C && C.i === r.way.i && C.lv && r.way.lv && C.lv.key === r.way.lv.key) return true; continue; }
+      if (A.hLv && !r.onLevel) continue;
       const at = A.actAt || (A.moving || A.tx != null ? null : A);   // (the place they said they took, even while their figure walks there)
       if (at && Math.hypot(at.x - r.stand.x, (at.y - r.stand.y) * 1.3) < GA_TAKEN_R) return true;
     }
@@ -217,6 +222,7 @@ function gartActTakenWords() {
     const r = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src) && gartActTaken(r)).sort((a, b) => d(a) - d(b))[0];
     if (!r) return '';
     const row = GARDEN_ACTS[r.act];
+    if (r.way) return 'Someone is on the ladder: wait for them to reach the top.';
     return row && row.seat == null && !r.seated ? 'Someone is already there.' : 'Someone is already sitting there.';
   } catch (e) { return ''; }
 }
@@ -856,20 +862,20 @@ function _gaRubTick(cur) {
 function _gaSky(cur, on) {
   const box = _gw && _gw.box; if (!box) return;
   let el = box.querySelector('.ga-sky');
-  if (!on) { if (el) el.remove(); clearInterval(_ga.skyT); return; }
+  if (!on) { if (el) el.remove(); clearInterval(_ga.skyT); clearTimeout(_ga.skyT0); clearTimeout(_ga.skyNapT); return; }   // (the first star and the nap's line too: got up within 1.8 s, they still came)
   if (!_gaMotion()) return;
   if (!el) { el = document.createElement('div'); el.className = 'ga-sky'; el.setAttribute('aria-hidden', 'true'); box.appendChild(el); }
   let tod = 'day'; try { tod = gardenModel().tod; } catch (e) { /* day */ }
   const night = tod === 'night';
   el.innerHTML = (night ? '' : '<i class="ga-cloud c1"></i><i class="ga-cloud c2"></i><i class="ga-cloud c3"></i>') + (cur.row.nap ? '<i class="ga-lapse"></i>' : '');
   if (cur.row.nap) el.classList.add('is-nap'); else el.classList.remove('is-nap');
-  clearInterval(_ga.skyT);
+  clearInterval(_ga.skyT); clearTimeout(_ga.skyT0); clearTimeout(_ga.skyNapT);
   if (night) {
     let seen = 0;
     const star = () => { const s = document.createElement('i'); s.className = 'ga-star'; s.style.left = (15 + Math.random() * 60) + '%'; s.style.top = (6 + Math.random() * 24) + '%'; el.appendChild(s); setTimeout(() => s.remove(), 1600); if (!seen++) { try { gardenToast('A shooting star! Make a wish.'); } catch (e) { /* fine */ } try { const g = _gdG(); if (!g.disc['act.star']) { g.disc['act.star'] = _gdToday(); _gdSave(); } } catch (e) { /* fine */ } } };
-    setTimeout(star, 1800); _ga.skyT = setInterval(star, 6000);
+    _ga.skyT0 = setTimeout(star, 1800); _ga.skyT = setInterval(star, 6000);
   }
-  if (cur.row.nap) setTimeout(() => { try { gardenToast('The shadows move round while you doze.'); } catch (e) { /* fine */ } }, 1800);
+  if (cur.row.nap) _ga.skyNapT = setTimeout(() => { try { gardenToast('The shadows move round while you doze.'); } catch (e) { /* fine */ } }, 1800);
 }
 /** Lying down needs clear ground: grass, sand or snow, not a path, a plaza, a building's apron or a thing. */
 function gartActGroundClear(x, y) {
