@@ -51,7 +51,7 @@ function _grmFurnArt(id) {
 function _grmFurnSpots(R) { return _grmFurnList(R).map(f => ({ id: 'fu-' + f.k, x: f.x, y: f.y, w: 90, h: 100, tip: 'Take this back', art: _grmFurnArt(f.d), still: !_grm.fu })); }
 function _grmBagRows() {
   const out = [];
-  for (const [k, v] of Object.entries(gardenWallet().items)) { if (!k.startsWith('decor:') || !(v >= 1)) continue; const d = gardenDecor(k.slice(6)); if (d && d.cat !== 'path') out.push({ d, n: Math.floor(v) }); }
+  for (const [k, v] of Object.entries(gardenWallet().items)) { if (!k.startsWith('decor:') || !(v >= 1)) continue; const d = gardenDecor(k.slice(6)); if (d && d.cat !== 'path' && !d.indoor) out.push({ d, n: Math.floor(v) }); }   // (things for your house, its papers and floors, are set out in your house: 94-garden-house-*.js)
   return out;
 }
 function _grmBagPaint() {
