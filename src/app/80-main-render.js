@@ -93,7 +93,14 @@ function _renderMainBody(main) {
   if (typeof _restoreFocus === 'function') _restoreFocus();
 }
 
+/* (speed pass) Layout reads that can wait until the whole page is written: the top bar's fit and the sidebar's indicator each made
+ * the browser lay out the page (with the old main area, about to be replaced), and the main area's entrance then laid it out again.
+ * Inside render() they run once at its end, in the order first asked; anywhere else, at once. */
+var _renderLater = null;
+function renderMeasureLater(key, fn) { if (_renderLater) _renderLater.set(key, fn); else fn(); }
 function render() {
+  const outer = !_renderLater;
+  if (outer) _renderLater = new Map();
   try { return _render(); }
   catch (e) {
     console.error('Render crashed:', e);
@@ -101,10 +108,16 @@ function render() {
     // Still try to show the topbar at least
     try { renderTopbar(); } catch (_) {}
   }
+  finally {
+    if (outer) { const q = _renderLater; _renderLater = null; for (const fn of q.values()) { try { fn(); } catch (e) { console.error('[render]', e); } } }
+  }
 }
+var _renderSbScroll = null;   // (speed pass) the sidebar's scroll, read before anything is written (renderSidebar keeps it)
 function _render() {
+  { const sb = document.getElementById('sidebar'); _renderSbScroll = sb ? sb.scrollTop : null; }
   renderTopbar();
   renderSidebar();
+  _renderSbScroll = null;
   renderMain();
   renderDetail();
   const c = document.getElementById('content');

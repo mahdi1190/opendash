@@ -209,9 +209,12 @@ function homeEnter(els) {
 function homeGridPack(grid) {
   if (!grid || !grid.isConnected) return false;
   grid.classList.add('is-packed');
-  _hgWidth = grid.clientWidth;
+  // (speed pass) the labels and the gap fill first, at the width of the last pack, then the width: one layout of the page after the
+  // writes, which the glide's measuring then reuses (reading the width first laid the page out twice); a new width fills again
   _hgSections(grid);
   _hgFill(grid);
+  const w = grid.clientWidth;
+  if (w !== _hgWidth) { _hgWidth = w; _hgFill(grid); }
   return false;
 }
 /* The labelled sections (2.19.1): Today, Coming up, Money and life. A widget belongs to the section its place in the
@@ -224,26 +227,41 @@ function homeSectionOf(def) {
   return 'life';
 }
 function _hgSections(grid) {
-  for (const h of grid.querySelectorAll(':scope > .hg-sec')) h.remove();
-  grid.classList.remove('has-secs');
-  if (_homeEditing) return;
-  const runs = [];
-  for (const f of grid.querySelectorAll(':scope > .hg-w[data-sec]')) {
-    if (f.hidden) continue;
-    if (!runs.length || runs[runs.length - 1].sec !== f.dataset.sec) runs.push({ sec: f.dataset.sec, first: f });
+  let runs = [];
+  if (!_homeEditing) {
+    for (const f of grid.querySelectorAll(':scope > .hg-w[data-sec]')) {
+      if (f.hidden) continue;
+      if (!runs.length || runs[runs.length - 1].sec !== f.dataset.sec) runs.push({ sec: f.dataset.sec, first: f });
+    }
+    if (runs.length < 2 || new Set(runs.map(r => r.sec)).size !== runs.length) runs = [];
   }
-  if (runs.length < 2 || new Set(runs.map(r => r.sec)).size !== runs.length) return;
+  // (speed pass) the labels already there, each in front of its run: leave them. Taking every label out and putting it back on each
+  // widget's repaint (Home loading its cards one by one) made the whole page restyle and every page-wide observer look again.
+  const have = grid.querySelectorAll(':scope > .hg-sec');
+  if (have.length === runs.length && runs.every((r, i) => have[i].dataset.hgSec === r.sec && have[i].nextElementSibling === r.first)) { grid.classList.toggle('has-secs', runs.length > 0); return; }
+  for (const h of have) h.remove();
+  grid.classList.remove('has-secs');
+  if (!runs.length) return;
   for (const r of runs) {
     const h = secHead({ title: (HOME_SECTIONS.find(x => x[0] === r.sec) || [0, 'More'])[1], cls: 'hg-sec' });
+    h.dataset.hgSec = r.sec;
     grid.insertBefore(h, r.first);
   }
   grid.classList.add('has-secs');       // labelled sections follow on in order (no dense packing across a label)
 }
 /* A row that does not add up to 12 columns (a widget with nothing to show today, a narrow window, a free width) hands its free
    columns to its last card, so there is never a gap beside a short card (boardFillGaps, 12-home-board.js). */
+let _hgFillN = 0;
 function _hgFill(grid) {
-  if (_homeEditing) { for (const k of grid.children) if (k.classList && k.classList.contains('hg-w')) k.style.removeProperty('grid-column'); return; }
+  if (_homeEditing) { grid._hgFillSig = ''; for (const k of grid.children) if (k.classList && k.classList.contains('hg-w')) k.style.removeProperty('grid-column'); return; }
+  // (speed pass) the gaps follow only from which frames show, in what order, their sizes and the grid's width: a widget repainting its
+  // content changes none of those, so the last fill stands. Clearing every frame's columns and reading them all back cost two style
+  // passes of the whole page for each card that repainted while Home loaded.
+  let sig = _hgWidth + '|' + grid.classList.contains('has-secs');
+  for (const k of grid.children) sig += '|' + (k._hgN || (k._hgN = ++_hgFillN)) + (k.hidden ? 'h' : '') + ':' + k.className + ':' + (k.dataset.size || '') + ':' + (k.dataset.c || '');
+  if (grid._hgFillSig === sig) return;
   boardFillGaps(grid, k => k.classList.contains('hg-w'), !grid.classList.contains('has-secs'));   // a section label ends the row
+  grid._hgFillSig = sig;
 }
 /** After a whole re-render: glide from the last settled layout (or just remember this one). */
 function homeGridSettle(grid, glide) {

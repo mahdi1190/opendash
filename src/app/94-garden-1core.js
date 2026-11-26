@@ -41,7 +41,9 @@ const _GD_MAPS = ['dz', 'plants', 'decor', 'led', 'bank', 'wl', 'vd', 'disc', 'r
   'sp', 'vl',   // every catch as a record, and the variants found (94-garden-fish-8spec.js)
   'gl', 'gq', 'gv', 'glt',
   'wd',
-  'dr'];  // (build phase 1) where carried things were set down, one row per thing (94-garden-build-0rules.js)
+  'dr',  // (build phase 1) where carried things were set down, one row per thing (94-garden-build-0rules.js)
+  'pk',  // (build2) which of your things are in which pocket slot, one row per slot (94-garden-build2-0rules.js)
+  'mu'];  // (build2) the museum, one row per exhibit (94-garden-build2-0museum.js)
   // what visitors did here, what is still to post to them, what you planted in friends' gardens, what they touched since the visit's copy (`glc`) (94-garden-live-*.js)
 function _gdG() {
   if (typeof state === 'undefined' || !state) { const z = { v: 1 }; for (const k of _GD_MAPS) z[k] = {}; return z; }
@@ -681,6 +683,7 @@ function gardenSnapshot() {
     if (typeof gardenDesignWireSaved === 'function') { const dz = gardenDesignWireSaved(); if (dz) out.dz = dz; }   // what you drew, moved and made: never the draft you are still working on
     if (typeof gardenExploreIds === 'function' && typeof gpGet === 'function') { const ex = gardenExploreIds().filter(id => gpGet('explore.' + id)); if (ex.length) out.ex = ex.slice(0, 16); }   // 2.74.1: the trail puzzles solved here, so a friend's trail stop says so too (94-garden-wonder-h-trails.js)
     if (typeof gardenFolkSnap === 'function') { const fk = gardenFolkSnap(); if (fk && fk.length) out.fk = fk; }   // the vale's folk's homes (94-garden-wonder-0vale-folk.js): a visit sees who lives where
+    if (typeof gardenTideWire === 'function') { const ti = gardenTideWire(); if (ti) out.ti = ti; }   // the strand (94-garden-tide-0rules.js): its own number, how rich its next low water is, the last storm, so a friend sees the same tide and finds
     if (typeof GARDEN_GATE_ITEMS !== 'undefined') { const gk = Object.keys(GARDEN_GATE_ITEMS).filter(k => gardenHas('gk:' + k) > 0); if (gk.length) out.gk = gk.slice(0, 12); }   // 2.74.1: the gates' finds you hold, so a friend's gate sign says what yours does (94-garden-wonder-7gates.js)
     if (m.rain && (m.rain.snow || m.rain.now)) out.wx = m.rain.snow ? 2 : 1;   // 2.28: is it raining (1) or snowing (2) over your garden now? A visit has the same sky
     // 2.28: your time zone and your sunrise and sunset, so a friend who visits sees your sky as it is for you now (the offset tells them roughly where you are in the world)
@@ -697,11 +700,15 @@ function gardenSnapshot() {
     try { const tk = typeof petBookWire === 'function' ? petBookWire() : null; if (tk && tk.length) out.tk = tk; } catch (e) { /* tricks are optional */ }   // 2.23: ids of what your pet can do, for friends who visit
     try { const j = typeof gpJourney === 'function' ? gpJourney() : null; if (j && Number(j.back) > m.now) out.pa = Math.floor(j.back); } catch (e) { /* optional */ }   // their pet is away until then (94-garden-play-1pet.js): a time, so an old copy stops saying so by itself
     try { const rf = typeof gardenRoomsWire === 'function' ? gardenRoomsWire() : null; if (rf) out.rf = rf; } catch (e) { /* optional */ }   // what stands in your hidden rooms
+    try { const hs = typeof gardenHouseWire === 'function' ? gardenHouseWire() : null; if (hs) out.hs = hs; } catch (e) { /* optional */ }   // your own house: its rooms and what stands in them (94-garden-house-6share.js)
     try { const bk = typeof gardenBuildWire === 'function' ? gardenBuildWire() : null; if (bk) out.bk = bk; } catch (e) { /* optional */ }   // how you have painted your buildings: ids and small numbers, an older app drops the field
     try { const wd = typeof gardenWonderWire === 'function' ? gardenWonderWire() : null; if (wd) out.wd = wd; } catch (e) { /* optional */ }   // the sky you have learned, your cairn (94-garden-wonder-*.js)
+    try { const nt = typeof gardenNightWire === 'function' ? gardenNightWire() : null; if (nt) out.nt = nt; } catch (e) { /* optional */ }   // after dark: the last rain, your weather guess, lanterns and named stars (94-garden-zz-afterdark-*.js)
     try { const tg = typeof gardenTogetherWire === 'function' ? gardenTogetherWire() : null; if (tg) out.tg = tg; } catch (e) { /* optional */ }   // what you share with friends (94-garden-zz-*.js)
     try { if (typeof gartMoveTell === 'function') { const t = gartMoveTell(); out.pf = [t.h, t.g]; } } catch (e) { /* optional */ }   // (move360) which way you face (sixteenths) and how you last walked: a friend who arrives sees you turned the right way
+    try { const mu = typeof gardenMuseumWire === 'function' ? gardenMuseumWire() : null; if (mu) out.mu = mu; } catch (e) { /* optional */ }   // (build2) the museum: ids and numbers, no names (94-garden-build2-3museum.js)
     if (typeof gardenDropRows === 'function') out.dr = gardenDropRows(_gdG());   // (build phase 1) where carried things were set down: [[key, item, x tenths, y tenths]], always there (empty: all at home), so a friend knows this garden says it
+    try { const dw = typeof gardenDepthWire === 'function' ? gardenDepthWire() : null; if (dw && dw.pw) out.pw = dw.pw; if (dw && dw.dp) out.dp = dw.dp; } catch (e) { /* optional */ }   // (the depth lane) where you are (up on a floor, beneath a bridge, in a tunnel), the tunnels' state: an older app drops both
     return out;
   } catch (e) { console.error('[garden]', e); return null; }
 }
@@ -753,7 +760,16 @@ function gardenFacts(mArg) {
   try { soc = typeof gardenSocialFacts === 'function' ? gardenSocialFacts() : null; } catch (e) { soc = null; }
   let rgn = null;   // a region's page finished (94-garden-regions-1core.js)
   try { rgn = typeof gardenRegionFacts === 'function' ? gardenRegionFacts() : null; } catch (e) { rgn = null; }
+  let dep = null;   // (the depth lane) the bridges and piers you have swum under (94-garden-zz-8depth-1under.js)
+  try { dep = typeof gardenDepthFacts === 'function' ? gardenDepthFacts() : null; } catch (e) { dep = null; }
+  let hsf = null;   // your own house: rooms built, housewarmings, cosy stars (94-garden-house-4grow.js)
+  try { hsf = typeof gardenHouseFacts === 'function' ? gardenHouseFacts() : null; } catch (e) { hsf = null; }
+  let vf3 = null;   // (folk3) games with the vale's folk: wins and bests (94-garden-wonder-folk3-1games.js)
+  try { vf3 = typeof gardenFolkFacts === 'function' ? gardenFolkFacts() : null; } catch (e) { vf3 = null; }
   return {
+    ...(dep || {}),
+    ...(hsf || {}),
+    ...(vf3 || {}),
     ...(rgn || {}),
     ...(soc || {}),
     ...(cat || {}),

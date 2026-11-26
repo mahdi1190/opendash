@@ -385,7 +385,7 @@ function _grmKey(ev) {
   if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's', ' ', 'Enter', 'Escape', 'e'].includes(k)) ev.preventDefault();
   if (k === 'Shift') { if (down) _grm.keys.add('shift'); else _grm.keys.delete('shift'); return; }
   const busy = _gwFishBusy();
-  if (k === 'Escape') { if (busy) { _gwFishCancel(); return; } gardenRoomLeave(); return; }
+  if (k === 'Escape') { if (busy) { _gwFishCancel(); return; } { const P = GRM_PLAY[_grm.R.play]; if (P.esc && P.esc(_grm.R, _grm.S)) return; } gardenRoomLeave(); return; }   // (P.esc: Escape stops what you are doing first, a thing you carry in your house)
   if (ev.repeat && (k === ' ' || k === 'e' || k === 'Enter')) return;
   if (busy) { if (k === ' ' || k === 'e' || k === 'Enter') _gwFishPress(); else if (k === 'ArrowUp' && _gw.reel) _gw.reel.hold = true; return; }   // as outside: strike, then hold to lift the bar
   { const P = GRM_PLAY[_grm.R.play]; if (P.key && P.key(_grm.R, _grm.S, k)) return; }
@@ -536,14 +536,16 @@ function gardenRoomLeave() {
 /* ---------- doors: rows in a bubble ---------- */
 function gardenRoomItems(id, items) {
   for (const R of GRM_ROOMS) if (R.at === id) items.push({ svg: gardenRoomSym(R, 26), label: R.verb, cls: 'is-go grm-way', run: () => gardenRoomGo(R) });
+  if (typeof gardenHouseItems === 'function') gardenHouseItems(id, items);   // your own house's door (94-garden-house-2room.js)
 }
 
 /* ---------- other people ---------- */
 function _grmShow(A, inside) { try { if (A.root) A.root.style.visibility = inside ? 'hidden' : ''; } catch (e) { /* only a look */ } }
 function gardenRoomHear(A, ev) {
   if (!A || A.me || !ev) return;
-  const e = String(ev.e || ''), R = GRM_ROOMS.find(r => r.id === ev.i); if (!R) return;
+  const e = String(ev.e || ''), R = GRM_ROOMS.find(r => r.id === ev.i) || (typeof gardenHouseRoomRow === 'function' ? gardenHouseRoomRow(ev.i) : null); if (!R) return;   // (or a room of a house: 94-garden-house-2room.js)
   if (e === 'out') { A.rm = ''; _grmChipCheck(); _grmShow(A, false); const Q = _grm.m.get(A.w); if (Q && _grm.R === R) { Q.g.remove(); if (Q.fxr) Q.fxr.remove(); _grm.m.delete(A.w); } return; }
+  if (e === 'hold') { if (_grm.on && _grm.R === R && typeof gardenHouseHold === 'function') gardenHouseHold(A, R, ev); return; }   // (what someone carries in a house: 94-garden-house-6share.js)
   if ((e !== 'in' && e !== 'at') || !Number.isInteger(ev.x) || !Number.isInteger(ev.y)) return;
   _grmShow(A, true); A.rm = R.id; _grmChipCheck();
   if (typeof _gll !== 'undefined' && _gll.role === 'host') _grwStock(R);   // (a fish for them, from whoever runs the water)

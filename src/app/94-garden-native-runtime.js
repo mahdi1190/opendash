@@ -259,7 +259,7 @@ window.GardenNative = (function () {
         const plant = it && it.kind === 'plant' ? gardenPlantById(model, it.uid) : cell ? _gdpPlantAtCell(model, cell) : null;
         if (plant && plant.thirsty && !plant.ripe && plant.def.thirst && !model.rain.now) _gdp.sweep = { done: new Set(), n: 0, undo0: _gd.undo.length, tool: 'water', last: '' };
       }
-      if (!_gdp.sweep && !_gdp.moving && mode !== 'decorate' && tool !== 'seed') { const action = gardenWorldPick(it, cell, ev, model); if (action.kind === 'ground' && gardenHoldStart(ev)) _gdp.press.hold = true; }
+      if (!_gdp.sweep && !_gdp.moving && mode !== 'decorate' && tool !== 'seed' && !(typeof gardenB2Holding === 'function' && gardenB2Holding())) { const action = gardenWorldPick(it, cell, ev, model); if (action.kind === 'ground' && gardenHoldStart(ev)) _gdp.press.hold = true; }
     });
     s.scene.input.on('pointermove', pointer => { if (!active() || designing()) return; const ev = normalizeEvent(pointer); if (inRoom()) { GardenNativeRooms.pointerMove(ev); return; } if (touches.has(pointer.id)) touches.set(pointer.id, { x: ev.clientX, y: ev.clientY }); if (pinch && touches.size > 1) { const [a, b] = [...touches.values()], distance = Math.hypot(a.x - b.x, a.y - b.y); if (distance > pinch * 1.12) { s.world.zoom(-1); pinch = distance; } else if (distance < pinch / 1.12) { s.world.zoom(1); pinch = distance; } return; } const pr = _gdp.press; if (pr && (Math.abs(ev.clientX - pr.x0) > 9 || Math.abs(ev.clientY - pr.y0) > 9)) pr.moved = true; if (pr && pr.hold) gardenHoldMove(ev); else if (pr && pr.moved) _gdpDragMove(ev); else { _gdpHover(ev); hoverProjection(s, true); } });
     const release = pointer => { if (!active()) return; const ev = normalizeEvent(pointer); touches.delete(pointer.id); if (designing()) { touches.clear(); pinch = null; return; } if (touches.size < 2 && pinch) { pinch = null; _gdp.press = null; return; } if (inRoom()) { GardenNativeRooms.up(); return; } const pr = _gdp.press; _gdp.press = null; if (!pr) return; if (pr.hold) { gardenHoldEnd(); return; } if (_gdp.sweep) { if (pr.moved) { _gdpSweepEnd(); return; } _gdp.sweep = null; } if (pr.moved && pr.drag) _gdpDragDrop(ev, pr); else if (!pr.moved) _gdpClick(pr.it, pr.cell, ev); };
@@ -267,6 +267,7 @@ window.GardenNative = (function () {
     s.contextmenu = ev => {
       if (!active() || designing() || inRoom() || _gdpPopOpen() || _gwFishBusy()) return;
       ev.preventDefault(); const model = gardenHere(), cell = _gdpCellOf(ev), item = _gdpPickItem(ev, cell);
+      if (typeof gardenB2HandsEsc === 'function' && gardenB2HandsEsc()) return;   // (build2) a right click while you hold something: nothing changes, your hands are empty
       if (_gdpMode() === 'decorate' || _gdp.moving || _gdpTool() === 'seed') { _gdpEsc(); return; }
       const plant = item && item.kind === 'plant' ? gardenPlantById(model, item.uid) : cell ? _gdpPlantAtCell(model, cell) : null;
       if (plant) { _gdp.sel = plant.uid; _gdpPaintSel(model); gardenPlantBubble(plant, model); return; }
@@ -369,6 +370,7 @@ window.GardenNative = (function () {
   function presentationKey(model) {
     const { now, occ, visit, ...view } = model, saved = { ..._gdG() }, prefs = { ...saved.prefs };
     delete saved.prefs; delete prefs.cam; delete prefs.zoom;
+    delete saved.hf; delete saved.hr; delete saved.hs;   // (your house's rooms and furniture are drawn indoors only: moving a chair never repaints the garden, 94-garden-house-*.js)
     const weather = typeof _gdWeather === 'function' ? _gdWeather() : null;
     view.plants = model.plants.map(({ hours, dry, nextIn, lastWater, ...plant }) => ({ ...plant, lastWater: plant.def.special === 'heart' ? 0 : model.rain.now ? 1 : lastWater }));
     view.rain = { ...model.rain, last: model.rain.now ? 1 : model.rain.last };
@@ -379,7 +381,7 @@ window.GardenNative = (function () {
     // Bag and menu visibility belong to their retained HUD handlers; opening
     // those panels does not change the world's plants, scenery or lighting.
     return JSON.stringify([
-      view, Math.floor(now / 60000), visit && { ...visit, key: undefined }, saved, prefs,
+      view, Math.floor(now / 60000), visit && { ...visit, key: undefined, snap: visit.snap && { ...visit.snap, hs: undefined } }, saved, prefs,
       typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0,
       state.profile, state.wardrobe, state.pet, state.game && state.game.seen,
       typeof _gm !== 'undefined' && _gm.rev, gardenFun(), gardenMotionOn(), ui,
@@ -407,8 +409,12 @@ window.GardenNative = (function () {
     s.syncFull = (s.syncFull || 0) + 1;
     s.world.sync(model); s.lighting.sync(model); if (s.water) s.water.sync(model); if (s.surface) s.surface.sync(model); _gdp.svg = s.world.rootNode; _gw.svg = s.world.rootNode;
     if (!model) return;   // (the scene is made before a friend's garden has arrived: nothing of the garden's own to paint yet; reading it crashed the visit's opening, 'tod' and then 'visit')
+    // (speed pass) a painter below that throws no longer stops the key being kept: it was left unset, so every later sync of the
+    // same garden took the whole repaint path above and threw again (the forage spots on land with no squares, 2.75.2)
+    try {
     _gwBugsSync(model); gardenLifeSync(model); gardenWonderSync(model); gardenLiveHostPainted(model); gardenGamePainted(model); if (typeof gardenDesignPainted === 'function') gardenDesignPainted(_gdp.svg, model.dz);
     gardenHudPaint(model); if (typeof _ptwCheck === 'function') _ptwCheck();
+    } catch (error) { console.error('[garden] painting the page round the garden', error); }
     s.presentationKey = key;
   }
   function interact(hit) {

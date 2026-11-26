@@ -32,6 +32,7 @@ function _gwCatchCard(o) {
   const stars = o.q ? `<b class="gd-stars q${o.q}" title="${esc(gardenQuality(o.q).label)}">${gardenQuality(o.q).stars}</b>` : '';
   c.innerHTML = `<div class="gd-cc-art">${o.svg}</div><div class="gd-cc-txt"><b>${esc(o.name)}</b>${stars}<span>${esc(o.sub)}</span>${o.newV ? '<em>A new variant!</em>' : o.isNew ? '<em>New in your book!</em>' : o.record ? '<em>A new record!</em>' : ''}</div>`;
   c.onclick = () => { c.classList.add('is-out'); setTimeout(() => c.remove(), 220); if (o.open) gardenCatchOpen(o.open); };
+  if (typeof gardenB2CatchCard === 'function') { try { gardenB2CatchCard(c, o); } catch (e) { /* the card as it was */ } }   // (build2) let it go, new for the museum (94-garden-build2-2catch.js)
   { const top = gardenMessageHost() || box; top.insertBefore(c, top.querySelector(':scope > .gd-msg')); }   // (over the message line, never on top of it)
   clearTimeout(_gw.cardT); _gw.cardT = setTimeout(() => { c.classList.add('is-out'); setTimeout(() => { gardenUiGone(c); c.remove(); }, 300); }, o.ms || 4200);
 }
@@ -374,6 +375,10 @@ function gardenFishClickPt(pt, m) {
   cands.sort((a, b) => a.d - b.d);
   let best = null, bl = 1e9;
   for (const c of cands.slice(0, 12)) {
+    // (speed pass) a walk is never shorter than the straight line (c.d), and the spots come nearest first: once the best walk found
+    // is shorter than this spot's straight line, no spot left can win. The same spot is chosen, from one or two route searches
+    // instead of twelve (each a search of the whole map, up to a tenth of a second on one click).
+    if (c.d > bl + 1e-6) break;
     const r = _gwRoute({ x: _gw.px, y: _gw.py }, c); if (!r) continue;
     let len = 0, at = { x: _gw.px, y: _gw.py }; for (const w of r) { len += Math.hypot((w.x - at.x) * W.cellW, (w.y - at.y) * W.cellH); at = w; }
     if (len < bl) { bl = len; best = c; }
@@ -458,7 +463,7 @@ function _gwFishFinish() {
   if (r.spec) sub += ` · ${gardenSpecWeight('fish', r.spec.rec.g)} · No. ${r.spec.rec.n}`;
   if (r.story) sub = `${sub}. ${r.story}`;   // the one that got away, a job for the old angler, a piece of a map
   // always said in words too, where nothing covers it: what you caught, and a line about it
-  _gwCatchCard({ svg: gardenCatchSvg('fish', d.id, 64, { uid: 'cc', v: r.v }), newV: !!(r.spec && r.spec.newVariant), name: `You ${d.cat === 'fish' ? 'caught' : 'fished up'} ${_gscA(name.toLowerCase())}!`, sub: d.blurb ? `${sub}. ${d.blurb}` : sub, q: r.q, isNew: r.isNew, record: r.record, rare, open: r.v ? 'best' : 'fish', ms: r.v ? 7000 : 5200 });
+  _gwCatchCard({ svg: gardenCatchSvg('fish', d.id, 64, { uid: 'cc', v: r.v }), newV: !!(r.spec && r.spec.newVariant), name: `You ${d.cat === 'fish' ? 'caught' : 'fished up'} ${_gscA(name.toLowerCase())}!`, sub: d.blurb ? `${sub}. ${d.blurb}` : sub, q: r.q, isNew: r.isNew, record: r.record, rare, open: r.v ? 'best' : 'fish', ms: r.v ? 7000 : 5200, item: !r.contest && d.cat === 'fish' ? gardenFishKey(d.id, r.q || 0) : '' });
   if (typeof gardenFloat === 'function' && !r.contest) gardenFloat(d.cat === 'fish' ? `+${(_GC_XP[d.rarity] || 1)} XP` : '', Math.floor(_gw.px), Math.floor(_gw.py) - 1, 1, 1, 'is-xp');
   _gdpRefreshChromeSoon();
 }
@@ -541,7 +546,7 @@ function _gwBugsSync(m) {
     const node = _gwEl('g', { class: 'gd-bug', 'data-bk': s.key, 'data-live': '1', 'data-z': String(s.y) });
     node.innerHTML = `<g class="gb-sh"><ellipse cx="0" cy="0" rx="${(GW_BUG_SCALE * 9 * def.size).toFixed(1)}" ry="${(GW_BUG_SCALE * 3 * def.size).toFixed(1)}" fill="#1a2a14" fill-opacity="0.18"/></g><g class="gb-lift"><g class="gb-in" transform="scale(${(GW_BUG_SCALE * def.size).toFixed(2)})">${gardenBugArt(s.id, { uid: 'bg' + (gardenHash(s.key) % 9999).toString(36), v: s.v })}</g></g>`;
     _gwPlace(node, s.y);
-    const b = { key: s.key, id: s.id, v: s.v || '', def, x: s.x, y: s.y, tx: s.x, ty: s.y, state: 'rest', timer: 0.6 + (s.t || 0) * 4, lift: def.rest === 'crawl' ? 0 : 5, face: 1, node, liftEl: node.querySelector('.gb-lift'), inEl: node.querySelector('.gb-in'), fleeT: 0, hab: s.hab, beach: !!s.beach && gardenBugBeachCell(s.x, s.y), seed: s.t || Math.random(), anchor: { x: s.x, y: s.y } };
+    const b = { key: s.key, id: s.id, v: s.v || '', def, x: s.x, y: s.y, tx: s.x, ty: s.y, state: 'rest', timer: 0.6 + (s.t || 0) * 4, lift: s.perch ? s.perch.l0 : def.rest === 'crawl' ? 0 : 5, perch: s.perch || null, restLift: s.perch ? s.perch.l0 + (s.t || 0) * (s.perch.l1 - s.perch.l0) : 0, face: 1, node, liftEl: node.querySelector('.gb-lift'), inEl: node.querySelector('.gb-in'), fleeT: 0, hab: s.hab, beach: !!s.beach && gardenBugBeachCell(s.x, s.y), seed: s.t || Math.random(), anchor: { x: s.x, y: s.y } };
     _gw.bugs.set(s.key, b);
   }
   for (const [k, b] of _gw.bugs) if (!keep.has(k)) { if (b.node && b.node.remove) b.node.remove(); _gw.bugs.delete(k); }
@@ -555,6 +560,7 @@ function _gwBugBeachRoute(ax, ay, bx, by) {
 function _gwBugPick(b, far) {
   // somewhere to go: near its anchor (a flower, a log), or well away when it bolts
   const W = GARDEN_WORLD;
+  if (b.perch && !far) { const P = b.perch; b.restLift = P.l0 + Math.random() * (P.l1 - P.l0); return { x: P.x0 + Math.random() * (P.x1 - P.x0), y: P.y }; }   // (after dark: a moth on a moth sheet flits about the sheet, 94-garden-zz-afterdark-4moths.js)
   for (let i = 0; i < 10; i++) {
     const ang = Math.random() * Math.PI * 2, r = far ? 3.5 + Math.random() * 3 : 0.5 + Math.random() * (b.def.rest === 'crawl' ? 1.2 : 2.6);
     const base = far ? { x: b.x, y: b.y } : b.anchor;
@@ -611,7 +617,7 @@ function _gwBugsFrame(dt) {
     const crawl = b.def.rest === 'crawl';
     if (b.state === 'rest') {
       if (b.timer <= 0) { const p = _gwBugPick(b, false); b.tx = p.x; b.ty = p.y; b.state = 'fly'; b.timer = 3; }
-      b.lift += ((crawl ? 0 : 5 + (b.def.rest === 'hover' ? 7 : 0)) - b.lift) * Math.min(1, dt * 5);
+      b.lift += ((crawl ? 0 : b.perch ? b.restLift : 5 + (b.def.rest === 'hover' ? 7 : 0)) - b.lift) * Math.min(1, dt * 5);
     } else {
       const sp = (b.state === 'flee' ? 3.3 : crawl ? 0.55 : b.def.rest === 'hover' ? 1.8 : 1.4) * (motion ? 1 : 0.6);
       const dx = b.tx - b.x, dy = b.ty - b.y, dist = Math.hypot(dx * W.cellW, dy * W.cellH) / 40;
@@ -623,7 +629,7 @@ function _gwBugsFrame(dt) {
         if (crawl && (!gardenWorldFree(nx, ny, 0.08) || b.beach && !gardenBugBeachCell(nx, ny))) { b.state = 'rest'; b.timer = 0.6 + Math.random() * 2; }
         else { b.x = nx; b.y = ny; }
         if (Math.abs(dx) > 0.05) b.face = dx > 0 ? 1 : -1;
-        b.lift += ((crawl ? 0 : 13 + Math.sin(_gw.t * 5 + b.seed * 7) * 3) - b.lift) * Math.min(1, dt * 4);
+        b.lift += ((crawl ? 0 : (b.perch && b.state !== 'flee' ? b.restLift + 4 : 13) + Math.sin(_gw.t * 5 + b.seed * 7) * 3) - b.lift) * Math.min(1, dt * 4);
       }
       if (b.state === 'flee') { b.fleeT -= dt; if (b.fleeT <= 0) { b.state = 'fly'; b.timer = 3; } }
     }
@@ -642,7 +648,10 @@ function _gwBugDraw(b, flying) {
   const lf = `translate(0 ${(-b.lift).toFixed(1)})`;
   if (b.lf !== lf) { b.lf = lf; b.liftEl.setAttribute('transform', lf); }
   if (b.fc !== b.face) { b.fc = b.face; const k = GW_BUG_SCALE * b.def.size; b.inEl.setAttribute('transform', `scale(${(b.face * k).toFixed(2)} ${k.toFixed(2)})`); }
-  const cls = 'gd-bug is-seen' + (b.state !== 'rest' ? ' is-go' : '') + (flying ? ' is-fly' : '') + (b.state === 'flee' ? ' is-flee' : '') + ((_gw.netting && _gw.netting.actor === b) || _gw.hoverBug === b.key ? ' is-target' : '') + (b.def.glow || b.def.id === 'firefly' ? ' is-glow' : '');
+  // (speed pass) a bug placed for the first time while out of view keeps the cull's gart-off: writing the whole class here dropped it,
+  // and gardenCull (which only toggles on a change) never put it back, so every bug that came about off screen was painted every
+  // frame, hundreds of triangles each, until it first flew into view (most of the garden's vector drawing, 26 Nov)
+  const cls = 'gd-bug is-seen' + (b.state !== 'rest' ? ' is-go' : '') + (flying ? ' is-fly' : '') + (b.state === 'flee' ? ' is-flee' : '') + ((_gw.netting && _gw.netting.actor === b) || _gw.hoverBug === b.key ? ' is-target' : '') + (b.def.glow || b.def.id === 'firefly' ? ' is-glow' : '') + (b._off ? ' gart-off' : '');
   if (b.cls !== cls) { b.cls = cls; b.node.setAttribute('class', cls); }
   const zk = Math.floor(b.y * 3);
   if (b.zk !== zk || !b.node.parentNode) { b.zk = zk; _gwPlace(b.node, b.y); }
@@ -764,7 +773,7 @@ function _gwBugTaken(b) {
   const held = gardenCatchMoment('bug', d2.id, { isNew: r.isNew, v: r.v });
   void held;
   const bugName = (r.v ? gardenSpecName('bug', d2.id, r.v) : d2.name).toLowerCase(), bugFacts = r.spec ? `${gardenSpecSize('bug', r.spec.rec.c)} · No. ${r.spec.rec.n}. ` : '';
-  _gwCatchCard({ svg: gardenCatchSvg('bug', d2.id, 56, { uid: 'cb', glow: false, v: r.v }), newV: !!(r.spec && r.spec.newVariant), name: `You caught ${_gscA(bugName)}!`, sub: bugFacts + (d2.blurb || 'In your bag'), isNew: r.isNew, rare, open: r.v ? 'best' : 'bugs', ms: r.v ? 7000 : 5200 });
+  _gwCatchCard({ svg: gardenCatchSvg('bug', d2.id, 56, { uid: 'cb', glow: false, v: r.v }), newV: !!(r.spec && r.spec.newVariant), name: `You caught ${_gscA(bugName)}!`, sub: bugFacts + (d2.blurb || 'In your bag'), isNew: r.isNew, rare, open: r.v ? 'best' : 'bugs', ms: r.v ? 7000 : 5200, item: r.contest ? '' : 'bug:' + d2.id });
   if (typeof gardenFloat === 'function' && !r.contest) gardenFloat(`+${_GC_XP[d2.rarity] || 1} XP`, Math.floor(_gw.px), Math.floor(_gw.py) - 1, 1, 1, 'is-xp');
   _gdpRefreshChromeSoon();
 }

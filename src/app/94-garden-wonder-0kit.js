@@ -82,6 +82,7 @@ const WD_PREFS = Object.freeze([
   ['days', 'Small days in the calendar', 'A lantern on the lake, a supper, a fire: a few days a year, in the world.'],
   ['weather', 'Weather you can feel', 'Footprints in snow and after rain, and whatever else leaves them.'],
   ['still', 'Things that come to you', 'A bird on your head if you stand still long enough.'],
+  ['night', 'After dark', 'Named moons, moths at the sheet, falling stars, mushrooms after rain and night walks.'],   // 94-garden-zz-afterdark-*.js
 ]);
 function _wdOn(k) { try { const p = _gdG().prefs.wd; return !p || p[k] !== false; } catch (e) { return true; } }
 registerSettingsGroup({
@@ -126,20 +127,28 @@ function gardenWonderSync(m) {
   _wdReconcile(m);
   for (const M of _wd.live) if (M.painted) { try { M.painted(m); } catch (e) { console.error('[garden wonder]', M.id, e); } }
 }
+/* (speed pass) A module whose frame or tick throws over and over is switched off for this visit after a few tries: it logged an error every
+ * frame (sixty a second, each costing more than the frame's own work) and never stopped. */
+function _wdFail(M, op, e) {
+  const n = M['_wdFail' + op] = (M['_wdFail' + op] || 0) + 1;
+  if (n <= 3) console.error('[garden wonder]', M.id, e);
+  if (n === 3) console.error('[garden wonder]', M.id, op, 'keeps failing: it is switched off until the garden is opened again');
+}
 function _wdFrame(dt) {
   // real time, not the loop's dt: that is capped per frame, and the loop looks in rarely when nothing is moving
   const now = performance.now(), real = _wd.lastF ? Math.min(2, (now - _wd.lastF) / 1000) : dt; _wd.lastF = now; _wd.t += real;
-  for (const M of _wd.live) if (M.frame) { try { M.frame(dt); } catch (e) { console.error('[garden wonder]', M.id, e); } }
+  for (const M of _wd.live) if (M.frame && !(M._wdFailframe >= 3)) { try { M.frame(dt); M._wdFailframe = 0; } catch (e) { _wdFail(M, 'frame', e); } }
   if (now - _wd.tickAt < 1000) return;
   _wd.tickAt = now;
   const m = gardenHere();
   _wdReconcile(m);
   if (_wd.talk) _wdTalkCheck();
-  for (const M of _wd.live) if (M.tick) { try { M.tick(m); } catch (e) { console.error('[garden wonder]', M.id, e); } }
+  for (const M of _wd.live) if (M.tick && !(M._wdFailtick >= 3)) { try { M.tick(m); M._wdFailtick = 0; } catch (e) { _wdFail(M, 'tick', e); } }
 }
 function gardenWonderStop() {
   if (!_wd.on) return;
   for (const M of _wd.live) if (M.end) { try { M.end(); } catch (e) { console.error('[garden wonder]', M.id, e); } }
+  for (const M of _wd.live) M._wdFailframe = M._wdFailtick = 0;   // (a module switched off after failing gets its next chance with the next visit)
   _wd.on = false; _wd.live = []; wdTalkClose(true);
   for (const S of [..._wd.sprites]) { try { S.remove(); } catch (e) { /* gone */ } }
   if (_wd.dir) { try { _wd.dir.remove(); } catch (e) { /* gone */ } _wd.dir = null; }
@@ -170,7 +179,11 @@ function wdGlow(id, markup, x, y) {
 function wdGlowOff(id) { const g = _wd.glows.get(id); if (g) { g.remove(); _wd.glows.delete(id); } }
 function wdNear(x, y, r) { return typeof _gw !== 'undefined' && Math.hypot(_gw.px - x, _gw.py - y) <= r; }
 /** A free point near this one, or null. */
-function wdFreeNear(x, y, r) { return typeof _gwNearestFreePt === 'function' ? _gwNearestFreePt(x, y, r || 3) : null; }
+function wdFreeNear(x, y, r) {
+  const p = typeof _gwNearestFreePt === 'function' ? _gwNearestFreePt(x, y, r || 3) : null;
+  if (p && typeof gardenKitCovers === 'function' && gardenKitCovers(p.x, p.y)) return gardenKitFreeNear(x, y, r || 3);   // (folk3: never on the day's stalls, brazier or card table: 94-garden-wonder-folk3-6kit.js)
+  return p;
+}
 /* ---------- sound: only if the game's Sounds are on ---------- */
 function wdSound(list) {
   try {
@@ -265,6 +278,7 @@ function gardenWonderWire() {
   if (typeof gardenListeningWalkMask === 'function') { const el = gardenListeningWalkMask(w); if (el) out.el = el; }
   if (typeof gardenShadowCourtyardWire === 'function') { const sc = gardenShadowCourtyardWire(w); if (sc) out.sc = sc; }
   if (typeof gardenShadowCourtyardAnchor === 'function') { const sa = gardenShadowCourtyardAnchor(w); if (sa) out.sa = sa; }
+  if (typeof gardenGameWire === 'function') { const gb = gardenGameWire(w); if (gb) out.gb = gb; }   // (folk3: your games' wins and bests, for a friend's Games board)
   return Object.keys(out).length ? out : null;
 }
 function _wdTheir(m) { return (m && m.visit && m.visit.snap && m.visit.snap.wd) || {}; }

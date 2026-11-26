@@ -105,10 +105,14 @@ function _ascSweep() {
   _ascRich();
 }
 if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined' && document.documentElement) {
+  // (speed pass) A sweep searches the whole page three times, so it runs only when a scene, a sky or a card holding one came or went.
+  // Text ticking in the top bar, the garden's HUD, toasts and timers change the page every second or so with none of those in them.
+  const _ASC_HOLDS = '.anim-scene, .bf-sky, .tc-hero-bg';
+  const holds = (nodes) => { for (const n of nodes) if (n.nodeType === 1 && (n.matches(_ASC_HOLDS) || n.querySelector(_ASC_HOLDS))) return true; return false; };
   new MutationObserver((list) => {
     let run = false;
     for (const m of list) {
-      if (m.type === 'childList') { if (!(m.target.closest && m.target.closest('.gd-svg'))) run = true; continue; }   // (the garden's stage moves things every frame, and there are no scenes in it: two searches of the whole page per frame, for nothing)
+      if (m.type === 'childList') { if (!run && !(m.target.closest && m.target.closest('.gd-svg')) && (holds(m.addedNodes) || holds(m.removedNodes))) run = true; continue; }   // (the garden's stage moves things every frame, and there are no scenes in it: two searches of the whole page per frame, for nothing)
       const t = m.target;
       if (t.classList && t.classList.contains('anim-scene')) {
         run = true;

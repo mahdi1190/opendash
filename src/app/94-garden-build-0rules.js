@@ -32,7 +32,7 @@
        heldBy(item) -> '' | who (somebody carries it now: '@host' the garden's owner, else a friend's id), waterWhy(uid) -> '' | why, dry(uid) -> hours of thirst }
    Rule 17: what can be carried is said by the thing's KIND (GARDEN_KINDS acts with carry), never by a name or a cell.
    ============================================================ */
-const GARDEN_OPS = Object.freeze(['put', 'lift', 'turn', 'move', 'plant', 'dig', 'water', 'drop', 'grab']);
+const GARDEN_OPS = Object.freeze(['put', 'lift', 'turn', 'move', 'plant', 'dig', 'water', 'drop', 'grab', 'stow']);   // stow (build2): { u, m: 'decor'|'plants' } lifted whole into your pockets, growth and history kept (_packed 3); move puts it out again
 const GB_DROP_MAX = 40;          // things lying about in one garden (the snapshot's bound, build-PLAN 3.6)
 const GB_HOME_NEAR = 0.6;        // set down this close to its own place in the layout, a thing is back home (no record at all)
 const _GB_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -59,6 +59,7 @@ function gardenOpShape(op) {
     case 'move': return _GB_ID_RE.test(String(op.u || '')) && (op.m === 'decor' || op.m === 'plants') && cell(op.x, C.cols) && cell(op.y, C.rows) ? '' : 'move';
     case 'drop': if (!it || it.k !== 'thing' || !tenth(op.fx, C.cols) || !tenth(op.fy, C.rows)) return 'drop'; return '';
     case 'grab': return it && it.k === 'thing' ? '' : 'grab';
+    case 'stow': return _GB_ID_RE.test(String(op.u || '')) && (op.m === 'decor' || op.m === 'plants') ? '' : 'stow';
   }
   return 'kind';
 }
@@ -122,6 +123,11 @@ function gardenOpCheck(world, op, who) {
       if (!home && !_gbOwn(g.dr, k) && Object.keys(g.dr || {}).length >= GB_DROP_MAX) return 'Plenty is lying about already: put something back first';
       return '';
     }
+    case 'stow': {
+      const rec = _gbOwn(g[op.m], op.u) ? g[op.m][op.u] : null; if (!rec || rec._packed === 3) return 'Nothing to lift there';
+      const def = op.m === 'plants' ? W.plant && W.plant(rec.p) : null; if (def && def.special === 'heart') return 'The old oak stays: it is your garden’s heart';
+      return '';
+    }
   }
   return 'That cannot be done';
 }
@@ -136,6 +142,7 @@ function gardenOpTouches(op, g, who) {
     case 'dig': return [['plants', op.u], ...(op.un || []).map(k => ['led', k])];
     case 'water': return who ? [['plants', op.u]] : [['plants', op.u], ['wl', op.day || '']];
     case 'drop': case 'grab': return [['dr', gardenDropKey(op.i)]];
+    case 'stow': return [[op.m, op.u]];
   }
   return [];
 }
@@ -215,6 +222,11 @@ function gardenOpApply(g, op, who, world) {
       touch('dr', k);
       const at = was || (t ? { x: Math.round(t.x * 10), y: Math.round(t.y * 10) } : { x: 0, y: 0 });
       return { inverse: { o: 'drop', i: op.i, fx: at.x, fy: at.y, rec: was === undefined ? null : was }, dirty };
+    }
+    case 'stow': {
+      const rec = map(op.m)[op.u], was = { at: rec.at, pk: rec._packed };
+      rec._packed = 3; touch(op.m, op.u);
+      return { inverse: { o: 'move', u: op.u, m: op.m, x: rec.x, y: rec.y, back: was }, dirty };
     }
   }
   return { inverse: null, dirty };

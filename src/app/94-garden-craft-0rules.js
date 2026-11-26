@@ -68,6 +68,9 @@ const GARDEN_RECIPES = Object.freeze([
   _gR('herb-rack', 'Drying rack', 'garden', { 'crop:rosemary': 3, 'crop:sage': 2 }, { decor: 'herb-rack' }, { fact: ['harvests', 25] }, { blurb: 'Hang it, forget it, cook with it.' }),
   _gR('apple-crate', 'Apple crate', 'garden', { 'crop:apple': 5 }, { decor: 'apple-crate' }, { season: 'autumn', n: 8 }, { blurb: 'Help yourself.' }),
   _gR('lantern-gourd', 'Gourd lantern', 'garden', { 'crop:squash': 1, 'crop:pumpkin': 1 }, { decor: 'lantern-gourd' }, { fact: ['nightVisitors', 1] }, { blurb: 'A soft orange glow, and a slightly smug face.' }),
+  // from the shore at low water (94-garden-tide-*.js): learned with your first driftwood and your first whelk
+  _gR('drift-seat', 'Driftwood seat (from the shore)', 'garden', { 'sh:driftwood': 2, 'sh:driftwood-twist': 1 }, { decor: 'driftwood-seat' }, { shore: 'driftwood' }, { blurb: 'Three bits of the sea’s own wood, made into somewhere to sit.' }),
+  _gR('shell-chimes', 'Shell wind chimes', 'garden', { 'sh:whelk': 2, 'sh:glass-green': 1, 'sh:glass-clear': 1 }, { decor: 'wind-chimes' }, { shore: 'whelk' }, { blurb: 'Whelks and sea glass on a string. They sound like a little tide.' }),
   _gR('driftwood-seat', 'Driftwood seat', 'garden', { 'fish:perch': 1, 'crop:thyme': 2 }, { decor: 'driftwood-seat' }, { bottle: 1 }, { blurb: 'It came a long way to be sat on.' }),
   _gR('bee-skep', 'Straw skep', 'garden', { honey: 3, 'crop:lavender': 3 }, { decor: 'bee-skep' }, { visitor: 'honeybee' }, { blurb: 'Bees approve of the thatch.' }),
   _gR('fish-flag', 'Fish flag', 'garden', { 'fish:minnow': 2, 'crop:cornflower': 2 }, { decor: 'fish-flag' }, { fact: ['fished', 10] }, { blurb: 'It tells the wind which way the fish went.' }),
@@ -82,6 +85,8 @@ const GARDEN_RECIPES = Object.freeze([
   // fun
   _gR('music-box', 'Music box', 'fun', { 'crop:cherry': 3, 'crop:hazel': 2 }, { emote: 'waltz' }, { level: 4 }, { blurb: 'Wind it up and you start to waltz. It is not optional.' }),
   _gR('jazz-hands', 'Sparkle gloves', 'fun', { 'crop:golden-sunflower': 1 }, { emote: 'jazz' }, { fact: ['plantsFound', 25] }, { blurb: 'Jazz hands, in a jar.' }),
+  // after dark (94-garden-zz-afterdark-5stars.js): learnt with the first star stone you pick up (the item recipe:star-lantern)
+  _gR('star-lantern', 'Star lantern', 'garden', { 'star-stone': 1, 'mat:timber': 1 }, { decor: 'star-lantern' }, { find: 1 }, { blurb: 'A stone from a fallen star, in a lantern on a post. It glows all night.' }),
 ]);
 const _GR_MAP = new Map(GARDEN_RECIPES.map(r => [r.id, r]));
 function gardenRecipe(id) { return _GR_MAP.get(String(id)) || null; }
@@ -109,6 +114,8 @@ function gardenCraftItemName(key) {
   if (kind === 'bq') { const b = GARDEN_BOUQUETS.find(x => x.id === id); return b ? b.name : id; }
   if (kind === 'seed') { const p = gardenPlant(id); return p ? p.name + ' seed' : id; }
   if (kind === 'decor') { const d = gardenDecor(id); return d ? d.name : id; }
+  if (kind === 'sh') { const d = typeof gardenTideFindDef === 'function' ? gardenTideFindDef(id) : null; return d ? d.name : id; }   // a find from the shore (94-garden-tide-0rules.js)
+  if (typeof gardenNightItemName === 'function') { const n = gardenNightItemName(key); if (n) return n; }   // after dark: a star stone (94-garden-zz-afterdark-1kit.js)
   return { honey: 'Honey', clover: 'Four-leaf clover', fertiliser: 'Compost' }[key] || key;
 }
 function _grValue(key, m) {

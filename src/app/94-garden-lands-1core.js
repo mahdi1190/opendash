@@ -35,7 +35,8 @@ function gardenLandsWire(m) {
   const gates = (typeof GARDEN_ZONE_GATES !== 'undefined' ? GARDEN_ZONE_GATES : []).filter(g => gardenHas('gate:' + g.id) > 0).map(g => 'zn-' + g.n);   // gates opened with a find go first, so the 12-id cap never drops one: a friend sees them open (gardenLandsOfSnap)
   const areas = gates.concat(GARDEN_AREAS.filter(a => (a.buy ? plots.has(a.id) : m.areas.includes(a.id))).map(a => a.id)).slice(0, 12);   // the snapshot's cap (GARDEN_SCHEMA areas: 12): one more and a friend's app refuses the whole garden, live or saved. The plain areas past it come back from the level (gardenLandsOfSnap)
   const S = gardenLandShowMine(m);
-  return { areas, ls, lf, lc: S.c, lz: S.z, lr: S.r };
+  // ls: the snapshot's cap (GARDEN_SCHEMA ls: 130, as gardenLandsClean reads it): one id more and a friend's app refused the whole garden
+  return { areas, ls: ls.slice(0, 130), lf, lc: S.c, lz: S.z, lr: S.r };
 }
 
 /* ---------- building ---------- */

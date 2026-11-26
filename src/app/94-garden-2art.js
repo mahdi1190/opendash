@@ -580,6 +580,7 @@ function _gdaSeed(def, o) {
   return `<rect x="-20" y="-58" width="40" height="56" rx="3" fill="#f4efe2" stroke="${r.col}" stroke-width="2"/><rect x="-20" y="-58" width="40" height="8" rx="3" fill="${r.col}"/><rect x="-15" y="-46" width="30" height="34" rx="2" fill="${_gdaMix(c, '#ffffff', 0.75)}"/><g transform="translate(0 -14) scale(${_gdaN(k * (def.fp > 1 ? 0.6 : 1))})">${crop}</g><path d="M-14 -7H14" stroke="#a89a80" stroke-width="1.6"/>`;
 }
 function _gdaTool(id, o) {
+  if (typeof gardenB2ToolArt === 'function') { const s = gardenB2ToolArt(id); if (s) return s; }   // (build2) the satchel and the big bag
   switch (id) {
     case 'can-2': case 'can-3': case 'can-4': case 'can': { const col = id === 'can-3' ? '#c8743a' : id === 'can-4' ? '#e0b43a' : '#3f8f5a'; return `<path d="M-16 -6V-30H10V-6Z" fill="${col}"/><path d="M10 -24L26 -40" stroke="${col}" stroke-width="4"/><ellipse cx="27" cy="-41" rx="3.4" ry="4.6" fill="${_gdaShade(col, 0.2)}"/><path d="M-16 -30Q-3 -46 10 -30" stroke="${_gdaShade(col, -0.25)}" stroke-width="3" fill="none"/><rect x="-16" y="-24" width="26" height="3" fill="${_gdaShade(col, 0.2)}"/>`; }
     case 'hose': return `<circle cx="0" cy="-22" r="18" fill="none" stroke="#3f8f5a" stroke-width="5"/><circle cx="0" cy="-22" r="10" fill="none" stroke="#4fa66a" stroke-width="5"/><path d="M18 -22L26 -10" stroke="#3f8f5a" stroke-width="5"/><rect x="22" y="-12" width="8" height="10" rx="2" fill="#e8c33a"/>`;

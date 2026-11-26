@@ -23,6 +23,7 @@ const _gj = { sec: 'creatures', page: 'village', kind: 'fish', pick: '' };
 const GJ_SECTIONS = Object.freeze([
   ['creatures', 'Creatures', 'leaf', '#6a8a4a'], ['plants', 'Plants', 'sprout', '#7a8a3a'], ['people', 'People', 'user', '#b0605a'],
   ['places', 'Places', 'map', '#4a7a98'], ['stories', 'Letters', 'mail', '#7a5a98'], ['keep', 'Keepsakes', 'star', '#c8902a'], ['photos', 'Photos', 'camera', '#7a5a3a'],
+  ['chron', 'Chronicle', 'scroll-text', '#8a6a3a'],   // (folk3: the Chronicle, 94-garden-wonder-folk3-9chron.js)
 ]);
 /* W.'s old notes, in the margins (JOURNAL.md section 4): one ordinary sentence each, all about life before. */
 const GJ_MARGIN = Object.freeze({
@@ -119,6 +120,7 @@ function gardenJournalTab(el, m) {
     else if (_gj.sec === 'places') _gjPlaces(left, right, m);
     else if (_gj.sec === 'stories') _gjStories(left, right, m);
     else if (_gj.sec === 'keep') _gjKeep(left, right, m);
+    else if (_gj.sec === 'chron' && typeof gardenChronicleTab === 'function') gardenChronicleTab(left, right, m);   // (folk3)
     else _gjPhotos(left, right, m);
   } catch (e) { console.error('[journal]', e); left.appendChild(_gjEl('p', 'muted', 'This page would not open. Close the journal and try again.')); }
 }
@@ -145,6 +147,7 @@ function _gjCard(def, kind, m, fr) {
     + `<span class="gj-cart">${rec ? _gjArt(kind, def.id, 72) : _gjSil(kind, def.id, 72)}</span>`
     + (rec || gl ? `<b>${esc(def.name)}</b><small>${esc(sub)}</small>` : `<b class="gj-q">? ? ?</b><small class="gj-clue">${def.legend ? esc(_gjWho(def.by)) + ': ' : ''}“${esc(def.clue)}”</small>`);
   c.setAttribute('aria-label', rec ? `${def.name}, caught` : gl ? `${def.name}, glimpsed` : `Not found yet. Clue: ${def.clue}`);
+  if (typeof gardenMuseumCardMark === 'function') gardenMuseumCardMark(c, kind, def.id);   // (build2) a museum stamp when it is on show
   c.onclick = () => { _gj.pick = def.id; _gjRepaint(); };
   return c;
 }
@@ -229,6 +232,7 @@ function _gjEntry(right, def, kind, m, fr) {
   row('First', _gjDay(rec.d)); row('Caught', String(rec.n || 1));
   if (kind === 'fish') row('Best', `${Math.round(rec.b)} cm`);
   row('Range', `${range[0]} to ${range[1]} ${size}`);
+  if (typeof gardenMuseumEntryMark === 'function') gardenMuseumEntryMark(dl, kind, def.id);   // (build2) on show in the museum since
   if (fr && m.visit) { const theirs = kind === 'fish' ? (fr.f.find(r => r[0] === def.id) || [])[1] : fr.b.includes(def.id); if (theirs) row('Their best', kind === 'fish' ? theirs + ' cm' : 'caught'); }
   const acts = right.appendChild(_gjEl('div', 'gj-acts'));
   if (!m.visit) {
@@ -320,6 +324,7 @@ function _gjPlaces(left, right, m) {
   const sg = sky.appendChild(_gjEl('div', 'gj-skylist'));
   for (const r of stars) { const k = typeof _wdSkyKnown === 'function' && _wdSkyKnown(r.id); sg.appendChild(_gjEl('span', 'gj-star' + (k ? ' is-on' : ''), k ? r.name : '· · ·')); }
   if (!stars.length) sg.appendChild(_gjEl('small', null, 'Look up on a clear night.'));
+  if (typeof gardenNightJournal === 'function') { try { gardenNightJournal(right, m); } catch (e) { /* the night pages are optional */ } }   // after dark: the named moons, big skies, falling stars (94-garden-zz-afterdark-apages.js)
   // round 3: the little things you have done round the vale, in your own hand, the first time each (94-garden-zz-7act-1core.js)
   if (typeof gartActDiary === 'function') {
     const done = gartActDiary(), dd = right.appendChild(_gjEl('div', 'gj-done'));
@@ -339,6 +344,7 @@ function _gjStories(left, right, m) {
   const h = left.appendChild(_gjEl('div', 'gj-ptitle')); h.innerHTML = `<h3>Stories</h3><i class="gj-hand">in your own hand</i>`;
   const box = left.appendChild(_gjEl('div', 'gj-stories wd-box'));
   if (typeof wdBoxStories === 'function') wdBoxStories(box, m);   // the story engine's chapters (wdTaleAdd), told as you heard them
+  if (typeof gardenMomentsBox === 'function') gardenMomentsBox(box, m);   // (folk3: moments you saw, to watch again)
   else box.appendChild(_gjEl('p', 'gj-hand gj-empty', 'Nothing written here yet. Stories find you: sit with people, and listen.'));
   left.appendChild(_gdpBtn('If this brings anything up', { icon: 'heart', kind: 'btn-ghost', run: () => { if (typeof wdCareNote === 'function') wdCareNote(); else gardenMessage('If anything in the story is hard to read, it is fine to stop. Settings › Garden can soften the darker turns.', { icon: 'heart' }); } }));
   const h2 = right.appendChild(_gjEl('div', 'gj-etitle')); h2.innerHTML = '<h3>Letters</h3><small>tipped in, to open and read again</small>';
@@ -363,6 +369,7 @@ function _gjKeep(left, right, m) {
     c.innerHTML = `<span class="gj-cart${have ? '' : ' gj-sil'}">${art || icon('gem')}</span>${have ? `<b>${esc(d.name)}</b>` : `<b class="gj-q">? ? ?</b><small class="gj-clue">“${esc(d.hint || 'Keep your eyes on the ground.')}”</small>`}`;
   }
   if (typeof _glbFit === 'function') _glbFit(shelf);
+  if (typeof gardenTideShelf === 'function') gardenTideShelf(left, m);   // what the tide leaves: shells, sea glass, driftwood (94-garden-tide-3comb.js)
   const h2 = right.appendChild(_gjEl('div', 'gj-etitle')); h2.innerHTML = '<h3>Found</h3><small>the gardener’s things, curios and what the ground gave up</small>';
   const found = right.appendChild(_gjEl('div', 'gj-found wd-box'));
   if (typeof wdBoxFound === 'function') { try { wdBoxFound(found, m); } catch (e) { found.appendChild(_gjEl('p', 'muted', 'Nothing found yet.')); } }

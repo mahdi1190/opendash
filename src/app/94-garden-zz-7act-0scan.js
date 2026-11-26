@@ -112,6 +112,7 @@ function _gksDecorRows(base) {
  *  (a building, a wall, a rock, a tree's trunk, a painted thing: the walker's own map), not on another thing found standing. */
 function _gksPlaceFault(K, x, y, w, h, list, self) {
   const hw = w / 2, cy = y - h / 2, pts = [[x, y - 0.06], [x - hw * 0.85, y - 0.06], [x + hw * 0.85, y - 0.06], [x, y - h * 0.9]];
+  if (K.fill) for (let qy = y - h + 0.2; qy < y; qy += 0.5) for (let qx = x - hw + 0.2; qx < x + hw; qx += 0.5) pts.push([qx, qy]);   // (a building: its whole footprint, so no path or pond runs under it)
   for (const [px, py] of pts) if (_gksWet(px, py)) return 'in the water';
   if (!K.onPath) for (const [px, py] of pts) { let c = null; try { c = gardenIslandBaseCell(px, py); } catch (e) { c = null; } if (c && c.route) return 'on a path (' + c.route + ')'; }
   try { const D = gardenIslandData(); for (const [px, py] of pts) if (gardenPlotNear(D, px, py, 0.45)) return 'on a garden plot or its wall'; } catch (e) { /* no plots */ }
@@ -170,7 +171,7 @@ function gardenTerrainAt(x, y) {
   if (_gksWet(x, y)) return _gksWet(x, y - 1.2) && _gksWet(x, y - 2.4) && _gksWet(x + 1.2, y - 1.2) && _gksWet(x - 1.2, y - 1.2) ? 'deep' : 'water';
   if (!c.land) return '';
   if (gardenTerrainUp(x, y)) return 'slope';   // (only ground you walk on that rises: by a wall, a scarp or a mountain the ground is flat grass)
-  if (c.beach) return 'sand';
+  if (c.beach) return typeof gardenTideShallows === 'function' && gardenTideShallows(x, y) ? 'shallows' : 'sand';   // (under the tide now: 94-garden-tide-0rules.js)
   if (c.route || (typeof _plStoneAt === 'function' && _plStoneAt(x, y))) return 'path';
   if (c.solid || c.staticId || c.reservation) return 'ground';
   if (_gksSeason() === 'winter') return 'snow';

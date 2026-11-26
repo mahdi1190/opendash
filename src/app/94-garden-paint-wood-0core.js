@@ -824,7 +824,10 @@ window.GardenPaintWood = (function () {
     // and every floor stamp (ferns, bracken, holly, grasses, the clearing's flowers)
     { const w0 = performance.now(); for (const f of S.M.floors) if (f.kind === 'stamp') stampCanvas(f.id, f.v, S.season, f.h); if (S.season !== 'winter') for (const id of ['plant.wildflowers', 'plant.daisies']) for (const v of [0, 1]) stampCanvas(id, v, S.season, 12); S.warmMs += Math.round(performance.now() - w0); }
     const here = window.GardenPaintWater && GardenPaintWater.startView ? GardenPaintWater.startView(S.W) : null;
-    if (here && !S.stale.length) for (const ch of S.chunks.values()) if (hit(ch.box, here)) ok(() => { const g = bakeChunk(ch); while (!g.next().done); });
+    // (speed pass) at the resolution the tick would bake a chunk in view: bakeChunk had no K here, so each of these made a 0 x 0
+    // picture (a WebGL warning apiece), hid the chunk's shade and left it blank until the tick baked it again
+    const cam0 = scene.cameras && scene.cameras.main, K0 = S.wantK || (window.GardenPaintGround ? GardenPaintGround.levelFor(cam0 ? cam0.zoom || 1 : 1, 1, 3) : 1);
+    if (here && !S.stale.length) for (const ch of S.chunks.values()) if (hit(ch.box, here)) ok(() => { const g = bakeChunk(ch, K0); while (!g.next().done); });
     S.buildMs = Math.round(performance.now() - t0);
     return { destroy: clear };
   }

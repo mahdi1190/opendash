@@ -1,0 +1,179 @@
+/* AFTER DARK (94-garden-zz-afterdark-*.js): named moons, big skies, moth sheets, falling stars, mushrooms, the rainbow's foot, weather
+   sayings, glow trails. Motion here is transform and opacity only; with reduced motion everything stands still (the last rule). */
+.ad-twinkle { animation: ad-twinkle 1.3s ease-in-out infinite alternate; }
+@keyframes ad-twinkle { from { transform: scale(0.72) rotate(-8deg); opacity: 0.55; } to { transform: scale(1.12) rotate(8deg); opacity: 1; } }
+.ad-glow-b { animation: ad-glow-b 3.8s ease-in-out infinite; }
+@keyframes ad-glow-b { 0%, 100% { opacity: 0.16; } 50% { opacity: 0.32; } }
+.ad-blink { animation: ad-blink 2.6s ease-in-out infinite; }
+@keyframes ad-blink { 0%, 100% { opacity: 0.25; } 40% { opacity: 1; } 60% { opacity: 0.9; } }
+.ad-bob { animation: ad-bob 2.4s ease-in-out infinite alternate; }
+@keyframes ad-bob { from { transform: translate(0, 0); } to { transform: translate(0, -2px); } }
+.ad-sway { animation: ad-sway 3.2s ease-in-out infinite alternate; }
+@keyframes ad-sway { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+/* named moons (2moon): a candle's flame, hares boxing, rings on still water, petals falling, a mug's steam, an owl shifting on its branch */
+.ad-flicker { animation: ad-flicker 0.9s ease-in-out infinite alternate; }
+@keyframes ad-flicker { 0% { opacity: 0.82; } 45% { opacity: 1; } 70% { opacity: 0.9; } 100% { opacity: 0.97; } }
+.ad-box { animation: ad-box 0.42s ease-in-out infinite alternate; }
+@keyframes ad-box { from { transform: translate(0, 0); } to { transform: translate(1.8px, -0.8px); } }
+.ad-ripple { opacity: 0; animation: ad-ripple 3.2s ease-out infinite; }
+.ad-r2 { animation-delay: 1.05s; }
+.ad-r3 { animation-delay: 2.1s; }
+@keyframes ad-ripple { 0% { opacity: 0.85; transform: scale(0.3); } 100% { opacity: 0; transform: scale(1.6); } }
+.ad-fall { animation: ad-fall 6s linear infinite; }
+@keyframes ad-fall { 0% { opacity: 0; transform: translate(0, -6px); } 14% { opacity: 1; } 80% { opacity: 0.9; } 100% { opacity: 0; transform: translate(10px, 46px); } }
+.ad-steam { animation: ad-steam 2.8s ease-in-out infinite; }
+@keyframes ad-steam { 0% { opacity: 0; transform: translate(0, 2px); } 40% { opacity: 1; } 100% { opacity: 0; transform: translate(1px, -5px); } }
+.ad-owl { animation: ad-owl 5s ease-in-out infinite; }
+@keyframes ad-owl { 0%, 70%, 100% { transform: translate(0, 0); } 78% { transform: translate(-0.8px, -0.6px); } 88% { transform: translate(0.8px, -0.4px); } }
+/* star-fall mornings (5stars): heat over the stone, a thin line of smoke going up */
+.ad-shimmer { animation: ad-shimmer 1.6s ease-in-out infinite alternate; }
+@keyframes ad-shimmer { from { opacity: 0.2; transform: translate(-0.6px, 0); } to { opacity: 0.75; transform: translate(0.6px, -1.4px); } }
+.ad-smoke { animation: ad-smoke 7.5s ease-in-out infinite; }
+@keyframes ad-smoke { 0% { opacity: 0.4; transform: translate(0, 6px) scale(0.8); } 50% { opacity: 1; transform: translate(2px, -6px) scale(1); } 100% { opacity: 0.25; transform: translate(-1px, -18px) scale(1.25); } }
+/* rain things (6rain): the rainbow's foot, gulls on the green, swallows, the weathervane */
+.ad-band { animation: ad-band 2.4s ease-in-out infinite alternate; }
+@keyframes ad-band { from { opacity: 0.18; transform: translate(0, 4px); } to { opacity: 0.42; transform: translate(0, -4px); } }
+.ad-peck { animation: ad-peck 3.4s ease-in-out infinite; }
+@keyframes ad-peck { 0%, 70%, 100% { transform: translate(0, 0); } 78% { transform: translate(1.4px, 2px); } 86% { transform: translate(0.4px, 0.6px); } }
+.ad-swoop { animation: ad-swoop 4.2s ease-in-out infinite; }
+@keyframes ad-swoop { 0% { transform: translate(-14px, 2px); } 25% { transform: translate(-2px, -5px); } 50% { transform: translate(14px, 1px); } 75% { transform: translate(2px, 5px); } 100% { transform: translate(-14px, 2px); } }
+.ad-vane-go { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px; }
+.ad-vane-go .btn { min-width: 92px; }
+.ad-saying { margin: 0 0 6px; padding-left: 10px; border-left: 3px solid rgba(120, 140, 200, 0.5); line-height: 1.45; }
+/* moth sheet nights (4moths): who is on the sheet */
+.ad-moths-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 6px 0 14px; }
+.ad-moth { display: grid; gap: 2px; justify-items: start; padding: 8px 10px; border: 1px solid var(--border, rgba(0, 0, 0, 0.12)); border-radius: 12px; background: var(--surface-2, transparent); font-size: 13px; }
+.ad-moth small { line-height: 1.3; color: var(--muted, #6a6458); }
+.ad-moth.is-new { border-color: rgba(200, 160, 80, 0.7); box-shadow: 0 0 0 2px rgba(220, 180, 90, 0.16); }
+.ad-moth.is-far { opacity: 0.8; }
+.ad-moth-art { display: grid; place-items: center; width: 100%; min-height: 46px; border-radius: 9px; background: radial-gradient(circle at 50% 60%, #f4eedc, #dcd2bc); }
+/* the vale lights (3sky): one layer over the top of the view, light only (screen), never in the way of a click */
+.ad-aurora { position: absolute; left: 0; right: 0; top: 0; height: 46%; z-index: 1; overflow: hidden; pointer-events: none; mix-blend-mode: screen; opacity: 0; animation: ad-au-in 6s ease-out forwards; -webkit-mask-image: linear-gradient(#000 0%, #000 35%, transparent 100%); mask-image: linear-gradient(#000 0%, #000 35%, transparent 100%); }
+@keyframes ad-au-in { to { opacity: 1; } }
+/* the curtain: four wide bands that overlap and melt into each other at their sides (a mask, no rounded tops: they stood as separate
+   columns), faint violet above, green below as the real thing is, a brighter hem at the foot of each (at its own height: the hem waves), fine rays, each band its own height and its own slow sway */
+.ad-au { position: absolute; top: 0; width: 58%; height: 100%; background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0) 0 7px, rgba(226, 255, 238, 0.13) 7px 10px, rgba(255, 255, 255, 0) 10px 19px), linear-gradient(rgba(176, 120, 255, 0) 0%, rgba(176, 120, 255, 0.18) 16%, rgba(130, 236, 200, 0.3) 42%, rgba(122, 255, 176, 0.44) 62%, rgba(170, 255, 205, 0.62) 70%, rgba(122, 255, 176, 0.16) 77%, rgba(122, 255, 176, 0) 92%); -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 30%, #000 70%, transparent 100%); mask-image: linear-gradient(90deg, transparent 0%, #000 30%, #000 70%, transparent 100%); filter: blur(4px); transform-origin: 50% 0; will-change: transform, opacity; animation: ad-au 17s ease-in-out infinite alternate; }
+.ad-au.a1 { left: -20%; top: -4%; height: 96%; }
+.ad-au.a2 { left: 6%; top: 6%; width: 52%; height: 84%; animation-duration: 23s; animation-delay: -6s; background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0) 0 11px, rgba(226, 255, 238, 0.1) 11px 13px, rgba(255, 255, 255, 0) 13px 26px), linear-gradient(rgba(190, 130, 255, 0) 0%, rgba(190, 130, 255, 0.14) 20%, rgba(150, 255, 190, 0.28) 54%, rgba(180, 255, 210, 0.5) 66%, rgba(150, 255, 190, 0.12) 74%, rgba(150, 255, 190, 0) 90%); }
+.ad-au.a3 { left: 30%; top: -8%; height: 102%; animation-duration: 19s; animation-delay: -11s; }
+.ad-au.a4 { left: 58%; top: 4%; width: 60%; height: 88%; animation-duration: 27s; animation-delay: -3s; }
+@keyframes ad-au { 0% { transform: translateX(-4%) skewX(-8deg) scaleY(0.86); opacity: 0.55; } 50% { transform: translateX(3%) skewX(6deg) scaleY(1); opacity: 1; } 100% { transform: translateX(-2%) skewX(-3deg) scaleY(0.92); opacity: 0.7; } }
+.ad-aur-s { animation: ad-aur-s 9s ease-in-out infinite alternate; }
+@keyframes ad-aur-s { from { opacity: 0.45; } to { opacity: 1; } }
+/* the moon calendar (Play, the Journal, the notice board) */
+.ad-cal-top, .ad-cal-strip, .ad-cal-grid { flex: none; }   /* (in the dialog's column a scrolling strip would otherwise shrink to nothing) */
+.ad-cal-top { display: flex; gap: 16px; align-items: center; margin-bottom: 12px; }
+.ad-cal-moon { flex: none; display: grid; place-items: center; width: 112px; height: 112px; border-radius: 18px; background: radial-gradient(circle at 50% 40%, #26304e, #121a30 72%); }
+.ad-cal-words h3 { margin: 0 0 4px; }
+.ad-cal-words p { margin: 0 0 4px; line-height: 1.45; }
+.ad-cal-strip { display: flex; gap: 4px; overflow-x: auto; padding: 8px 6px 10px; margin: 0 0 14px; border-radius: 12px; background: linear-gradient(#16203a, #1e2a46); scrollbar-width: thin; }
+.ad-cal-n { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 54px; padding: 4px 2px; border-radius: 9px; color: #c8d0e4; font-size: 10.5px; text-align: center; }
+.ad-cal-n small { font-size: 10px; white-space: nowrap; color: #9aa6c4; }
+.ad-cal-n b { font-size: 10px; font-weight: 600; line-height: 1.15; color: #fff4d8; }
+.ad-cal-n.is-now { background: rgba(255, 255, 255, 0.08); }
+.ad-cal-n.is-named { background: rgba(255, 236, 180, 0.14); box-shadow: inset 0 0 0 1px rgba(255, 236, 180, 0.45); }
+.ad-cal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.ad-cal-c { position: relative; display: flex; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--border, rgba(0, 0, 0, 0.12)); border-radius: 12px; background: var(--surface-2, transparent); }
+.ad-cal-c.is-seen { border-color: rgba(200, 160, 80, 0.55); }
+.ad-cal-c.is-next { border-color: rgba(120, 140, 200, 0.7); box-shadow: 0 0 0 2px rgba(120, 140, 200, 0.16); }
+.ad-cal-art { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #1a2238; }
+.ad-cal-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; }
+.ad-cal-t small { line-height: 1.35; }
+.ad-cal-k { position: absolute; right: 6px; top: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  .ad-twinkle, .ad-glow-b, .ad-blink, .ad-bob, .ad-sway, .ad-flicker, .ad-box, .ad-ripple, .ad-fall, .ad-steam, .ad-owl, .ad-au, .ad-aur-s, .ad-shimmer, .ad-smoke, .ad-band, .ad-peck, .ad-swoop { animation: none !important; }
+  .ad-aurora { animation: none; opacity: 1; }
+  .ad-ripple { opacity: 0.5; }
+}
+/* glow trails (7trails): moths dancing round the ring */
+.ad-orbit { animation: ad-orbit 5.2s linear infinite; }
+@keyframes ad-orbit { 0% { transform: translate(18px, 0); } 12.5% { transform: translate(12.7px, 4.2px); } 25% { transform: translate(0, 6px); } 37.5% { transform: translate(-12.7px, 4.2px); } 50% { transform: translate(-18px, 0); } 62.5% { transform: translate(-12.7px, -4.2px); } 75% { transform: translate(0, -6px); } 87.5% { transform: translate(12.7px, -4.2px); } 100% { transform: translate(18px, 0); } }
+@media (prefers-reduced-motion: reduce) { .ad-orbit { animation: none !important; } }
+/* the pages (apages): the notice board's moon row, Wick's lines */
+.ad-board-moon { display: flex; gap: 10px; align-items: center; margin: 2px 0 8px; }
+.ad-board-moon svg { flex: none; border-radius: 50%; background: #1a2238; }
+.ad-board-moon span { display: flex; flex-direction: column; gap: 2px; }
+.ad-wick { font-style: italic; }
+.ad-gj .gj-acts { margin-top: 6px; }
+/* ---------- with friends (8friends): stargazing halves, Wick's myths, naming a star, folding a lantern ---------- */
+.wd-sky-s.ad-theirs .wd-sky-c { opacity: 0.42; }
+.wd-sky-s.ad-theirs .wd-sky-g { opacity: 0.08; }
+.wd-sky-s.ad-theirs { cursor: default; }
+.wd-sky-s.ad-mine .wd-sky-g { opacity: 0.48; fill: #eaf0ff; }
+.wd-sky-s.ad-mine .wd-sky-c { fill: #ffffff; }
+.wd-sky-s.ad-pressed .wd-sky-g { fill: #ffe9a8; animation: ad-press var(--ad-left, 8s) linear forwards; }
+.wd-sky-s.ad-pressed .wd-sky-c { fill: #ffe9a8; }
+@keyframes ad-press { 0% { opacity: 0.95; } 70% { opacity: 0.7; } 100% { opacity: 0.22; } }
+.ad-sky-ring { animation: ad-ring 1.6s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+@keyframes ad-ring { from { opacity: 0.4; transform: scale(0.92); } to { opacity: 1; transform: scale(1.08); } }
+.ad-sky-named text { font-family: Georgia, "Times New Roman", serif; font-style: italic; letter-spacing: 0.02em; }
+.ad-sky-with { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; font-size: 13px; color: #0d1526; background: #cfe0ff; border-radius: 14px; }
+.ad-myth { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 233, 168, 0.08); border: 1px solid rgba(255, 233, 168, 0.22); animation: wd-whisper-in 0.6s ease-out; }
+.ad-myth-art { flex: none; display: grid; place-items: center; width: 46px; height: 54px; border-radius: 10px; background: radial-gradient(circle at 50% 70%, #26304e, #141c34); }
+.ad-myth-t { flex: 1; min-width: 0; }
+.ad-myth-t b { display: block; font-size: 12px; color: #ffe9a8; letter-spacing: 0.02em; }
+.ad-myth-t p { margin: 2px 0 0; font-size: 14.5px; line-height: 1.4; color: #eef2fb; }
+.ad-myth .btn { flex: none; color: #e8ecf6; background: #2a3658; border-color: #4a5a88; }
+.ad-name { display: flex; flex-direction: column; gap: 6px; }
+.ad-name p { margin: 0; font-size: 14px; line-height: 1.4; }
+.ad-name-w { display: flex; flex-wrap: wrap; gap: 6px; }
+.ad-name-done { color: #ffe9a8; }
+.ad-fold { align-items: center; }
+.ad-fold-art { margin-top: -26px; display: grid; place-items: center; border-radius: 14px; background: radial-gradient(circle at 50% 62%, #2c3656, #141c30 75%); }
+.ad-fold-row { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+.ad-fold-sw { width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 2px solid rgba(58, 47, 34, 0.25); background: radial-gradient(circle at 38% 34%, rgba(255, 255, 255, 0.55) 0, rgba(255, 255, 255, 0) 46%), var(--sw); cursor: pointer; pointer-events: auto; }
+.ad-fold-sw.is-on { border-color: #3a2f22; box-shadow: 0 0 0 3px rgba(240, 160, 82, 0.35); }
+.ad-fold-sw:focus-visible { outline: 2px solid #3a2f22; outline-offset: 2px; }
+.ad-fold .wd-sky-chip.ad-fold-pat { color: #4a3c2a; background: #fffdf4; border-color: #c8b48a; cursor: pointer; pointer-events: auto; }
+.ad-fold .wd-sky-chip.ad-fold-pat.is-on { color: #fffdf4; background: #7a5a38; border-color: #7a5a38; }
+.ad-fold .wd-sky-chip.ad-fold-pat:focus-visible { outline: 2px solid #3a2f22; outline-offset: 2px; }
+/* ---------- music with friends (9music): the busking ring, the barn dance strip ---------- */
+.ad-beat { position: absolute; left: 0; top: 0; z-index: 6; width: 0; height: 0; pointer-events: none; }
+.ad-beat-r, .ad-beat-p { position: absolute; left: -34px; top: -13px; width: 68px; height: 26px; border-radius: 50%; }
+.ad-beat-r { border: 2px solid rgba(255, 236, 180, 0.7); box-shadow: 0 0 10px rgba(255, 220, 140, 0.35); pointer-events: auto; cursor: pointer; }
+.ad-beat-p { border: 2px solid rgba(255, 244, 210, 0.9); animation-name: ad-beat; animation-timing-function: ease-out; animation-iteration-count: infinite; pointer-events: none; }
+@keyframes ad-beat { 0% { transform: scale(1.32); opacity: 0.95; } 35% { transform: scale(1); opacity: 0.55; } 100% { transform: scale(1); opacity: 0; } }
+.ad-beat.is-good .ad-beat-r { animation: ad-beat-good 0.32s ease-out; }
+.ad-beat.is-miss .ad-beat-r { animation: ad-beat-miss 0.32s ease-out; }
+@keyframes ad-beat-good { 0% { border-color: #ffe27a; box-shadow: 0 0 18px rgba(255, 220, 120, 0.9); transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes ad-beat-miss { 0% { border-color: rgba(200, 210, 230, 0.6); transform: translateX(-2px); } 50% { transform: translateX(2px); } 100% { transform: translateX(0); } }
+.ad-beat-t { position: absolute; left: 0; top: 18px; transform: translateX(-50%); white-space: nowrap; padding: 3px 9px; font-size: 12px; font-weight: 600; color: #3a2f22; background: #fffdf4; border: 1px solid #b8a888; border-radius: 10px; transition: opacity 0.6s; }
+.ad-beat-t.is-gone { opacity: 0; }
+.ad-strip { position: absolute; left: 50%; bottom: 74px; transform: translateX(-50%); z-index: 9; display: flex; flex-direction: column; gap: 8px; width: min(560px, calc(100% - 24px)); padding: 10px 14px 12px; background: rgba(28, 22, 18, 0.88); color: #fff4dc; border: 1px solid rgba(255, 220, 150, 0.45); border-radius: 16px; box-shadow: 0 8px 26px rgba(0, 0, 0, 0.35); }
+.ad-strip-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ad-strip-call { font-family: Georgia, "Times New Roman", serif; font-size: 16px; font-style: italic; color: #ffe3a0; }
+.ad-strip-lamps { display: flex; gap: 5px; }
+.ad-strip-lamps i { width: 11px; height: 14px; border-radius: 40% 40% 30% 30%; background: #5a4434; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.3); }
+.ad-strip-lamps i.is-lit { background: radial-gradient(circle at 50% 60%, #fff2c0, #f0a052 70%); box-shadow: 0 0 8px rgba(255, 200, 110, 0.8); }
+.ad-strip.is-finish { border-color: #ffe27a; box-shadow: 0 0 0 2px rgba(255, 226, 122, 0.35), 0 8px 26px rgba(0, 0, 0, 0.35); }
+.ad-strip-track { position: relative; height: 50px; overflow: hidden; border-radius: 12px; background: linear-gradient(90deg, rgba(255, 220, 150, 0.16), rgba(255, 220, 150, 0.04) 30%, rgba(255, 220, 150, 0.02)); }
+.ad-strip-hit { position: absolute; left: 14px; top: 5px; width: 40px; height: 40px; border-radius: 50%; border: 2px solid rgba(255, 228, 160, 0.85); box-shadow: 0 0 12px rgba(255, 210, 120, 0.4); }
+.ad-strip-arrows { position: absolute; inset: 0; }
+.ad-arrow { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; display: flex; align-items: center; padding-left: 22px; color: #fff4dc; animation-name: ad-arrow; animation-timing-function: linear; animation-fill-mode: both; will-change: transform; pointer-events: none; }
+.ad-arrow .i { width: 24px; height: 24px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6)); }
+.ad-arrow.d0 { color: #ffd28c; }
+.ad-arrow.d1 { color: #c8f07a; }
+.ad-arrow.d2 { color: #9ec4ff; }
+.ad-arrow.d3 { color: #f2b0d8; }
+.ad-arrow.is-hit, .ad-arrow.is-late { opacity: 0; transition: opacity 0.22s; }
+@keyframes ad-arrow { from { transform: translateX(100%); } to { transform: translateX(0); } }
+.ad-strip-say { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 700; opacity: 0; pointer-events: none; }
+.ad-strip-say.is-on { animation: ad-say 1s ease-out; }
+.ad-strip-say.is-great { color: #ffe27a; }
+.ad-strip-say.is-good { color: #c8f07a; }
+.ad-strip-say.is-miss { color: #c8c0b4; font-weight: 500; }
+.ad-strip-say.is-swing { color: #ffb8d8; font-family: Georgia, serif; font-style: italic; }
+@keyframes ad-say { 0% { opacity: 0; transform: translateY(-30%); } 15% { opacity: 1; transform: translateY(-50%); } 75% { opacity: 1; transform: translateY(-50%); } 100% { opacity: 0; transform: translateY(-50%); } }
+.ad-strip-keys { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ad-strip-k { display: grid; place-items: center; width: 52px; height: 44px; padding: 0; color: #fff4dc; background: #3e3128; border: 1px solid rgba(255, 220, 150, 0.4); border-radius: 12px; cursor: pointer; touch-action: manipulation; }
+.ad-strip-k .i { width: 22px; height: 22px; }
+.ad-strip-k:hover, .ad-strip-k:focus-visible { background: #4e3e32; }
+.ad-strip-k.is-hit { animation: ad-key 0.22s ease-out; }
+@keyframes ad-key { 0% { transform: scale(0.9); background: #6a5240; } 100% { transform: scale(1); } }
+.ad-strip-stop { margin-left: auto; color: #fff4dc !important; }
+@media (max-width: 640px) { .ad-strip { bottom: 66px; } .ad-strip-k { width: 46px; } }
+@keyframes ad-arrow-still { 0%, 72% { opacity: 0; } 100% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .ad-sky-ring, .ad-beat-p, .wd-sky-s.ad-pressed .wd-sky-g { animation: none !important; }
+  .ad-arrow { transform: none !important; animation-name: ad-arrow-still; }
+}

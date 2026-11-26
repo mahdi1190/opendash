@@ -434,10 +434,14 @@
   }
 
   /* ---------- 2. invisible walls: boxes and cells that block where nothing is drawn ---------- */
+  // (a still wonder sprite, set out by the world's own code rather than a painter, cannot be sampled here: its anchor on the box, or just in
+  // front of it, counts as drawn; folk and other moving figures do not count)
+  const wonderOn = (r) => { try { if (typeof _gwSprites === 'undefined') return false; for (const S of _gwSprites) { if (!S || !S.still || S.simulationOnly || !S.svg || !Number.isFinite(S.x) || !Number.isFinite(S.y)) continue; if (S.x >= r.x0 - .3 && S.x <= r.x1 + .3 && S.y >= r.y0 - .2 && S.y <= r.y1 + .6) return true; } } catch (e) { /* none */ } return false; };
   const painted = (x0, y0, x1, y1, above) => { for (const fy of [.15, .5, .85]) for (const fx of [.15, .5, .85]) { const p = toPx(x0 + (x1 - x0) * fx, y0 + (y1 - y0) * fy); if (paintAt(p.X, p.Y)) return true; } if (above) for (const up of [10, 20, 30]) for (const fx of [.2, .5, .8]) { const p = toPx(x0 + (x1 - x0) * fx, y0); if (paintAt(p.X, p.Y - up)) return true; } return false; };   // (above: the body of a thing on legs, a bench's seat over the box between them)
   for (const r of D.rects) {
     if (r.form) continue;   // (a landform: its outline is checked against its drawing below)
     if (/\(shut\)$/.test(r.src)) continue;   // (layfix east: a shut shortcut, the hurdle or the cliff gate, is drawn by its own wonder sprite, which this scan cannot sample; it is listed under 'shut' where it crosses a path)
+    if (wonderOn(r)) continue;   // (likewise a box a still wonder sprite stands on: the day's market stall, the fair's brazier, a lantern post)
     if (painted(r.x0 - .06, r.y0 - .1, r.x1 + .06, r.y1 + .04, true)) continue;
     if (mosaic.ok && !gardenIslandLandContains((r.x0 + r.x1) / 2, r.y1) && pixWater((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2, (r.x1 - r.x0) * CW / 2, (r.y1 - r.y0) * CH / 2) < .3) continue;   // (out past the coast and the picture is not water: a wall painted into the ground, like the quay's sea wall)
     push({ kind: 'invisible-wall', obj: /trunk/.test(r.src) ? 'tree' : /harbour/.test(r.src) ? 'harbour' : /lamp|pier|post/.test(r.src) ? 'prop' : /wall|rock/.test(r.src) ? 'wall' : 'prop', name: r.src, x: (r.x0 + r.x1) / 2, y: r.y1, w: +(r.x1 - r.x0).toFixed(2), h: +(r.y1 - r.y0).toFixed(2), detail: 'box ' + [r.x0, r.y0, r.x1, r.y1].map(v => v.toFixed(2)).join(', ') + ' with nothing drawn on it' });
@@ -1036,7 +1040,7 @@
   const decor = { placed: 0, checked: 0, drawn: 0, families: {}, skipped: [] };
   if (!opts.noDecor) try {
     const G = _gdG(), uids = [], want = [];
-    for (const def of GARDEN_DECOR) for (let r = 0; r < (def.rot ? 4 : 1); r++) want.push({ def, r });
+    for (const def of GARDEN_DECOR) if (!def.indoor) for (let r = 0; r < (def.rot ? 4 : 1); r++) want.push({ def, r });   // (things for indoors never stand in the garden: 94-garden-house-*.js)
     const okCell = (x, y) => { if (x < 1 || y < 1 || x >= W.cols - 1 || y >= W.rows - 1) return false; const i = y * W.cols + x, b = gardenIslandBaseCell(x, y); return !grid.hard[i] && !grid[i] && b && b.land && !b.freshwater && !b.solid && !gardenIsWater(x, y) && !String(gardenAreaAt(x, y, lvl)).startsWith('locked:') && !m.occ.get(x + ',' + y) && !gardenPropAt(x, y) && free(x + .5, y + .5); };
     const taken = new Set(); let wi = 0;
     for (let y = 2; y < W.rows - 3 && wi < want.length; y += 1) for (let x = 2; x < W.cols - 4 && wi < want.length; x += 1) {

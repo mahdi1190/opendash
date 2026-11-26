@@ -740,9 +740,12 @@ setTimeout(function _grBoot() {
   if (typeof _serverAvailable !== 'undefined' && !_serverAvailable) { setTimeout(_grBoot, 30000); return; }
   grLoad(true).then(_grRepaint).catch(() => {});
   // The server tells open pages when something changes. In case that line is down, the open tab also looks now and then (it only asks this computer).
-  let last = '';
+  let last = '', ticks = 0;
   setInterval(() => {
     if (document.hidden) return;
+    // (speed pass) off the Friends pages the server's own messages keep the badge right: this fallback look runs every five minutes
+    // there, not every twenty seconds on every page
+    if (!/^friends(:|$)/.test(String(state.view || '')) && ++ticks % 15) return;
     const open = /^friends:groups(:|$)/.test(String(state.view || ''));
     const id = _frGroupId(state.view);
     Promise.all([grLoad(true), open && id ? grOne(id, true) : null]).then(([list, one]) => {

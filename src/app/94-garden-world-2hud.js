@@ -88,7 +88,7 @@ const _GH_MENU = Object.freeze([
   ['play', 'Play', 'gamepad-2'],
   ['graphics', 'Graphics', 'monitor'],
   ['lands', 'Buy land', 'map-pin'],
-  ['design', 'Design', 'paintbrush'],
+  ['design', 'Build', 'paintbrush'],
   ['shop', 'Shop', 'store'], ['basket', 'Market stall', 'shopping-basket'], ['craft', 'Crafting', 'hammer'], ['tricks', 'Pet tricks', 'wand-sparkles'], ['almanac', 'Notice board', 'clipboard-list'], ['journal', 'Field Journal (J)', 'book-open'], ['catch', 'Bag & tackle', 'fish'], ['friends', 'Friends', 'users'], ['help', 'Help', 'circle-help'],
 ]);
 function _ghMenu(box, m) {
@@ -127,7 +127,7 @@ function _ghMenu(box, m) {
       if (id === 'graphics') { gardenGraphicsOpen(); return; }
       if (id === 'sound') { gardenSoundOpen(); return; }
       if (id === 'collide') { if (typeof gardenCollideToggle === 'function') gardenCollideToggle(); return; }
-      if (id === 'design') { gardenDesignEnter(); return; }
+      if (id === 'design') { if (typeof gardenB2BuildOpen === 'function' && gardenB2BuildOpen()) return; gardenDesignEnter(); return; }   // (build2: building is done in the game, with the tools on the ring)
       gardenPopupOpen(id);
     });
   }
@@ -148,6 +148,7 @@ function _ghSlotArt(s) {
   return _GH_GLYPH[s.k] || '';
 }
 function _ghBar(box, m) {
+  if (typeof gardenB2Bar === 'function' && gardenB2Bar(box, m)) return;   // (build2) the tool ring and your pockets (94-garden-zz-8build2-ring.js)
   const tool = _gdpTool(), slots = _gdpSlots(m);
   const fert = gardenHas('fertiliser');
   const on = (s) => (s.seed ? tool === 'seed' && _gdp.seed === s.seed : s.tool === tool);
@@ -182,7 +183,10 @@ function gardenSlotPick(k, keyboard) {
   _gdpPickTool(_gdpTool() === k ? 'hand' : k);
 }
 /** Number keys: the hotbar in order. */
-function gardenSlotKey(n) { const s = _gdpSlots(gardenHere())[n - 1]; if (s) { gardenSlotPick(s.k, true); return true; } return false; }
+function gardenSlotKey(n) {
+  if (typeof gardenB2SlotKey === 'function') { const r = gardenB2SlotKey(n); if (r != null) return r; }   // (build2) the tool ring's numbers
+  const s = _gdpSlots(gardenHere())[n - 1]; if (s) { gardenSlotPick(s.k, true); return true; } return false;
+}
 
 /* ---------- the bag: pick one and drop it in the world ---------- */
 function _ghCloseBag(box) {
@@ -191,6 +195,7 @@ function _ghCloseBag(box) {
 }
 function _ghBag() {
   const box = _ghBox(); if (!box) return;
+  if (typeof gardenB2Pockets === 'function' && gardenB2Pockets(box)) return;   // (build2) your pockets and your storage take the bag's place (94-garden-zz-8build2-store.js)
   let el = box.querySelector(':scope > .gd-bagpop');
   if (!_gh.bag) { if (el) { const focused = el.contains(document.activeElement); el.remove(); if (focused) box.focus({ preventScroll: true }); } return; }
   const fresh = !el;
@@ -349,7 +354,7 @@ function _ghCameraButtons(box) {
 }
 function _ghViewPanel(box) {
   const el = _ghHost(box, 'gd-viewpanel', 'section'); el.id = 'gd-view-panel'; el.hidden = !_gh.viewOpen; el.setAttribute('aria-label', 'View and controls');
-  if (!el.firstChild) el.innerHTML = `<div class="gd-map-head"><b>View & controls</b><button type="button" data-view-close aria-label="Close view controls">${icon('x')}</button></div><div class="gd-camera-row"><button type="button" data-viewcam="in">${icon('plus')}<span>Closer</span></button><button type="button" data-viewcam="out">${icon('minus')}<span>Further</span></button><button type="button" data-viewcam="fit">${icon('maximize')}<span>Fit</span></button><button type="button" data-viewcam="me">${icon('locate-fixed')}<span>Follow</span></button></div><dl class="gd-control-list"><dt>Walk</dt><dd>Click or tap a spot; WASD or arrows.</dd><dt>Interact</dt><dd><kbd>E</kbd> or <kbd>Space</kbd></dd><dt>Tools / bag</dt><dd><kbd>1–5</kbd> / <kbd>B</kbd></dd><dt>Camera</dt><dd>Wheel or pinch; <kbd>+ −</kbd>, <kbd>F</kbd> Fit, <kbd>C</kbd> Follow.</dd><dt>Moves</dt><dd><kbd>Q</kbd>; friends and photos are in Menu.</dd></dl><button type="button" class="gd-view-help" data-view-help>More help</button>`;
+  if (!el.firstChild) el.innerHTML = `<div class="gd-map-head"><b>View & controls</b><button type="button" data-view-close aria-label="Close view controls">${icon('x')}</button></div><div class="gd-camera-row"><button type="button" data-viewcam="in">${icon('plus')}<span>Closer</span></button><button type="button" data-viewcam="out">${icon('minus')}<span>Further</span></button><button type="button" data-viewcam="fit">${icon('maximize')}<span>Fit</span></button><button type="button" data-viewcam="me">${icon('locate-fixed')}<span>Follow</span></button></div><dl class="gd-control-list"><dt>Walk</dt><dd>Click or tap a spot; WASD or arrows.</dd><dt>Interact</dt><dd><kbd>E</kbd> or <kbd>Space</kbd></dd><dt>Tools / pockets</dt><dd><kbd>1–6</kbd>, <kbd>T</kbd> next tool / <kbd>B</kbd> or <kbd>I</kbd></dd><dt>Camera</dt><dd>Wheel or pinch; <kbd>+ −</kbd>, <kbd>F</kbd> Fit, <kbd>C</kbd> Follow.</dd><dt>Moves</dt><dd><kbd>Q</kbd>; friends and photos are in Menu.</dd></dl><button type="button" class="gd-view-help" data-view-help>More help</button>`;
   if (!el._gdBound) { el._gdBound = true; el.addEventListener('click', ev => { if (ev.target.closest('[data-view-close]')) { _ghClosePanels(box); _ghFocusStage(box); return; } if (ev.target.closest('[data-view-help]')) { _ghClosePanels(box); gardenGuideOpen(); return; } const b = ev.target.closest('[data-viewcam]'); if (!b) return; const k = b.dataset.viewcam; if (k === 'in') gardenCamSet(null, -1); else if (k === 'out') gardenCamSet(null, 1); else gardenCamSet(k === 'fit' && gardenCamMode() !== 'fit' ? 'fit' : 'follow'); _gh.camKey = ''; _ghCameraButtons(box); }); }
   _ghCameraButtons(box);
 }
@@ -481,13 +486,15 @@ function gardenPlantBubble(p, m) {
   if (def.thirst) items.push({ svg: _GH_GLYPH.water, label: p.thirsty ? 'Water: it is thirsty' : 'Water', cls: p.thirsty ? 'is-go' : '', run: () => _ghDoTo(p.uid, gardenWater(p.uid)) });
   items.push({ svg: _GH_GLYPH.feed, label: 'Compost: half a day of growth', n: gardenHas('fertiliser'), cls: gardenHas('fertiliser') ? '' : 'is-off', run: (b) => { const r = gardenFeed(p.uid); if (r && !r.ok) gameDenyOf(r, b); } });
   if (p.stage >= 3) items.push({ svg: _GH_GLYPH.trim, label: 'Trim', cls: p.overgrown ? 'is-go' : '', run: () => _ghDoTo(p.uid, gardenPrune(p.uid)) });
-  items.push({ ic: 'move', label: 'Move', run: () => gardenMoveStart(p.uid, 'plant') });
+  if (typeof gardenB2LiftWhole === 'function' && !m.visit && !(_gdG().plants[p.uid] || {}).by) items.push({ svg: _GH_GLYPH.dig, label: 'Lift it whole: into your pockets, still growing', run: () => { gardenB2LiftWhole(p.uid); _gdp.sel = ''; } });   // (build2: the spade lifts it whole, Animal Crossing's way)
+  else items.push({ ic: 'move', label: 'Move', run: () => gardenMoveStart(p.uid, 'plant') });
   items.push({ svg: _GH_GLYPH.dig, label: 'Dig up', run: () => { _ghDoTo(p.uid, gardenDig(p.uid)); _gdp.sel = ''; } });
   const a = gardenStageName(def, p.stage);
   gardenBubbleOpen({ x: p.x + p.fp / 2, y: p.y - 0.4 - 0.5 * p.stage / 4 }, { title: def.name, sub: m.visit ? gardenVisitPlantLine(p, a) : p.ripe ? 'Ready' : p.nextIn ? `${a} · ${_gdHoursLabel(p.nextIn)}` : a, items });
 }
 function gardenDecorBubble(d, m) {
   const def = d.def, items = [], ci = gardenCollectInfo(d.uid, m);
+  if (typeof gardenB2DecorBubble === 'function') gardenB2DecorBubble(d, m, items);   // (build2) a chest opens your storage
   if (def.effect && def.effect.kind === 'sit' && typeof gardenWonderSeatItem === 'function') items.push(gardenWonderSeatItem(d));
   if (ci) items.push({ ic: 'gift', label: ci.ready ? ci.label : ci.soon, cls: ci.ready ? 'is-go' : 'is-off', run: (b) => { const r = gardenCollect(d.uid); if (r && !r.ok) gameDenyOf(r, b); } });
   if (m.visit) { gardenVisitDecorBubble(d, m, items); gardenBubbleOpen({ x: d.x + (def.w || 1) / 2, y: d.y - 0.5 }, { title: def.name, sub: gardenVisitDecorLine(d), items }); return; }
@@ -495,8 +502,9 @@ function gardenDecorBubble(d, m) {
   if (def.effect && def.effect.kind === 'show') items.push({ ic: 'eye', label: 'See your catches', run: () => gardenCatchOpen('show') });
   if (def.rot) items.push({ ic: 'rotate-cw', label: 'Turn', run: () => _ghDoTo(d.uid, gardenRotateDecor(d.uid)) });
   if (def.v > 1) items.push({ ic: 'palette', label: 'Restyle', run: () => _ghDoTo(d.uid, gardenStyleDecor(d.uid)) });
-  items.push({ ic: 'move', label: 'Move', run: () => gardenMoveStart(d.uid, 'decor') });
-  items.push({ svg: _GH_GLYPH.bag, label: 'Back in the bag', run: () => { _ghDoTo(d.uid, gardenRemoveDecor(d.uid)); _gdp.sel = ''; } });
+  if (typeof gardenB2PickUp === 'function') items.push({ svg: _GH_GLYPH.hand, label: 'Pick up: carry it somewhere else', cls: 'is-go', run: () => gardenB2PickUp(d.uid) });   // (build2: in your hands, with the square in front of you)
+  else items.push({ ic: 'move', label: 'Move', run: () => gardenMoveStart(d.uid, 'decor') });
+  items.push({ svg: _GH_GLYPH.bag, label: typeof gardenB2PickUp === 'function' ? 'Into your pockets' : 'Back in the bag', run: () => { _ghDoTo(d.uid, gardenRemoveDecor(d.uid)); _gdp.sel = ''; } });
   gardenBubbleOpen({ x: d.x + (def.w || 1) / 2, y: d.y - 0.5 }, { title: def.name, items });
 }
 /** An empty spot in a bed: the seeds that would grow right here. */

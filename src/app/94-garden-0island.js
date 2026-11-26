@@ -159,7 +159,15 @@ function _gardenIslandInLoop(x, y, points) {
 function gardenIslandLandContains(x, y) { return Number.isFinite(x) && Number.isFinite(y) && gardenIslandGeometry().land.some(points => _gardenIslandInLoop(x, y, points)); }
 function gardenIslandOceanContains(x, y) { const W = GARDEN_WORLD; return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < W.cols && y < W.rows && !gardenIslandLandContains(x, y); }
 function _gardenIslandRect(x, y, r) { return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h; }
-function _gardenIslandFreshwaterTest(G, cx, cy) { return G.freshwater.some(p => p.boundary ? _gardenIslandInLoop(cx, cy, p.boundary) : _gardenIslandRect(cx, cy, p.wet)); }
+// (speed pass) each outline's box is tried before the outline (every cell of the map asks once, and walking asks for points): the
+// same answers, as a point outside an outline's box is never inside it; an outline with a point that is not a number is always tried
+const _gardenIslandFreshBoxes = new WeakMap();
+function _gardenIslandLoopBox(points) { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const p of points || []) { const x = p[0], y = p[1]; if (!Number.isFinite(x) || !Number.isFinite(y)) return [-Infinity, -Infinity, Infinity, Infinity]; if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y; } return [x0 - 1e-6, y0 - 1e-6, x1 + 1e-6, y1 + 1e-6]; }
+function _gardenIslandFreshwaterTest(G, cx, cy) {
+  const F = G.freshwater; let B = _gardenIslandFreshBoxes.get(F); if (!B) { B = F.map(p => p.boundary ? _gardenIslandLoopBox(p.boundary) : null); _gardenIslandFreshBoxes.set(F, B); }
+  for (let i = 0; i < F.length; i++) { const p = F[i]; if (p.boundary) { const b = B[i]; if (cx < b[0] || cy < b[1] || cx > b[2] || cy > b[3]) continue; if (_gardenIslandInLoop(cx, cy, p.boundary)) return true; } else if (_gardenIslandRect(cx, cy, p.wet)) return true; }
+  return false;
+}
 /** Meet the two authored approaches at their banks, including a route junction
  * at a crossing. This is derived once and is shared by paint and remote feet. */
 function _gardenIslandCrossingRouteSpan(c, water, halfWidth) {
@@ -374,22 +382,52 @@ function _gardenIslandBeachCells() {
   }
   return _gardenIslandDerived.beachCells = cells;
 }
+/* (speed pass) The base table is worked out a cell at a time, the first time each cell is asked for, and a route's or an outcrop's
+ * box is tried before its outline. Placing the land features (GARDEN_LAND_FEATURES, as the page loads, on every page) reads a few
+ * hundred cells, and working out all 9,216 of them then was over a second of script before the dashboard showed; the garden asks
+ * for the rest as it needs them. Each cell's answer is the same as before: a box only skips a shape that cannot hold the point. */
+function _gardenIslandBaseBoxes(data) {
+  const B = _gardenIslandDerived.baseBoxes; if (B && B.data === data) return B;
+  const NEVER = [Infinity, Infinity, -Infinity, -Infinity], pad = 1e-6;
+  const box = (pts, r, into) => { const b = into || [Infinity, Infinity, -Infinity, -Infinity]; for (const p of pts || []) { if (!Number.isFinite(p[0]) || !Number.isFinite(p[1])) { b[0] = b[1] = -Infinity; b[2] = b[3] = Infinity; continue; } if (p[0] < b[0]) b[0] = p[0]; if (p[1] < b[1]) b[1] = p[1]; if (p[0] > b[2]) b[2] = p[0]; if (p[1] > b[3]) b[3] = p[1]; } b.r = Math.max(b.r || 0, r); return b; };   // (a point that is not a number: the box never skips)
+  const grow = (b) => [b[0] - b.r - pad, b[1] - b.r - pad, b[2] + b.r + pad, b[3] + b.r + pad];
+  const routes = (data.routes || []).map(route => {
+    if (!route.points) return NEVER;   // (_gardenIslandOnRoute: no centreline, never on it)
+    const widths = Array.isArray(route.widths) && route.widths.length === route.points.length ? route.widths : null;
+    const half = widths ? widths.reduce((m, w) => Math.max(m, Math.abs(w)), 0) * .5 : Math.abs(route.widthCells) * .5;   // (NaN: the box never skips)
+    const b = box(route.points, half); if (route.shape) { const sb = box(route.shape, 0); b[0] = Math.min(b[0], sb[0] + half); b[1] = Math.min(b[1], sb[1] + half); b[2] = Math.max(b[2], sb[2] - half); b[3] = Math.max(b[3], sb[3] - half); }
+    return grow(b);
+  });
+  const landforms = (data.landforms || []).map(form => form.polygon ? grow(box(form.polygon, 0)) : NEVER);
+  return _gardenIslandDerived.baseBoxes = { data, routes, landforms };
+}
+const _gardenIslandOut = (b, x, y) => x < b[0] || y < b[1] || x > b[2] || y > b[3];
+function _gardenIslandBaseCellAt(i) {
+  const W = GARDEN_WORLD; let L = _gardenIslandDerived.baseLazy; if (!L) L = _gardenIslandDerived.baseLazy = new Array(W.cols * W.rows);
+  return L[i] || (L[i] = _gardenIslandBaseWork(i % W.cols, Math.floor(i / W.cols)));
+}
 function _gardenIslandBase() {
   if (_gardenIslandDerived.base) return _gardenIslandDerived.base;
-  const W = GARDEN_WORLD, data = gardenIslandData(), cells = new Array(W.cols * W.rows), beachCells = _gardenIslandBeachCells();
-  for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
+  const W = GARDEN_WORLD, n = W.cols * W.rows, cells = new Array(n);
+  for (let i = 0; i < n; i++) cells[i] = _gardenIslandBaseCellAt(i);
+  return _gardenIslandDerived.base = cells;
+}
+function _gardenIslandBaseWork(x, y) {
+  const W = GARDEN_WORLD, data = gardenIslandData(), beachCells = _gardenIslandBeachCells(), boxes = _gardenIslandBaseBoxes(data);
+  {
     const cx = x + .5, cy = y + .5, land = gardenIslandLandContains(cx, cy), ocean = !land, freshwater = land && gardenIslandFreshwaterCell(x, y), beach = land && !freshwater && !!beachCells[y * W.cols + x];
-    const route = land && data.routes.find(r => _gardenIslandOnRoute(cx, cy, r)), prop = data.static.find(p => _gardenIslandRect(cx, cy, p));
+    let route = false; if (land) { route = undefined; const R = data.routes; for (let k = 0; k < R.length; k++) { if (_gardenIslandOut(boxes.routes[k], cx, cy)) continue; if (_gardenIslandOnRoute(cx, cy, R[k])) { route = R[k]; break; } } }
+    const prop = data.static.find(p => _gardenIslandRect(cx, cy, p));
     const apron = land && data.static.find(p => p.apron && _gardenIslandRect(cx, cy, p.apron)), rear = land && data.static.find(p => p.rearEnvelope && _gardenIslandRect(cx, cy, p.rearEnvelope));
     const side = data.reservedSidePiers.find(p => _gardenIslandRect(cx, cy, p.reserved) || _gardenIslandRect(cx, cy, p.apron));
     const district = land && data.districts.find(d => (d.areas || [d.bounds]).some(b => _gardenIslandRect(cx, cy, b)));
-    const region = land && _gardenIslandRegionForKnownLand(cx, cy), landform = land && (data.landforms || []).find(form => form.polygon && _gardenIslandInLoop(cx, cy, form.polygon));
+    let landform = false; if (land) { landform = undefined; const F = data.landforms || []; for (let k = 0; k < F.length; k++) { if (_gardenIslandOut(boxes.landforms[k], cx, cy)) continue; if (F[k].polygon && _gardenIslandInLoop(cx, cy, F[k].polygon)) { landform = F[k]; break; } } }
+    const region = land && _gardenIslandRegionForKnownLand(cx, cy);
     const reservation = landform ? 'landform' : prop ? 'static' : apron ? 'apron' : route ? 'route' : rear ? 'facade' : side ? 'future-pier' : '';
-    cells[y * W.cols + x] = Object.freeze({ inside: true, land, ocean, freshwater, beach, region: region && region.id || '', regionZone: region && region.zone || 0, solid: !!(landform && landform.col === 'full'), landformId: landform && landform.id || '', route: route && route.id || '', routePublic: !!(route && route.public), routeLevel: route && route.level || 1, routeZone: route && route.zone || 0, gateId: route && route.gateId || '', reserved: !!reservation, reservation, staticId: prop && prop.id || '', reason: landform ? landform.name || 'A rocky outcrop stands here' : prop ? prop.id + ' stands here' : apron ? 'Keep the doorway clear' : route ? 'Keep the path clear' : rear ? 'Keep the space behind the building clear' : side ? 'Reserved for a later pier' : '', district: district && district.id || '', districtLevel: district && district.level || 1 });
+    return Object.freeze({ inside: true, land, ocean, freshwater, beach, region: region && region.id || '', regionZone: region && region.zone || 0, solid: !!(landform && landform.col === 'full'), landformId: landform && landform.id || '', route: route && route.id || '', routePublic: !!(route && route.public), routeLevel: route && route.level || 1, routeZone: route && route.zone || 0, gateId: route && route.gateId || '', reserved: !!reservation, reservation, staticId: prop && prop.id || '', reason: landform ? landform.name || 'A rocky outcrop stands here' : prop ? prop.id + ' stands here' : apron ? 'Keep the doorway clear' : route ? 'Keep the path clear' : rear ? 'Keep the space behind the building clear' : side ? 'Reserved for a later pier' : '', district: district && district.id || '', districtLevel: district && district.level || 1 });
   }
-  return _gardenIslandDerived.base = cells;
 }
-function gardenIslandBaseCell(x, y) { const W = GARDEN_WORLD; x = Math.floor(x); y = Math.floor(y); return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < W.cols && y < W.rows ? _gardenIslandBase()[y * W.cols + x] : null; }
+function gardenIslandBaseCell(x, y) { const W = GARDEN_WORLD; x = Math.floor(x); y = Math.floor(y); return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < W.cols && y < W.rows ? _gardenIslandBaseCellAt(y * W.cols + x) : null; }
 function gardenIslandOceanCell(x, y) { const cell = gardenIslandBaseCell(x, y); return !!(cell && cell.ocean); }
 function _gardenIslandRouteZone(cell, x, y) { const gate = cell.gateId && gardenIslandData().gates.find(g => g.id === cell.gateId); return gate && ((x - gate.x - .5) * gate.dx + (y - gate.y - .5) * gate.dy < 0) ? 0 : cell.routeZone; }
 function gardenIslandPublicCell(x, y) { const cell = gardenIslandBaseCell(x, y); return !!(cell && cell.land && !cell.regionZone && !cell.solid && (cell.beach || cell.route && _gardenIslandRouteZone(cell, x + .5, y + .5) === 0 || cell.reservation === 'apron' || cell.reservation === 'facade')); }
@@ -459,8 +497,8 @@ function gardenIslandCellInfo(x, y, options) {
 }
 function gardenIslandOceanGeometry() {
   if (_gardenIslandDerived.ocean) return _gardenIslandDerived.ocean;
-  const W = GARDEN_WORLD, cells = _gardenIslandBase(), points = [{ x: 0, y: 0 }, { x: W.cols, y: 0 }, { x: W.cols, y: W.rows }, { x: 0, y: W.rows }], holes = gardenIslandGeometry().land.map(loop => loop.map(p => ({ x: p[0], y: p[1] })).reverse());
-  return _gardenIslandDerived.ocean = Object.freeze({ revision: GardenIslandLayout.fingerprint, points, holes, bounds: { x: 0, y: 0, width: W.cols, height: W.rows }, contains: gardenIslandOceanContains, cellContains(x, y) { x = Math.floor(x); y = Math.floor(y); return x >= 0 && y >= 0 && x < W.cols && y < W.rows && cells[y * W.cols + x].ocean; } });
+  const W = GARDEN_WORLD, points = [{ x: 0, y: 0 }, { x: W.cols, y: 0 }, { x: W.cols, y: W.rows }, { x: 0, y: W.rows }], holes = gardenIslandGeometry().land.map(loop => loop.map(p => ({ x: p[0], y: p[1] })).reverse());
+  return _gardenIslandDerived.ocean = Object.freeze({ revision: GardenIslandLayout.fingerprint, points, holes, bounds: { x: 0, y: 0, width: W.cols, height: W.rows }, contains: gardenIslandOceanContains, cellContains(x, y) { x = Math.floor(x); y = Math.floor(y); return x >= 0 && y >= 0 && x < W.cols && y < W.rows && _gardenIslandBaseCellAt(y * W.cols + x).ocean; } });
 }
 function gardenIslandWaterZone(x, y) { if (gardenIslandOceanContains(x, y)) { const d = gardenIslandCoastDistance(x, y); return d <= 60 ? 'shallow' : d <= 120 ? 'mid' : 'deep'; } return gardenIslandFreshwaterContains(x, y) ? 'pond' : ''; }
 function gardenIslandPlacementWhy(def, x, y, kind) {

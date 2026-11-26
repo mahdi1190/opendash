@@ -69,7 +69,7 @@ function gardenVisitDecorBubble(d, m, items) {
   if (d.pend || !gardenVisitMay('move', d)) return;
   if (def.rot) items.push({ ic: 'rotate-cw', label: 'Turn', run: () => _ghDoTo(d.uid, gardenRotateDecor(d.uid)) });
   if (def.v > 1) items.push({ ic: 'palette', label: 'Restyle', run: () => _ghDoTo(d.uid, gardenStyleDecor(d.uid)) });
-  items.push({ ic: 'move', label: 'Move', run: () => gardenMoveStart(d.uid, 'decor') });
+  items.push({ ic: 'move', label: typeof gardenB2PickUp === 'function' ? 'Pick up' : 'Move', run: () => (typeof gardenB2PickUp === 'function' ? gardenB2PickUp(d.uid) : gardenMoveStart(d.uid, 'decor')) });   // (build2: in your hands, with the square in front of you)
   items.push({ svg: _GH_GLYPH.bag, label: d.mine ? 'Back in your bag' : 'Take it', run: () => { _ghDoTo(d.uid, gardenRemoveDecor(d.uid)); _gdp.sel = ''; } });
   if (d.mine) items.push({ ic: 'gift', label: `Give it to ${_gdvFirst()}`, run: () => { _gdvDo('give', { p: def.id, x: d.x, y: d.y }, '', _ghNodeOf(d.uid)); _gdp.sel = ''; } });
 }
@@ -135,7 +135,7 @@ function gardenVisitModel() {
   gardenFeatureSet(s.fp || []);
   gardenSightSet(s.rp || []);
   gardenWorksSet(s.wk || [], s);
-  if (typeof gardenDesignShow === 'function' && !(typeof gardenDesignOn === 'function' && gardenDesignOn())) gardenDesignShow(s.dz || null);   // (while you design here together, your draft is on screen)   // their design decides where things stand and where you can walk. It stays in memory: nothing of it reaches your save
+  if (typeof gardenDesignShow === 'function' && !(typeof gardenDesignOn === 'function' && gardenDesignOn())) gardenDesignShow(typeof gardenB2VisitDesign === 'function' ? gardenB2VisitDesign(s) : s.dz || null);   // (build2: what you just built here shows until their garden answers with it) (while you design here together, your draft is on screen)   // their design decides where things stand and where you can walk. It stays in memory: nothing of it reaches your save
   if (typeof gardenBuildLooksSet === 'function') gardenBuildLooksSet(s.bk);   // how they have painted their buildings
   const rows = _gdvRows(s), by = _gdvBy;
   const plants = [], decor = [], cats = {};

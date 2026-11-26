@@ -277,7 +277,7 @@ window.GardenPaintVale = (function () {
     let comp = memo.get(compSig);
     if (!comp) {
       comp = { L, ground: [], main: [], under: [], things: [], live: [] };
-      const ctx = { L, P, season, tod: info.tod, kit, W, sig, add: (bb, seed, draw, extra) => comp.ground.push(Object.assign({ bb, seed, draw, name: partNow }, extra || {})), main: (bb, seed, draw) => comp.main.push({ bb, seed, draw }), under: o => comp.under.push(o), thing: o => comp.things.push(o), live: o => comp.live.push(o) };   // (live: drawn each frame near the camera, the swash)
+      const ctx = { L, P, season, tod: info.tod, kit, W, sig, add: (bb, seed, draw, extra) => comp.ground.push(Object.assign({ bb, seed, draw, name: partNow }, extra || {})), main: (bb, seed, draw) => comp.main.push({ bb, seed, draw }), under: o => comp.under.push(o), thing: o => comp.things.push(o), live: o => comp.live.push(o), things: () => comp.things };   // (things: what the parts before have stood up, to keep clear of: the tide's rock pools, 94-garden-tide-2rocks.js)   // (live: drawn each frame near the camera, the swash)
       // (vf-perf) a part whose picture depends on the layout and the season only (STILL_PARTS) keeps what it composed last time:
       // a level-up or an opened field composes the vale again (the state parts change), and these took 150 to 200 ms of it
       composeMs = {}; const arrays = ['ground', 'main', 'under', 'things', 'live'];

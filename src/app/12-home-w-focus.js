@@ -424,8 +424,10 @@ function _hfPullDismiss(id, row) {
 /* ---------- once per entry: rings sweep, bars grow ---------- */
 function _hfEntrance(w) {
   if (!window.Motion || Motion.prefersReduced()) return;
-  w.querySelectorAll('.hf-ring .fl').forEach((c, i) => {
-    const to = getComputedStyle(c).strokeDashoffset;
+  // (speed pass) every ring's end first, then the animations: reading one after starting the last made the page restyle once per ring
+  const rings = [...w.querySelectorAll('.hf-ring .fl')], ends = rings.map(c => getComputedStyle(c).strokeDashoffset);
+  rings.forEach((c, i) => {
+    const to = ends[i];
     Motion.animate(c, [{ strokeDashoffset: '100' }, { strokeDashoffset: to }], { duration: 800, delay: 300 + i * 40, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' });
   });
   w.querySelectorAll('.hf-bar > i').forEach((b) => Motion.animate(b, [{ transform: 'scaleX(0)' }, { transform: 'none' }], { duration: 700, delay: 320, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }));

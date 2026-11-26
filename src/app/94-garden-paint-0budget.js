@@ -5,11 +5,23 @@
  * Now each asks gardenBakeRoom() first and tells gardenBakeSpent() what it used: a share of the clock, smaller while you
  * walk, in short slices. */
 var _gbb = null;   // (frame: frames drawn, kept for a look at the frame rate; tokens: the time painters may still use)
+// (speed pass) the frame counter's own loop runs only while something asks for the budget: the world asks every frame, the painters
+// every tick. Three seconds with nobody asking (the garden left) and it stops, so no page keeps a frame loop awake for nothing; the
+// next ask starts it again as if it had never stopped (a frame just drawn).
 function _gbbState() {
-  if (_gbb) return _gbb;
-  const S = _gbb = { frame: 0, at: 0, used: 0, usedFrame: -1, lastFree: 0, walkAt: -1e9 };
-  const loop = () => { S.frame++; S.at = performance.now(); try { requestAnimationFrame(loop); } catch (e) { /* no frames: the fallback below */ } };
-  try { requestAnimationFrame(loop); } catch (e) { /* none */ }
+  let S = _gbb;
+  if (!S) {
+    S = _gbb = { frame: 0, at: 0, used: 0, usedFrame: -1, lastFree: 0, walkAt: -1e9, looping: false, askedAt: 0 };
+    S.loop = () => { const now = performance.now(); if (now - S.askedAt > 3000) { S.looping = false; return; } S.frame++; S.at = now; try { requestAnimationFrame(S.loop); } catch (e) { S.looping = false; } };
+    S.askedAt = performance.now(); S.looping = true;
+    try { requestAnimationFrame(S.loop); } catch (e) { S.looping = false; }
+    return S;
+  }
+  S.askedAt = performance.now();
+  if (!S.looping) {
+    S.looping = true; if (!(typeof document !== 'undefined' && document.hidden)) { S.frame++; S.at = S.askedAt; }
+    try { requestAnimationFrame(S.loop); } catch (e) { S.looping = false; }
+  }
   return S;
 }
 /** Is the player walking now, or did they stop only a moment ago (a stop between two key presses is still a walk)? */

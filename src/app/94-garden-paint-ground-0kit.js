@@ -93,9 +93,20 @@ window.GardenPaintGround = (function () {
   }
   // remove a texture this kit made, keeping its canvas for the next bake
   function dropTexture(scene, key) {
-    if (!key || !scene.textures.exists(key)) return; let c = null; try { c = scene.textures.get(key).getSourceImage(); } catch (e) { c = null; }
+    if (!key || !scene.textures.exists(key)) return;
+    // (2.76 fix) A ghost (below) may still show it: a new layer of the same key takes the old layer's pictures over (adopt), so the
+    // ghost of a chunk and the new layer's chunk share one texture. Let go when the new layer painted that chunk at another level or
+    // let it go far away, the ghost drew a destroyed picture: Phaser threw in the middle of the frame ("reading 'resolution'") and the
+    // garden stayed flat green (a new hour, a zoom and a jump, 26 Nov 2026). The ghost lets it go when it goes.
+    if (ghostHolds(scene, key)) return;
+    let c = null; try { c = scene.textures.get(key).getSourceImage(); } catch (e) { c = null; }
     scene.textures.remove(key); if (c && c._gpkMine) { c._gpkSpare = false; giveCanvas(c); }
   }
+  // (2.76 fix) a chunk's picture is about to be baked again under the same key: a ghost showing the old one goes now (the new picture
+  // takes its place in the same tick), so the key is free for the new texture
+  function ghostsGone(scene, key) { for (let i = ghosts.length - 1; i >= 0; i--) { const g = ghosts[i]; if (g.scene === scene && g.im.active && g.im.texture && g.im.texture.key === key) { ghosts.splice(i, 1); ok(() => g.im.destroy()); } } }
+  // a texture another live layer shows or keeps to place (a layer let go must not take it from the one that took it over)
+  function liveUses(scene, key) { for (const h of registry) if (h.scene === scene && h.uses && h.uses(key)) return true; return false; }
   // (vale final fix 1, rule 16) A layer let go for a new one (a gate opens, land is bought, the level changes what is drawn): its
   // pictures stay on the stage a little under the new layer, each until the new layer has painted that box (or a few seconds pass),
   // so the frame after the click shows the old painting, never flat lawn or square bare tiles.
@@ -167,7 +178,7 @@ window.GardenPaintGround = (function () {
       // chunk (1 to 4 MB) in the same task as its last op made one long task of the two
       if (ms && !J.ready && took > 2) { J.ready = true; return false; }
       const key = opts.key + '|' + ch.id + '|' + K;
-      if (ch.image && ch.tex === key) { ch.image.destroy(); ch.image = null; } dropTexture(scene, key);   /* (the picture showing this key goes first, so its canvas is free to be used again) */
+      if (ch.image && ch.tex === key) { ch.image.destroy(); ch.image = null; } ghostsGone(scene, key); dropTexture(scene, key);   /* (the picture showing this key goes first, so its canvas is free to be used again; a ghost of it too) */
       const u0 = performance.now();
       { const t = scene.textures.addImage(key, J.c); if (t && typeof t.refresh !== 'function') t.refresh = function () { for (const src of this.source) src.update(); return this; }; }
       ch.job = null; place(ch, key, K, J.c.width, J.c.height); slow.uploadMs = Math.max(slow.uploadMs, +(performance.now() - u0).toFixed(1));
@@ -193,7 +204,7 @@ window.GardenPaintGround = (function () {
     if (!opts.lazy) { const v = viewBox(.05), K = level(); for (const ch of list) if (v && meets(ch.bb, v)) { if (!adopt(ch)) bakeStep(ch, Math.min(K, 1.5), 0); } }
     const heavy = (ch, k) => { const lim = HEAVY_MS / (k * k); for (const o of ch.ops) if (o.cost > lim) return true; return false; };
     const tick = () => {
-      if (dead || !host) return; if (!scene.textures || !scene.textures.game) { dead = true; clearInterval(timer); registry.delete(handle); return; }   /* (its scene is gone: stop, quietly) */
+      if (dead || !host) return; if (!scene.textures || !scene.textures.game) { dead = true; stopTicks(); registry.delete(handle); return; }   /* (its scene is gone: stop, quietly) */
       if (lowHidden) return;   /* (a soft copy stands in for this whole layer at the whole-map zoom: nothing to paint) */
       const v = viewBox(.05), near = viewBox(.35), keep = viewBox(.7); if (!v) return; const K = level(), moving = (typeof _gw !== 'undefined' && !!_gw.moving) || (typeof gardenBakeWalking === 'function' && gardenBakeWalking());   /* (n-move: a friend walking on the screen counts) */
       { const t0 = performance.now(); for (const ch of list) { if (ch.image || !ch.cached || !meets(ch.bb, near)) continue; adopt(ch); if (performance.now() - t0 > 4) break; } }
@@ -227,21 +238,27 @@ window.GardenPaintGround = (function () {
       // over the budget: let go the farthest, sharpest chunk that is off the screen (one well away first); short of room for the margin: one well away
       if (bakedPx > budget || wantRoom) { const over = bakedPx > budget; let far = null, fd = -1; for (const ch of list) { if (!ch.image || meets(ch.bb, v)) continue; const away = !meets(ch.bb, keep); if (!away && !over) continue; const d = dist(ch, v) * ch.K * (away ? 1 : .001); if (d > fd) { fd = d; far = ch; } } if (far) evict(far); }
     };
-    const timer = setInterval(() => { const t0 = performance.now(); ok(tick); const d = performance.now() - t0; if (d > slow.tickMs) slow.tickMs = +d.toFixed(1); }, 34);
+    // (speed pass) the 34 ms tick runs only while the layer is on the stage: taken off it (the garden left, or the world rebuilt round
+    // it) a tick did nothing, but it kept waking every page, and the left garden's scene with it, until the next visit
+    let timer = 0;
+    const run = () => { const t0 = performance.now(); ok(tick); const d = performance.now() - t0; if (d > slow.tickMs) slow.tickMs = +d.toFixed(1); };
+    const startTicks = () => { if (!timer && !dead && host) timer = setInterval(run, 34); };
+    const stopTicks = () => { if (timer) { clearInterval(timer); timer = 0; } };
+    startTicks();
     const handle = {
       key: opts.key, follow, scene, depth: opts.depth, uses(k) { for (const ch of list) if (ch.tex === k || ch.cached && ch.cached.key === k) return true; return false; },
       // an op added later is baked into every chunk it touches; a chunk already painted is painted again behind its old picture, in slices
-      add(o) { all.push(o); reach(o.bb, (i, j) => { const ch = chunkAt(i, j); if (!meets(o.bb, ch.bb)) return; ch.ops.push(o); if (ch.cached) { if (scene.textures.exists(ch.cached.key)) scene.textures.remove(ch.cached.key); ch.cached = null; } if (ch.image && !ch.job) ch.dirty = true; }); return o; },
+      add(o) { all.push(o); reach(o.bb, (i, j) => { const ch = chunkAt(i, j); if (!meets(o.bb, ch.bb)) return; ch.ops.push(o); if (ch.cached) { dropTexture(scene, ch.cached.key); ch.cached = null; } if (ch.image && !ch.job) ch.dirty = true; }); return o; },
       /** Replace the op with this tag (null removes it). The same sig again is a no-op; a change repaints the chunks it touches. */
       set(tag, o, sig) {
         const old = all.find(q => q.tag === tag); if (old && o && old.sig === sig) return false; if (!old && !o) return false;
-        if (old) { all.splice(all.indexOf(old), 1); for (const ch of list) { const k = ch.ops.indexOf(old); if (k >= 0) { ch.ops.splice(k, 1); ch.job = null; if (ch.image) ch.dirty = true; if (ch.cached) { if (scene.textures.exists(ch.cached.key)) scene.textures.remove(ch.cached.key); ch.cached = null; } } } }
+        if (old) { all.splice(all.indexOf(old), 1); for (const ch of list) { const k = ch.ops.indexOf(old); if (k >= 0) { ch.ops.splice(k, 1); ch.job = null; if (ch.image) ch.dirty = true; if (ch.cached) { dropTexture(scene, ch.cached.key); ch.cached = null; } } } }
         if (o) { o.tag = tag; o.sig = sig; if (old) { all.push(o); reach(o.bb, (i, j) => { const ch = chunkAt(i, j); if (meets(o.bb, ch.bb)) { ch.ops.push(o); ch.job = null; if (ch.image) ch.dirty = true; } }); } else handle.add(o); }
         return true;
       },
-      attach(p) { host = p; if (!p) return; const v = viewBox(.4); for (const ch of list) if (!ch.image && ch.cached && (!v || meets(ch.bb, v))) adopt(ch); },
+      attach(p) { host = p; if (!p) { stopTicks(); return; } const v = viewBox(.4); for (const ch of list) if (!ch.image && ch.cached && (!v || meets(ch.bb, v))) adopt(ch); startTicks(); },
       /** Take the pictures off the stage but keep them (the world is being rebuilt round them). */
-      detach() { if (!host) return; for (const ch of list) if (ch.image) { ch.image.destroy(); ch.image = null; if (ch.tex) ch.cached = { key: ch.tex, K: ch.K }; ch.tex = null; bakedPx -= ch.px; ch.px = 0; ch.K = 0; ch.job = null; } host = null; },
+      detach() { if (!host) return; for (const ch of list) if (ch.image) { ch.image.destroy(); ch.image = null; if (ch.tex) ch.cached = { key: ch.tex, K: ch.K }; ch.tex = null; bakedPx -= ch.px; ch.px = 0; ch.K = 0; ch.job = null; } host = null; stopTicks(); },
       /** (vale final fix 1) hide the whole layer while a soft copy of it stands in (the whole-map zoom), so the map shows one even
        *  painting and never squares of the sharp picture among squares of the soft one */
       lowHide(on) { on = !!on; if (on === lowHidden) return; lowHidden = on; for (const ch of list) if (ch.image) ch.image.setVisible(!on); },
@@ -256,8 +273,8 @@ window.GardenPaintGround = (function () {
       get p95() { const t = times.slice(-200).sort((a, b) => a - b); return t.length ? t[Math.floor(t.length * .95)] : 0; }, get median() { const t = times.slice(-200).sort((a, b) => a - b); return t.length ? t[t.length >> 1] : 0; },
       get baked() { return baked; }, get evicted() { return evicted; }, get held() { return held; }, get live() { return list.filter(c => c.image).length; },
       /** Stop painting but stay on the stage (a newer layer is taking over); destroy() follows. */
-      retire() { dead = true; clearInterval(timer); for (const ch of list) ch.job = null; },
-      destroy(keepTextures) { dead = true; clearInterval(timer); registry.delete(handle); for (const ch of list) { if (ch.image) { if (!ghost(scene, ch.image, ch.bb, opts.depth, keepTextures ? null : ch.tex)) { ch.image.destroy(); if (!keepTextures && ch.tex && scene.textures.exists(ch.tex)) scene.textures.remove(ch.tex); } } else if (!keepTextures && ch.tex && scene.textures.exists(ch.tex) && !ghostHolds(scene, ch.tex)) scene.textures.remove(ch.tex); ch.image = null; ch.job = null; if (!keepTextures && ch.cached && scene.textures.exists(ch.cached.key)) scene.textures.remove(ch.cached.key); } },
+      retire() { dead = true; stopTicks(); for (const ch of list) ch.job = null; },
+      destroy(keepTextures) { dead = true; stopTicks(); registry.delete(handle); for (const ch of list) { if (ch.image) { if (!ghost(scene, ch.image, ch.bb, opts.depth, keepTextures ? null : ch.tex)) { ch.image.destroy(); if (!keepTextures && ch.tex && !liveUses(scene, ch.tex)) dropTexture(scene, ch.tex); } } else if (!keepTextures && ch.tex && !liveUses(scene, ch.tex)) dropTexture(scene, ch.tex); ch.image = null; ch.job = null; if (!keepTextures && ch.cached && !liveUses(scene, ch.cached.key)) dropTexture(scene, ch.cached.key); } },   /* (2.76 fix: never a texture a ghost or a newer layer of the same key still shows) */
     };
     registry.add(handle); return handle;
   }

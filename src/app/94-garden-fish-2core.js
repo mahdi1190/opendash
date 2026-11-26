@@ -262,10 +262,10 @@ function _gcIslandBugSpot(hab, m, rnd, free) {
 }
 const GARDEN_BUGS_MAX = 6;   // the most at once, in a big, late garden. The owner, 1 Nov 2026: start with very few, and more as the garden grows, but never many
 function gardenBugsNow(mArg) {
-  const base = _gcBugsBase(mArg);
-  if (typeof gardenContestBugsNow !== 'function') return base;
-  const extra = gardenContestBugsNow(mArg || gardenModel());   // (contests) a bug contest shows a bug every few seconds, the same on every screen
-  return extra.length ? base.concat(extra) : base;
+  let out = _gcBugsBase(mArg);
+  if (typeof gardenContestBugsNow === 'function') { const extra = gardenContestBugsNow(mArg || gardenModel()); if (extra.length) out = out.concat(extra); }   // (contests) a bug contest shows a bug every few seconds, the same on every screen
+  if (typeof gardenNightBugsNow === 'function') { const nb = gardenNightBugsNow(mArg || gardenModel()); if (nb.length) out = out.concat(nb); }   // after dark: moths on a moth sheet, the same on every screen (94-garden-zz-afterdark-4moths.js)
+  return out;
 }
 function _gcBugsBase(mArg) {
   const m = mArg || gardenModel(), g = _gdG(), W = GARDEN_WORLD;
@@ -304,7 +304,7 @@ function _gcBugsBase(mArg) {
   // one more for each region you have opened: the vale's bugs are spread over all its pages, and with two for the whole vale a player in the village saw none for long stretches
   const zones = island ? m.areas.filter(a => /^zn-\d+$/.test(a)).length : (woods ? 1 : 0);
   const n = Math.max(1, Math.min(cap, 1 + Math.floor(blooms.length / 8) + Math.floor(trees.length / 6) + zones + (m.tod === 'night' ? -1 : 0) + (wet ? -1 : 0)));
-  const weights = pool.map(b => gardenBugWeight(b, ctx) * (typeof gardenBugHabitat === 'function' ? gardenBugHabitat(b, m) : 1));   // (habitats you built: a kind comes more often, never more bugs)
+  const weights = pool.map(b => gardenBugWeight(b, ctx) * (typeof gardenBugHabitat === 'function' ? gardenBugHabitat(b, m) : 1) * (typeof gardenB2BugWeight === 'function' ? gardenB2BugWeight(b.id) : 1));   // (habitats you built: a kind comes more often, never more bugs)
   rg.even(pool, weights);
   const out = []; let beachUsed = false;
   for (let i = 0; i < n * 3 && out.length < n; i++) {

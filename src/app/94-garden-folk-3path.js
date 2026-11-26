@@ -105,10 +105,13 @@ function _vfpPool() {
 }
 function gardenFolkPathAsk(a, b, cb) {
   const W = GARDEN_WORLD, key = Math.floor(a.x) + ',' + Math.floor(a.y) + '>' + Math.floor(b.x) + ',' + Math.floor(b.y);
-  if (_vfp.cost && _vfp.cache.has(_vfp.key + '|' + key)) { const hit = _vfp.cache.get(_vfp.key + '|' + key); _vfp.cache.delete(_vfp.key + '|' + key); _vfp.cache.set(_vfp.key + '|' + key, hit); cb(hit ? _vfpEnds(hit, a, b) : null); return; }
-  for (const j of _vfp.jobs) if (j.key === key) { j.cbs.push(cb); return; }
-  _vfp.jobs.push({ key, a: { x: a.x, y: a.y }, b: { x: b.x, y: b.y }, cbs: [cb], pri: 0 });
+  if (_vfp.cost && _vfp.cache.has(_vfp.key + '|' + key)) { const hit = _vfp.cache.get(_vfp.key + '|' + key); _vfp.cache.delete(_vfp.key + '|' + key); _vfp.cache.set(_vfp.key + '|' + key, hit); cb(hit ? _vfpEnds(hit, a, b) : null); return null; }
+  for (const j of _vfp.jobs) if (j.key === key) { j.cbs.push(cb); return null; }
+  if (_vfp.cur && _vfp.cur.key === key) { _vfp.cur.cbs.push(cb); return null; }   // (being worked out now: wait for that one, not a second search)
+  const job = { key, a: { x: a.x, y: a.y }, b: { x: b.x, y: b.y }, cbs: [cb], pri: 0 };
+  _vfp.jobs.push(job);
   void W;
+  return job;   // the job it queued (null: answered at once, or joined one already asked), so a caller sets the priority of its own job only
 }
 /** A path already found for a to b (cells), or undefined when it has not been found yet (asked for, if not yet asked). null: there is
  *  no way. Off screen the folk are worked out along this, never in a straight line over water or through a wall. */
@@ -116,7 +119,7 @@ function gardenFolkPathKept(a, b) {
   if (!_vfp.cost || !a || !b) return undefined;
   const key = Math.floor(a.x) + ',' + Math.floor(a.y) + '>' + Math.floor(b.x) + ',' + Math.floor(b.y), k = _vfp.key + '|' + key;
   if (_vfp.cache.has(k)) { const hit = _vfp.cache.get(k); return hit ? _vfpEnds(hit, a, b) : null; }
-  if (!_vfp.jobs.some(j => j.key === key) && !(_vfp.cur && _vfp.cur.key === key)) { gardenFolkPathAsk(a, b, () => { }); const j = _vfp.jobs[_vfp.jobs.length - 1]; if (j) j.pri = 0.5; }
+  if (!_vfp.jobs.some(j => j.key === key) && !(_vfp.cur && _vfp.cur.key === key)) { const j = gardenFolkPathAsk(a, b, () => { }); if (j) j.pri = 0.5; }
   return undefined;
 }
 /** The point a fraction k of the way along a path that starts at a (by length walked), and the points still ahead of it. */
@@ -243,7 +246,7 @@ function gardenFolkPathWarm(plans, doorOf, day) {
   for (const p of plans.values()) for (let i = 1; i < p.length; i++) {
     const a = p[i - 1], b = p[i]; if (!a.spot || !b.spot || (a.inside && b.inside)) continue;
     const from = a.inside && doorOf ? doorOf(a.spot) : a.spot, to = b.inside && doorOf ? doorOf(b.spot) : b.spot; if (!from || !to) continue;
-    gardenFolkPathAsk(from, to, () => { }); const j = _vfp.jobs[_vfp.jobs.length - 1]; if (j) j.pri = -1;
+    const j = gardenFolkPathAsk(from, to, () => { }); if (j) j.pri = -1;   // (only its own job: on a cache hit, or a key already queued, the last job in the queue was someone's real walk, and it went to the back)
   }
 }
 function gardenFolkPathStats() { return Object.assign({ waiting: _vfp.jobs.length + (_vfp.cur ? 1 : 0), kept: _vfp.cache.size, field: !!_vfp.cost, nodes: _vfg2.nodes.length }, _vfp.stats); }

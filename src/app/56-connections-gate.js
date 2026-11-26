@@ -381,8 +381,13 @@ if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined' &
       if (m.type === 'attributes') { _gateApply(m.target); continue; }
       for (const n of m.addedNodes) if (n.nodeType === 1) added.push(n);
     }
-    // A big re-render (hundreds of rows): one pass over the document is cheaper.
-    if (added.length > 40) connApplyAll(document);
+    // A big re-render (hundreds of rows): one pass over what holds them is cheaper. (speed pass) Their own parents when there are a
+    // few (a list filled row by row), not the whole page each time; the page only for rows spread all over it.
+    if (added.length > 40) {
+      const parents = new Set(); for (const n of added) if (n.parentNode) parents.add(n.parentNode);
+      if (parents.size <= 6) { for (const p of parents) if (p.isConnected || p.nodeType === 11) connApplyAll(p); }
+      else connApplyAll(document);
+    }
     else for (const n of added) connApplyAll(n);
   });
   _connObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-requires', 'data-requires-soft'] });

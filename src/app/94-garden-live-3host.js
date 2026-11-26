@@ -229,6 +229,7 @@ function _glhEvent(ev) {
       if (typeof gardenRoomTell === 'function') gardenRoomTell(ev.f);
       if (typeof _glcJoin === 'function') _glcJoin(ev.f);
       if (typeof gardenContestJoin === 'function') gardenContestJoin(ev.f);
+      if (typeof gardenNightJoin === 'function') gardenNightJoin(ev.f);   // after dark: a rainbow's foot still on the ground (94-garden-zz-afterdark-1kit.js)
       if (typeof _glgJoin === 'function') _glgJoin(ev.f);
       _glhResendDrops(ev.f);
       if (typeof gardenDropTell === 'function') gardenDropTell(ev.f, true);   // (build phase 1: where things lie, and who carries what)
@@ -250,7 +251,7 @@ function _glhEvent(ev) {
       else if (ev.c === 'do' && ev.e === 'follow' && ev.to === 0) _gllFloat(_gw.svg, A.x, A.y - 1.4, '🚶', A.n);
       return;
     }
-    case 'fx': { const A = _gll.actors.get(ev.w); if (ev.c === 'folk') { if (typeof gardenFolkHeldBy === 'function') gardenFolkHeldBy(A || null, ev); return; } if (ev.c === 'tune') { if (typeof gardenMusicHeard === 'function') gardenMusicHeard(A || null, ev); return; } if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return; }
+    case 'fx': { const A = _gll.actors.get(ev.w); if (ev.c === 'gm') { if (typeof gardenGameHeard === 'function') gardenGameHeard(A || null, ev); return; } if (ev.c === 'folk') { if (typeof gardenFolkHeldBy === 'function') gardenFolkHeldBy(A || null, ev); return; } if (ev.c === 'tune') { if (typeof gardenMusicHeard === 'function') gardenMusicHeard(A || null, ev); return; } if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return; }
     case 'pp': _gllPlacesIn(ev); return;
     case 'dg': { const A = _gll.actors.get(ev.w); if (A && typeof gartActDoingIn === 'function') gartActDoingIn(A, ev); return; }   // what they are doing, whole (94-garden-zz-7act-3sync.js)
     case 'do': _glhIntent(Object.assign({}, ev, { k: ev.ik })); return;
@@ -278,7 +279,7 @@ function _glhSendSnap(fid) {
  * Plants and decorations go as changes (gl:d). Everything else a snapshot says (the land, what is built, the design, how buildings are painted, rooms, the lake, wonders, weather, the season) has no change message: when any of it differs from
  * what everyone was last given, everyone gets the whole garden. Looked at every few seconds and only sent on a real change, so it costs next to nothing. The draft in the designer is not in a snapshot: only what is saved.
  */
-function _glhWorldSig(s) { const { v, at, ac, plants, decor, hearts, pf, dr, ...rest } = s; void v; void at; void ac; void plants; void decor; void hearts; void pf; void dr; return JSON.stringify(rest); }   // (pf: which way you face, not a change to the garden; dr, build phase 1: where carried things lie travels on its own, gl:dr: never the whole garden again)
+function _glhWorldSig(s) { const { v, at, ac, plants, decor, hearts, pf, dr, pw, ...rest } = s; void v; void at; void ac; void plants; void decor; void hearts; void pf; void dr; void pw; return JSON.stringify(rest); }   // (pf: which way you face, not a change to the garden; dr, build phase 1: where carried things lie travels on its own, gl:dr: never the whole garden again)
 /* ---------- designing together (full co-op, 2.75) ----------
    A friend here draws paths, paints ground, moves fixed things and makes things in your garden as you do (Menu > Design). Their finished
    design comes as text in up to two pieces (gl:dz); every row is checked (gardenDesignClean) and it becomes your garden's design in use,
@@ -453,6 +454,7 @@ function _glhApply(ev, key) {
   // (94-garden-build-0rules.js), so the two pages can never disagree about what is allowed. Their op costs this garden nothing.
   const W = gardenOpWorld(m), opDo = (op, extra) => { const why = gardenOpCheck(W, op, f); if (why) return why; const mark = _gdMark(gardenOpTouches(op, g, f)); gardenOpApply(g, op, f, W); return put(mark, extra); };
   switch (t) {
+    case 'house': return typeof gardenHouseHostDo === 'function' ? gardenHouseHostDo(ev, put, g) : 'kind';   // your house: the same house rules as your own page (94-garden-house-6share.js)
     case 'plant': {
       const def = gardenPlant(ev.p); if (!def) return 'Unknown seed';
       const uid = _gdUid('p'), variants = (def.look.v || []).length || 1;
@@ -525,7 +527,7 @@ function _glhApply(ev, key) {
       gardenOpApply(g, op, f, W);
       return put(mark, { u: d.uid, noUndo: !!rec.own || !!back, ...(gi ? { gi } : {}) });
     }
-    case 'land': case 'build': case 'gate': case 'solve': return _glhLand(ev, put, m);
+    case 'land': case 'build': case 'gate': case 'solve': case 'tunnel': return _glhLand(ev, put, m);   // (tunnel: the depth lane's ways underground, 94-garden-zz-8depth-7secret.js wraps _glhLand)
     case 'grab': case 'set': return typeof gardenDropIntent === 'function' ? gardenDropIntent(ev, put) : 'kind';   // (build phase 1: 94-garden-build-1do.js)
     case 'give': {
       if (!mine) return 'not-yours';
@@ -558,7 +560,7 @@ function _glhApply(ev, key) {
       B.caught.add(f);
       return put([], { noUndo: true, bug: B.p });
     }
-    default: return 'kind';
+    default: return typeof gardenB2HostIntent === 'function' ? gardenB2HostIntent(ev, put, m, W) : 'kind';   // (build2) a gift to your museum (94-garden-build2-3museum.js)
   }
 }
 function _gbOwnLed(g, k) { return !!g.led && Object.prototype.hasOwnProperty.call(g.led, k); }
@@ -811,6 +813,7 @@ function _glhPersonMenu(A) {
     r.appendChild(_gsvBtn('High five', { icon: 'hand', kind: 'btn-ghost', run: () => { close(); gardenWalkToPoint({ x: A.x - 0.7, y: A.y + 0.1 }, () => { if (typeof gartEmoteRun === 'function') gartEmoteRun('clap', { quiet: true }); _gllEmote(A, 'clap'); _glhSend('all', 'em', { c: 'do', e: 'high5', to: A.w }); }); } }));
     r.appendChild(_gsvBtn('Trade', { icon: 'repeat', kind: 'btn-ghost', tip: 'Swap things from your bags, face to face', run: () => { close(); gardenLiveTradeOpen(A); } }));
     r.appendChild(_gsvBtn('Send home', { icon: 'log-out', kind: 'btn-ghost', tip: 'Ends their visit and turns their permission off', run: () => { close(); _gllApi('/api/garden-live/home', { id: f }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}); } }));
+    if (typeof gardenGameFriendButtons === 'function') for (const b of gardenGameFriendButtons(A, close)) r.appendChild(b);   // (folk3: a race or hide and seek with them)
     el.appendChild(r);
   }, { align: 'center' });
 }
@@ -835,6 +838,7 @@ function _glhDiaryLine(e, n) {
 function _glhDiaryWhat(e, n) {
   const who = _glhByName(e.f), p = e.p ? gardenPlant(e.p) : null, d = e.p ? gardenDecor(e.p) : null, what = (p || d) ? (p || d).name.toLowerCase().replace(/^the /, '') : 'something';
   const some = n > 1 ? n + ' ' + _glhMany(what) : _gscA(what);
+  if (typeof gardenB2DiaryWhat === 'function') { const own = gardenB2DiaryWhat(e, n, who); if (own) return own; }   // (build2) "Sam gave your museum a perch"
   switch (e.t) {
     case 'plant': return `${who} planted ${some}`;
     case 'place': return `${who} placed ${some}`;
@@ -857,6 +861,7 @@ function _glhDiaryWhat(e, n) {
     case 'solve': { const sg = typeof gardenLandSight === 'function' ? gardenLandSight(e.land || e.p) : null; return `${who} solved the trail puzzle to ${sg ? String(sg.name).replace(/^The /, 'the ') : 'a hidden place'} in your garden`; }
     case 'gate': { const gt = typeof gardenGateOf === 'function' ? gardenGateOf(e.land || e.p) : null, z = gt && gardenZone(gt.n); return `${who} opened the way into ${z ? String(z.name).replace(/^The /, 'the ') : 'a new part'} of your garden`; }
     case 'trade': return e.f2 ? `${who} and ${_glhByName(e.f2)} traded` : `${who} traded with you`;
+    case 'house': return typeof gardenHouseDiary === 'function' ? gardenHouseDiary(e, who, n) : `${who} helped in your house`;
     default: return `${who} was here`;
   }
 }
@@ -994,5 +999,5 @@ document.addEventListener('opendash:garden', (ev) => {
   let t = 0;
   const soon = () => { clearTimeout(t); t = setTimeout(() => { try { if (_glh.on && _glhAnyone()) _gllApi('/api/garden-live/here', _glhHereBody(true)).catch(() => {}); } catch (e) { /* the next beat has it */ } }, 1500); };
   document.addEventListener('opendash:profile', soon); document.addEventListener('opendash:pet', soon);
-  document.addEventListener('opendash:garden', (ev) => { const k = ev && ev.detail && ev.detail.kind; if (k === 'buy' || k === 'gear') soon(); });   // (a new rod: they see it now)
+  document.addEventListener('opendash:garden', (ev) => { const k = ev && ev.detail && ev.detail.kind; if (k === 'buy' || k === 'gear' || k === 'tool') soon(); });   // (a new rod: they see it now; build2: the tool in your hand)
 })();

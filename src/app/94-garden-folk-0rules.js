@@ -134,6 +134,7 @@ function valeFolkSolveHomes(rows, things, saved, ctx) {
     const s = saved && saved[row.id], t = s && byId.get(s);
     if (t && Number.isFinite(_vfHomeScore(row, t, Object.assign({}, c, { open: null })))) { out.set(row.id, t.id); if (!row.home.postbox) taken.add(t.id); }
   }
+  for (const id of c.reserved || []) taken.add(id);   // (your own house: nobody new moves into it, 94-garden-house-2room.js gardenHouseReserve)
   for (const row of rows) {
     if (out.has(row.id)) continue;
     if (row.with && out.has(row.with)) { out.set(row.id, out.get(row.with)); continue; }
@@ -226,8 +227,9 @@ function valeFolkPlanAll(rows, ctx) {
       // the block; "the same again" stays on the same spot. The owner found 30 to 45 short trips a day aimless.
       let t = b0, guard = 0; const nIn = b1 - b0 > 210 ? 2 : 1; let used = 0, lastId = '';
       while (t < b1 - 4 && guard++ < 8) {
-        let id = _vfPick(R[blk] || [['home', 1]], ctx, rng) || 'home';
-        if (used && id === lastId) { const alt = (R[blk] || []).filter(c => c[0] !== lastId); if (alt.length) id = _vfPick(alt, ctx, rng) || id; }
+        const RB = (typeof valeWeekBlock === 'function' && valeWeekBlock(row, blk, fctx)) || R[blk];   // (folk3: market day, the cards, a festival: 94-garden-folk3-2week.js)
+        let id = _vfPick(RB || [['home', 1]], ctx, rng) || 'home';
+        if (used && id === lastId) { const alt = (RB || []).filter(c => c[0] !== lastId); if (alt.length) id = _vfPick(alt, ctx, rng) || id; }
         // visiting by day (their own home is in land not open yet): what they would do at home they do out in the open vale; they go
         // back by the road for the evening and the night
         // (their daytime sleep too: a night owl visiting sleeps at home, so by day they are out like the rest; the vale never feels empty
@@ -235,7 +237,7 @@ function valeFolkPlanAll(rows, ctx) {
         // (a night owl the other way about: out in the evening and the night, asleep by day)
         const offBlk = row.nocturnal ? blk === 'morning' || blk === 'midday' || blk === 'afternoon' : blk === 'evening' || blk === 'night' || blk === 'dawn';
         if (ctx.away && ctx.away.has(row.id) && VALE_ACTIVITIES[id] && VALE_ACTIVITIES[id].q.home) id = offBlk || (id === 'sleep' && !row.nocturnal) ? 'sleep' : (_vfPick([['sitout', 3, 'dry'], ['look', 3], ['wander', 1], ['shelter', 3, 'rain']], ctx, rng) || 'look');   // (round 2: a seat, a view near the way home, now and then a stroll; not pacing)
-        const A = VALE_ACTIVITIES[id] || VALE_ACTIVITIES.home;
+        const A = VALE_ACTIVITIES[id] || (typeof valeWeekAct === 'function' && valeWeekAct(id)) || VALE_ACTIVITIES.home;   // (folk3: the week's own places, by kind)
         const share = used + 1 >= nIn ? b1 - t : Math.round((b1 - b0) / nIn * (0.8 + rng() * 0.4)); let t1 = Math.min(b1, t + Math.max(share, A.d[0]));
         if (A.d[1] <= 30) t1 = Math.min(t1, t + A.d[1] * 2);   // (a short errand, a stroll, a read of the board: then the block's other thing for the rest)
         used++; lastId = id;

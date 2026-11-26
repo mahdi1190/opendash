@@ -14,6 +14,7 @@ const GTG_BOTTLE_N = 3;   // how many bottles can bob at once
  *  point, three spots a few cells apart. [[x, y]] world cells; [] on a layout with no water near enough. */
 const _gtgbAt = { D: null, at: [] };
 function _gtgbSpots() {
+  if (typeof gardenTideBottleSpots === 'function') { const t = gardenTideBottleSpots(); if (t && t.length) return t; }   // a garden with a strand: bottles wash up on its sand (94-garden-tide-9bottle.js)
   let D = null; try { D = gardenIslandData(); } catch (e) { return []; }
   if (_gtgbAt.D === D) return _gtgbAt.at;
   const at = [], st = (D.anchors && D.anchors.start) || { x: GARDEN_WORLD.cols / 2, y: GARDEN_WORLD.rows / 2 }, wet = (x, y) => { try { return typeof gardenTerrainAt === 'function' ? /^(water|deep)$/.test(gardenTerrainAt(x, y)) : false; } catch (e) { return false; } };
@@ -99,11 +100,11 @@ gtgWire((o) => {
   const un = _gtgbWaiting().length; if (un) o.bw = Math.min(9, un);
 });
 function _gtgbWaiting() {
-  const W = _gtgW(), now = gtgDayNum(), out = [];
+  const W = _gtgW(), now = gtgDayNum(), out = [], days = typeof gardenTideBottleDays === 'function' ? gardenTideBottleDays() : GTG_BOTTLE.days;   // (onto a strand: the next day, 94-garden-tide-9bottle.js)
   for (const f of gtgFriends()) {
     if (!Array.isArray(f.tg.bt)) continue;
     const h = gtgPair(f.id); if (!h) continue;
-    for (const r of f.tg.bt) if (r[0] === h && now >= r[2] + GTG_BOTTLE.days && !W[`tg.br.${f.id}.${r[2]}`] && GTG_BOTTLE_LINES[r[1]]) out.push({ fid: f.id, name: f.name, l: r[1], dn: r[2] });
+    for (const r of f.tg.bt) if (r[0] === h && now >= r[2] + days && !W[`tg.br.${f.id}.${r[2]}`] && GTG_BOTTLE_LINES[r[1]]) out.push({ fid: f.id, name: f.name, l: r[1], dn: r[2] });
   }
   return out.slice(0, _gtgbSpots().length);
 }
@@ -118,12 +119,14 @@ function _gtgbDraw(m) {
       const W = _gtgW(); W[`tg.br.${B.fid}.${B.dn}`] = m.today; _gdSave();
       const paid = gpGrant(`tg-bt-${B.fid}-${B.dn}`, { 'mat:stone': 1 });
       gtgPublishSoon();
-      wdTalk({ lines: [`A bottle from ${B.name}. It has been in the water ${GTG_BOTTLE.days} days.`, `"${GTG_BOTTLE_LINES[B.l]}"${paid ? `  A smooth stone was in the bottle with the note.` : ''}`], actions: [{ label: 'Send one back', primary: true, run: () => { wdTalkClose(true); gardenBottlePostOpen(B.fid); } }], bye: 'Keep it', onClose: () => _gtgbDraw(gardenHere()), closeQuiet: true });
+      const rd = typeof gardenTideBottleRead === 'function' ? gardenTideBottleRead(B, paid) : null;   // the whole note, what was tucked in, the bottle shelf (94-garden-tide-9bottle.js)
+      wdTalk({ lines: rd && rd.lines || [`A bottle from ${B.name}. It has been in the water ${GTG_BOTTLE.days} days.`, `"${GTG_BOTTLE_LINES[B.l]}"${paid ? `  A smooth stone was in the bottle with the note.` : ''}`], actions: [{ label: 'Send one back', primary: true, run: () => { wdTalkClose(true); gardenBottlePostOpen(B.fid); } }], bye: 'Keep it', onClose: () => _gtgbDraw(gardenHere()), closeQuiet: true });
       _gtgbDraw(gardenHere());
     } });
   });
 }
 function gardenBottlePostOpen(to) {
+  if (typeof gardenTideBottleWrite === 'function' && gardenTideBottleWrite(to)) return;   // a note of a few lines, a find tucked in, thrown into the sea (94-garden-tide-9bottle.js)
   gpStage('Bottle post', (el) => {
     el.classList.add('tg-panel');
     const friends = gtgFriendList();

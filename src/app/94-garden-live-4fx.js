@@ -55,7 +55,7 @@ function gardenLiveCheer(e, v) {
 /** What a friend or the game did: the message line, like every other message. */
 function _gllFeed(text) { gardenMessage(text); }
 function _gllOffscreen(A) { try { return typeof _gwInView === 'function' ? !_gwInView(A.x, A.y, 1) : false; } catch (e) { return false; } }
-const _GLL_FX_KIND = Object.freeze({ fish: 'fish', bug: 'bug', keep: 'keep', craft: 'craft', crop: 'crop', gear: 'gear' });
+const _GLL_FX_KIND = Object.freeze({ fish: 'fish', bug: 'bug', keep: 'keep', craft: 'craft', crop: 'crop', gear: 'gear', shore: 'shore' });
 const _GLL_TOOL_CELLS = 16;   // Same presentation-only maximum as gl:res.
 const _gllToolFeedbackState = { root: null, scope: '', seen: new Set(), played: {}, duplicates: 0, bulk: 0, bulkRows: 0, bulkCulled: 0 };
 /** Successful results supply feedback, never mutations. Water and decoration
@@ -97,16 +97,18 @@ function _gllFxPlay(A, ev) {
   if (!A || !ev) return;
   const c = ev.c, e = String(ev.e || '');
   if (!gardenActivityFxAllowed(c)) return;
+  if (c === 'tide') { if (typeof gardenTideFx === 'function') gardenTideFx(A, ev); return; }   // the shore: glints, stones, the storm's chest (94-garden-tide-*.js)
   if (c === 'soap') { if (typeof gardenSoapHeard === 'function') gardenSoapHeard(A, ev); return; }
   if (c === 'leaf') { if (typeof gardenLeafBoatHeard === 'function') gardenLeafBoatHeard(A, ev); return; }
   if (c === 'marble') { if (typeof gardenMarbleHeard === 'function') gardenMarbleHeard(A, ev); return; }
+  if (c === 'nt') { if (typeof gardenNightHeard === 'function') gardenNightHeard(A, ev); return; }   // after dark (94-garden-zz-afterdark-1kit.js)
   if ((c === 'hall' && e === 'in' || c === 'fish' && e === 'cast' || c === 'pose' && e === 'on') && _gll.role === 'host' && typeof gardenSoapLeft === 'function') gardenSoapLeft(A.w);
   if ((c === 'hall' && e === 'in' || c === 'fish' && e === 'cast' || c === 'pose' && e === 'on') && _gll.role === 'host' && typeof gardenLeafBoatLeft === 'function') gardenLeafBoatLeft(A.w);
   if (c === 'kite') { if (typeof gardenKiteHeard === 'function') gardenKiteHeard(A, ev); return; }
   if (c === 'hall' && e === 'in' && _gll.role === 'host' && typeof gardenKiteLeft === 'function') gardenKiteLeft(A.w);
   if (c === 'pose') { if (typeof _gllPhotoIn === 'function') _gllPhotoIn(A, ev); return; }
   if ((c === 'hall' || c === 'got' || c === 'make' || c === 'fish' && e === 'cast' || c === 'bug' && (e === 'sneak' || e === 'swing')) && typeof _gllPhotoClear === 'function') _gllPhotoClear(A);
-  if (c === 'ct') return;   // (the host's round: a visitor hears it in 94-garden-live-7contest.js; a guest cannot say it)
+  if (c === 'ct' || c === 'gm' || c === 'mo') return;   // (the host's round: a visitor hears it in 94-garden-live-7contest.js, or -wonder-folk3-1games.js; a guest cannot say it)
   if (_gll.role === 'host' && (c === 'fish' || c === 'got') && typeof gardenContestSeen === 'function') { try { gardenContestSeen(A, ev); } catch (err) { console.error('[garden live] contest', err); } }   // the host counts what it can match
   if (c === 'pet' || c === 'petplay' || c === 'wow' || c === 'nap') { if (typeof _gllPetFx === 'function') _gllPetFx(A, ev); return; }
   if (c === 'cr' || c === 'egg' || c === 'pick') { _glcFx(A, ev); return; }

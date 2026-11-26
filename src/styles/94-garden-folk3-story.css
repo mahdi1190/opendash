@@ -1,0 +1,81 @@
+/* The vale's week, its fair and its story (94-garden-wonder-folk3-6kit.js, -7year.js, -8scene.js, -9chron.js).
+   POSES for the week (transforms only on the named groups every drawing of a villager carries, as 94-garden-folk3.css does): behind a
+   market stall (face on, hands resting forward on the counter), warming at the brazier (side on, both hands out to it), browsing (the
+   head down over the goods, a hand out to them). */
+.gca-stall .gca-ar.gca-a { animation: none; transform: rotate(-34deg); }
+.gca-stall .gca-ar.gca-b { animation: none; transform: rotate(-28deg); }
+.gca-stall.gca-fv .gca-ar.gca-a { transform: rotate(-26deg); animation: gcy-offer 3.2s ease-in-out infinite alternate; }
+.gca-stall.gca-fv .gca-ar.gca-b { transform: rotate(26deg); }
+@keyframes gcy-offer { 0%, 70% { transform: rotate(-26deg); } 100% { transform: rotate(-44deg); } }
+.gca-stall .gca-hd { animation: gcy-look 5s ease-in-out infinite alternate; }
+@keyframes gcy-look { 0%, 40% { transform: rotate(-2deg); } 60%, 100% { transform: rotate(3deg); } }
+.gca-warm .gca-ar.gca-a { animation: none; transform: rotate(-74deg); }
+.gca-warm .gca-ar.gca-b { animation: gcy-rub 1.4s ease-in-out infinite alternate; transform: rotate(-66deg); }
+@keyframes gcy-rub { from { transform: rotate(-60deg); } to { transform: rotate(-72deg); } }
+.gca-warm .gca-up { animation: none; transform: rotate(5deg); }
+.gca-warm .gca-hd { animation: none; transform: rotate(4deg); }
+.gca-browse .gca-hd { animation: gcy-browse 3.6s ease-in-out infinite alternate; transform: rotate(10deg); }
+@keyframes gcy-browse { 0%, 45% { transform: rotate(10deg); } 55%, 100% { transform: rotate(4deg); } }
+.gca-browse .gca-ar.gca-a { animation: none; transform: rotate(-42deg); }
+.gca-browse .gca-up { animation: none; transform: rotate(3deg); }
+@media (prefers-reduced-motion: reduce) { .gca-stall *, .gca-warm *, .gca-browse * { animation: none !important; } }
+
+/* MOMENTS: soft bars ease in at the top and bottom, the garden's buttons fade, Skip in the corner. The bars and the veil are CSS on the
+   garden box (transforms and opacity only); the talk card stays above them. */
+.vsc-ui { position: absolute; inset: 0; z-index: 8; pointer-events: auto; cursor: default; }
+.vsc-bar { position: absolute; left: 0; right: 0; height: 7%; background: linear-gradient(#14110c, #1f1a12); transition: transform .9s cubic-bezier(.3, .1, .2, 1); }
+.vsc-top { top: 0; transform: translateY(-100%); box-shadow: 0 2px 14px rgba(0, 0, 0, .25); }
+.vsc-bot { bottom: 0; transform: translateY(100%); box-shadow: 0 -2px 14px rgba(0, 0, 0, .25); }
+.vsc-ui.is-on .vsc-top, .vsc-ui.is-on .vsc-bot { transform: translateY(0); }
+.vsc-veil { position: absolute; inset: 0; background: #14110c; opacity: 0; transition: opacity .3s ease; pointer-events: none; }
+.vsc-ui.is-skip .vsc-veil { opacity: .85; }
+.vsc-ui.is-cut .vsc-veil { opacity: 1; transition: none; }
+.vsc-title { position: absolute; left: 18px; top: 0; height: 7%; display: flex; align-items: center; font: italic 600 13px/1 Georgia, 'Times New Roman', serif; letter-spacing: .04em; color: #e8dcc0; opacity: 0; transition: opacity .8s .5s; }
+.vsc-ui.is-on .vsc-title { opacity: .85; }
+.vsc-skip { position: absolute; right: 14px; top: calc(7% + 10px); z-index: 12; display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px 6px 12px; border: 1px solid rgba(232, 220, 192, .45); border-radius: 999px; background: rgba(20, 17, 12, .62); color: #f4ead2; font: 600 13px/1 inherit; cursor: pointer; opacity: 0; transition: opacity .6s .6s, background .2s; }
+.vsc-ui.is-on .vsc-skip { opacity: 1; }
+.vsc-skip:hover, .vsc-skip:focus-visible { background: rgba(20, 17, 12, .85); outline: none; box-shadow: 0 0 0 2px #e8c878; }
+.vsc-skip kbd { font: 600 10.5px/1 inherit; padding: 2px 5px; border-radius: 4px; background: rgba(244, 234, 210, .16); color: #e8dcc0; }
+.gd-stagebox.vsc-on .gd-hud, .gd-stagebox.vsc-on .gd-menu, .gd-stagebox.vsc-on .gd-mini, .gd-stagebox.vsc-on .gd-quick, .gd-stagebox.vsc-on .gd-hotbar,
+.gd-stagebox.vsc-on .gd-camui, .gd-stagebox.vsc-on .gvg-chip, .gd-stagebox.vsc-on .ga-prompt, .gd-stagebox.vsc-on .ga-choose { opacity: 0 !important; pointer-events: none !important; transition: opacity .7s; }
+.gd-stagebox.vsc-on .wd-talk { bottom: calc(7% + 14px); box-shadow: 0 10px 32px rgba(10, 8, 4, .42); }
+@media (max-width: 640px) { .vsc-skip { right: 8px; } .vsc-title { display: none; } }
+@media (prefers-reduced-motion: reduce) { .vsc-bar, .vsc-title, .vsc-skip, .vsc-veil { transition: none; } }
+body:has(.vsc-ui) .gd-msgs { opacity: 0; transition: opacity .4s; }   /* (the garden's passing words wait: a moment has the floor) */
+/* the Journal's eighth ribbon (the Chronicle): eight fit as seven did */
+.gj-ribbons:has(> .gj-ribbon:nth-child(8)) .gj-ribbon { height: clamp(60px, calc((100vh - 300px) / 8), 96px); }
+/* Moments in the Journal, to watch again */
+.vsc-moments { display: grid; gap: 6px; margin: 4px 0 10px; }
+.vsc-moment { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; align-items: center; column-gap: 10px; padding: 7px 10px; border-radius: 10px; background: rgba(122, 90, 56, .08); }
+.vsc-moment .vsc-mname { font: italic 600 14px/1.25 Georgia, 'Times New Roman', serif; color: #4a3420; }
+.vsc-moment small { grid-row: 2; }
+.vsc-moment .btn { grid-row: 1 / span 2; grid-column: 2; }
+
+/* THE VALE'S STORY, the Chronicle page in the Journal: six eras as tabs along the top, framed pieces under them (a painting and a line,
+   or a pale outline and a clue), the era in a line on the right page. */
+.vch-eras { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin: 6px 0 10px; }
+.vch-era { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 2px 5px; border: 1px solid rgba(122, 90, 56, .28); border-radius: 9px; background: rgba(255, 250, 236, .5); color: #6a5034; cursor: pointer; min-width: 0; }
+.vch-era b { font: 700 13px/1 Georgia, 'Times New Roman', serif; }
+.vch-era small { font-size: 10px; line-height: 1.15; text-align: center; color: #8a7050; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vch-era.is-begun { background: #fbf1d8; }
+.vch-era.is-whole { border-color: #c8a050; box-shadow: inset 0 0 0 1px #e8c878; }
+.vch-era.is-on { background: #7a5a38; color: #fbf3dc; border-color: #5a3e24; }
+.vch-eras .vch-era.is-on small { color: #ead8b4; }
+.vch-era:focus-visible { outline: 2px solid #c8a050; outline-offset: 1px; }
+.vch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.vch-piece { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 8px 9px; border-radius: 10px; background: rgba(255, 250, 236, .55); border: 1px dashed rgba(122, 90, 56, .35); }
+.vch-piece.is-filled { border-style: solid; border-color: rgba(122, 90, 56, .3); background: #fffaf0; box-shadow: 0 1px 4px rgba(60, 40, 10, .12); }
+.vch-art svg { display: block; width: 116px; height: 87px; }
+.vch-art .vch-sil { filter: grayscale(1) sepia(.25) brightness(1.18) contrast(.55); opacity: .38; }
+.vch-line { margin: 0; font-size: 13px; line-height: 1.35; text-align: center; color: #3a2f22; }
+.vch-clue { font-size: 12px; line-height: 1.3; text-align: center; color: #8a7050; font-style: italic; }
+.vch-big { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 10px 0 12px; }
+.vch-big svg { width: 240px; height: 180px; filter: drop-shadow(0 3px 6px rgba(60, 40, 10, .22)); }
+.vch-big.is-empty svg { filter: grayscale(1) sepia(.25) brightness(1.18) contrast(.55); opacity: .32; }
+.vch-big .vch-line { max-width: 300px; font-size: 14px; }
+.vch-note p { margin: 0 0 6px; }
+.vch-whole { display: flex; gap: 6px; margin-top: 10px; }
+.vch-dot { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid rgba(122, 90, 56, .45); background: transparent; }
+.vch-dot.is-begun { background: linear-gradient(90deg, #c8a050 50%, transparent 50%); }
+.vch-dot.is-whole { background: #c8a050; border-color: #8a6a2a; }
+@media (max-width: 640px) { .vch-eras { grid-template-columns: repeat(3, 1fr); } .vch-grid { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); } .vch-art svg { width: 96px; height: 72px; } }

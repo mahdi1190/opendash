@@ -217,7 +217,7 @@ async function _persistFire() {
   _persistInFlight = true;
   try {
     const ok = await serverStateWrite();
-    if (ok) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {} }
+    if (ok) { try { _writeLocal(); } catch (e) {} }   // (the new version in the first-paint cache too: one coalesced write, 01-core-state.js)
     updateSyncIndicator(ok);
   } finally {
     _persistInFlight = false;

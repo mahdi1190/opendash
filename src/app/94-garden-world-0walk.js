@@ -233,6 +233,7 @@ function _gwBuildSolids(m) {
       let top = null; for (const b of walls) if (b !== r && r.x0 < b.x1 - .05 && r.x1 > b.x0 + .05) { const gap = r.y0 - b.y1; if (gap > .01 && gap < .6 && (top == null || b.y1 > top)) top = b.y1; }
       if (top != null) add(r.x0, top - .02, r.x1, r.y0 + .01, r.src);
     } }
+  if (typeof gardenKitSolids === 'function') { try { for (const b of gardenKitSolids()) add(b.x0, b.y0, b.x1, b.y1, b.src); } catch (e) { /* an ordinary day */ } }   // (folk3: a market stall's counter, the brazier, the card table: 94-garden-wonder-folk3-6kit.js)
   return { list, at };
 }
 /** The one trunk-collision list for painted trees, in cells ({x0, y0, x1, y1, src}). Five painters plant trees, each
@@ -1951,10 +1952,10 @@ function _gwPetFrame(dt) {
     const slide = gardenWorldSlide(P.x, P.y, nx - P.x, ny - P.y, .1, P.shoreMove || (P.shoreMove = {})); P.x = slide.x; P.y = slide.y; mv = slide.moved;
     // caught on a corner: it hops to your heel rather than running on the spot
     P.stuck = mv ? 0 : (P.stuck || 0) + dt;
-    if (P.stuck > 0.5) { const f = _gwNearestFreePt(_gw.px - 0.8, _gw.py + 0.2, 2); if (f) { P.x = f.x; P.y = f.y; } P.stuck = 0; }
+    if (P.stuck > 0.5) { const f = typeof gardenHeightSwimming === 'function' && gardenHeightSwimming() ? null : _gwNearestFreePt(_gw.px - 0.8, _gw.py + 0.2, 2); if (f) { P.x = f.x; P.y = f.y; } P.stuck = 0; }   // (while you swim it stays on the bank: the depth lane)
     if (Math.abs(dx) > 4) P.face = dx > 0 ? 1 : -1;
   }
-  if (Math.hypot((_gw.px - P.x) * W.cellW, (_gw.py - P.y) * W.cellH) > 320) { P.x = _gw.px - 1; P.y = _gw.py; }
+  if (Math.hypot((_gw.px - P.x) * W.cellW, (_gw.py - P.y) * W.cellH) > 320 && !(typeof gardenHeightSwimming === 'function' && gardenHeightSwimming())) { P.x = _gw.px - 1; P.y = _gw.py; }
   P.moving = mv;
   const x = P.x * W.cellW, y = W.sky + P.y * W.cellH;
   const hop = mv && gardenMotionOn() ? -Math.abs(Math.sin(_gw.t * 14)) * 2.2 : 0, tfp = `translate(${x.toFixed(1)} ${(y + hop).toFixed(1)})`;
@@ -1969,7 +1970,7 @@ function _gwPetFrame(dt) {
  * a rectangle `tall` rows high, and the lawn in front of the shop opened the shop). Without a pointer: its footprint.
  */
 function _gwPropAtPt(wx, wy, ev) {
-  if (ev && (window.GardenNative && GardenNative.active() || window.GardenPhaser && GardenPhaser.active(_gw.svg))) { const hit = gardenWorldVisualPick(ev); if (!hit || !hit.prop) return null; const p = gardenPropsNow().find(x => x.id === hit.prop) || gardenLandSiteProp(hit.prop); return p && p.act ? p : null; }
+  if (ev && (window.GardenNative && GardenNative.active() || window.GardenPhaser && GardenPhaser.active(_gw.svg))) { const hit = gardenWorldVisualPick(ev); if (!hit || !hit.prop) return null; const p = gardenPropsNow().find(x => x.id === hit.prop) || gardenLandSiteProp(hit.prop) || (typeof gardenB2PropAt === 'function' ? gardenB2PropAt(hit.prop) : null); return p && p.act ? p : null; }
   if (ev && ev.clientX != null && typeof document.elementFromPoint === 'function') {
     const el = document.elementFromPoint(ev.clientX, ev.clientY), g = el && el.closest ? el.closest('.gd-prop[data-prop]') : null;
     if (g) { const id = g.getAttribute('data-prop'), p = gardenPropsNow().find(x => x.id === id) || gardenLandSiteProp(id); if (p && p.act) return p; }
@@ -1979,6 +1980,7 @@ function _gwPropAtPt(wx, wy, ev) {
 }
 function _gwOpenProp(p) {
   if (!p) return;
+  if (typeof gardenB2OpenProp === 'function' && gardenB2OpenProp(p)) return;   // (build2) a museum's door opens the museum, whichever building it is (94-garden-build2-3museum.js)
   const go = {
     tackle: () => gardenPopupOpen('catch', { sub: 'tackle', title: 'Tackle shop' }), journal: () => gardenJournalOpen(),
     shop: () => gardenPopupOpen('shop'), basket: () => gardenPopupOpen('basket'), almanac: () => gardenPopupOpen('almanac'), friends: () => gardenPopupOpen('friends'),
@@ -2198,6 +2200,7 @@ function gardenWorldKey(ev, down, arrowsOnly) {
   if (k === 'f' || k === 'F') { gardenCamSet(gardenCamMode() === 'fit' ? 'follow' : 'fit'); ev.preventDefault(); return true; }
   if ((k === 'c' || k === 'C') && ev.shiftKey) { if (typeof gardenCollideToggle === 'function') gardenCollideToggle(); ev.preventDefault(); return true; }   // what blocks walking (94-garden-world-7collide.js)
   if (k === 'c' || k === 'C') { gardenCamSet('follow'); ev.preventDefault(); return true; }
+  if (typeof gardenB2Key === 'function' && gardenB2Key(ev, k)) { ev.preventDefault(); return true; }   // (build2) T next tool, I your pockets, X put back what you hold
   if (k === 'q' || k === 'Q') { if (typeof gartEmoteWheel === 'function') gartEmoteWheel(); ev.preventDefault(); return true; }
   if (k === 'Tab' && !ev.ctrlKey && !ev.altKey && !ev.metaKey && typeof gartActCycle === 'function' && gartActCycle(ev.shiftKey)) { ev.preventDefault(); return true; }   // several things close by: the next one is the prompt's (94-garden-zz-7act-1core.js)
   if ((k === 'j' || k === 'J') && !ev.ctrlKey && !ev.metaKey && !ev.altKey) { if (typeof gardenJournalOpen === 'function') gardenJournalOpen(); ev.preventDefault(); return true; }   // the Field Journal
@@ -2212,6 +2215,7 @@ function gardenWorldKey(ev, down, arrowsOnly) {
 function gardenWorldInteract() {
   if (typeof gardenWorldCovered === 'function' && gardenWorldCovered()) return;   // (a panel over the world: nothing behind it is done)
   if (typeof _gwFishBusy === 'function' && _gwFishBusy()) { if (typeof _gwFishPress === 'function') _gwFishPress(); return; }
+  if (typeof gardenB2Interact === 'function' && gardenB2Interact()) return;   // (build2) the rod or the net in your hand: cast, or net the bug in reach
   if (typeof gartActInteract === 'function' && gartActInteract()) return;   // the prompt's action: sit, climb, ring... (94-garden-zz-7act-1core.js)
   const m = gardenHere(), W = GARDEN_WORLD;
   const px = Math.floor(_gw.px), py = Math.floor(_gw.py);

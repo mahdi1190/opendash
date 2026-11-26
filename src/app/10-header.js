@@ -348,7 +348,7 @@ function renderTopbar() {
   if (typeof renderShell === 'function') renderShell();
   _tbRenderStrip();
   if (typeof renderTopbarWidgets === 'function') renderTopbarWidgets();
-  _tbFitOverflow();
+  if (typeof renderMeasureLater === 'function') renderMeasureLater('tb-fit', _tbFitOverflow); else _tbFitOverflow();   // (once the page is written: 80-main-render.js)
   _tbEnsureTicker();
 }
 function _tbRepaintSoon() { if (!_tbDragging) { _tbRenderStrip(); _tbFitOverflow(); } }

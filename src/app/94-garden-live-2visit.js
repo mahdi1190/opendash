@@ -255,6 +255,7 @@ function _glvResult(b) {
     const P = _glv.pending.get(b.i);
     _glv.pending.delete(b.i);
     if (P) _glvEcho(P.t, P.f);
+    if (P && P.t === 'donate' && typeof gardenB2VisitDone === 'function') { try { gardenB2VisitDone(b, P); } catch (e) { /* said next time */ } }   // (build2) your gift is in their museum
     const g = _gdG(), led = g.led['gl.o.' + b.i];
     if (led && !led.ok) { _glvSettled(b.i, led, b.t); _gscSaveGarden(); }
     if (b.t === 'water') _gscXp('water', _glv.fid, _gllToday());
@@ -361,6 +362,7 @@ function _glvPersonMenu(A) {
     go(_glv.follow === A.w ? 'Stop following' : 'Follow', 'footprints', () => { _glv.follow = _glv.follow === A.w ? null : A.w; _glvSend('em', { c: 'do', e: _glv.follow != null ? 'follow' : 'unfollow', to: A.w }); if (_glv.follow != null) _glvFollowGo(A.x - 0.8, A.y + 0.3); });
     if (!glMayDo(_glv.lv, 'drop')) go('Give something', 'gift', () => _glvGiveMenu(A));
     if (glAtLeast(_glv.lv, GL_TRADE.lv)) go('Trade', 'repeat', () => gardenLiveTradeOpen(A));
+    if (typeof gardenGameFriendButtons === 'function') for (const b of gardenGameFriendButtons(A, close)) r.appendChild(b);   // (folk3: ask the host for a race or hide and seek)
     el.appendChild(r);
   }, { align: 'center' });
 }
@@ -487,6 +489,8 @@ function _glvEvent(ev) {
       if (ev.c === 'marble') { if (typeof gardenMarbleGuestState === 'function') gardenMarbleGuestState(ev); return; }
       if (ev.c === 'kite') { if (typeof gardenKiteGuestState === 'function') gardenKiteGuestState(ev); return; }
       if (ev.c === 'ct') { if (typeof _ctGuestEvent === 'function') _ctGuestEvent(ev); return; }   // the host's contest round (94-garden-live-7contest.js)
+      if (ev.c === 'gm') { if (typeof gardenGameGuestEvent === 'function') gardenGameGuestEvent(ev); return; }
+      if (ev.c === 'mo') { if (typeof gardenSceneGuestEvent === 'function') gardenSceneGuestEvent(ev); return; }   // (folk3: the host's public moment, a festival's opening)   // (folk3: the host's game with the vale's folk, 94-garden-wonder-folk3-1games.js)
       const A = _gll.actors.get(ev.w); if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return;
     }
     case 'd': _glvDelta(ev.ops); return;
@@ -518,5 +522,5 @@ function _glvDelta(ops) {
   // (only a real change: the same look again means "tell me everything", and a pet says it changed for many small reasons)
   const soon = () => { clearTimeout(t); t = setTimeout(() => { try { if (_gll.role !== 'visit' || !_glvLive()) return; const l = _glvLook(), sig = _glvLookSig(l); if (sig === _glv.lookSig) return; _glv.lookSig = sig; _glvSend('me', l); } catch (e) { /* the next beat has it */ } }, 1500); };
   document.addEventListener('opendash:profile', soon); document.addEventListener('opendash:pet', soon);
-  document.addEventListener('opendash:garden', (ev) => { const k = ev && ev.detail && ev.detail.kind; if (k === 'buy' || k === 'gear') soon(); });   // (a new rod: they see it now)
+  document.addEventListener('opendash:garden', (ev) => { const k = ev && ev.detail && ev.detail.kind; if (k === 'buy' || k === 'gear' || k === 'tool') soon(); });   // (a new rod: they see it now; build2: the tool in your hand)
 })();
