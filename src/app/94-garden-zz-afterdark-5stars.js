@@ -33,8 +33,8 @@ function _adfScan(rows) {
       if (t !== 'open-grass' && t !== 'snow' && t !== 'slope') continue;
       if (!gardenTerrainTakes('ad', x, y) || (typeof gardenPlotNear === 'function' && gardenPlotNear(D, x, y, 1.5))) continue;
       let ok = true;
-      for (const [ox, oy] of [[2, 0], [-2, 0], [0, 2], [0, -2], [1.5, 1.5], [-1.5, 1.5], [1.5, -1.5], [-1.5, -1.5]]) { const c = gardenIslandBaseCell(x + ox, y + oy); if (!c || !c.land || c.route || c.freshwater || c.ocean || c.solid || c.staticId) { ok = false; break; } }
-      if (ok && !gardenAffordOverlap(x, y, 1.6) && !adHidden(x, y, 2.6)) _adf.cands.push({ x, y });   // (and never under a crown or a roof: it must be seen)
+      for (const [ox, oy] of [[1.6, 0], [-1.6, 0], [0, 1.6], [0, -1.6], [1.2, 1.2], [-1.2, 1.2], [1.2, -1.2], [-1.2, -1.2]]) { const c = gardenIslandBaseCell(x + ox, y + oy); if (!c || !c.land || c.route || c.freshwater || c.ocean || c.solid || c.staticId) { ok = false; break; } }
+      if (ok && !gardenAffordOverlap(x, y, 1.3) && !adHidden(x, y, 2.2)) _adf.cands.push({ x, y });   // (and never under a crown or a roof: it must be seen)
     }
   }
   if (_adf.scanY > R) _adf.done = true;
@@ -44,14 +44,14 @@ function _adfScan(rows) {
 function adStarSpot(iso, N, m) {
   const C = _adf.done ? _adf.cands : null; if (!C || !C.length) return null;
   const ck = iso + '|' + N.key + '|' + (m.areas || []).length + '|' + C.length; if (!_adf.spots) _adf.spots = new Map(); if (_adf.spots.has(ck)) return _adf.spots.get(ck);   // (worked out once a night, not every tick)
-  // nothing overlaps: a night's star keeps four cells clear of where the six nights before it would have put theirs (that first choice
-  // depends on nothing else, so this stays the same whichever day it is asked on, on every screen)
-  const avoid = []; for (let d = 1; d <= 6; d++) { const q = _gdAddDays(iso, -d); if (adStarFell(q, N)) { const r = _adfSpotPick(q, N, m, C, null); if (r) avoid.push(r); } }
-  const p = _adfSpotPick(iso, N, m, C, avoid); if (p || (typeof _gw !== 'undefined' && _gw.grid)) { if (_adf.spots.size > 40) _adf.spots.clear(); _adf.spots.set(ck, p); }
+  const p = _adfSpotPick(iso, N, m, C); if (p || (typeof _gw !== 'undefined' && _gw.grid)) { if (_adf.spots.size > 40) _adf.spots.clear(); _adf.spots.set(ck, p); }
   return p;
 }
-function _adfSpotPick(iso, N, m, C, avoid) {
-  const open = C.filter(p => adOpen(p.x, p.y, m) && !(avoid && avoid.some(a => Math.hypot(a.x - p.x, a.y - p.y) < 4))); if (!open.length) return null;
+function _adfSpotPick(iso, N, m, C) {
+  // nothing overlaps: every place belongs to one of seven groups (by its own seed), and a night uses only the group of its day number,
+  // so any seven nights running use seven different places of the two-cell grid (a crater is under a cell and a half across). Nothing
+  // here depends on any other night, so it is the same whichever day it is asked on, on every screen. (A group with no place: no star.)
+  const grp = gtgDayNum(iso) % 7, open = C.filter(p => (gardenHash('ad-sfg|' + N.key + '|' + p.x + ',' + p.y) % 7) === grp && adOpen(p.x, p.y, m)); if (!open.length) return null;
   const h = gardenHash('ad-sfp|' + N.key + '|' + gtgDayNum(iso));
   for (let i = 0; i < Math.min(8, open.length); i++) {
     const p = open[(h + i * 7919) % open.length];
