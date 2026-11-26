@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.76.1] - 2026-11-26
+
+### Changed
+
+- Code comments and developer notes use made-up example names instead of real ones. Nothing in the app looks or works differently.
+
 ## [2.76.0] - 2026-11-26
 
 ### Added

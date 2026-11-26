@@ -787,7 +787,7 @@ function _glhBugsMaybe() {
     setTimeout(() => { _glh.bugs.delete(u); _glhSend('all', 'res', { w: 0, t: 'bugend', ok: true, u }); }, 45000);
   }, 90000);
 }
-/* ---------- the tip: "Planted by Taylor" ---------- */
+/* ---------- the tip: "Planted by Sam" ---------- */
 function _glhHoverBind() {
   const box = _gw.box; if (!box || _glh.hoverBound === box) return;
   _glh.hoverBound = box;
@@ -821,7 +821,7 @@ function _glhDiary() {
   const g = _gdG();
   return Object.entries(g.gl).filter(([, e]) => e && e.t && e.t !== 'catch' && e.t !== 'q-no').sort((a, b) => (b[1].at || 0) - (a[1].at || 0)).slice(0, 60);
 }
-/** The diary's lines: what one friend left for you, of one kind, is one line ("While you were away, Taylor planted 3 carrots"), with one Undo for all of it. */
+/** The diary's lines: what one friend left for you, of one kind, is one line ("While you were away, Sam planted 3 carrots"), with one Undo for all of it. */
 function _glhDiaryGroups() {
   const out = [];
   for (const [k, e] of _glhDiary()) {

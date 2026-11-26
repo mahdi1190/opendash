@@ -1,6 +1,6 @@
 # Playing together, live, in each other's gardens
 
-The owner's words: "If I allow it, we should see what each other does: 100% of all actions in each other's gardens, plant stuff, buy our own stuff; it says planted by me or Taylor or whoever; we need to think about how we share the gift or reward; we want it live and fully interactive, players interact with each other."
+The owner's words: "If I allow it, we should see what each other does: 100% of all actions in each other's gardens, plant stuff, buy our own stuff; it says planted by me or [my friend] or whoever; we need to think about how we share the gift or reward; we want it live and fully interactive, players interact with each other."
 
 Code: `lib/relay/space-room.mjs` (the relay's pass-through room), `lib/friends/live-room.mjs` (a client's socket to it), `lib/friends/live.mjs` (the service: sessions, permissions, checks), `server/routes/garden-live.mjs`, `src/app/94-garden-live-*.js` (0rules: pure, also evaluated by Node; 1core; 2visit: a visitor's world; 3host: the host's authority, diary and Undo; 7contest: contests, section 15; 7goal: shared goals, section 17; 7pals: playdates, section 18; 7snap: the group photo, section 19; 7trade: trading, section 16), `src/styles/94-garden-live.css`, `src/styles/94-garden-live-trade.css`.
 
@@ -256,7 +256,7 @@ An applied intent is written to the host's garden (`g.gl`) in the same save as t
 
 ## 6. Who did what
 
-Every plant and decoration a visitor places records `by: <friend id>` (`g.plants[uid].by`, `g.decor[uid].by`). An id, never a name: friend text never enters the state file (FRIENDS.md rule 4), so the assistant cannot read it. Old saves have no field and are the owner's. Hovering says "Planted by Taylor". The name comes from the Friends list when it is shown ("A friend" if they have gone).
+Every plant and decoration a visitor places records `by: <friend id>` (`g.plants[uid].by`, `g.decor[uid].by`). An id, never a name: friend text never enters the state file (FRIENDS.md rule 4), so the assistant cannot read it. Old saves have no field and are the owner's. Hovering says "Planted by Sam". The name comes from the Friends list when it is shown ("A friend" if they have gone).
 
 **The diary** (`g.gl`, ids and numbers only, the newest 300) is what visitors did, shown newest first with an Undo on each line, and a count of what is new since you last looked: "while you were away" means the tab was in the background, or an earlier visit.
 
@@ -311,7 +311,7 @@ The owner, 31 October 2026: "a live visit should be identical to being in my own
 
 1. **Visitor.** The same ledger record as a live intent, `gl.o.<id>` with `q: 1`, comes out of your bag first. It shows with a clock, and goes by the friend mailbox as `gl:q` (what never left is sent again next time; the host takes an id once). What the host last told you (`theirs`, from `gl:perm`) only lets you try.
 2. **Host's server.** On arrival: `permOf`, `glMayDo`, `glIntentOk`, the same as `gl:do` (`onQueue`). It waits in `queue` in `friends/garden-live.json`. A lowered level, a shut gate or the switch sends what is no longer allowed back at once (`dropQueue`). A removed friend's goes, and their page gives it back when it sees you are no longer friends.
-3. **Host's page.** When you open your garden, `_glhQueueRun` runs each through `_glhIntent` in order: the same code as a live intent, the same exactly-once key, with the level your server read just now. The garden, the diary line (`away`), and the answer are all in one save: `gq['d<id>0']` (`did`, it happened) or `gq['b<id>0']` (`back`, the post that has always handed things back) with a `q-no` entry, so the same id can never be tried twice. Only then does the server forget it. The diary says "While you were away, Taylor planted 3 carrots", with one Undo; Put my garden back covers it too.
+3. **Host's page.** When you open your garden, `_glhQueueRun` runs each through `_glhIntent` in order: the same code as a live intent, the same exactly-once key, with the level your server read just now. The garden, the diary line (`away`), and the answer are all in one save: `gq['d<id>0']` (`did`, it happened) or `gq['b<id>0']` (`back`, the post that has always handed things back) with a `q-no` entry, so the same id can never be tried twice. Only then does the server forget it. The diary says "While you were away, Sam planted 3 carrots", with one Undo; Put my garden back covers it too.
 4. **Visitor again.** `back`: the record goes, so it is back in your bag, once, and you are told. `did`: `_glvSettled`, the same as a live yes. After `GL_QUEUE.days` the host refuses it, and two days later your page gives it back (`_gllRefundOld`), so the two can only overlap if your clocks differ by more than that.
 
 **No relay redeploy.** `gl:q`, `gl:perm` and `gl:ask` are ordinary mailbox kinds; rooms carry only `gl:` live kinds, as before.

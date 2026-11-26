@@ -176,11 +176,11 @@ later choice. Either way the delete wins until "Bring it back" writes
 of the two registers first arrives; a register merged before never records
 one again (section 10).
 
-The Review list says it in words: "On Mahdi Work you changed the task "Book
+The Review list says it in words: "On My Work you changed the task "Book
 flights" after this computer deleted it." with **Keep it deleted** and
 **Bring it back**; a same-field clash: "You changed the task "Book flights"
-(due date) on this computer and on Mahdi Work at the same time. Mahdi Work's
-change is kept now." with Keep mine / Keep Mahdi Work's.
+(due date) on this computer and on My Work at the same time. My Work's
+change is kept now." with Keep mine / Keep My Work's.
 <!-- ── end 2.17.2 ── -->
 
 ## 5. Positions

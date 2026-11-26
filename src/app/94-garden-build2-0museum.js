@@ -2,7 +2,7 @@
    BUILD 2: THE VALE MUSEUM (the rules: plain data and pure functions, no page and no clock). The owner, 21 Nov 2026: "place fish in
    museums or sell them or let them free or display them". FUN-ROADMAP: "The Vale Museum. A real building on the green. Each wing opens
    when you give it its first piece ... Each wing has a keeper from the cast who says one line about every new piece ... Empty spaces show
-   as outlines ... Every piece has a small plaque, 'Given by Taylor'."
+   as outlines ... Every piece has a small plaque, 'Given by Sam'."
 
    A KIND, NOT A PLACE. Any thing of the kind `museum` (94-garden-zz-7act-0kinds.js: the lake hall by the village; the Little museum you can
    build; a museum building any layout places through its data where it has room) opens THE SAME collection, as every chest opens the

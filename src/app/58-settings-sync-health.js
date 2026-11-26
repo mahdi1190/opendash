@@ -299,7 +299,7 @@ function syncReviewPage(el) {
     const list = _syncEl('div', 'sh-review'); list.setAttribute('role', 'list');
     for (const c of r.items) {
       const row = _syncEl('div', 'sh-rev'); row.setAttribute('role', 'listitem'); row.dataset.pickId = c.id;
-      // 2.17.2: the server's plain sentence ("On Mahdi Work you changed the task "X" after this computer deleted it.")
+      // 2.17.2: the server's plain sentence ("On My Work you changed the task "X" after this computer deleted it.")
       const what = c.text || ((c.what ? c.what.charAt(0).toUpperCase() + c.what.slice(1) : 'Item') + (c.name ? ' "' + c.name + '"' : '') + (c.field ? ' · ' + c.field : ''));
       row.appendChild(_syncEl('div', 'sh-rev-t', what));
       const sides = _syncEl('div', 'sh-rev-sides');
