@@ -225,6 +225,7 @@ function _gartBurst(kind, x, y, fp, col) {
 }
 function _gartOnGarden(ev) {
   const d = ev && ev.detail; if (!d) return;
+  _gartLifeKick();
   try {
     const colOf = id => { const p = typeof gardenPlant === 'function' && gardenPlant(id); return p && p.look ? p.look.c : ''; };
     if (d.kind === 'harvest') {
@@ -258,8 +259,12 @@ function _gartWatch(svg) {
 /* ---------- the one slow heartbeat ---------- */
 function _gartTick() {
   if (document.hidden || _grm.on || _ee.on) return;   // (a room covers the stage)
-  const list = document.querySelectorAll('.gd-svg');
-  if (!list.length) return;
+  // (speed pass) a live list, so a page with no garden drawing on it costs nothing to ask; ten seconds of none and the heartbeat
+  // sleeps until a garden is drawn again (gardenRender, a shared bed, a garden moment: _gartLifeKick)
+  const stages = _gartLife.stages || (_gartLife.stages = document.getElementsByClassName('gd-svg'));
+  if (!stages.length) { if ((_gartLife.idle = (_gartLife.idle || 0) + 1) >= 30) _gartLifeSleep(); return; }
+  _gartLife.idle = 0;
+  const list = Array.from(stages);
   for (const svg of list) {
     if (window.GardenPhaser && GardenPhaser.active(svg)) continue;
     if (!(svg === _gw.svg && _gw.sizeOk) && svg.getBoundingClientRect().width < 240) continue;   // a thumbnail stays as it is (the stage's size is known: asking forces a layout)
@@ -275,4 +280,7 @@ function _gartLifeStart() {
   document.addEventListener('opendash:garden', _gartOnGarden);
   _gartLife.timer = setInterval(_gartTick, 320);
 }
+function _gartLifeSleep() { if (_gartLife.timer) { clearInterval(_gartLife.timer); _gartLife.timer = 0; } _gartLife.idle = 0; }
+/** A garden drawing is going on a page: wake the heartbeat if it was asleep (cheap when it is awake). */
+function _gartLifeKick() { if (!_gartLife.bound || _gartLife.timer) return; _gartLife.idle = 0; _gartLife.timer = setInterval(_gartTick, 320); }
 if (typeof document !== 'undefined') _gartLifeStart();

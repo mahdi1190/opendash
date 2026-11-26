@@ -407,8 +407,12 @@ window.GardenNative = (function () {
     s.syncFull = (s.syncFull || 0) + 1;
     s.world.sync(model); s.lighting.sync(model); if (s.water) s.water.sync(model); if (s.surface) s.surface.sync(model); _gdp.svg = s.world.rootNode; _gw.svg = s.world.rootNode;
     if (!model) return;   // (the scene is made before a friend's garden has arrived: nothing of the garden's own to paint yet; reading it crashed the visit's opening, 'tod' and then 'visit')
+    // (speed pass) a painter below that throws no longer stops the key being kept: it was left unset, so every later sync of the
+    // same garden took the whole repaint path above and threw again (the forage spots on land with no squares, 2.75.2)
+    try {
     _gwBugsSync(model); gardenLifeSync(model); gardenWonderSync(model); gardenLiveHostPainted(model); gardenGamePainted(model); if (typeof gardenDesignPainted === 'function') gardenDesignPainted(_gdp.svg, model.dz);
     gardenHudPaint(model); if (typeof _ptwCheck === 'function') _ptwCheck();
+    } catch (error) { console.error('[garden] painting the page round the garden', error); }
     s.presentationKey = key;
   }
   function interact(hit) {

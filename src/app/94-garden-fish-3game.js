@@ -374,6 +374,10 @@ function gardenFishClickPt(pt, m) {
   cands.sort((a, b) => a.d - b.d);
   let best = null, bl = 1e9;
   for (const c of cands.slice(0, 12)) {
+    // (speed pass) a walk is never shorter than the straight line (c.d), and the spots come nearest first: once the best walk found
+    // is shorter than this spot's straight line, no spot left can win. The same spot is chosen, from one or two route searches
+    // instead of twelve (each a search of the whole map, up to a tenth of a second on one click).
+    if (c.d > bl + 1e-6) break;
     const r = _gwRoute({ x: _gw.px, y: _gw.py }, c); if (!r) continue;
     let len = 0, at = { x: _gw.px, y: _gw.py }; for (const w of r) { len += Math.hypot((w.x - at.x) * W.cellW, (w.y - at.y) * W.cellH); at = w; }
     if (len < bl) { bl = len; best = c; }
@@ -642,7 +646,10 @@ function _gwBugDraw(b, flying) {
   const lf = `translate(0 ${(-b.lift).toFixed(1)})`;
   if (b.lf !== lf) { b.lf = lf; b.liftEl.setAttribute('transform', lf); }
   if (b.fc !== b.face) { b.fc = b.face; const k = GW_BUG_SCALE * b.def.size; b.inEl.setAttribute('transform', `scale(${(b.face * k).toFixed(2)} ${k.toFixed(2)})`); }
-  const cls = 'gd-bug is-seen' + (b.state !== 'rest' ? ' is-go' : '') + (flying ? ' is-fly' : '') + (b.state === 'flee' ? ' is-flee' : '') + ((_gw.netting && _gw.netting.actor === b) || _gw.hoverBug === b.key ? ' is-target' : '') + (b.def.glow || b.def.id === 'firefly' ? ' is-glow' : '');
+  // (speed pass) a bug placed for the first time while out of view keeps the cull's gart-off: writing the whole class here dropped it,
+  // and gardenCull (which only toggles on a change) never put it back, so every bug that came about off screen was painted every
+  // frame, hundreds of triangles each, until it first flew into view (most of the garden's vector drawing, 26 Nov)
+  const cls = 'gd-bug is-seen' + (b.state !== 'rest' ? ' is-go' : '') + (flying ? ' is-fly' : '') + (b.state === 'flee' ? ' is-flee' : '') + ((_gw.netting && _gw.netting.actor === b) || _gw.hoverBug === b.key ? ' is-target' : '') + (b.def.glow || b.def.id === 'firefly' ? ' is-glow' : '') + (b._off ? ' gart-off' : '');
   if (b.cls !== cls) { b.cls = cls; b.node.setAttribute('class', cls); }
   const zk = Math.floor(b.y * 3);
   if (b.zk !== zk || !b.node.parentNode) { b.zk = zk; _gwPlace(b.node, b.y); }

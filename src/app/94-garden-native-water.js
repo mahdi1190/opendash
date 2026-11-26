@@ -11,7 +11,6 @@ window.GardenNativeWater = (function () {
   function hash(text) { let value = 2166136261; for (const c of String(text)) value = Math.imul(value ^ c.charCodeAt(0), 16777619); return value >>> 0; }
   function boundsOf(points) { let x = Infinity, y = Infinity, right = -Infinity, bottom = -Infinity; for (const p of points) { x = Math.min(x, p.x); y = Math.min(y, p.y); right = Math.max(right, p.x); bottom = Math.max(bottom, p.y); } return Number.isFinite(x) ? { x, y, width: right - x, height: bottom - y } : { x: 0, y: 0, width: 0, height: 0 }; }
   function overlap(a, b, margin = 0) { return a.x + a.width >= b.x - margin && b.x + b.width >= a.x - margin && a.y + a.height >= b.y - margin && b.y + b.height >= a.y - margin; }
-  function insidePolygon(x, y, points) { let inside = false; for (let i = 0, j = points.length - 1; i < points.length; j = i++) { const a = points[i], b = points[j]; if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) inside = !inside; } return inside; }
   function mergeIntervals(intervals) { intervals.sort((a, b) => a[0] - b[0]); const out = []; for (const interval of intervals) { if (interval[1] - interval[0] < 1e-6) continue; const last = out[out.length - 1]; if (last && interval[0] <= last[1] + 1e-6) last[1] = Math.max(last[1], interval[1]); else out.push([...interval]); } return out; }
   function intersectIntervals(a, b) { const out = []; let i = 0, j = 0; while (i < a.length && j < b.length) { const lo = Math.max(a[i][0], b[j][0]), hi = Math.min(a[i][1], b[j][1]); if (hi > lo) out.push([lo, hi]); if (a[i][1] < b[j][1]) i++; else j++; } return out; }
   function subtractIntervals(outer, holes) { let out = outer; for (const hole of holes) { const next = []; for (const interval of out) { if (hole[1] <= interval[0] || hole[0] >= interval[1]) next.push(interval); else { if (hole[0] > interval[0]) next.push([interval[0], hole[0]]); if (hole[1] < interval[1]) next.push([hole[1], interval[1]]); } } out = next; } return out; }
@@ -176,7 +175,9 @@ window.GardenNativeWater = (function () {
       }
     }
     function view() { const camera = scene.cameras.main, a = camera.getWorldPoint(0, 0, viewOrigin), b = camera.getWorldPoint(camera.width, camera.height, viewCorner); return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y), zoom: camera.zoom }; }
-    function inside(region, x, y) { if (x < region.bounds.x || y < region.bounds.y || x > region.bounds.x + region.bounds.width || y > region.bounds.y + region.bounds.height) return false; if (region.ellipses.some(e => ((x - e.x) / e.rx) ** 2 + ((y - e.y) / e.ry) ** 2 <= 1)) return true; return region.points.length > 2 && insidePolygon(x, y, region.points) && !region.holes.some(points => insidePolygon(x, y, points)); }
+    // (speed pass) the same even-odd test over the region's prepared scan bands (a binary search and the few edges of one band)
+    // instead of every vertex of the shore: the surface highlights, bank glints, rain and wakes ask this hundreds of times a pass
+    function inside(region, x, y) { return lineRegionContains(region, x, y); }
     function contains(x, y, liquidOnly = false) { if (liquidOnly && regions.some(region => region.frozen && inside(region, x, y))) return false; return regions.some(region => (!liquidOnly || !region.frozen) && inside(region, x, y)); }
     function clearIntervalRange() { intervalRangeSource = null; intervalRangeCandidates = null; intervalRangeSkipped = 0; }
     function clearIntervalCache() { intervalCaches = new WeakMap(); intervalSlots.fill(null); intervalCursor = 0; intervalEntries = 0; intervalInvalidations++; clearIntervalRange(); }

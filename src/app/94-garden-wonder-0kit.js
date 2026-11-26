@@ -126,20 +126,28 @@ function gardenWonderSync(m) {
   _wdReconcile(m);
   for (const M of _wd.live) if (M.painted) { try { M.painted(m); } catch (e) { console.error('[garden wonder]', M.id, e); } }
 }
+/* (speed pass) A module whose frame or tick throws over and over is switched off for this visit after a few tries: it logged an error every
+ * frame (sixty a second, each costing more than the frame's own work) and never stopped. */
+function _wdFail(M, op, e) {
+  const n = M['_wdFail' + op] = (M['_wdFail' + op] || 0) + 1;
+  if (n <= 3) console.error('[garden wonder]', M.id, e);
+  if (n === 3) console.error('[garden wonder]', M.id, op, 'keeps failing: it is switched off until the garden is opened again');
+}
 function _wdFrame(dt) {
   // real time, not the loop's dt: that is capped per frame, and the loop looks in rarely when nothing is moving
   const now = performance.now(), real = _wd.lastF ? Math.min(2, (now - _wd.lastF) / 1000) : dt; _wd.lastF = now; _wd.t += real;
-  for (const M of _wd.live) if (M.frame) { try { M.frame(dt); } catch (e) { console.error('[garden wonder]', M.id, e); } }
+  for (const M of _wd.live) if (M.frame && !(M._wdFailframe >= 3)) { try { M.frame(dt); M._wdFailframe = 0; } catch (e) { _wdFail(M, 'frame', e); } }
   if (now - _wd.tickAt < 1000) return;
   _wd.tickAt = now;
   const m = gardenHere();
   _wdReconcile(m);
   if (_wd.talk) _wdTalkCheck();
-  for (const M of _wd.live) if (M.tick) { try { M.tick(m); } catch (e) { console.error('[garden wonder]', M.id, e); } }
+  for (const M of _wd.live) if (M.tick && !(M._wdFailtick >= 3)) { try { M.tick(m); M._wdFailtick = 0; } catch (e) { _wdFail(M, 'tick', e); } }
 }
 function gardenWonderStop() {
   if (!_wd.on) return;
   for (const M of _wd.live) if (M.end) { try { M.end(); } catch (e) { console.error('[garden wonder]', M.id, e); } }
+  for (const M of _wd.live) M._wdFailframe = M._wdFailtick = 0;   // (a module switched off after failing gets its next chance with the next visit)
   _wd.on = false; _wd.live = []; wdTalkClose(true);
   for (const S of [..._wd.sprites]) { try { S.remove(); } catch (e) { /* gone */ } }
   if (_wd.dir) { try { _wd.dir.remove(); } catch (e) { /* gone */ } _wd.dir = null; }

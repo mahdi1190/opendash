@@ -120,6 +120,7 @@ function _sdReset() {
         if (!input || input.value !== 'RESET') { if (input) { input.classList.add('is-invalid'); input.focus(); } return false; }
         _sdJson('/api/settings/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: 'RESET', includeFinance: !!(fin && fin.checked) }) })
           .then((r) => {
+            _writeLocalDrop();   // (a cache write still waiting must not bring the old state back before the reload: 01-core-state.js)
             try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
             toast('Reset. Your old data is in backups', { kind: 'ok' });
             setTimeout(() => { location.hash = ''; location.reload(); }, 900);

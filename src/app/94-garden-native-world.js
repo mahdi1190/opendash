@@ -1311,7 +1311,9 @@ window.GardenNativeWorld = (function () {
       if (packGround && window.GardenNativePainted && GardenNativePainted.compose) {
         const items = []; for (const record of drawings.values()) { const meta = record.metadata, foot = meta.foot || record.handle.foot, b = record.bounds; if (!record.handle.painted || !foot || !b || meta.kind === 'decor' || meta.kind === 'ground') continue; items.push({ id: record.id, x: foot.x, y: foot.y, w: Math.min(220, b.width * .8), h: b.height, fw: (Number(meta.prop && meta.prop.w) || Number(meta.model && meta.model.w) || 0) * W.cellW, door: !!(meta.prop && meta.prop.door), shaded: !!record.handle.shaded }); }
         try { GardenNativePainted.compose(scene, items); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); }
-        if (typeof window !== 'undefined') window.__gardenPaintedScene = scene;
+        // (speed pass) a handle for probes, let go when the scene ends: kept on the page, it held the whole dead garden (about 80 MB)
+        // on every dashboard page after you left it
+        if (typeof window !== 'undefined' && window.__gardenPaintedScene !== scene) { window.__gardenPaintedScene = scene; try { scene.events.once('destroy', () => { if (window.__gardenPaintedScene === scene) window.__gardenPaintedScene = null; }); } catch (e) { /* no events: kept as before */ } }
       }
       restoreCanopyAlpha();
       solidObjects.length = 0; pointLights.length = 0; fadingProps.length = 0; reflectedScenery.length = 0; landmarkRows.length = 0; canopyOccluders.length = 0; effectFrame = -1;
@@ -1516,7 +1518,7 @@ window.GardenNativeWorld = (function () {
       { const sh = playerNode._ghtSh || (playerNode._ghtSh = playerNode.querySelector('.gd-pl-sh')), on = typeof gardenHeightShadowOn !== 'function' || gardenHeightShadowOn(); if (sh && sh._ghtOn !== on) { sh._ghtOn = on; sh.setAttribute('opacity', on ? '1' : '0'); } }
       if (z !== playerNode._nativeZ) { playerNode._nativeZ = z; sorted = true; }
       { const hk = heightDepth == null ? '' : String(Math.round(heightDepth)); if (hk !== playerNode._ghtK) { playerNode._ghtK = hk; sorted = true; } }   // (up on a floor: behind its lamp room or in front, and on to or off it)
-      const bob = !playerInner.querySelector('.gpl-root') && _gw.moving && gardenMotionOn() ? -Math.abs(Math.sin(time / 1000 * (_gw.sneak ? 7 : 11))) * 1.6 : 0;
+      const bob = _gw.moving && gardenMotionOn() && !playerInner.querySelector('.gpl-root') ? -Math.abs(Math.sin(time / 1000 * (_gw.sneak ? 7 : 11))) * 1.6 : 0;   // (speed pass: the figure's tree is searched only while walking)
       playerBob.setAttribute('transform', 'translate(0 ' + bob + ')');
       if (typeof gartMoveFrame === 'function') gartMoveFrame(playerInner, playerBob, _gw, time);   // the turn, the stride, the hop
       // A thing you stand behind (the lighthouse's door is at its back, the summer house's on its far side) stays

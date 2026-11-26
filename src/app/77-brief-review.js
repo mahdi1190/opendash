@@ -321,7 +321,9 @@ function _wkWins(b, r, d) {
   b.appendChild(w);
 }
 /* 7. AI summary, notes and save */
-function _wkFacts(r, d) {
+// (its own name: the garden's folk have a _wkFacts too (94-garden-wonder-1kin.js), and in the one shared script the later one won,
+// so the week's summary was asked for with the garden's facts of the day instead of the week's numbers)
+function _wkReviewFacts(r, d) {
   const st = _wkStats(r);
   return {
     week: `${r.from} to ${r.to}`, completed: st.completed, perArea: st.perStream.slice(0, 10),
@@ -342,7 +344,7 @@ function _wkFinish(b, r, d) {
     if (_wk.summaryLoading) return;
     _wk.summaryLoading = true; t.innerHTML = '<span class="skeleton skeleton-text" style="width:90%"></span>';
     try {
-      const j = await _bfPost('/api/brief/summary', { kind: 'week', date: r.from, facts: _wkFacts(r, d), regenerate: true });
+      const j = await _bfPost('/api/brief/summary', { kind: 'week', date: r.from, facts: _wkReviewFacts(r, d), regenerate: true });
       d.summary = j.text || ''; _wkSaveDraft(); t.classList.remove('muted'); briefTypeText(t, d.summary);
     } catch (e) { t.textContent = e.code === 'OFF' ? 'The AI summary is off in Settings.' : typeof _bfAiErrorText === 'function' ? _bfAiErrorText(e, d.summary ? 'Rewrite' : 'Write summary') : e.status === 503 ? 'Connect Claude for a written summary.' : 'The summary could not be written just now.'; }
     _wk.summaryLoading = false;
