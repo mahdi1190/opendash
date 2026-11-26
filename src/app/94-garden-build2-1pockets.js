@@ -71,7 +71,8 @@ function _gb2FirstRun(g) {
   _gb2Write(slots);
   _gb2.base = null;
   try { if (typeof _gdSave === 'function') _gdSave(); } catch (e) { /* saved with the next change */ }
-  setTimeout(() => { try { gardenMessage('Your things are in your pockets now (B), and the rest is safe at home. Your storage chest is in your pockets: put it down near your home, and open it to take things out or put them away.', { icon: 'package', ms: 12000 }); } catch (e) { /* said next time */ } }, 1200);
+  let kept = 0; try { kept = gardenStoredIndex(gardenHere()).rows.length; } catch (e) { kept = 0; }
+  setTimeout(() => { try { gardenMessage('Your things are in your pockets now (B), and the rest is safe at home. Your storage chest is in your pockets: put it down near your home, and open it to take things out or put them away.' + (kept ? ' The plants and decorations you kept whole are in your storage too.' : ''), { icon: 'package', ms: 12000 }); } catch (e) { /* said next time */ } }, 1200);
 }
 
 /* ---------- what comes in, what goes out ---------- */

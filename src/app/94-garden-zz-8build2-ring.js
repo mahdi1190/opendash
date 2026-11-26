@@ -112,7 +112,7 @@ function gardenB2Bar(box, m) {
   const v = gardenB2View(), cur = gardenB2RingTool(), held = _gb2HandItem(), tools = gardenB2Tools(), tag = _gb2.tagT > performance.now();
   let rid = '', nid = ''; try { rid = gardenRod().id; nid = gardenNet().id; } catch (e) { /* none */ }
   const heldN = held ? _gb2InPockets(v, held) : 0;
-  const key = ['gb2', cur, held, heldN, v.used, v.size, tools.map(t => t.id).join(','), tag ? 1 : 0, rid, nid, m && m.visit ? 1 : 0, _gh.bag ? 1 : 0, gardenHas('tool:golden-shears') > 0 ? 1 : 0].join('|');
+  const key = ['gb2', cur, held, heldN, v.used, v.size, tools.map(t => t.id).join(','), tag ? 1 : 0, rid, nid, m && m.visit ? 1 : 0, _gh.bag ? 1 : 0, gardenHas('tool:golden-shears') > 0 ? 1 : 0, typeof _gdp !== 'undefined' && _gdp.moving ? _gdp.moving.uid : '', v.slots.some(e => e && e.i === 'decor:storage-chest') && typeof _gb2ChestOut === 'function' && !_gb2ChestOut() ? 'c' : ''].join('|');
   const el = _ghHost(box, 'gd-toolbar gd-hotbar');
   if (_gh.bar === key && el.firstChild && el.classList.contains('gb2-on')) return true;
   _gh.bar = key;
@@ -123,12 +123,18 @@ function gardenB2Bar(box, m) {
     html += `<button type="button" class="gd-slot gb2-tool" data-gb2-tool="${t.id}" data-tool="${t.page}" style="--a:${a}" aria-pressed="${on ? 'true' : 'false'}" aria-label="${escAttr(name)} (${i + 1})" data-tip="${escAttr(name + ' (' + (i + 1) + '): ' + t.says)}"><kbd>${i + 1}</kbd><span class="gb2-tool-art">${_gb2ToolSvg(t.id)}</span></button>`;
   });
   html += '</div>';
+  const moving = typeof _gdp !== 'undefined' && _gdp.moving;
+  if (moving && !held) {   // a thing being moved (or put back out from your storage): its picture, and how to stop
+    let art = ''; try { art = gardenIconSvg(moving.id, { kind: moving.kind === 'plant' ? 'plant' : 'decor', px: 34 }); } catch (e) { art = ''; }
+    html += `<button type="button" class="gd-slot gb2-held" data-gb2="stopmove" aria-pressed="true" aria-label="Moving it: click where it should go. Stop (Esc)" data-tip="Click where it should go. Esc stops"><kbd>Esc</kbd>${art || icon('move')}</button>`;
+  }
   if (held) {
     const name = gardenB2Name(held);
     html += `<button type="button" class="gd-slot gb2-held" data-gb2="putback" aria-pressed="true" aria-label="${escAttr(name)} in your hand, ${heldN} in your pockets. Put it back (X)" data-tip="${escAttr(name + ' in your hand. X puts it back')}"><kbd>X</kbd>${gardenB2Svg(held, 34)}<i class="gd-slotn">${heldN}</i></button>`;
   }
   const full = v.free <= 0, fill = v.size ? v.used / v.size : 0;
-  html += `<button type="button" class="gd-slot gd-slot-bag gb2-bagbtn${full ? ' is-full' : fill >= 0.85 ? ' is-nearly' : ''}" data-slot="bag" aria-pressed="${_gh.bag ? 'true' : 'false'}" aria-label="Your pockets: ${v.used} of ${v.size} used (B)" data-tip="Your pockets (B): ${v.used} of ${v.size} used"><kbd>B</kbd><span class="gb2-bagart">${_GH_GLYPH.bag}</span><span class="gb2-bagcap"><b>${v.used}</b>/${v.size}</span><i class="gb2-bagfill" style="--f:${fill.toFixed(3)}"></i></button>`;
+  const chestWaits = v.slots.some(e => e && e.i === 'decor:storage-chest') && typeof _gb2ChestOut === 'function' && !_gb2ChestOut() && !(m && m.visit);   // (your chest is still in your pockets: a little dot until it is down)
+  html += `<button type="button" class="gd-slot gd-slot-bag gb2-bagbtn${full ? ' is-full' : fill >= 0.85 ? ' is-nearly' : ''}" data-slot="bag" aria-pressed="${_gh.bag ? 'true' : 'false'}" aria-label="Your pockets: ${v.used} of ${v.size} used (B)${chestWaits ? '. Your storage chest is in them' : ''}" data-tip="Your pockets (B): ${v.used} of ${v.size} used"><kbd>B</kbd><span class="gb2-bagart">${_GH_GLYPH.bag}</span><span class="gb2-bagcap"><b>${v.used}</b>/${v.size}</span><i class="gb2-bagfill" style="--f:${fill.toFixed(3)}"></i>${chestWaits ? '<i class="gb2-newdot" aria-hidden="true"></i>' : ''}</button>`;
   if (tag && !held) { const T = tools.find(t => t.id === cur); if (T) html += `<span class="gb2-tag" role="status"><b>${esc(_gb2ToolName(T.id))}</b><small>${esc(T.says)}. <kbd>T</kbd> next tool</small></span>`; }
   el.innerHTML = html; el.classList.add('gb2-on'); el.setAttribute('role', 'toolbar'); el.setAttribute('aria-label', 'Your tools and pockets');
   _gb2WheelBind(box);
@@ -137,6 +143,7 @@ function gardenB2Bar(box, m) {
     el.addEventListener('click', (ev) => {
       const t = ev.target.closest('[data-gb2-tool]'); if (t) { ev.stopPropagation(); gardenB2PickTool(t.dataset.gb2Tool, { toggle: true }); return; }
       const p = ev.target.closest('[data-gb2="putback"]'); if (p) { ev.stopPropagation(); gardenB2PutBack(); return; }
+      const mv = ev.target.closest('[data-gb2="stopmove"]'); if (mv) { ev.stopPropagation(); if (typeof gardenMoveEnd === 'function') gardenMoveEnd(); return; }
       const b = ev.target.closest('[data-slot="bag"]'); if (b) { ev.stopPropagation(); gardenSlotPick('bag'); }
     });
   }

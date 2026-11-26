@@ -63,6 +63,8 @@ html[data-theme="dark"] .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar
 .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on .gb2-bagbtn.is-full .gb2-bagfill::after { background: var(--gu-rose); }
 .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on .gb2-bagbtn.is-bump { animation: gb2-bump .46s var(--gu-ease); }
 .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on .gb2-bagbtn.is-full-shake { animation: gb2-shake .5s ease-in-out; }
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on .gb2-newdot { position: absolute; right: -3px; top: -3px; width: 13px; height: 13px; background: var(--gu-gold); border: 2px solid var(--gu-card); border-radius: 50%; box-shadow: 0 1px 2px rgba(30, 18, 8, .35); animation: gb2-pulse 1.8s ease-in-out infinite; pointer-events: none; }
+@keyframes gb2-pulse { 0%, 100% { scale: 1; } 50% { scale: 1.25; } }
 @keyframes gb2-bump { 0% { scale: 1; } 35% { scale: 1.16; } 100% { scale: 1; } }
 @keyframes gb2-shake { 20% { translate: -3px 0; } 40% { translate: 3px 0; } 60% { translate: -2px 0; } 80% { translate: 2px 0; } }
 /* the chosen tool's name, for a moment after you change it */
@@ -186,7 +188,16 @@ html[data-theme="dark"] .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-slot.
   .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on .gb2-tool-art svg { width: 25px; height: 25px; }
   .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-acts { flex-basis: 100%; max-width: none; margin-left: 0; justify-content: flex-start; }
 }
+@container (max-width: 420px) {
+  .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-ring { padding: 12px 6px 6px; gap: 1px; }
+  .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on .gd-slot.gb2-tool { width: 34px; height: 34px; --lift: calc(var(--a, 0) * var(--a, 0) * 1.2px); }
+  .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on .gb2-tool-art svg { width: 22px; height: 22px; }
+  .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on .gd-slot.gb2-held { width: 42px; height: 42px; }
+  .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on .gd-slot.gb2-bagbtn { width: 48px; height: 48px; padding-bottom: 9px; }
+  .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on .gb2-bagart svg { width: 24px; height: 24px; }
+}
 @media (prefers-reduced-motion: reduce) {
+  .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on .gb2-newdot { animation: none; }
   .gd-page .gd-stagebox.gd-stagebox.gd-stagebox :is(.gb2-slot, .gb2-act, .gd-hotbar.gb2-on .gd-slot.gb2-tool) { transition: none; }
   .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar.gb2-on :is(.gb2-bagbtn.is-bump, .gb2-bagbtn.is-full-shake, .gb2-tag, .gd-slot.gb2-held) { animation: none; }
 }
