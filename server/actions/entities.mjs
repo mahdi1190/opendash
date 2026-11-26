@@ -21,6 +21,7 @@ const has = (o, k) => o && Object.prototype.hasOwnProperty.call(o, k);
 // Whole top-level keys the calendar/email ops snapshot as one entity ('key:<name>').
 const CALENDAR_KEYS = new Set(['calendarSettings', 'emailTriage', 'reviews',   // + ops-brief.mjs (state.reviews)
   'pinnedTags', 'quickTemplates', 'taskTemplates', 'viewFilter',                // + tag rename/merge/delete (ops.mjs retagElsewhere)
+  'smartLists', 'sidebarLayout', 'taskViewPrefs', 'taskBoards', 'boardOrder',   // + what tglRenameRefs changes in a rename/merge (B9)
   'profile', 'wardrobe', 'pet', 'theme', 'autoTheme', 'density',                 // + ops-agent.mjs
   'friendPerms']);                                                               // + ops-sensitive.mjs
 const val = (o, k) => (has(o, k) ? clone(o[k]) : null);

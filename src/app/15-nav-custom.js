@@ -119,10 +119,12 @@ function sbLayoutDrag(sb) {
     makeSortable(sb, { items: '.sb-block', handle: '.nav-sec', idOf: n => n.dataset.block,
       onReorder: (ids) => { const t = _sbTab(); const all = sbLayoutBlocks(SIDEBAR_BLOCKS.filter(b => b.groups.includes(t)), t, { all: true }).map(b => b.id); sbLayoutEdit(L => { L.order[t] = sbMergeOrder(ids, all); }); } });
   }
+  // The Views block is redrawn on every render: one live sortable, the old one destroyed (LEAK-1).
+  if (sb._sbViewsSort) { try { sb._sbViewsSort.destroy(); } catch (e) { /* already gone */ } sb._sbViewsSort = null; }
   const tv = sb.querySelector(':scope > .sb-block[data-block="task-views"]');
   if (tv && tv.querySelectorAll(':scope > .nav-item[data-view]').length > 1) {
     // Dragging the rows up front keeps what is folded where it is (the placement becomes the user's own).
-    makeSortable(tv, { items: '.nav-item[data-view]', idOf: n => n.dataset.view, onReorder: (ids) => sbLayoutEdit(L => { _sbViewsFreeze(L); L.items['task-views'] = sbMergeOrder(ids, L.items['task-views']); }) });
+    sb._sbViewsSort = makeSortable(tv, { items: '.nav-item[data-view]', idOf: n => n.dataset.view, onReorder: (ids) => sbLayoutEdit(L => { _sbViewsFreeze(L); L.items['task-views'] = sbMergeOrder(ids, L.items['task-views']); }) });
   }
 }
 /** The note at the foot of the sidebar when something is hidden (plain, so nothing is lost from sight). */
@@ -295,9 +297,12 @@ document.addEventListener('contextmenu', (e) => {
 function openSidebarCustomiser(tab) {
   tab = tab || _sbTab();
   if (!_SB_TABS.some(x => x[0] === tab)) tab = 'tasks';
-  let body = null;
+  let body = null, sorts = [];
   const paint = () => {
     if (!body) return;
+    // Each repaint draws new lists: the last paint's sortables go first (LEAK-1).
+    for (const s of sorts) { try { s.destroy(); } catch (e) { /* already gone */ } }
+    sorts = [];
     const keepScroll = body.scrollTop;
     body.innerHTML = '';
     const L = sbLayout();
@@ -333,7 +338,7 @@ function openSidebarCustomiser(tab) {
       list.appendChild(row);
     }
     body.appendChild(list);
-    if (typeof makeSortable === 'function') makeSortable(list, { items: '.sbc-row', idOf: n => n.dataset.id, onReorder: (ids) => { sbLayoutEdit(Lx => { Lx.order[tab] = ids; }); paint(); } });
+    if (typeof makeSortable === 'function') sorts.push(makeSortable(list, { items: '.sbc-row', idOf: n => n.dataset.id, onReorder: (ids) => { sbLayoutEdit(Lx => { Lx.order[tab] = ids; }); paint(); } }));
     // Rows of the Views section (Tasks): each Shown, In More (under More views) or Hidden (2.18).
     if (tab === 'tasks') {
       const rows = _sbViewRows();
@@ -380,7 +385,7 @@ function openSidebarCustomiser(tab) {
         vl.appendChild(row);
       }
       body.appendChild(vl);
-      if (typeof makeSortable === 'function') makeSortable(vl, { items: '.sbc-row', idOf: n => n.dataset.id, onReorder: (ids) => { sbLayoutEdit(Lx => { _sbViewsFreeze(Lx); Lx.items['task-views'] = ids; }); paint(); } });
+      if (typeof makeSortable === 'function') sorts.push(makeSortable(vl, { items: '.sbc-row', idOf: n => n.dataset.id, onReorder: (ids) => { sbLayoutEdit(Lx => { _sbViewsFreeze(Lx); Lx.items['task-views'] = ids; }); paint(); } }));
     }
     // Pins
     const h3 = document.createElement('div'); h3.className = 'field-label sbc-h'; h3.textContent = 'Pinned to the top'; body.appendChild(h3);
@@ -396,7 +401,7 @@ function openSidebarCustomiser(tab) {
     // An empty list inside a dialog: one muted line that says what goes here (UI_CLEANUP_PLAN.md 3.6).
     if (!pins.length) pl.appendChild(emptyLine('Nothing pinned yet. Right-click a list, stream, tag or person to pin it, or add one here.'));
     body.appendChild(pl);
-    if (typeof makeSortable === 'function' && pins.length > 1) makeSortable(pl, { items: '.sbc-row', idOf: n => n.dataset.id, onReorder: (ids) => { sbLayoutEdit(Lx => { Lx.pins = ids; }); paint(); } });
+    if (typeof makeSortable === 'function' && pins.length > 1) sorts.push(makeSortable(pl, { items: '.sbc-row', idOf: n => n.dataset.id, onReorder: (ids) => { sbLayoutEdit(Lx => { Lx.pins = ids; }); paint(); } }));
     body.appendChild(uiButton({ label: 'Pin something…', icon: 'pin', kind: 'ghost', size: 'sm', cls: 'sbc-add', run: (e, btn) => openMenu(btn, _sbPinChoices(), { align: 'start', width: 260 }) }));
     body.scrollTop = keepScroll;
   };
