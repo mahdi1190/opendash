@@ -17,11 +17,12 @@
    ============================================================ */
 const _gts = { chest: null, chestKey: '', prog: 0, n: -1, hauling: 0, helpers: new Map(), heardAt: 0, hostProg: -1, sprite: null, tellT: 0, saidDay: -1, opened: new Set() };
 const GT_BOTTLE_LINES = Object.freeze([
-  'The harbour master: "If this finds you, the kettle is on. Mind the steps, they are slippery after a blow."',
-  'The miller: "Thrown from the mill race bridge. Did it really get all the way to the sea? Bring it back and tell me."',
-  'The angler: "Lost my lucky float in the storm. If you find it, keep it. It never caught me anything anyway."',
-  'The baker: "A recipe my gran swore by. It is on the back. Do not tell the others."',
-  'The lighthouse keeper: "Counted every wave last night. There were a lot of them. Here is something for your trouble."',
+  'Pip: “I threw this off the far rocks to see where the sea would take it. It took it to you. Keep what is inside, I have plenty.”',
+  'Bramble: “I drew the whole coast from the cliff top and ran out of paper, so the rest went on the back of this. It is a recipe now. Sorry.”',
+  'Quince: “A recipe my mother swore by. Do not tell the others where you got it.”',
+  'Tam: “I do not like the sea. I put this in it anyway, to be brave. Did it work?”',
+  'Wick: “I counted the waves all night in the storm. There were a lot of them. Here is something for your trouble.”',
+  'Mother Thistle: “If this finds you, the kettle is on. Mind the rocks, they are slippery after a blow.”',
 ]);
 function _gtsDayOwn() { return Math.floor(gardenTideNow({ own: true }).lm / 1440); }
 /** The day (days since 1970, local) of your last rough night, if it was last night or the night before, else -1. */
