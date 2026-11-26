@@ -12,6 +12,7 @@
 //                                                add / remove ids, or clear. Loops are refused.
 
 import { ActionError, resolvePerson, truncate } from './model.mjs';
+import { waitTags } from '../../lib/waiting-rules.mjs';
 
 const obj = (properties, required = [], extra = {}) => ({ type: 'object', properties, required, additionalProperties: false, ...extra });
 const taskId = { type: 'string', minLength: 1, maxLength: 160, description: "task id from list_tasks / search_tasks (never invent one), or '$name' for a task created earlier in the same batch with ref:'name'" };
@@ -30,17 +31,27 @@ function dependsOn(s, a, b, seen = new Set()) {
 export const WAITING_OPS = [
   {
     name: 'task.set_waiting', tool: 'set_task_waiting',
-    description: "Mark a task as waiting on someone (person: id, name or alias), or on no one in particular (person omitted, waiting true). waiting:false stops waiting and puts it back on the user's lists. A waiting task leaves Today, Upcoming and No date for the Waiting list; after a few days a follow-up nudge appears. get_person shows what each person owes the user.",
+    description: "Mark a task as waiting on someone (person: id, name or alias), or on no one in particular (person omitted, waiting true). waiting:false stops waiting (a waiting- or blocked- tag counts as waiting and is taken off) and puts it back on the user's lists. A waiting task leaves Today, Upcoming and No date for the Waiting list, and its plan (plannedFor) is removed; after a few days a follow-up nudge appears. get_person shows what each person owes the user.",
     schema: obj({ id: taskId, waiting: { type: 'boolean', description: 'true (default) = waiting; false = no longer waiting' }, person: { type: 'string', minLength: 1, maxLength: 100, description: 'who it waits on: person id from list_people (an exact name or alias also works)' }, since: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$', formatHint: 'YYYY-MM-DD', description: 'when the waiting started (default today)' } }, ['id']),
     run(ctx, p) {
       const t = ctx.task(p.id);
       const from = t.waitingOn || (t.waiting === true ? 'someone' : null);
       if (p.waiting === false) {
-        if (!from && ((ctx.s.statuses || {})[t.id]) !== 'waiting') { ctx.warn(`'${label(t)}' is not waiting on anyone`); return { summary: 'No change', changes: [] }; }
+        // As the page's "Back on my list" (RF_DO.unwait): a waiting- / blocked- tag is a wait too, and is taken off.
+        const tags = Array.isArray(t.tags) ? t.tags : [];
+        const gone = waitTags(t);
+        const flagged = !!from || ((ctx.s.statuses || {})[t.id]) === 'waiting';
+        if (!flagged && !gone.length) { ctx.warn(`'${label(t)}' is not waiting on anyone`); return { summary: 'No change', changes: [] }; }
         delete t.waitingOn; delete t.waiting; delete t.waitingSince; delete t.waitingNudgedAt;
         if (ctx.s.statuses && ctx.s.statuses[t.id] === 'waiting') ctx.s.statuses[t.id] = 'todo';
+        const changes = flagged ? [change(t, 'waitingOn', from, null)] : [];
+        if (gone.length) {
+          t.tags = tags.filter(x => !gone.includes(x));
+          ctx.log(t.id, 'tags', { from: tags, to: t.tags, text: `Tag${gone.length === 1 ? '' : 's'} removed: ${gone.join(', ')}` });
+          changes.push(change(t, 'tags', tags, t.tags));
+        }
         ctx.log(t.id, 'waiting', { text: 'No longer waiting' });
-        return { summary: `"${label(t)}" is no longer waiting`, changes: [change(t, 'waitingOn', from, null)] };
+        return { summary: `"${label(t)}" is no longer waiting`, changes };
       }
       const who = p.person ? resolvePerson(ctx.s, p.person) : null;
       if (who) {
@@ -50,8 +61,15 @@ export const WAITING_OPS = [
       } else { delete t.waitingOn; t.waiting = true; }
       t.waitingSince = p.since || ctx.today; delete t.waitingNudgedAt;
       if (ctx.s.statuses && ctx.s.statuses[t.id] === 'doing') ctx.s.statuses[t.id] = 'todo';
+      const changes = [change(t, 'waitingOn', from, who ? who.id : 'someone')];
+      // As on the page (RF_DO.wait): the plan goes, so the task leaves Focus and the calendar too.
+      if (t.plannedFor) {
+        ctx.log(t.id, 'plan', { from: t.plannedFor, to: null });
+        changes.push(change(t, 'plannedFor', t.plannedFor, null));
+        delete t.plannedFor; delete t.plannedTime; delete t.plannedMinutes;
+      }
       ctx.log(t.id, 'waiting', { text: who ? `Waiting on ${who.name || who.id}` : 'Waiting on someone' });
-      return { summary: `"${label(t)}" waits on ${who ? (who.name || who.id) : 'someone'} (since ${t.waitingSince})`, changes: [change(t, 'waitingOn', from, who ? who.id : 'someone')] };
+      return { summary: `"${label(t)}" waits on ${who ? (who.name || who.id) : 'someone'} (since ${t.waitingSince})`, changes };
     },
   },
   {
