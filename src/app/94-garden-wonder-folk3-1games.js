@@ -452,11 +452,11 @@ function _vgRowsHtml(res, nameOf) {
 function _vgChipHost(R) {
   const secs = (performance.now() - R.pt) / 1000, me = R.people.get(_vgMeSlot()), playing = me && !me.left;
   const v = { name: R.G.name, icon: R.G.icon, line: '', big: '', btns: [], phase: R.phase };
-  if (R.phase === 'gather') { v.line = R.ready ? 'Everyone to the start!' : (R.I.finding ? R.I.finding(R) : 'Getting ready...'); if (playing) v.btns.push([VF3_SAY.leave, () => gardenGameLeave()]); }
+  if (R.phase === 'gather') { v.line = R.ready ? 'Everyone to the start!' : (R.I.finding ? R.I.finding(R) : 'Getting ready...'); if (playing) v.btns.push([VF3_SAY.leave, () => gardenGameLeave()]); else v.btns.push([VF3_SAY.join(R.G.word), () => _vgJoinMe(), true]); }   // (a friend started it: join in)
   else if (R.phase === 'ready') {
     if (R.I.readyLine) { const o = R.I.readyLine(R, secs); v.line = o.line; v.big = o.big || ''; }
     else { const k = Math.min(VF3_SAY.ready.length - 1, Math.floor(secs)); v.line = R.G.rule; v.big = VF3_SAY.ready[k]; }
-    if (playing) v.btns.push([VF3_SAY.leave, () => gardenGameLeave()]);
+    if (playing) v.btns.push([VF3_SAY.leave, () => gardenGameLeave()]); else v.btns.push([VF3_SAY.join(R.G.word), () => _vgJoinMe(), true]);
   } else if (R.phase === 'play') {
     v.line = (R.I.line ? R.I.line(R, _vgMeSlot()) : '') || R.G.rule;
     v.big = R.I.big ? R.I.big(R, secs) : '';
