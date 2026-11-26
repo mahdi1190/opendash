@@ -165,6 +165,8 @@ function adBanks() {
 /** Every tree standing, from whichever painter drew it (the walker's trunk list): [{ x, y (the trunk's foot), w (its width), sp, kind
  *  ('tree' or 'fruit-tree'), tall }]. Kept until the trunks change. */
 function adTrees() {
+  if (_ad.trees && performance.now() - (_ad.treeAt || 0) < 5000) return _ad.trees;   // (the signature itself is a walk over every painter's list: looked at every few seconds)
+  _ad.treeAt = performance.now();
   let sig = ''; try { sig = typeof _gwTrunkSig === 'function' ? _gwTrunkSig() : ''; } catch (e) { sig = ''; }
   if (_ad.trees && sig === _ad.treeSig) return _ad.trees;
   const out = []; let T = [];
@@ -275,7 +277,7 @@ function gardenNightActRows(px, py) {
 const AD_GLOWS = Object.freeze({ warm: ['#ffc768', '#ffe2a0'], pink: ['#ffc8e0', '#fff0f6'], green: ['#c8ff8a', '#eaffc8'], blue: ['#8ab8ff', '#d8e8ff'], silver: ['#dfe8ff', '#ffffff'], gold: ['#ffd070', '#fff2c0'] });
 function adGlowSvg(kind, r, up) { const c = AD_GLOWS[kind] || AD_GLOWS.warm, R = r || 18, y = -(up == null ? 8 : up); return `<circle class="ad-glow-b" cy="${y}" r="${R}" fill="${c[0]}" opacity="0.22"/><circle cy="${y}" r="${(R * 0.38).toFixed(1)}" fill="${c[1]}" opacity="0.5"/>`; }
 /** A small glint that twinkles (CSS), for something to pick up. */
-function adGlint(y, c) { return `<g class="ad-twinkle" transform="translate(0 ${y == null ? -14 : y})"><path d="M0 -5L1.2 -1.2L5 0L1.2 1.2L0 5L-1.2 1.2L-5 0L-1.2 -1.2z" fill="${c || '#fff4c8'}"/></g>`; }
+function adGlint(y, c) { return `<g transform="translate(0 ${y == null ? -14 : y})"><g class="ad-twinkle"><path d="M0 -5L1.2 -1.2L5 0L1.2 1.2L0 5L-1.2 1.2L-5 0L-1.2 -1.2z" fill="${c || '#fff4c8'}"/></g></g>`; }   // (the moving group is inside the placed one: a CSS transform replaces the element's own)
 
 /* ---------- what friends see: the snapshot's `nt` ---------- */
 function adWire(fn) { _ad.wire.push(fn); }

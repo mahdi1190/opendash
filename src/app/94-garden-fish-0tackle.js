@@ -126,6 +126,7 @@ const GARDEN_LAKE_EVENTS = Object.freeze({
   'blood-moon': Object.freeze({ id: 'blood-moon', name: 'A red moon', says: 'Strange things swim on a night like this. The rarest fish are about.', icon: 'moon', rare: 3, shy: 1.3 }),
   festival: Object.freeze({ id: 'festival', name: 'Fishing festival', says: 'Everything is biting. Weigh in your best fish at the lake board for a rosette.', icon: 'party-popper', rare: 1.5, keen: 1.3 }),
   spawning: Object.freeze({ id: 'spawning', name: 'The fish are spawning', says: 'Shoals in the shallows, and the big ones follow them in.', icon: 'waves', keen: 1.2, rare: 1.2 }),
+  'lamp-moon': Object.freeze({ id: 'lamp-moon', name: 'The Lamp Moon', says: 'The fish come up to look at the moon. Rarer ones come too.', icon: 'moon', rare: 1.5, keen: 1.3 }),   // after dark (94-garden-zz-afterdark-2moon.js): July's full moon
 });
 function _gtDayNo(iso) { return Math.floor(Date.parse(String(iso).slice(0, 10) + 'T12:00:00Z') / 86400000); }   // clock-ok: a day's number, for sums
 function _gtWeekday(iso) { return new Date(String(iso).slice(0, 10) + 'T12:00:00Z').getUTCDay(); }   // clock-ok: weekday maths
@@ -157,6 +158,7 @@ function gardenCatchEventsAt(now, iso, tod, season, rain) {
   if (tod === 'night' && _gtMoon(iso) === 'full' && gardenHash('moon|' + iso.slice(0, 7)) % 2 === 0) out.push('blood-moon');
   if (gardenFestivalOn(iso) === 'fish') out.push('festival');
   if ((season === 'spring' || season === 'autumn') && (tod === 'dawn' || tod === 'day') && day % 5 === 0) out.push('spawning');
+  if (typeof gardenNightLakeEvents === 'function') { try { for (const id of gardenNightLakeEvents(iso, tod)) if (!out.includes(id)) out.push(id); } catch (e) { /* the sky is optional */ } }   // after dark: the Lamp Moon; shooting stars on a comet's or a shower's night (94-garden-zz-afterdark-*.js)
   return out;
 }
 const _gtEv = { key: '', list: [] };

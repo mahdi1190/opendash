@@ -150,7 +150,8 @@ function wdBoxDays(el, m) {
   const rows = WD_DAYS.map(r => { const f = _wdMd(r.from, south && !r.sky), t = _wdMd(r.to, south && !r.sky); return { r, f, t, now: _wdDayOnDate(f, t, md), wait: f >= md ? 0 : 1 }; }).sort((a, b) => (b.now - a.now) || (a.wait - b.wait) || a.f.localeCompare(b.f));
   const P = wdMoon(m.today);
   const moonRow = _gdpEl('div', 'wd-yearrow is-moon'); moonRow.innerHTML = `<span class="wd-env" aria-hidden="true">${icon('moon')}</span>`;
-  const mt = _gdpEl('span', 'wd-letter-t'); mt.appendChild(_gdpEl('b', null, P.full ? 'The moon is full' : `Full moon in ${_wdPlural(P.toFull, 'night')}`)); mt.appendChild(_gdpEl('small', 'muted', 'On the nights round it, there is a road across the lake.')); moonRow.appendChild(mt); el.appendChild(moonRow);
+  const NL = typeof gardenNightMoonLine === 'function' ? gardenNightMoonLine(P, m) : null;   // after dark: the named moons (94-garden-zz-afterdark-2moon.js)
+  const mt = _gdpEl('span', 'wd-letter-t'); mt.appendChild(_gdpEl('b', null, NL ? NL[0] : P.full ? 'The moon is full' : `Full moon in ${_wdPlural(P.toFull, 'night')}`)); mt.appendChild(_gdpEl('small', 'muted', NL ? NL[1] : 'On the nights round it, there is a road across the lake.')); moonRow.appendChild(mt); el.appendChild(moonRow);
   for (const x of rows) {
     const d = _gdpEl('div', 'wd-yearrow' + (x.now ? ' is-now' : '')); d.innerHTML = `<span class="wd-date" aria-hidden="true"><b>${Number(x.f.slice(3))}</b><small>${esc(_WD_MONTHS[Number(x.f.slice(0, 2)) - 1].slice(0, 3))}</small></span>`;
     const t = _gdpEl('span', 'wd-letter-t'); t.appendChild(_gdpEl('b', null, x.r.name + (x.now ? ': now' : ''))); t.appendChild(_gdpEl('small', 'muted', x.r.blurb)); d.appendChild(t); el.appendChild(d);

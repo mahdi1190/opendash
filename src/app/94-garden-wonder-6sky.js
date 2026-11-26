@@ -36,7 +36,7 @@ function _wdSkyDraw() {
     row.e.forEach((pair, i) => { const k = pair[0] + '-' + pair[1], a = row.s[pair[0]], b = row.s[pair[1]]; if (_wdk.done.has(k)) lines += `<line class="wd-sky-l" x1="${X(a)}" y1="${Y(a)}" x2="${X(b)}" y2="${Y(b)}"/>`; else if (_wdk.hint === i) lines += `<line class="wd-sky-h" x1="${X(a)}" y1="${Y(a)}" x2="${X(b)}" y2="${Y(b)}"/>`; });
     row.s.forEach((s, i) => { const on = _wdk.from === i; stars += `<g class="wd-sky-s${on ? ' is-on' : ''}" data-i="${i}" transform="translate(${X(s)} ${Y(s)})" tabindex="0" role="button" aria-label="Star ${i + 1}"><circle r="20" fill="transparent"/><circle class="wd-sky-g" r="9" fill="#dfe8ff" opacity="0.28"/><circle class="wd-sky-c" r="3.6" fill="#fff"/></g>`; });
   }
-  svg.innerHTML = `<defs><linearGradient id="wd-skyg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a1230"/><stop offset="0.7" stop-color="#1b2a54"/><stop offset="1" stop-color="#34425f"/></linearGradient></defs><rect width="1000" height="620" fill="url(#wd-skyg)"/>${bg}<g transform="translate(880 96)">${_wdMoonSvg(P.age, 30)}</g>${lines}${stars}<path d="M0 620V560C110 530 240 572 380 556S650 520 760 552S920 566 1000 540V620z" fill="#0d1526"/><path d="M196 560C190 530 170 520 180 500C166 492 176 470 196 472C204 452 232 456 234 476C252 478 256 500 238 508C250 524 228 540 222 562z" fill="#080e1c"/>`;
+  svg.innerHTML = `<defs><linearGradient id="wd-skyg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a1230"/><stop offset="0.7" stop-color="#1b2a54"/><stop offset="1" stop-color="#34425f"/></linearGradient></defs><rect width="1000" height="620" fill="url(#wd-skyg)"/>${bg}${typeof gardenNightSkySvg === 'function' ? gardenNightSkySvg(P, m) : ''}<g transform="translate(880 96)">${_wdMoonSvg(P.age, 30)}</g>${lines}${stars}<path d="M0 620V560C110 530 240 572 380 556S650 520 760 552S920 566 1000 540V620z" fill="#0d1526"/><path d="M196 560C190 530 170 520 180 500C166 492 176 470 196 472C204 452 232 456 234 476C252 478 256 500 238 508C250 524 228 540 222 562z" fill="#080e1c"/>`;
   const foot = el.querySelector('.wd-sky-foot');
   foot.textContent = '';
   const chips = _gdpEl('div', 'wd-sky-chips');
@@ -49,7 +49,8 @@ function _wdSkyDraw() {
   foot.appendChild(say);
   const go = _gdpEl('div', 'wd-sky-go');
   if (row && !_wdk.told) { const h = _gdpEl('button', 'btn btn-sm btn-ghost', 'Show me one'); h.type = 'button'; h.onclick = () => { _wdk.hint = row.e.findIndex(p => !_wdk.done.has(p[0] + '-' + p[1])); _wdSkyDraw(); }; go.appendChild(h); }
-  const moon = P.full ? 'The moon is full. Go and look at the lake.' : P.name === 'new' ? `The moon is new. Full in ${_wdPlural(P.toFull, 'night')}.` : `The moon is ${P.name}. Full in ${_wdPlural(P.toFull, 'night')}.`;
+  const NL = typeof gardenNightMoonLine === 'function' ? gardenNightMoonLine(P, m) : null;   // after dark: the named moon, and the next one (94-garden-zz-afterdark-2moon.js)
+  const moon = NL ? NL[0] + '. ' + NL[1] : P.full ? 'The moon is full. Go and look at the lake.' : P.name === 'new' ? `The moon is new. Full in ${_wdPlural(P.toFull, 'night')}.` : `The moon is ${P.name}. Full in ${_wdPlural(P.toFull, 'night')}.`;
   go.appendChild(_gdpEl('span', 'wd-sky-moon', moon));
   const c = _gdpEl('button', 'btn btn-sm', 'Back to the garden'); c.type = 'button'; c.onclick = () => _wdSkyClose(); go.appendChild(c);
   foot.appendChild(go);

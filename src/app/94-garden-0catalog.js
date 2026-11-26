@@ -501,6 +501,13 @@ const GARDEN_DECOR = _gdRows([
   _gD('dc-mossy-steps', 'Steps to nowhere', 'ornament', { price: 20, lv: 5, look: { c: '#a39b8c', c2: '#5a8a4a', h: 0.5 }, blurb: 'Ruins. Three steps up, then you have to come down.' }),
   _gD('dc-stone-lion', 'Worn stone lion', 'ornament', { craft: 1, price: 0, look: { c: '#a39b8c', c2: '#c4bdae', h: 0.9 }, blurb: 'Ruins. His nose has been patted away.' }),
   _gD('rose-arch', 'Rose arch', 'structure', { craft: 1, price: 0, w: 2, look: { c: '#7a5a3a', c2: '#d8405a', h: 1.4, parts: [['post', { x: -24, w: 5, h: 72 }], ['post', { x: 24, w: 5, h: 72 }], ['block', { y: -70, w: 58, h: 6 }], ['bush', { x: -24, y: -22, w: 14, h: 30, clip: 'sway' }], ['bush', { x: 24, y: -22, w: 14, h: 30, clip: 'sway' }], ['bush', { y: -74, w: 40, h: 16, clip: 'sway' }]] }, blurb: 'Left by a friend, with a note.' }),
+  /* after dark (94-garden-zz-afterdark-*.js), painted in 94-garden-native-painted-decor-afterdark.js */
+  _gD('moth-sheet', 'Moth sheet', 'light', { w: 2, price: 7, lv: 3, glow: 1, look: { c: '#f6f2e8', c2: '#ffd36a', h: 1.8 }, effect: { kind: 'play', game: 'moth-sheet' }, blurb: 'A white sheet and a lantern. On a warm night the moths come to it, a few at first, then more.' }),
+  _gD('weathervane', 'Weathervane', 'ornament', { price: 6, lv: 2, look: { c: '#2f3438', c2: '#c8a24a', h: 2 }, effect: { kind: 'play', game: 'weather-vane' }, blurb: 'A cockerel on a post. Tell it what tomorrow will be, and find out if you were right.' }),
+  _gD('star-lantern', 'Star lantern', 'light', { craft: 1, price: 0, look: { c: '#2f3438', c2: '#d8c8ff', h: 1.6 }, effect: { kind: 'light' }, blurb: 'A stone from a fallen star, in a lantern. It glows all night.' }),
+  _gD('moon-lantern', 'Moon lantern', 'light', { craft: 1, price: 0, look: { c: '#2f3438', c2: '#e8eefc', h: 1.6 }, effect: { kind: 'light' }, blurb: 'For three named moons seen: a little moon of your own on a crook.' }),
+  _gD('moon-dial', 'Moon dial', 'ornament', { craft: 1, price: 0, look: { c: '#b4b0a6', c2: '#c8a05a', h: 0.95 }, effect: { kind: 'play', game: 'ad-moons' }, blurb: 'For twelve named moons. The moon’s eight shapes, and which one is next.' }),
+  _gD('rainbow-arch', 'Rainbow arch', 'structure', { craft: 1, price: 0, w: 2, look: { c: '#f6f2e6', c2: '#e8504e', h: 2.2 }, blurb: 'Seven scales from where the rainbow really touched the ground.' }),
 ]);
 const _GD_DECOR = new Map(GARDEN_DECOR.map(d => [d.id, d]));
 

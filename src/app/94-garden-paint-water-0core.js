@@ -1179,13 +1179,13 @@ window.GardenPaintWater = (function () {
       const pool = [], NM = 60, hh = (a, b) => { let h = Math.imul(a * 374761393 ^ b * 668265263, 2246822519) >>> 0; h ^= h >>> 13; return (h % 10000) / 10000; };
       for (let i = 0; i < NM; i++) pool.push({ im: add(scene.add.image(0, 0, T.streak)).setAlpha(0).setVisible(false).setBlendMode(Phaser.BlendModes.ADD), on: false });
       out.push({ b: { x: -1e6, y: -1e6, w: 2e6, h: 2e6 }, list: pool, kind: 'moon path', update(dt, t) {
-        const v = S.view; let n = 0;
-        if (v) { const cx0 = v.x + v.w * .6, step = 7;
+        const v = S.view, NS = window.GardenNightSky, mk = NS ? NS.k : 1; let n = 0;   // (after dark, 94-garden-zz-afterdark-1kit.js: none at a new moon, full at the full; a named moon's tint; the vale lights green and violet)
+        if (v && mk >= .08) { const cx0 = v.x + v.w * .6, step = 7;
           for (let y = Math.floor(v.y / step) * step; y < v.y + v.h && n < NM; y += step) {
             const row = Math.round(y / step), wob = Math.sin(t * .9 + row * .7) * 3 + (hh(row, 3) - .5) * 14, x = cx0 + wob, m = MK.at(x, y); if (!m || !MK.at(x - 10, y) || !MK.at(x + 10, y)) continue;
             const fl = (Math.sin(t * (1.3 + hh(row, 5)) + row * 2.1) + 1) / 2; if (fl < .25) continue;
             const g = pool[n++]; if (!g.on) { g.im.setVisible(true); g.on = true; }
-            g.im.setTint(0xd8e2f0).setPosition(x, y).setScale(.5 + hh(row, 7) * 1.1 + fl * .3, .7).setAlpha((m & 2 ? .5 : .38) * fl);
+            g.im.setTint(NS ? (NS.aurora ? (row & 1 ? 0x9cf0b8 : 0xc8a8f8) : NS.tint) : 0xd8e2f0).setPosition(x, y).setScale(.5 + hh(row, 7) * 1.1 + fl * .3, .7).setAlpha((m & 2 ? .5 : .38) * fl * (.25 + .75 * mk));
           } }
         for (let i = n; i < NM; i++) { const g = pool[i]; if (g.on || g.im.visible) { g.im.setVisible(false); g.on = false; } }
       } });
