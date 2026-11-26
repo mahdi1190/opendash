@@ -488,7 +488,8 @@ function _glvEvent(ev) {
       if (ev.c === 'marble') { if (typeof gardenMarbleGuestState === 'function') gardenMarbleGuestState(ev); return; }
       if (ev.c === 'kite') { if (typeof gardenKiteGuestState === 'function') gardenKiteGuestState(ev); return; }
       if (ev.c === 'ct') { if (typeof _ctGuestEvent === 'function') _ctGuestEvent(ev); return; }   // the host's contest round (94-garden-live-7contest.js)
-      if (ev.c === 'gm') { if (typeof gardenGameGuestEvent === 'function') gardenGameGuestEvent(ev); return; }   // (folk3: the host's game with the vale's folk, 94-garden-wonder-folk3-1games.js)
+      if (ev.c === 'gm') { if (typeof gardenGameGuestEvent === 'function') gardenGameGuestEvent(ev); return; }
+      if (ev.c === 'mo') { if (typeof gardenSceneGuestEvent === 'function') gardenSceneGuestEvent(ev); return; }   // (folk3: the host's public moment, a festival's opening)   // (folk3: the host's game with the vale's folk, 94-garden-wonder-folk3-1games.js)
       const A = _gll.actors.get(ev.w); if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return;
     }
     case 'd': _glvDelta(ev.ops); return;

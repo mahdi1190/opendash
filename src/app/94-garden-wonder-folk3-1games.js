@@ -383,6 +383,7 @@ function gardenGameActRows(px, py) {
       if (G.joined && G.phase === 2 && G.I && G.I.gRows) out.push(...G.I.gRows(G, px, py));
     }
     if (!R && !(G && !G.over)) out.push(..._vgBoardRows(px, py));
+    if (!R && !(G && !G.over) && typeof gardenKitActRows === 'function') out.push(...gardenKitActRows(px, py));   // (the day's kit: a stall, the brazier, the card table: 94-garden-wonder-folk3-6kit.js)
   } catch (e) { console.error('[vale games]', e); }
   for (const r of out) if (r.run) r.down = true;   // (a game's move is offered whichever way you face: the prompt keeps rows marked so even when behind you)
   return out;
@@ -634,6 +635,7 @@ function gardenGameBoard(t) {
   if (wants.length) lines.push(wants.map(([id, g]) => `${_vgFolkCap(id)} wants ${g === 'race' ? 'a race' : g === 'seek' ? 'a game of hide and seek' : g === 'stones' ? 'to skim stones' : 'a treasure hunt'}.`).join(' '));
   else lines.push(m.visit ? 'The games here are your host’s. Walk up to one of their folk, or ask your host.' : 'Nobody is out for a game just now. Try again later, or ask someone.');
   const best = VALE_GAME_IDS.filter(g => Number.isFinite(Number(W['vb.' + g])) || Number(W['vr.' + g]) > 0).map(g => `${VALE_GAMES[g].word}: ${Number(W['vr.' + g]) || 0} won${Number.isFinite(Number(W['vb.' + g])) && W['vb.' + g] !== undefined ? ', best ' + valeBestWords(g, Number(W['vb.' + g])) : ''}`);
+  { const yl = typeof gardenYearBoardLine === 'function' ? gardenYearBoardLine(m) : ''; if (yl) lines.unshift(yl); }   // (what is on today, and a festival coming: 94-garden-wonder-folk3-7year.js)
   lines.push(best.length ? 'Yours: ' + best.join('. ') + '.' : 'Your wins and bests go up here once you have played.');
   if (m.visit) { const gb = (_wdTheir(m).gb) || []; if (gb.length) lines.push('Your host’s: ' + gb.map(r => `${(VALE_GAMES[r[0]] || { word: r[0] }).word}: ${r[2]} won${r[1] ? ', best ' + valeBestWords(r[0], r[1]) : ''}`).join('. ') + '.'); }
   if (wants.length && !m.visit) { const [id, g] = wants[0]; acts.push({ label: `Ask ${_vgFolkCap(id)}`, primary: true, run: () => { wdTalkClose(true); gardenGameStart(g, { by: id }); } }); }
@@ -653,7 +655,10 @@ function gardenGameWire(w) {
   } catch (e) { return null; }
 }
 function gardenFolkFacts() {
-  try { const W = _wdG(); return { vgRace: Number(W['vr.race']) || 0, vgSeek: Number(W['vr.seek']) || 0, vgSkip: Number(W['vb.stones']) || 0, vgHunt: Number(W['vr.hunt']) || 0 }; } catch (e) { return null; }
+  try {
+    const W = _wdG(), Y = typeof gardenYearFacts === 'function' ? gardenYearFacts() : {}, C = typeof gardenChronicleFacts === 'function' ? gardenChronicleFacts() : {};   // (the week, the fair and the vale's story: 94-garden-wonder-folk3-7year.js, -9chron.js)
+    return { vgRace: Number(W['vr.race']) || 0, vgSeek: Number(W['vr.seek']) || 0, vgSkip: Number(W['vb.stones']) || 0, vgHunt: Number(W['vr.hunt']) || 0, vyFest: Number(Y.fest) || 0, vhist: Number(C.vhist) || 0 };
+  } catch (e) { return null; }
 }
 /* ---------- the world's loop ---------- */
 wdMod({

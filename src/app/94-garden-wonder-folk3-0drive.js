@@ -19,7 +19,7 @@
      gardenFolkDrivePose(V)          the pose word friends get ('run', 'walk', or the pose)
    ============================================================ */
 const VF3_STRENGTH = Object.freeze({ scene: 4, game: 3, fest: 2, week: 1 });
-const _VF3_POSES = ['idle', 'talk', 'sit', 'read', 'fish', 'cheer', 'clap', 'point', 'crouch', 'peek', 'count', 'listen', 'boots', 'throw', 'ready', 'seek', 'dig', 'shrug', 'laugh'];
+const _VF3_POSES = ['idle', 'talk', 'sit', 'read', 'fish', 'cheer', 'clap', 'point', 'crouch', 'peek', 'count', 'listen', 'boots', 'throw', 'ready', 'seek', 'dig', 'shrug', 'laugh', 'stall', 'warm', 'browse'];
 const _VF3_PI = new Map(_VF3_POSES.map((p, i) => [p, i]));
 function _vf3V(id) { return typeof _vfr !== 'undefined' && _vfr.V ? _vfr.V.get(id) || null : null; }
 function gardenFolkFree(id, by) {

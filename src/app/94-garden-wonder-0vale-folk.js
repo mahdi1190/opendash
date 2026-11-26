@@ -42,6 +42,7 @@ function _vfrDoorOf(t) {
 function _vfrOpenAt(x, y, m) { try { const z = gardenIslandZoneAt(Math.floor(x), Math.floor(y)); return !z || (m.areas || []).includes('zn-' + z); } catch (e) { return true; } }
 function _vfrCtx(m) {
   const things = (typeof gardenAffordThings === 'function' ? gardenAffordThings() : []).filter(t => t.kind && t.kind !== 'person' && !(t.needs && typeof gardenWorkOwned === 'function' && !gardenWorkOwned(t.needs)));   // (a longer pier not built yet is not there to sit on)
+  if (typeof gardenKitThings === 'function' && !m.visit) { try { things.push(...gardenKitThings()); } catch (e) { /* an ordinary day */ } }   // (folk3: the day's kit, a stall's counter, the brazier, the card table: 94-garden-wonder-folk3-6kit.js)
   const spotsMemo = new Map(), doorMemo = new Map(), baseMemo = new Map();
   const free = (x, y) => typeof _gwFree !== 'function' || _gwFree(x, y);
   const C = {
@@ -50,6 +51,7 @@ function _vfrCtx(m) {
     things,
     spots(t) {
       if (spotsMemo.has(t.id)) return spotsMemo.get(t.id);
+      if (t.kit && typeof gardenKitSpots === 'function') { const ks = gardenKitSpots(t); spotsMemo.set(t.id, ks); return ks; }   // (folk3: a kit place has its own stand)
       let B = { x: t.x, y: t.y, w: t.w }; try { if (typeof gardenAffordDrawnBase === 'function') B = gardenAffordDrawnBase(t); } catch (e) { /* the plan's */ }
       let s = []; try { s = gardenKindSpots({ kind: t.kind, x: B.x, y: B.y, w: B.w, front: t.front }); } catch (e) { s = []; }
       s = s.filter(q => !q.needs || gardenKindNeedsOk(q.needs, { season: m.season, night: m.tod === 'night', level: m.level && m.level.level }));
@@ -73,7 +75,7 @@ function _vfrCtx(m) {
     reach(a, b) { return typeof gardenFolkReach !== 'function' || gardenFolkReach(a, b); },
     open(t) { return _vfrOpenAt(t.x, t.y - 0.2, m); },
     walkable(x, y, s, t) {
-      if (s && (s.seat || s.pierEnd)) return true;
+      if (s && (s.seat || s.pierEnd || s.kit)) return true;   // (folk3: a kit place is placed clear already; behind a counter is where its keeper stands)
       // (an edge to lean on is stood at only where the feet can be: a wheel pit's wall stands in water)
       if (!(s && s.edge) && !(free(x, y) || (typeof _gwNearestFreePt === 'function' && !!_gwNearestFreePt(x, y, 0.35)))) return false;
       return _vfrClearOfThings(C, x, y, t && t.id);   // (rule 12: never behind a notice board, so as to stand on its roof, nor over another thing's foot)
@@ -83,7 +85,7 @@ function _vfrCtx(m) {
   return C;
 }
 /** Things a figure may stand on or beside freely (flat ground things); everything else is drawn and must not be overlapped. */
-function _vfrFlat(t) { const K = (t && GARDEN_KINDS[t.kind]) || {}; return !t.kind || K.solid === 'free' || /^(pier|bridge|fishing-bank|ball|leaf-pile|log|stepping|road|plaza|path|field|plot|pond|crossing|ford)/.test(t.kind); }
+function _vfrFlat(t) { const K = (t && GARDEN_KINDS[t.kind]) || {}; return !t.kind || t.flat || K.solid === 'free' || /^(pier|bridge|fishing-bank|ball|leaf-pile|log|stepping|road|plaza|path|field|plot|pond|crossing|ford)/.test(t.kind); }
 /** Can a standing figure be here without covering a thing or being hidden behind it (rule 12)? The figure is about 0.6 cells wide and
  *  a little over a cell tall; a thing's drawn width is its own (a tree only its trunk). skip: the thing they are at. */
 function _vfrClearOfThings(C, x, y, skip, relaxed) {
@@ -260,7 +262,7 @@ function _vfrMarkup(V, pose, walk, face, mark, view) {
  * Standing: talking to you they face you; what they do at a place (sit, fish, read, a look at a board) is side on, facing it.
  */
 function _vfrView3(V, walking, pose) {
-  if (!walking) { V.view = pose === 'talk' && (V.hold || V.mine) ? 's' : 'e'; return V.view; }
+  if (!walking) { V.view = pose === 'talk' && (V.hold || V.mine) ? 's' : (typeof VF3_POSE_VIEW !== 'undefined' && VF3_POSE_VIEW[pose]) || 'e'; return V.view; }   // (folk3: a pose seen best face on: behind a market stall)
   const h = Number.isFinite(V.h) ? V.h : 90, yaw = Math.abs(((h - 90 + 540) % 360) - 180), prev = V.view || 'e';
   let v = yaw < 38 ? 's' : yaw > 142 ? 'n' : 'e';
   if (prev === 's' && yaw < 48) v = 's'; else if (prev === 'n' && yaw > 132) v = 'n'; else if (prev === 'e' && yaw > 30 && yaw < 150) v = 'e';
@@ -307,6 +309,7 @@ function _vfrDraw(V, walking) {
   else if (at && e.clip === 'sit') pose = V.id === 'bramble' && V.rubbing ? 'rub' : 'sit';
   else if (at && e.clip === 'fish') pose = 'fish';
   else if (at && e.clip === 'read') pose = 'read';
+  else if (at && typeof VF3_POSE_CLS !== 'undefined' && VF3_POSE_CLS[e.clip]) pose = e.clip;   // (folk3: behind a stall, warming at the brazier, browsing)
   const nod = V.nod && performance.now() < V.nod.until ? V.nod : null; if (V.nod && !nod) V.nod = null;
   if (nod) { const O = _vfr.V.get(nod.other); if (O) { V.h = Math.atan2((O.y - V.y) * 30 * 1.6, (O.x - V.x) * 48) * 180 / Math.PI; if (Math.abs(O.x - V.x) > 0.2) V.face = O.x > V.x ? 1 : -1; } }   // (a nod in passing: the head and body turn to the other a moment)
   const mark = V.mark && !V.hold ? true : nod ? 'wave' : false, face = V.face < 0 ? -1 : 1, view = _vfrView3(V, walking && !V.hold, pose), k = pose + (walking ? 'w' : '') + face + (mark ? (mark === 'wave' ? 'v' : 'm') : '') + view;
@@ -586,7 +589,7 @@ function _vfrFrame(dt) {
 }
 /* ---------- tellers: someone with a story comes to you ---------- */
 function _vfrTellerTick(m) {
-  if (typeof gardenGameBusy === 'function' && gardenGameBusy()) return;   // (folk3: nobody comes over with a story while a game is on)
+  if ((typeof gardenGameBusy === 'function' && gardenGameBusy()) || (typeof gardenSceneBusy === 'function' && gardenSceneBusy())) return;   // (folk3: nobody comes over with a story while a game or a moment is on)
   if (m.visit || !_vfr.rows || _wd.talk || (typeof wdWalkingLately === 'function' && wdWalkingLately())) return;
   const W = _wdG(), today = m.today; if (W.vtl && W.vtl.d === today) { const V = _vfr.V.get(W.vtl.id); if (V && V.visit) return; if (W.vtl.done || W.vtl.went) return; }
   if (typeof wdTaleFor !== 'function') return;
@@ -658,6 +661,7 @@ function gardenFolkTalkTo(id) {
   try { if (typeof gardenLiveFolkTalk === 'function') gardenLiveFolkTalk(id); } catch (e) { /* alone */ }
   if (V.S) _vfrDraw(V, false);
   try {
+    if (typeof gardenSceneForTalk === 'function' && gardenSceneForTalk(id, V, m)) return true;   // (folk3: the beat is a moment you see, 94-garden-wonder-folk3-8scene.js)
     if (_vfrTalkWith(id, V, m)) return true;
     if (id === 'angler') { gardenPopupOpen('catch', { sub: 'lake', title: 'The old angler' }); return true; }
   } catch (e) { console.error('[folk talk]', e); }
@@ -732,7 +736,7 @@ function _vfrPoseWord(V) {
   if (V.waiting) return 'idle';   // (stopped for someone in the way: stood, on every screen)
   if (!V.arrived || !e) return 'walk';
   if (V.visit) return 'idle';
-  return e.clip === 'sit' ? (V.rubbing ? 'rub' : 'sit') : e.clip === 'fish' ? 'fish' : e.clip === 'read' ? 'read' : 'idle';
+  return e.clip === 'sit' ? (V.rubbing ? 'rub' : 'sit') : e.clip === 'fish' ? 'fish' : e.clip === 'read' ? 'read' : (typeof VF3_POSE_CLS !== 'undefined' && VF3_POSE_CLS[e.clip] ? e.clip : 'idle');   // (folk3: stall, warm, browse)
 }
 function _vfrHostSend(now) {
   if (typeof _gll === 'undefined' || _gll.role !== 'host' || typeof _glh === 'undefined' || !_glh.on || !_glhAnyone() || !_glhLooking()) return;

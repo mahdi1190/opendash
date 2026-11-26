@@ -437,6 +437,10 @@ const GARDEN_DECOR = _gdRows([
   _gD('vg-treasure-chest', 'Little tin chest', 'ornament', { craft: 1, price: 0, look: { c: '#7a5a3a', c2: '#c8a050', h: 0.45, parts: [['box', { w: 24, h: 14 }]] }, blurb: 'Your first treasure hunt won. Tam says it was empty when he found it.' }),
   _gD('vg-map-post', 'Bramble’s map post', 'ornament', { craft: 1, price: 0, look: { c: '#7a5a3a', c2: '#efe2c0', h: 1.3, parts: [['post', { w: 4, h: 32 }], ['block', { y: -46, w: 42, h: 28 }]] }, blurb: 'Three treasure hunts won. One of the corners is wrong. Not the crosses.' }),
   _gD('vg-x-stone', 'X marks the spot', 'ornament', { craft: 1, price: 0, look: { c: '#a8a090', c2: '#6a6458', h: 0.25, parts: [['stone', { w: 30 }]] }, blurb: 'Six treasure hunts won. A flat stone with an X on it, for the lawn.' }),
+  // (folk3) the vale's year and its story: the Frost Fair's one thing (taking part, once a year) and what a whole era of the vale's story gives (94-garden-folk3-2week.js, -3story.js); painted in 94-garden-native-painted-decor-8year.js
+  _gD('vy-star-lantern', 'Star lantern', 'light', { craft: 1, price: 0, effect: { kind: 'light' }, look: { c: '#3a3a42', c2: '#f2d06a', h: 1.7, parts: [['post', { w: 3, h: 80 }], ['lantern', { x: 14, y: -66, r: 7 }]] }, blurb: 'From the Frost Fair. A paper star on a crook, lit from inside. It glows all winter.' }),
+  _gD('vy-two-waters-stone', 'The two-waters stone', 'ornament', { craft: 1, price: 0, look: { c: '#9a9488', c2: '#6a8a4a', h: 1.1, parts: [['stone', { w: 22 }], ['stone', { y: -16, w: 16 }], ['stone', { y: -30, w: 10 }]] }, blurb: 'The vale’s oldest story, carved in a standing stone: two streams coming down to meet as one.' }),
+  _gD('vy-millstone-seat', 'Millstone seat', 'ornament', { craft: 1, price: 0, w: 2, look: { c: '#9a9488', c2: '#868070', h: 0.45, parts: [['box', { x: -26, w: 16, h: 12 }], ['box', { x: 26, w: 16, h: 12 }], ['stone', { y: -14, w: 80 }]] }, blurb: 'From the mill years: an old millstone on two blocks, worn smooth where people have sat.' }),
   // 2.23: made at the crafting bench (94-garden-craft-0rules.js), never sold: craft: 1 keeps them out of the shop, price 0 means the market pays nothing for them
   _gD('flower-barrow', 'Flower barrow', 'planter', { craft: 1, price: 0, w: 2, look: { c: '#a86a3a', c2: '#e87a9a', h: 0.7, parts: [['box', { w: 40, h: 18, y: -6 }], ['post', { x: -24, w: 4, h: 10, y: 0 }], ['orb', { x: 16, r: 6, y: 2, c: '#3a3a3a' }], ['bush', { x: -8, y: -22, w: 20, clip: 'sway' }], ['bush', { x: 10, y: -22, w: 16, clip: 'sway' }]] }, blurb: 'Parked for good.' }),
   _gD('herb-rack', 'Drying rack', 'ornament', { craft: 1, price: 0, look: { c: '#8a6a44', c2: '#7aa45a', h: 0.9, parts: [['post', { x: -16, w: 4, h: 44 }], ['post', { x: 16, w: 4, h: 44 }], ['block', { y: -42, w: 42, h: 4 }], ['bush', { x: -9, y: -20, w: 11, h: 18, clip: 'sway' }], ['bush', { x: 9, y: -20, w: 11, h: 18, clip: 'sway' }]] }, blurb: 'Hang it, forget it, cook with it.' }),
@@ -743,6 +747,9 @@ const GARDEN_RIBBONS = _gdRows([
   { id: 'seeker', label: 'Seeker', hint: 'Find everyone in 5 games of hide and seek.', icon: 'eye', fact: 'vgSeek', of: 5, reward: { c: 40 } },
   { id: 'seven-skips', label: 'Seven skips', hint: 'Skim a stone seven times in a game with the folk.', icon: 'waves', fact: 'vgSkip', of: 7, reward: { c: 30 } },
   { id: 'treasure-hunter', label: 'Treasure hunter', hint: 'Win 3 treasure hunts.', icon: 'map', fact: 'vgHunt', of: 3, reward: { c: 40 } },
+  // (folk3) the vale's year and its story: the facts come from gardenFolkFacts() too
+  { id: 'fair-goer', label: 'Fair-goer', hint: 'Go to the Frost Fair on the green.', icon: 'sparkles', fact: 'vyFest', of: 1, reward: { c: 60 } },
+  { id: 'vale-historian', label: 'Vale historian', hint: 'Find 10 pieces of the vale’s story (in your journal).', icon: 'scroll-text', fact: 'vhist', of: 10, reward: { c: 80 } },
 ]);
 
 /* ---------- daily garden tasks and weekly garden quests ----------

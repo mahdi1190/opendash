@@ -25,8 +25,9 @@ const VF3_RUN = 250;
 const VF3_POSE_CLS = Object.freeze({
   cheer: 'gca-cheer', clap: 'gca-clap', point: 'gca-point', crouch: 'gca-crouch', peek: 'gca-crouch gca-peek', count: 'gca-count', listen: 'gca-listen',
   boots: 'gca-boots', throw: 'gca-throw', ready: 'gca-ready', seek: 'gca-seekp', dig: 'gca-dig', shrug: 'gca-shrug', laugh: 'gca-laugh',
+  stall: 'gca-stall', warm: 'gca-warm', browse: 'gca-browse',   // (the week and the fair: behind a counter, hands to the brazier, looking over the goods)
 });
-const VF3_POSE_VIEW = Object.freeze({ cheer: 's', clap: 's', count: 's', shrug: 's', laugh: 's' });
+const VF3_POSE_VIEW = Object.freeze({ cheer: 's', clap: 's', count: 's', shrug: 's', laugh: 's', stall: 's' });
 /** The kinds a race may finish at: things you can see from a way off and touch (a sign, a bell, a well, a post box). */
 const VALE_FINISH_KINDS = Object.freeze(['signpost', 'milestone', 'bell', 'well', 'village-well', 'garden-well', 'postbox', 'sundial', 'pump', 'notice-board', 'maypole']);
 /** Things big enough to hide behind (trees come from the painter's own trunk list; tall decorations by their drawn height). */

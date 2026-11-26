@@ -272,6 +272,7 @@ const WK_HEART_LINES = Object.freeze({
 /* ---------- facts for today ---------- */
 function _wkFacts(F, m) {
   F.heart = wdKinHeart(F.id);
+  if (typeof valeYearFacts === 'function') { try { valeYearFacts(F, m); } catch (e) { /* a plain day */ } }   // (folk3: F.weekday, F.fest)
   try { F.fog = typeof wdTaleFog === 'function' && wdTaleFog(m); } catch (e) { F.fog = false; }
   try {
     const g = _gdG(), today = m.today, recent = (d) => d && _wdDaysBetween(d, today) <= 1;
@@ -285,7 +286,7 @@ function _wkFacts(F, m) {
 }
 function _wkDayLine(id, F, today) {
   const W = _wdG(); if (W['fy.' + id] === today) return '';
-  const t = _wkDayPick(id, WK_DAY[id] || [], F, today); if (t) W['fy.' + id] = today; return t;
+  const t = (typeof vf3DayLine === 'function' && vf3DayLine(id, F, today)) || _wkDayPick(id, WK_DAY[id] || [], F, today); if (t) W['fy.' + id] = today; return t;   // (folk3: market day, cards, the fair first)
 }
 /** One line from a pool for today: what is true now wins most days. Rows: {if(F), t, soft, deep} (deep: only in the full telling, unless it has soft words). */
 function _wkDayPick(id, rows, F, today) {

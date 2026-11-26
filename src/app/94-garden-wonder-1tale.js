@@ -76,7 +76,7 @@ function _wtNext(s, m, who) {
     const b = s.steps[i]; if (W[`sx.${s.id}.${b.id}`]) continue;   // (in order: the first beat not yet heard and not free is the only one that can come)
     if (heardToday && !b.free) return null;
     if (who && b.who !== who) { if (!b.free) return null; continue; }
-    if (b.heavy && (_wtHeavyToday() || _wtMainToday())) { if (!b.free) return null; continue; }   // one heavy moment a day, and never on a day the main line moved
+    if (b.heavy && (_wtHeavyToday() || _wtMainToday() || (typeof gardenYearFestDay === 'function' && gardenYearFestDay(m)))) { if (!b.free) return null; continue; }   // (folk3: never on a festival day)   // one heavy moment a day, and never on a day the main line moved
     if (!_wtWhen(b.when, m, b.who)) { if (!b.free) return null; continue; }
     return b;
   }
