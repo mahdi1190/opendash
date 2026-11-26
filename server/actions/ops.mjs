@@ -263,12 +263,17 @@ function retagElsewhere(ctx, froms, to) {
   if (Array.isArray(s.pinnedTags) && s.pinnedTags.some(x => froms.includes(x))) { ctx.touch('key:pinnedTags'); s.pinnedTags = map(s.pinnedTags); out.push('pinned'); }
   const refs = new Set();
   if (to) {
-    ctx.touch('key:viewFilter'); ctx.touch('tagRegistry');
+    // Everything tglRenameRefs may change, so an undo puts all of it back (B9); the recorder drops the ones that stay the same.
+    // The open view is where you are, not data: not recorded, so moving about never blocks an undo.
+    for (const k of ['key:viewFilter', 'tagRegistry', 'key:smartLists', 'key:sidebarLayout', 'key:taskViewPrefs', 'key:taskBoards', 'key:boardOrder', 'home']) ctx.touch(k);
     for (const f of froms) for (const r of tglRenameRefs(s, f, to)) refs.add(r);
   }
   if (bin) out.push(`${bin} in the bin`);
   if (tpl) out.push(`${tpl} template${tpl === 1 ? '' : 's'}`);
   if (refs.has('viewFilter') || refs.has('taskViewPrefs') || refs.has('view')) out.push('saved view');
+  if (refs.has('smartLists')) out.push('smart lists');
+  if (refs.has('taskBoards') || refs.has('boardOrder')) out.push('boards');
+  if (refs.has('home')) out.push('Home widgets');
   return out;
 }
 
