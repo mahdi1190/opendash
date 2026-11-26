@@ -48,7 +48,8 @@ const sortKeys = (v) => (Array.isArray(v) ? v.map(sortKeys) : isObj(v) ? Object.
  * (appliedIdx a sorted list, status derived: every op applied = 'applied').
  */
 export function proposalsFromFile(doc) {
-  const out = {};
+  // No prototype: an id such as 'constructor' or 'toString' is never found as an Object.prototype member.
+  const out = Object.create(null);
   const list = isObj(doc) && Array.isArray(doc.proposals) ? doc.proposals : [];
   for (const x of list) {
     if (!isObj(x) || typeof x.id !== 'string' || !x.id || ['__proto__', 'constructor', 'prototype'].includes(x.id)) continue;
@@ -173,7 +174,7 @@ export function createJournal(stateDir, { now = () => Date.now(), proposalsFile 
     },
     async getProposal(id) {
       const j = await load();
-      const p = j.proposals[id];
+      const p = typeof id === 'string' && Object.hasOwn(j.proposals, id) ? j.proposals[id] : null;
       if (!p || now() - p.at > PROPOSAL_TTL_MS) return null;
       return { id, ...p, at: new Date(p.at).toISOString() };
     },
