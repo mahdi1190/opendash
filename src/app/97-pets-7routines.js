@@ -36,7 +36,7 @@ function _ptwPlayContext(P, W) {
   const light = window.GardenNative && GardenNative.lighting && GardenNative.lighting(), env = light && light.environment && light.environment();
   if (env && (env.room || env.paused || env.reducedMotion)) return false;
   if (!P.me) return true;
-  if (typeof _gw === 'undefined' || !_gw.on || _gw.moving || _gw.path && _gw.path.length || _gw.keys && _gw.keys.size || _gw.hold || _gw.netting || _gw.casting || typeof _gwFishingBusy === 'function' && _gwFishingBusy()) return false;
+  if (typeof _gw === 'undefined' || !_gw.on || _gw.moving || _gw.path && _gw.path.length || _gw.keys && _gw.keys.size || _gw.hold || _gw.netting || _gw.casting || typeof _gwFishBusy === 'function' && _gwFishBusy()) return false;
   if (typeof _pe !== 'undefined' && _pe.H || typeof _GPL !== 'undefined' && _GPL.pose && Date.now() < _GPL.until || typeof _gtgo !== 'undefined' && (_gtgo.on || _gtgo.hold || _gtgo.held) || typeof _gmo !== 'undefined' && _gmo.g) return false;
   if (typeof gardenSoapHolding === 'function' && gardenSoapHolding()) return false;
   if (typeof gardenLeafBoatHolding === 'function' && gardenLeafBoatHolding()) return false;
