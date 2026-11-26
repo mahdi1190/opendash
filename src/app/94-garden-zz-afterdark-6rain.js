@@ -63,9 +63,10 @@ function _adrCapSvg(S, x, y, k, r) {
 }
 function _adrClusterSvg(c) {
   const r = gardenRand(c.seed), L = ['#8a5a2a', '#b07a3a', '#6a7a3a', '#9a6a30'], A = GART; let s = '';
-  for (let i = 0; i < 6; i++) { const x = (r() - 0.5) * 22, y = (r() - 0.5) * 5 + 1; s += `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${(2 + r() * 1.6).toFixed(1)}" ry="${(1 + r() * 0.6).toFixed(1)}" fill="${L[i % 4]}" opacity="0.8" transform="rotate(${Math.round(r() * 180)} ${x.toFixed(1)} ${y.toFixed(1)})"/>`; }
-  s += A.P('#5e7a3a', A.ell(-6, 1.2, 5, 1.4), 0.55);
-  const caps = []; for (let i = 0; i < c.n; i++) caps.push([(i - (c.n - 1) / 2) * 4.6 + (r() - 0.5) * 2.4, (r() - 0.5) * 2.4, 0.78 + r() * 0.5]);
+  for (let i = 0; i < 8; i++) { const x = (r() - 0.5) * 32, y = (r() - 0.5) * 7 + 1; s += `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${(2.8 + r() * 2.2).toFixed(1)}" ry="${(1.4 + r() * 0.8).toFixed(1)}" fill="${L[i % 4]}" opacity="0.8" transform="rotate(${Math.round(r() * 180)} ${x.toFixed(1)} ${y.toFixed(1)})"/>`; }
+  s += A.P('#5e7a3a', A.ell(-8, 1.4, 7, 2), 0.55) + A.P('#000000', A.ell(0, 1.2, 18, 3.4), 0.12);
+  // (the size standard: a mushroom stands a sixth to a quarter of the gardener's height, so a cluster reads from a few steps off)
+  const caps = []; for (let i = 0; i < c.n; i++) caps.push([(i - (c.n - 1) / 2) * 7 + (r() - 0.5) * 3.4, (r() - 0.5) * 3.4, 1.3 + r() * 0.75]);
   caps.sort((a, b) => a[1] - b[1]); for (const [x, y, k] of caps) s += _adrCapSvg(c.kind, x, y, k, r);
   return s;
 }
@@ -98,7 +99,7 @@ function _adrRingSpot(m, N) {
 function _adrRingSvg(R, glow) {
   let s = glow ? `<ellipse class="ad-glow-b" rx="34" ry="12" fill="#f0e0ff" opacity="${(0.12 + 0.07 * glow).toFixed(2)}"/>` : '';
   const S = AD_SHROOMS[0], r = gardenRand('ring|' + R.dn);
-  const caps = []; for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, x = Math.cos(a) * 26, y = Math.sin(a) * 9; caps.push([x, y, 0.7 + r() * 0.35]); }
+  const caps = []; for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, x = Math.cos(a) * 26, y = Math.sin(a) * 9; caps.push([x, y, 1.05 + r() * 0.45]); }
   caps.sort((a, b) => a[1] - b[1]);
   s += '<ellipse rx="27" ry="9.4" fill="none" stroke="#4e7a34" stroke-width="5" opacity="0.35"/>';
   for (const [x, y, k] of caps) s += _adrCapSvg(S, x, y, k, r);

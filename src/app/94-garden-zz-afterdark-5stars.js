@@ -44,11 +44,14 @@ function _adfScan(rows) {
 function adStarSpot(iso, N, m) {
   const C = _adf.done ? _adf.cands : null; if (!C || !C.length) return null;
   const ck = iso + '|' + N.key + '|' + (m.areas || []).length + '|' + C.length; if (!_adf.spots) _adf.spots = new Map(); if (_adf.spots.has(ck)) return _adf.spots.get(ck);   // (worked out once a night, not every tick)
-  const p = _adfSpotPick(iso, N, m, C); if (p || (typeof _gw !== 'undefined' && _gw.grid)) { if (_adf.spots.size > 40) _adf.spots.clear(); _adf.spots.set(ck, p); }
+  // nothing overlaps: a night's star keeps four cells clear of where the six nights before it would have put theirs (that first choice
+  // depends on nothing else, so this stays the same whichever day it is asked on, on every screen)
+  const avoid = []; for (let d = 1; d <= 6; d++) { const q = _gdAddDays(iso, -d); if (adStarFell(q, N)) { const r = _adfSpotPick(q, N, m, C, null); if (r) avoid.push(r); } }
+  const p = _adfSpotPick(iso, N, m, C, avoid); if (p || (typeof _gw !== 'undefined' && _gw.grid)) { if (_adf.spots.size > 40) _adf.spots.clear(); _adf.spots.set(ck, p); }
   return p;
 }
-function _adfSpotPick(iso, N, m, C) {
-  const open = C.filter(p => adOpen(p.x, p.y, m)); if (!open.length) return null;
+function _adfSpotPick(iso, N, m, C, avoid) {
+  const open = C.filter(p => adOpen(p.x, p.y, m) && !(avoid && avoid.some(a => Math.hypot(a.x - p.x, a.y - p.y) < 4))); if (!open.length) return null;
   const h = gardenHash('ad-sfp|' + N.key + '|' + gtgDayNum(iso));
   for (let i = 0; i < Math.min(8, open.length); i++) {
     const p = open[(h + i * 7919) % open.length];
