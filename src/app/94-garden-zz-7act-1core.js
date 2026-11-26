@@ -862,20 +862,20 @@ function _gaRubTick(cur) {
 function _gaSky(cur, on) {
   const box = _gw && _gw.box; if (!box) return;
   let el = box.querySelector('.ga-sky');
-  if (!on) { if (el) el.remove(); clearInterval(_ga.skyT); return; }
+  if (!on) { if (el) el.remove(); clearInterval(_ga.skyT); clearTimeout(_ga.skyT0); clearTimeout(_ga.skyNapT); return; }   // (the first star and the nap's line too: got up within 1.8 s, they still came)
   if (!_gaMotion()) return;
   if (!el) { el = document.createElement('div'); el.className = 'ga-sky'; el.setAttribute('aria-hidden', 'true'); box.appendChild(el); }
   let tod = 'day'; try { tod = gardenModel().tod; } catch (e) { /* day */ }
   const night = tod === 'night';
   el.innerHTML = (night ? '' : '<i class="ga-cloud c1"></i><i class="ga-cloud c2"></i><i class="ga-cloud c3"></i>') + (cur.row.nap ? '<i class="ga-lapse"></i>' : '');
   if (cur.row.nap) el.classList.add('is-nap'); else el.classList.remove('is-nap');
-  clearInterval(_ga.skyT);
+  clearInterval(_ga.skyT); clearTimeout(_ga.skyT0); clearTimeout(_ga.skyNapT);
   if (night) {
     let seen = 0;
     const star = () => { const s = document.createElement('i'); s.className = 'ga-star'; s.style.left = (15 + Math.random() * 60) + '%'; s.style.top = (6 + Math.random() * 24) + '%'; el.appendChild(s); setTimeout(() => s.remove(), 1600); if (!seen++) { try { gardenToast('A shooting star! Make a wish.'); } catch (e) { /* fine */ } try { const g = _gdG(); if (!g.disc['act.star']) { g.disc['act.star'] = _gdToday(); _gdSave(); } } catch (e) { /* fine */ } } };
-    setTimeout(star, 1800); _ga.skyT = setInterval(star, 6000);
+    _ga.skyT0 = setTimeout(star, 1800); _ga.skyT = setInterval(star, 6000);
   }
-  if (cur.row.nap) setTimeout(() => { try { gardenToast('The shadows move round while you doze.'); } catch (e) { /* fine */ } }, 1800);
+  if (cur.row.nap) _ga.skyNapT = setTimeout(() => { try { gardenToast('The shadows move round while you doze.'); } catch (e) { /* fine */ } }, 1800);
 }
 /** Lying down needs clear ground: grass, sand or snow, not a path, a plaza, a building's apron or a thing. */
 function gartActGroundClear(x, y) {
