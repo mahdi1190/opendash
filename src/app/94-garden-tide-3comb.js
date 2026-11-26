@@ -250,6 +250,7 @@ function gardenTideShelf(left) {
     }
     if (typeof _glbFit === 'function') _glbFit(shelf);
   } catch (e) { /* the shelf is only a page */ }
+  try { if (typeof gardenTideBottleShelf === 'function') gardenTideBottleShelf(left); if (typeof gardenShoreGamesShelf === 'function') gardenShoreGamesShelf(left); } catch (e) { /* only pages */ }   // the bottle shelf, and the shore's games (94-garden-tide-9bottle.js, -d-spot.js)
 }
 
 /* ---------- the module's second: the window turns, the richness is fixed, a word when the tide turns ---------- */

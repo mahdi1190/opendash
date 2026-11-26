@@ -60,6 +60,10 @@ function gardenShoreEmit(what, o) { try { _gdEmit('shore', Object.assign({ what 
 /** The shore games' live steps: each module puts its handler here at its first use (gardenShoreFxOn), and 94-garden-tide-8live.js sends them on. */
 function gardenShoreFxOn(step, fn) { _gsfk.fx[step] = fn; }
 function gardenShoreFx(A, ev) { const f = _gsfk.fx[String(ev && ev.e || '')]; if (f) { try { f(A, ev); } catch (e) { console.error('[garden shore]', e); } } }
+/** What the shore's games offer at the water's edge (beside the ducks, the skim and the swim): each module registers fn(w, px, py) -> rows
+ *  (gardenShoreWaterOn); w is the water ahead of you (gardenTerrainWaterAhead: x, y, deg, deep). */
+function gardenShoreWaterOn(fn) { if (!_gsfk.water) _gsfk.water = []; if (!_gsfk.water.includes(fn)) _gsfk.water.push(fn); }
+function gardenShoreWaterRows(w, px, py) { const out = []; for (const fn of _gsfk.water || []) { try { out.push(...(fn(w, px, py) || [])); } catch (e) { /* that one has nothing */ } } return out; }
 /** What the villagers add to their talk: each module registers fn(row, F, S) -> {lines, actions} | null (gardenShoreFolkOn). */
 function gardenShoreFolkOn(fn) { if (!_gsfk.folk.includes(fn)) _gsfk.folk.push(fn); }
 function gardenShoreFolkTalk(row, F, S) {

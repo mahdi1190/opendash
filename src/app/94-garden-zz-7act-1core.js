@@ -178,7 +178,7 @@ function _gaWaterRows(px, py) {
   const w = gardenTerrainWaterAhead(px, py); if (!w) return [];
   const W3 = (w.deep ? GARDEN_TERRAIN.deep.acts : []).concat(GARDEN_TERRAIN['water-edge'].acts), k = _ga.wt % W3.length;   // (deep water offers a swim first: then the ducks, then a skim, in turn)
   const rows = W3.slice(k).concat(W3.slice(0, k)).map(o => ({ key: 'water:' + o.act, act: o.act, name: o.name, x: w.x, y: w.y, stand: null, deg: w.deg, lift: 0, src: 'water' }));
-  if (typeof gardenSkimLeagueRows === 'function') { try { rows.push(...gardenSkimLeagueRows(w, px, py)); } catch (e) { /* no league here */ } }   // a league throw on still water (94-garden-tide-b-skim.js)
+  if (typeof gardenShoreWaterRows === 'function') { try { rows.push(...gardenShoreWaterRows(w, px, py)); } catch (e) { /* nothing more here */ } }   // a league throw on still water, a bottle thrown into the sea (94-garden-tide-6fun.js)
   return rows;
 }
 /** Is this place to sit (or to stand and do something held, like fishing from a bank) already someone else's? A friend in the garden
