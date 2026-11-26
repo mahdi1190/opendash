@@ -109,9 +109,12 @@ function render() {
     if (outer) { const q = _renderLater; _renderLater = null; for (const fn of q.values()) { try { fn(); } catch (e) { console.error('[render]', e); } } }
   }
 }
+var _renderSbScroll = null;   // (speed pass) the sidebar's scroll, read before anything is written (renderSidebar keeps it)
 function _render() {
+  { const sb = document.getElementById('sidebar'); _renderSbScroll = sb ? sb.scrollTop : null; }
   renderTopbar();
   renderSidebar();
+  _renderSbScroll = null;
   renderMain();
   renderDetail();
   const c = document.getElementById('content');

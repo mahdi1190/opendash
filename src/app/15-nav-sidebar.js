@@ -156,7 +156,10 @@ function renderSidebar() {
   renderShell();
   const sb = document.getElementById('sidebar');
   if (!sb) return;
-  const keepScroll = sb.scrollTop;
+  // (speed pass) inside render() the scroll was read before the top bar was written (reading it here laid the page out); it is put
+  // back only when there is one to put back (writing it lays the page out too)
+  const keepScroll = typeof _renderSbScroll === 'number' ? _renderSbScroll : sb.scrollTop;
+  if (typeof _renderSbScroll !== 'undefined') _renderSbScroll = null;   // (read once)
   sb.innerHTML = '';
   if (typeof _sbFreshShown !== 'undefined') _sbFreshShown = 0;   // at most three new-page dots per sidebar (sbNavItem)
   const group = shellGroupFor(state.view);
@@ -181,7 +184,7 @@ function renderSidebar() {
   // switch lives in the More menu and Settings now.
   const stub = document.createElement('div'); stub.className = 'sidebar-footer'; stub.hidden = true;
   sb.appendChild(stub);
-  sb.scrollTop = keepScroll;
+  if (keepScroll) sb.scrollTop = keepScroll;
   // Motion: gliding active indicator (it measures the active row: once the page is written, 80-main-render.js).
   if (window.Motion) { if (typeof renderMeasureLater === 'function') renderMeasureLater('sb-ind', () => Motion.decorateSidebar(sb)); else Motion.decorateSidebar(sb); }
 }
