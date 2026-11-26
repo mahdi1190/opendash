@@ -196,7 +196,7 @@
    *  part of the ground, it stops nobody. Open: the slab dragged aside on to the turf (a scraped trail where it went), and a stone-lined
    *  hole with steps going down into the dark, a kerb of rough stones round it; the hole stops the feet, where you stand stays open. */
   function slab(C, T, m, shut, seed) {
-    const { L, add, thing, kit, P } = C, O = opening(L, m), snowy = C.season === 'winter', leaf = P.leaf || ['#3f6534', '#557e40', '#7aa255', '#a8cc66'];
+    const { L, add, thing, kit, P } = C, O = opening(L, m), snowy = C.season === 'winter', leaf = [P.lawnLo || '#557e40', P.lawn || '#6e9a48', P.lawnHi || '#8fb85a', P.lawnHi || '#a8cc66'];   // (grass, in the season's own lawn colours: the leaf palette is a tree's, orange in autumn)
     const sw = (O.x1 - O.x0) + 7, sh = (O.y1 - O.y0) + 5.5;
     // the slab itself, drawn at (cx, cy): a big weathered flag, lit from the upper left, its ring in a worn recess
     const flag = (B, r, cx, cy, tilt) => {

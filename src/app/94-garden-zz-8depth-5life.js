@@ -144,9 +144,10 @@ function gardenDepthLifePlaces() {
   if (_gdlf.places && key === _gdlf.key) return _gdlf.places;
   const out = [], W = GARDEN_WORLD, D = typeof gardenIslandData === 'function' ? gardenIslandData() : null, rivers = (D && D.presentation && D.presentation.rivers) || {};
   for (const z of zs) {
-    if (z.deck && z.swim && z.kind === 'footbridge' && z.crossing && rivers[z.crossing.over]) {   // running water under a footbridge: a stone at a post's foot (or the near beam's middle)
-      const d = z.deck, P = (t, s) => z.crossing.deckPoint(t / d.L, s * d.near), p = z.posts.length ? z.posts[_gdqHash(z.id) % z.posts.length] : null, mid = (z.wet[0] + z.wet[1]) / 2;
-      const a = p ? { x: p.x + 8, y: p.y + 1.5 } : (() => { const q = P(mid, d.hw); return { x: q.x, y: q.y + 15 }; })(), b = (() => { const q = P(z.wet[0] + (z.wet[1] - z.wet[0]) * 0.22, d.hw); return { x: q.x, y: q.y + 13 }; })();
+    if (z.deck && z.swim && z.kind === 'footbridge' && z.crossing && rivers[z.crossing.over]) {   // running water under a footbridge: two stones in the stream just upstream of its far beam
+      // (the far side: what stands in front of a bridge, a tree's crown, never hides it there; clear of the far rail as drawn)
+      const d = z.deck, far = (t, dy) => { const q = z.crossing.deckPoint(t / d.L, -d.hw * d.near); return { x: q.x, y: q.y - dy }; }, p = z.posts.length ? z.posts[_gdqHash(z.id) % z.posts.length] : null, mid = (z.wet[0] + z.wet[1]) / 2;
+      const a = far(p ? p.t : mid, 18), b = far(z.wet[0] + (z.wet[1] - z.wet[0]) * 0.22, 17);
       out.push({ kind: 'stream', id: z.id, z, a, b, name: z.name });
     }
     if (z.deck && z.swim && z.rule && z.rule.spans && z.open && z.open.length) {   // arches: the bats loop over the water before them
@@ -154,8 +155,8 @@ function gardenDepthLifePlaces() {
       out.push({ kind: 'arch', id: z.id, z, a: { x: q.x, y: q.y + (z.face || 20) + 16 }, rx: Math.max(18, (o[1] - o[0]) * 0.55), name: z.name });
     }
     if (z.rect && z.kind === 'pier' && z.posts && z.posts.length) {   // a pier's piles: one for the crab
-      const p = z.posts[_gdqHash(z.id + 'c') % z.posts.length];
-      out.push({ kind: 'pile', id: z.id, z, a: { x: p.x, y: p.y - 2 }, name: z.name });
+      const p = z.posts[_gdqHash(z.id + 'c') % z.posts.length], mid = (z.rect[0] + z.rect[2]) / 2 * W.cellW;
+      out.push({ kind: 'pile', id: z.id, z, a: { x: p.x + (p.x < mid ? 8 : -8), y: p.y - 3 }, name: z.name });   // (clinging to the post as drawn at the deck's edge, at the waterline: the swimmer's pile is a little further out)
     }
     if (z.peek && z.crossing && z.deck) {   // a log over a brook: the toad under its bank end
       const c = z.crossing, end = _gdqHash(z.id) % 2 ? c.a : c.b, other = end === c.a ? c.b : c.a, L = Math.hypot(other.x - end.x, other.y - end.y) || 1;
@@ -301,17 +302,20 @@ function _gdlfInsidePlaces(T) {
     const R = GARDEN_CHAMBERS[c.what]; if (!R) continue;
     if (R.piece === 'pool' && c.hole) out.push({ L: GDL_LIFE.find(q => q.id === 'well-shrimp'), c, x: c.hole.x, y: c.hole.y, pool: true });
     if (R.piece === 'well' && c.hole) out.push({ L: GDL_LIFE.find(q => q.id === 'well-shrimp'), c, x: c.hole.x, y: c.hole.y, well: true });
-    if (rock && !out.some(p => p.L.id === 'herald-moth')) { const side = c.lampDx ? -1 : 1, x = c.x + side * c.rx * 0.62; out.push({ L: GDL_LIFE.find(q => q.id === 'herald-moth'), c, x, y: c.y - c.ry - 20, wall: true }); }
+    if (rock && !out.some(p => p.L.id === 'herald-moth')) {   // on the back wall's far end, clear of the chamber's piece (to one side when a passage runs on through: the other end) and of its lamp
+      const side = c.pieceDx ? 1 : (_gdqHash(T.id + c.i) % 2 ? 1 : -1), k = 0.86, x = c.x + side * c.rx * k, edge = c.rect ? c.y - c.ry : c.y - c.ry * Math.sqrt(1 - k * k);
+      out.push({ L: GDL_LIFE.find(q => q.id === 'herald-moth'), c, x, y: edge - 16, wall: true });
+    }
   }
   T._gdlf = out; return out;
 }
 gardenDepthPromptRows((out, C, px, py) => {
   if (!C) return;
-  const W = GARDEN_WORLD, here = _gdqHere();
+  const W = GARDEN_WORLD, here = _gdqHere(), cur = gardenTunnelChamberAt(C.T, px * W.cellW, W.sky + py * W.cellH);
   for (const p of _gdlfInsidePlaces(C.T)) {
     if (!p.L || !_gdlfToday(p.L, C.T.id + ':' + p.c.i, here)) continue;
-    const x = p.x / W.cellW, y = (p.y - W.sky) / W.cellH, fy = p.wall ? (p.c.y - p.c.ry + 14 - W.sky) / W.cellH : y;   // (a moth on the wall is looked at from the floor below it)
-    out.push({ key: 'dpl:' + p.L.id + ':' + C.T.id + ':' + p.c.i, act: 'dplookin', name: p.L.name, x, y: fy, promptY: (p.wall ? y : fy) - 1.2, stand: null, deg: null, lift: 0, src: 'dpl:' + C.T.id + ':' + p.c.i + ':' + p.L.id, kind: 'depth', dq: true, reach: 2.2, pri: 0.2, life: p.L, place: p });
+    const x = p.x / W.cellW, y = (p.y - W.sky) / W.cellH, fy = p.wall ? (p.y + 30 - W.sky) / W.cellH : y;   // (a moth on the wall is looked at from the floor below it)
+    out.push({ key: 'dpl:' + p.L.id + ':' + C.T.id + ':' + p.c.i, act: 'dplookin', name: p.L.name, x, y: fy, promptY: (p.wall ? y : fy) - 1.2, stand: null, deg: null, lift: 0, src: 'dpl:' + C.T.id + ':' + p.c.i + ':' + p.L.id, kind: 'depth', dq: true, reach: 2.2, pri: 0.2 + (p.c.i === cur ? 0.6 : 0), life: p.L, place: p });
   }
 });
 gardenDepthActs('dplookin', {
@@ -352,7 +356,7 @@ function _gdlfInsideFrame(C, now) {
     set = { scene: sc, items: [] };
     for (const p of _gdlfInsidePlaces(C.T)) {
       if (!p.L || p.well) continue;
-      const im = sc.add.image(p.x, p.y, p.pool ? shrimp : moth).setScale(0.5).setVisible(false).setDepth(p.pool ? p.y - 30 : p.c.y - p.c.ry - 2);
+      const im = sc.add.image(p.x, p.y, p.pool ? shrimp : moth).setScale(p.pool ? 0.5 : 0.64).setVisible(false).setDepth(p.pool ? p.y - 30 : p.c.y - p.c.ry - 2);
       L.add(im); _gdi.sortDue = true; set.items.push({ p, im, ph: (_gdqHash(C.T.id + p.c.i) % 628) / 100 });
     }
     _gdlf.inside.set(C.T.id, set);
@@ -364,7 +368,7 @@ function _gdlfInsideFrame(C, now) {
     if (q.im.visible !== on) q.im.setVisible(on);
     if (!on) continue;
     if (Math.abs(q.im.alpha - a) > 0.02) q.im.setAlpha(a);
-    if (q.p.pool && (typeof gardenMotionOn !== 'function' || gardenMotionOn())) { const h = q.p.c.hole, w = t * 0.4 + q.ph; q.im.setPosition(h.x + Math.cos(w) * h.rx * 0.45, h.y + Math.sin(w) * h.ry * 0.4).setRotation(w + Math.PI / 2).setFlipX(false); }
+    if (q.p.pool && (typeof gardenMotionOn !== 'function' || gardenMotionOn())) { const h = q.p.c.hole, w = t * 0.4 + q.ph, fx = Math.sin(w) > 0; q.im.setPosition(h.x + Math.cos(w) * h.rx * 0.45, h.y + Math.sin(w) * h.ry * 0.4); if (q.im.flipX !== fx) q.im.setFlipX(fx); }   // (round the pool, always seen side on: it turns as it goes, never stands on end)
   }
 }
 function _gdlfInsideHide() { for (const set of _gdlf.inside.values()) for (const q of set.items) { try { if (q.im.active && q.im.visible) q.im.setVisible(false); } catch (e) { /* gone */ } } }

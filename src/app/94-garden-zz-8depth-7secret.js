@@ -17,15 +17,17 @@
    your garden by them. A friend who opens yours does it through the host (a guest intent 'tunnel': r 0 the secret way, r 2 the alcove),
    so it is opened in your garden, for good, and everyone sees it at once. They keep what they find in the alcove; the garden keeps the way.
    ============================================================ */
-const _gds = { heave: new Map(), looked: new Set(), echo: new Set(), inside: new Map(), backfilled: false };
+const _gds = { heave: new Map(), looked: new Set(), echo: new Set(), inside: new Map(), backfilled: false, openC: { id: '', v: false, t: -1e9, force: false } };
 const GDS = Object.freeze({ heaves: 3, heaveMs: 20000, pay: Object.freeze({ c: 25, x: 8 }), alcovePay: Object.freeze({ c: 4, x: 2 }), friendReach: 2.6 });
 /** Whose state to read: yours at home; on a visit, theirs from their snapshot (and what you opened there a moment ago). */
 function _gdsBits(id) {
   const snap = typeof _gdfFriendSnap === 'function' ? _gdfFriendSnap() : null;
   if (!snap) return -1;
   const row = snap.dp && Array.isArray(snap.dp.t) ? snap.dp.t.find(r => r[0] === id) : null;
-  return (row ? row[1] : 0) | (_gds.echo.has(id + ':2') ? 2 : 0) | (_gds.echo.has(id + ':8') ? 8 : 0);
+  return (row ? row[1] : 0) | (_gds.echo.has(_gdsEcho(id, 2)) ? 2 : 0) | (_gds.echo.has(_gdsEcho(id, 8)) ? 8 : 0);
 }
+/** What you opened in this friend's garden a moment ago, before their snapshot says so (keyed by whose garden it is). */
+function _gdsEcho(id, bit) { return ((typeof _gdv !== 'undefined' && _gdv.fid) || '') + '|' + id + ':' + bit; }
 function _gdsSeen(key) { try { const g = _gdG(); return !!(g && g.seen && g.seen[key]); } catch (e) { return false; } }
 /** Is this secret way open (in the garden you stand in)? */
 function gardenDepthSecretOpen(T) {
@@ -50,7 +52,19 @@ if (typeof _gdtOpen === 'function') {
   };
 }
 /** Forget what was worked out about open mouths (a secret way opened just now): the prompts, the walking and the vale's picture follow. */
-function _gdsForget() { try { if (typeof _gdt !== 'undefined') { _gdt.open.clear(); _gdt.openSig = ''; _gdt.listT = 0; } } catch (e) { /* later */ } try { if (typeof _ga !== 'undefined') _ga.listT = 0; } catch (e) { /* later */ } }
+function _gdsForget() { try { if (typeof _gdt !== 'undefined') { _gdt.open.clear(); _gdt.openSig = ''; _gdt.listT = 0; } } catch (e) { /* later */ } try { if (typeof _ga !== 'undefined') _ga.listT = 0; } catch (e) { /* later */ } _gds.landT = 0; }
+/** Which secret ways are open, as part of the land's own signature (gardenLevelLandSig): when one opens the world paints the ground again (its
+ *  slab dragged aside, the steps showing) and builds its walking grid again (the hole stops the feet). From the raw rows (gardenThingsPlaced:
+ *  cheap, and never the tunnels' own geometry, which reads the grid), looked at twice a second. */
+function _gdsLandSig() {
+  const now = performance.now(); if (_gds.landT && now - _gds.landT < 500) return _gds.landS; _gds.landT = now;
+  let s = ''; try { for (const r of typeof gardenThingsPlaced === 'function' ? gardenThingsPlaced() : []) if (r && r.kind === 'tunnel' && r.secret && gardenDepthSecretOpen({ id: r.id, secret: true })) s += r.id + ','; } catch (e) { s = ''; }
+  return (_gds.landS = s ? 'dps:' + s : '');
+}
+if (typeof gardenLevelLandSig === 'function') {
+  const _gdsLandSig0 = gardenLevelLandSig;
+  gardenLevelLandSig = function (level) { const s = _gdsLandSig0(level), d = _gdsLandSig(); return d ? s + '|' + d : s; };   // eslint-disable-line no-func-assign
+}
 /* ---------- the slab: look at it, heave on its ring ---------- */
 function _gdsSlabAt(m) { return { x: m.x + m.fx * 0.58, y: m.y + m.fy * 0.58 }; }
 gardenDepthPromptRows((out, C, px, py) => {
@@ -95,7 +109,7 @@ function _gdsOpenSecret(T, m, A) {
   if (_gdqVisiting()) {
     if (typeof _glvLive === 'function' && _glvLive() && typeof _glvIntent === 'function') {
       _glvIntent('tunnel', { p: T.id, r: 0, x: Math.floor(m.x), y: Math.floor(m.y) });
-      _gds.echo.add(T.id + ':2'); _gdsForget();
+      _gds.echo.add(_gdsEcho(T.id, 2)); _gdsForget();
       _gdqSay((who ? 'You and ' + who + ' heave together. ' : '') + 'The slab grinds aside. Steps go down into the dark: ' + T.name + ' is open, in this garden, for good.', 'key-round');
       try { gardenSfx('gate'); } catch (e) { /* quiet */ }
     } else _gdqSay('It will not shift from here. Heave on it when your friend has their garden open to you, and it opens for them too.', 'hand');
@@ -144,12 +158,12 @@ function _gdsAlcoveOf(T, c) {
 }
 gardenDepthPromptRows((out, C, px, py) => {
   if (!C) return;
-  const W = GARDEN_WORLD;
+  const W = GARDEN_WORLD, cur = gardenTunnelChamberAt(C.T, px * W.cellW, W.sky + py * W.cellH);
   for (const c of C.T.ells) {
     const A = _gdsAlcoveOf(C.T, c); if (!A) continue;
     const open = gardenDepthAlcoveOpen(C.T), x = A.x / W.cellW, y = (A.y + 16 - W.sky) / W.cellH, top = (A.y - 30 - W.sky) / W.cellH;
     if (open && (!A.find || _gdfHas(A.find))) continue;
-    out.push({ key: 'dpa:' + C.T.id + ':' + c.i, act: 'dpalcove', name: '', x, y, promptY: top - 0.4, stand: null, deg: null, lift: 0, src: 'dpa:' + C.T.id + ':' + c.i, kind: 'depth', dq: true, reach: 1.9, pri: 0.5, T: C.T, A, open });
+    out.push({ key: 'dpa:' + C.T.id + ':' + c.i, act: 'dpalcove', name: '', x, y, promptY: top - 0.4, stand: null, deg: null, lift: 0, src: 'dpa:' + C.T.id + ':' + c.i, kind: 'depth', dq: true, reach: 1.9, pri: 0.5 + (c.i === cur ? 0.6 : 0), T: C.T, A, open });
   }
 });
 gardenDepthActs('dpalcove', {
@@ -167,7 +181,7 @@ function _gdsOpenAlcove(T, A) {
   try { gardenSfx('dig'); } catch (e) { /* quiet */ }
   if (_gdqVisiting()) {
     if (typeof _glvLive === 'function' && _glvLive() && typeof _glvIntent === 'function') _glvIntent('tunnel', { p: T.id, r: 2 });
-    _gds.echo.add(T.id + ':8');
+    _gds.echo.add(_gdsEcho(T.id, 8));
   } else {
     let g = null; try { g = _gdG(); } catch (e) { g = null; } if (!g || !g.seen) return;
     const first = !g.seen['dp.a.' + T.id];
@@ -177,6 +191,7 @@ function _gdsOpenAlcove(T, A) {
   }
   _gdqSay(`A cold draught comes from between the ${what}. One moves when you push it, then the next: they come away in your hands, and behind them is a little hollow in the wall.` + (A.find && !_gdfHas(A.find) ? ' Something is tucked inside.' : ''), 'search');
   const set = _gds.inside.get(T.id); if (set) set.sig = '';
+  _gds.openC.force = true;
 }
 /* the alcove as drawn, in the tunnel's own picture: loose stones (or bricks) in the wall while it is hidden, a dark hollow once open */
 function _gdsAlcoveTex(sc, A, open, seed) {
@@ -185,15 +200,23 @@ function _gdsAlcoveTex(sc, A, open, seed) {
   const w = 34, h = 46, K = 2, cv = document.createElement('canvas'); cv.width = w * K; cv.height = h * K; const x = cv.getContext('2d'); x.scale(K, K); x.translate(w / 2, h - 6);
   let s = (seed >>> 0) % 2147483647 || 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
   const col = A.brick ? ['#8e5a40', '#6a412e', '#b07a58', '#5a4636'] : ['#6e665a', '#4e483f', '#948a7a', '#3e3a33'];
-  if (!open) {   // stones (bricks, the size of the wall's own) a little proud of the wall, dark cracks round them, a pale line of dust where the draught comes through
-    const n = A.brick ? 6 : 6;
-    for (let i = 0; i < n; i++) {
-      const row = Math.floor(i / 2), bw = A.brick ? 11.4 : 7 + r() * 3, bh = A.brick ? 4.6 : 6 + r() * 2.4;
-      const bx = A.brick ? -11.6 + (i % 2) * 12.2 + (row % 2) * 3 + (r() - 0.5) * 0.8 : -10 + (i % 2) * 10 + (r() - 0.5) * 2, by = A.brick ? -33 + row * 6.2 + (r() - 0.5) * 0.6 : -34 + row * 8.4 + (r() - 0.5) * 1.6;
-      x.fillStyle = 'rgba(10,8,6,.8)'; x.fillRect(bx - 0.9, by - 0.9, bw + 1.8, bh + 1.8);   // (the gap round it: it has come loose)
+  if (!open && A.brick) {   // bricks, the size of the wall's own, in running bond, each a little proud of the wall with a dark gap round it (they have come loose)
+    for (let i = 0; i < 6; i++) {
+      const row = Math.floor(i / 2), bw = 11.4, bh = 4.6, bx = -11.6 + (i % 2) * 12.2 + (row % 2) * 3 + (r() - 0.5) * 0.8, by = -33 + row * 6.2 + (r() - 0.5) * 0.6;
+      x.fillStyle = 'rgba(10,8,6,.8)'; x.fillRect(bx - 0.9, by - 0.9, bw + 1.8, bh + 1.8);
       x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(bx + 1.2, by + 1.2, bw, bh);
       x.fillStyle = col[Math.floor(r() * 3)]; x.fillRect(bx, by, bw, bh); x.fillStyle = 'rgba(255,255,255,.16)'; x.fillRect(bx, by, bw, 1.1); x.fillRect(bx, by, 1.1, bh);
     }
+  } else if (!open) {   // rock: a patch of rounded stones packed into a hole in the face, paler than the rock round them, a thin dark crack where it has come loose
+    x.strokeStyle = 'rgba(14,12,10,.7)'; x.lineWidth = 1.1; x.beginPath(); x.ellipse(0, -23, 12, 10.5, 0, 0, Math.PI * 2); x.stroke();
+    for (let i = 0; i < 7; i++) {
+      const a = i / 6 * Math.PI * 2 + r() * 0.5, d = i ? 6.4 : 0, bx = Math.cos(a) * d * 1.15, by = -23 + Math.sin(a) * d * 0.95, rx = 4 + r() * 1.5, ry = 3.3 + r() * 1.1;
+      x.fillStyle = 'rgba(0,0,0,.3)'; x.beginPath(); x.ellipse(bx + 0.8, by + 0.9, rx, ry, 0, 0, Math.PI * 2); x.fill();
+      x.fillStyle = col[Math.floor(r() * 3)]; x.beginPath(); x.ellipse(bx, by, rx, ry, r() * 0.8, 0, Math.PI * 2); x.fill();
+      x.fillStyle = 'rgba(255,255,255,.2)'; x.beginPath(); x.ellipse(bx - rx * 0.3, by - ry * 0.35, rx * 0.45, ry * 0.3, 0, 0, Math.PI * 2); x.fill();
+    }
+  }
+  if (!open) {   // a pale line of dust where the draught comes through, grit fallen at its foot
     x.strokeStyle = 'rgba(228,220,200,.45)'; x.lineWidth = 0.7; x.beginPath(); x.moveTo(-11, -12.6); x.lineTo(11, -12.6); x.stroke();
     x.fillStyle = 'rgba(20,16,12,.5)'; for (let i = 0; i < 4; i++) { x.beginPath(); x.ellipse(-8 + r() * 16, -2 + r() * 2, 1.6 + r() * 1.6, 1, 0, 0, Math.PI * 2); x.fill(); }   // (grit fallen at its foot)
   } else {   // an arched hollow in the wall, a stone sill, the stones that came out lying on the floor below it
@@ -208,7 +231,9 @@ function _gdsAlcoveTex(sc, A, open, seed) {
 }
 function _gdsInsideFrame(C, now) {
   const st = typeof _gdi !== 'undefined' ? _gdi.st : null; if (!st || !st.shown || !C || !C.T) return;
-  const sc = st.scene, rec = st.rec, a = rec && rec.im ? rec.im.alpha : 0, open = gardenDepthAlcoveOpen(C.T), sig = (open ? 'o' : 'c');
+  const sc = st.scene, rec = st.rec, a = rec && rec.im ? rec.im.alpha : 0, oc = _gds.openC;
+  if (oc.id !== C.T.id || now - oc.t > 1000 || oc.force) { oc.id = C.T.id; oc.t = now; oc.force = false; oc.v = gardenDepthAlcoveOpen(C.T); }   // (once a second, or at once after you open it)
+  const open = oc.v, sig = (open ? 'o' : 'c');
   let set = _gds.inside.get(C.T.id);
   if (!set || set.scene !== sc || set.sig !== sig || (set.items[0] && !set.items[0].im.active)) {
     if (set) for (const q of set.items) { try { q.im.destroy(); if (q.glint) q.glint.destroy(); } catch (e) { /* gone */ } }

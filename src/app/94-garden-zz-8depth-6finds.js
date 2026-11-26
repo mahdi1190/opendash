@@ -106,9 +106,12 @@ function _gdfPlaces() {
   const free = (q) => typeof _ghtSwimFree !== 'function' || _ghtSwimFree(q.x, q.y);
   for (const z of zs) {
     if (!z.swim) continue;
-    if (z.deck && z.kind === 'footbridge') {   // in the shade under the near beam, where a swimmer reaches it
-      const d = z.deck, h = (_gdqHash(z.id + 'f') % 1000) / 1000;
-      for (let k = 0; k < 5; k++) { const t = z.wet[0] + (z.wet[1] - z.wet[0]) * ((0.28 + 0.44 * h + k * 0.17) % 1 * 0.7 + 0.15), p = z.crossing.deckPoint(t / d.L, d.hw * d.near), q = cell({ x: p.x, y: p.y + 9 }); if (free(q)) { out.push({ kind: 'bridge', id: z.id, z, x: q.x, y: q.y }); break; } }
+    if (z.deck && z.kind === 'footbridge') {   // in the stream just upstream of its far beam (where nothing standing in front of the bridge hides it), where a swimmer reaches it: clear of the dipper's stones (5life)
+      const d = z.deck, span = z.wet[1] - z.wet[0], keep = (z.posts.length ? z.posts.map(p => p.t) : [(z.wet[0] + z.wet[1]) / 2]).concat([z.wet[0] + span * 0.22]), h = (_gdqHash(z.id + 'f') % 1000) / 1000;
+      for (const share of [0.8 + h * 0.06, 0.66, 0.4, 0.9, 0.12]) {
+        const t = z.wet[0] + span * share; if (keep.some(k => Math.abs(k - t) < 18)) continue;
+        const p = z.crossing.deckPoint(t / d.L, -d.hw * d.near), q = cell({ x: p.x, y: p.y - 15 }); if (free(q)) { out.push({ kind: 'bridge', id: z.id, z, x: q.x, y: q.y }); break; }
+      }
     }
     if (z.deck && z.rule && z.rule.spans && z.open && z.open.length) {   // the mason's mark, under the first arch, just over the water
       const d = z.deck, o = z.open[0], p = z.crossing.deckPoint((o[0] + o[1]) / 2 / d.L, d.hw * d.near), q = cell({ x: p.x, y: p.y + (z.face || 20) + 4 });
@@ -116,7 +119,7 @@ function _gdfPlaces() {
     }
     if (z.rect && z.kind === 'pier' && z.posts && z.posts.length > 1) {   // beside one pile a lost thing; on another, the mussels
       const n = z.posts.length, a = z.posts[(_gdqHash(z.id + 'f') % n)], b = z.posts[(_gdqHash(z.id + 'm') % n)] === a ? z.posts[(_gdqHash(z.id + 'f') + 1) % n] : z.posts[(_gdqHash(z.id + 'm') % n)];
-      const qa = cell({ x: a.x + (a.x < (z.rect[0] + z.rect[2]) / 2 * W.cellW ? -9 : 9), y: a.y + 3 }), qb = cell({ x: b.x, y: b.y + 4 });
+      const side = a.x < (z.rect[0] + z.rect[2]) / 2 * W.cellW ? -1 : 1, qa = cell({ x: a.x + side * 17, y: a.y + 3 }), qb = cell({ x: b.x, y: b.y + 4 });   // (beside the pile, outside its hold on a swimmer: its radius and a little)
       if (free(qa)) out.push({ kind: 'pier', id: z.id, z, x: qa.x, y: qa.y });
       out.push({ kind: 'mussels', id: z.id, z, x: qb.x, y: qb.y });
     }
@@ -214,11 +217,11 @@ function _gdfChamberSpots(T) {
 }
 gardenDepthPromptRows((out, C, px, py) => {
   if (!C) return;
-  const W = GARDEN_WORLD;
+  const W = GARDEN_WORLD, cur = gardenTunnelChamberAt(C.T, px * W.cellW, W.sky + py * W.cellH);   // (what is in the chamber you stand in comes first)
   for (const s of _gdfChamberSpots(C.T)) {
     if (s.act === 'dplookfor' && _gdfHas(s.find)) continue;   // (taken: nothing more there)
     const x = s.x / W.cellW, y = (s.y - W.sky) / W.cellH;
-    out.push({ key: 'dpc:' + C.T.id + ':' + s.c.i + ':' + s.act, act: s.act, name: '', x, y, promptY: (s.at.y - W.sky) / W.cellH - 0.9, stand: null, deg: null, lift: 0, src: 'dpc:' + C.T.id + ':' + s.c.i + ':' + s.act, kind: 'depth', dq: true, reach: 2, pri: 0.4, spot: s, T: C.T });
+    out.push({ key: 'dpc:' + C.T.id + ':' + s.c.i + ':' + s.act, act: s.act, name: '', x, y, promptY: (s.at.y - W.sky) / W.cellH - 0.9, stand: null, deg: null, lift: 0, src: 'dpc:' + C.T.id + ':' + s.c.i + ':' + s.act, kind: 'depth', dq: true, reach: 2, pri: 0.4 + (s.c.i === cur ? 0.6 : 0), spot: s, T: C.T });
   }
 });
 function _gdfInsideAct(r, fn) { _gdqFace((r.spot.at.x) / GARDEN_WORLD.cellW, (r.spot.at.y - GARDEN_WORLD.sky) / GARDEN_WORLD.cellH); try { if (typeof gartPlayerAct === 'function') gartPlayerAct('pick', 900); } catch (e) { /* fine */ } return fn(); }
