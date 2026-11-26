@@ -67,9 +67,9 @@ function gardenVillagePlaza() {
 }
 /* ---------- the pieces: sizes in cells (a cell is 48 by 30 px; H, the player's height, about 41 px) ---------- */
 const VK_PIECES = Object.freeze({
-  stall: Object.freeze({ hw: 0.98, dp: 0.34, rise: 2.7, name: 'the market stall' }),
+  stall: Object.freeze({ hw: 0.98, dp: 0.34, rise: 2.7, name: 'the market stall' }),   // (its picture's top, the awning, is 2.95 cells up: inside rise and the 0.7 kept clear behind; the sign is on the awning's face, a sign over the ridge covered the hall's name board)
   table: Object.freeze({ hw: 1.32, dp: 0.32, rise: 1.5, name: 'the card table' }),
-  brazier: Object.freeze({ hw: 0.42, dp: 0.3, rise: 1.6, name: 'the brazier' }),
+  brazier: Object.freeze({ hw: 0.42, dp: 0.3, rise: 1.6, name: 'the brazier' }),   // (its flames reach 2 cells: inside rise and the 0.7 kept clear)
   lantern: Object.freeze({ hw: 0.22, dp: 0.2, rise: 2.8, name: 'the lantern post' }),
 });
 /** Every place a piece offers the folk: relative to its foot (dx, dy cells), the act, the way they face (a point relative to the foot). */
@@ -111,7 +111,9 @@ function _vkFitsAlone(kind, x, y, ctx) {
   for (const s of VK_SPOTS[kind] || []) { const sx = x + s.dx, sy = y + s.dy; if (!ctx.free(sx, sy) || !ctx.free(sx - 0.25, sy) || !ctx.free(sx + 0.25, sy)) return 'no room for ' + s.k; if (typeof _vfpBedAt === 'function' && _vfpBedAt(sx, sy)) return 'a place on the lawn'; }
   // never on a lane: each route's own width kept clear (the ring's too: the walk round the plaza stays a walk)
   const onPlaza = ctx.onPlaza(x, y - P.dp / 2);
-  for (const r of ctx.routes) { const h = (onPlaza || r.ring ? Math.min(r.half, 0.8) : r.half) + (kind === 'lantern' ? 0.05 : 0.2), S = r.segs, g = h + P.hw + 0.5; for (let i = 0; i < S.length; i += 4) { if ((S[i] > x + g && S[i + 2] > x + g) || (S[i] < x - g && S[i + 2] < x - g) || (S[i + 1] > y + g && S[i + 3] > y + g) || (S[i + 1] < y - g && S[i + 3] < y - g)) continue; if (_vkSegD(x, y - P.dp / 2, S[i], S[i + 1], S[i + 2], S[i + 3]) < h || _vkSegD(x - P.hw, y - P.dp / 2, S[i], S[i + 1], S[i + 2], S[i + 3]) < h || _vkSegD(x + P.hw, y - P.dp / 2, S[i], S[i + 1], S[i + 2], S[i + 3]) < h) return 'on a lane'; } }
+  // (the ring's whole width too: kept to 0.8 of it, a stall's counter took 2 of the green's 2.4-cell loop at its corner; a lantern post,
+  // slender as a lamp post at the kerb, may still stand at its edge)
+  for (const r of ctx.routes) { const h = ((onPlaza && !r.ring) || (r.ring && kind === 'lantern') ? Math.min(r.half, 0.8) : r.half) + (kind === 'lantern' ? 0.05 : 0.2), S = r.segs, g = h + P.hw + 0.5; for (let i = 0; i < S.length; i += 4) { if ((S[i] > x + g && S[i + 2] > x + g) || (S[i] < x - g && S[i + 2] < x - g) || (S[i + 1] > y + g && S[i + 3] > y + g) || (S[i + 1] < y - g && S[i + 3] < y - g)) continue; if (_vkSegD(x, y - P.dp / 2, S[i], S[i + 1], S[i + 2], S[i + 3]) < h || _vkSegD(x - P.hw, y - P.dp / 2, S[i], S[i + 1], S[i + 2], S[i + 3]) < h || _vkSegD(x + P.hw, y - P.dp / 2, S[i], S[i + 1], S[i + 2], S[i + 3]) < h) return 'on a lane'; } }
   // one step clear of everything drawn, its picture's height behind it included (rule 12), and never in front of a door
   const x0 = x - P.hw - 0.5, x1 = x + P.hw + 0.5, y0 = y - P.rise - 0.7, y1 = y + 0.9;
   for (const t of ctx.things) {
@@ -397,8 +399,8 @@ function _vkStallSvg(look, seed) {
   const sl = -W - 7, sr = W + 7, top = -88, lo = -70;
   for (let i = 0; i < 8; i++) { const x0 = sl + i * (sr - sl) / 8, x1 = sl + (i + 1) * (sr - sl) / 8, t = i % 2 ? tb : ta; s += A.P(t[1], `M${x0} ${lo}L${x1} ${lo}L${x1 - 1.8} ${top}L${x0 + 1.8} ${top}z`) + A.P(t[0], `M${x0} ${lo}L${x1 - 2.4} ${lo}L${x1 - 3.4} ${top + 1}L${x0 + 1.8} ${top + 1}z`); s += A.P(t[0], `M${x0} ${lo}h${x1 - x0}l0 3.4q${-(x1 - x0) / 2} 6 ${-(x1 - x0)} 0z`) + A.P(t[1], `M${x0} ${lo + 2.6}q${(x1 - x0) / 2} 5.4 ${x1 - x0} 0`, 0.35); }
   s += A.P('#fff8e8', `M${sl + 3} ${top + 1}L${sl + 30} ${top + 1}L${sl + 24} ${lo}z`, 0.16) + A.P(ta[3], A.rect(sl, top - 2, sr - sl, 3), 0.8);
-  // the sign on the awning's ridge
-  if (look.sign) { const tw = Math.max(34, look.sign.length * 6.4 + 10); s += A.P(wood[1], A.rrect(-tw / 2, top - 18, tw, 15, 2.4)) + A.P('#f4ead2', A.rrect(-tw / 2 + 1.2, top - 17, tw - 2.4, 12.6, 1.8)) + `<text x="0" y="${top - 7.6}" text-anchor="middle" font-size="9" font-family="Georgia,serif" font-style="italic" font-weight="600" fill="#5a3a22">${esc(look.sign)}</text>` + A.S('#6a5034', 1, `M${-tw / 2 + 5} ${top - 18}l4 -6M${tw / 2 - 5} ${top - 18}l-4 -6`); }
+  // the sign, a board fixed on the awning's face (over the ridge it stood a cell above the stall, in front of whatever stood behind)
+  if (look.sign) { const tw = Math.min(sr - sl - 8, Math.max(34, look.sign.length * 6.4 + 10)), ty = top + 2.2; s += A.P('#2a2018', A.rrect(-tw / 2 + 0.8, ty + 1.2, tw, 13.4, 2.4), 0.22) + A.P(wood[1], A.rrect(-tw / 2, ty, tw, 13.4, 2.4)) + A.P('#f4ead2', A.rrect(-tw / 2 + 1.2, ty + 0.9, tw - 2.4, 11.4, 1.8)) + `<text x="0" y="${(ty + 9.6).toFixed(1)}" text-anchor="middle" font-size="8.6" font-family="Georgia,serif" font-style="italic" font-weight="600" fill="#5a3a22">${esc(look.sign)}</text>` + A.P('#6a5034', A.circ(-tw / 2 + 3.2, ty + 2.6, 0.9) + A.circ(tw / 2 - 3.2, ty + 2.6, 0.9), 0.9); }
   return s;
 }
 /** The brazier: an iron basket on three legs, coals and flames (lit at the fair's hours), a few logs beside it. About 0.9 H. */
@@ -480,18 +482,21 @@ const VK_GLOW = Object.freeze({
   table: '<circle cx="15" cy="-28" r="26" fill="#ffd27a" opacity="0.2"/>',
 });
 function _vkGlows(m) {
-  if (!_vk.plan || !_vk.lit || !_vk.out) { for (const id of _vk.glowIds || []) wdGlowOff(id); _vk.glowIds = []; _vk.glowLeft = 0; return; }
-  // (two new glows a tick, the rest soon after: lighting a fair's six at once was a 35 ms frame)
-  const ids = []; let made = 0, left = 0;
+  if (!_vk.plan || !_vk.lit || !_vk.out) { for (const id of _vk.glowIds || []) wdGlowOff(id); _vk.glowIds = []; _vk.glowLeft = 0; _vk.glowKey = ''; return; }
+  if (_vk.glowKey !== _vk.key) { for (const id of _vk.glowIds || []) wdGlowOff(id); _vk.glowIds = []; _vk.glowKey = _vk.key; }   // (a new lay-out: its own glows)
+  // (a glow already lit is left alone, the pieces stand still: each wdGlow call looks through the whole garden picture for its layer, and
+  // the fair's six every 1.8 s was a 35 ms frame; new ones two a tick)
+  const ids = []; let made = 0, left = 0, nowhere = false;
   _vk.plan.pieces.forEach((q, i) => {
     const mk = VK_GLOW[q.kind]; if (!mk) return;
-    const id = 'vkg' + i, g = typeof _wd !== 'undefined' && _wd.glows ? _wd.glows.get(id) : null, has = !!(g && g.isConnected); ids.push(id);
-    if (!has && made >= 2) { left++; return; }
-    if (!has) made++;
-    wdGlow(id, mk, q.x, q.y);
+    const id = 'vkg' + i, g = typeof _wd !== 'undefined' && _wd.glows ? _wd.glows.get(id) : null; ids.push(id);
+    if (g && g.isConnected) return;
+    if (made >= 2 || nowhere) { left++; return; }
+    made++;
+    if (!wdGlow(id, mk, q.x, q.y)) nowhere = true;   // (nowhere to draw a glow just now: no hurry to try again)
   });
   for (const id of _vk.glowIds || []) if (!ids.includes(id)) wdGlowOff(id);
-  _vk.glowIds = ids; _vk.glowLeft = left;
+  _vk.glowIds = ids; _vk.glowLeft = nowhere ? 0 : left;
 }
 function _vkDown() { for (const S of _vk.S.values()) { try { S.remove(); } catch (e) { /* gone */ } } _vk.S.clear(); _vk.queue = []; for (const id of _vk.glowIds || []) wdGlowOff(id); _vk.glowIds = []; }
 /** The runner planned the day before the kit could be placed (walking not known yet): it plans again once the kit is out. */

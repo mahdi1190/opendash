@@ -93,7 +93,8 @@ function _vscResolve(sc, o) {
       for (const rr of [mk.ring.r, mk.ring.r * 1.35, mk.ring.r * 1.7]) {
         for (let k = 0; k < n * 3 && pts.length < n; k++) {
           const a = Math.PI * (0.12 + 0.76 * ((k * 0.381966) % 1)), x = c.x + Math.cos(a) * rr * (k % 2 ? 1 : -1), y = c.y + Math.sin(a) * rr * 0.55;
-          const q = _vscStand(x, y, true); if (q && !pts.some(o2 => Math.hypot(o2.x - q.x, (o2.y - q.y) * 1.6) < 1.05)) pts.push(q);
+          // (never one straight in front of another: a figure is about a cell and a half tall, and Wick stood over Quince)
+          const q = _vscStand(x, y, true); if (q && !pts.some(o2 => Math.hypot(o2.x - q.x, (o2.y - q.y) * 1.6) < 1.05 || (Math.abs(o2.x - q.x) < 0.75 && Math.abs(o2.y - q.y) < 1.6))) pts.push(q);
         }
         if (pts.length >= n) break;
       }
