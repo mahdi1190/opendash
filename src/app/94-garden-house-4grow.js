@@ -144,11 +144,11 @@ function _hsGuestPick(slot, again) {
     const ul = gpEl('div', 'hs-guest-list');
     for (const f of list.slice(0, 24)) {
       const name = String((typeof _gscFirst === 'function' ? _gscFirst(f.id) : f.name) || 'A friend').slice(0, 22), b = gpEl('button', 'btn btn-secondary btn-sm', name); b.type = 'button';
-      b.onclick = () => { const r = houseDo({ o: 'guest', s: slot, n: name, f: f.id }, 'Named the guest room for ' + name); if (!r.ok) { gardenToast(r.msg + '.'); return; } try { closeDialog(); } catch (e) { /* closed */ } gardenToast(`The guest room is ${name}’s now. Their name is on the door.`, { icon: 'house', kind: 'ok' }); _hsSnapSoon(); if (again) setTimeout(again, 60); };
+      b.onclick = () => { const r = houseDo({ o: 'guest', s: slot, n: name, f: f.id }, 'Named the guest room for ' + name); if (!r.ok) { gardenToast(r.msg + '.'); return; } _hsDlgClose(); gardenToast(`The guest room is ${name}’s now. Their name is on the door.`, { icon: 'house', kind: 'ok' }); _hsSnapSoon(); if (again) setTimeout(again, 60); };
       ul.appendChild(b);
     }
     const none = gpEl('button', 'btn btn-ghost btn-sm', 'For nobody just now'); none.type = 'button';
-    none.onclick = () => { houseDo({ o: 'guest', s: slot, n: '' }, 'Took the name off the guest room'); try { closeDialog(); } catch (e) { /* closed */ } if (again) setTimeout(again, 60); };
+    none.onclick = () => { houseDo({ o: 'guest', s: slot, n: '' }, 'Took the name off the guest room'); _hsDlgClose(); if (again) setTimeout(again, 60); };
     ul.appendChild(none); el.appendChild(ul);
   } });
 }

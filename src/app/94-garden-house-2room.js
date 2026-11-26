@@ -183,6 +183,9 @@ function gardenHouseRoomRow(id) {
   _hs.rows.set(id, R);
   return R;
 }
+/** Close the dialog that is open (openDialog keeps its close in _dialogClose, 11-ui-kit.js). There is no closeDialog: the dye pot's
+ *  "Dye it", the banner's "Fly it" and naming the guest room called one inside a try, so their dialogs quietly stayed open. */
+function _hsDlgClose() { try { if (typeof _dialogClose === 'function' && _dialogClose) _dialogClose(); } catch (e) { /* closed already */ } }
 function _hsSayIn(R) {
   const H = gardenHouseMine(), L = _hsLight();
   if (R.slot) {
@@ -453,18 +456,42 @@ function _hsNearest(S) {
 function _hsPrompt(R, S) {
   const s = _hsNative(); if (!s) return;
   const n = S.move || S.carry ? (typeof _hsMovePromptRow === 'function' ? _hsMovePromptRow(R, S) : null) : _hsNearest(S);
-  const words = n ? n.words : '', key = n ? words + '|' + Math.round(n.x) + '|' + Math.round(n.y) : '';
-  if (key === S.promptKey) return; S.promptKey = key;
   if (!S.prompt || !S.prompt.c.active) {
     const scene = s.context.scene, c = scene.add.container(0, 0).setDepth(9600), bg = scene.add.graphics(), kb = scene.add.graphics();
     const t = scene.add.text(0, 0, '', { fontFamily: 'Inter, sans-serif', fontSize: '15px', color: '#fff2d8', resolution: 2 }).setOrigin(0, .5), e = scene.add.text(0, 0, 'E', { fontFamily: 'Inter, sans-serif', fontSize: '13px', fontStyle: 'bold', color: '#2a1a10', resolution: 2 }).setOrigin(.5, .5);
-    c.add([bg, kb, e, t]); s.root.add(c); S.prompt = { c, bg, kb, t, e };
+    c.add([bg, kb, e, t]); s.root.add(c); S.prompt = { c, bg, kb, t, e, words: null, w: 0 }; S.promptKey = null;
   }
-  const P = S.prompt; P.c.setVisible(!!n); if (!n) return;
-  P.t.setText(words); const w = P.t.width + 46, h = 28;
-  P.bg.clear().fillStyle(0x18120c, .9).fillRoundedRect(-w / 2, -h / 2, w, h, 9).lineStyle(1, 0xffdca0, .45).strokeRoundedRect(-w / 2, -h / 2, w, h, 9);
-  P.kb.clear().fillStyle(0xffe6b0, 1).fillRoundedRect(-w / 2 + 7, -9, 20, 18, 4); P.e.setPosition(-w / 2 + 17, 0); P.t.setPosition(-w / 2 + 34, 0);
-  P.c.setPosition(Math.max(w / 2 + 8, Math.min(960 - w / 2 - 8, n.x)), Math.max(24, n.y - 22));
+  const P = S.prompt;
+  if (!n) { if (S.promptKey !== '') { S.promptKey = ''; P.c.setVisible(false); } return; }
+  const h = 28;
+  if (P.words !== n.words) {   // (the words and the box drawn again only when the words change)
+    P.words = n.words; P.t.setText(n.words); const w = P.w = P.t.width + 46;
+    P.bg.clear().fillStyle(0x18120c, .9).fillRoundedRect(-w / 2, -h / 2, w, h, 9).lineStyle(1, 0xffdca0, .45).strokeRoundedRect(-w / 2, -h / 2, w, h, 9);
+    P.kb.clear().fillStyle(0xffe6b0, 1).fillRoundedRect(-w / 2 + 7, -9, 20, 18, 4); P.e.setPosition(-w / 2 + 17, 0); P.t.setPosition(-w / 2 + 34, 0);
+  }
+  const w = P.w, x = Math.max(w / 2 + 8, Math.min(960 - w / 2 - 8, n.x));
+  let y = Math.max(24, n.y - 22);
+  // (clear of the way-out badge over the door and of your own name over your head: standing at the loft's hatch or beside a bed,
+  // the prompt covered them. It goes up above whichever it would cover.)
+  const avoid = _hsPromptAvoid(s, S);
+  for (let k = 0; k <= avoid.length; k++) {
+    let b = null; for (const q of avoid) if (x - w / 2 < q.x1 && x + w / 2 > q.x0 && y - h / 2 < q.y1 && y + h / 2 > q.y0) { b = q; break; }
+    if (!b) break;
+    y = Math.max(h / 2 + 4, b.y0 - 4 - h / 2);
+  }
+  const key = n.words + '|' + Math.round(x) + '|' + Math.round(y);
+  if (key === S.promptKey) return; S.promptKey = key;
+  P.c.setVisible(true).setPosition(x, y);
+}
+/** What the prompt keeps clear of (room px boxes): the way-out badge (_grmOutMark, moved over this room's door in begin) and your name. */
+function _hsPromptAvoid(s, S) {
+  const A = S.promptAvoid || (S.promptAvoid = { badge: { x0: 0, x1: 0, y0: 0, y1: 0 }, name: { x0: 0, x1: 0, y0: 0, y1: 0 }, list: [] });   // (kept: nothing new each time)
+  A.list.length = 0;
+  const r = s.doorMark && s.doorMark.root, D = GRM.door;
+  if (r && r.visible !== false) { const cx = (D.x0 + D.x1) / 2 + r.x, cy = D.y0 - 56 + r.y, B = A.badge; B.x0 = cx - 23; B.x1 = cx + 23; B.y0 = cy - 23; B.y1 = cy + 23; A.list.push(B); }   // (the badge: r 19 and its ring, at the door's middle, 56 over its top)
+  const M = _grm.me;
+  if (M) { const top = M.y - 112 * GARDEN_ACTOR_SCALE - 4, B = A.name; B.x0 = M.x - 24; B.x1 = M.x + 24; B.y0 = top - 19; B.y1 = top + 2; A.list.push(B); }   // ("You": its foot 112 x the figures' scale over the feet, as 94-garden-native-rooms.js draws it)
+  return A.list;
 }
 /** Using a piece, by its kind. */
 function _hsUse(R, S, p) {

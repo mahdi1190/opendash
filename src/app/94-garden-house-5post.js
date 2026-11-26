@@ -116,7 +116,7 @@ function _hsLetterPage(L, had) {
     const more = (had || []).filter(x => x.id !== L.id);
     if (!more.length) return;
     const box = gpEl('div', 'hs-mail-more'); box.appendChild(gpEl('p', 'muted hs-mail-h', 'Other letters'));
-    for (const M of more.slice(0, 8)) { const b = gpEl('button', 'btn btn-ghost btn-sm', `${M.from}${M.r ? '' : ' (new)'}`); b.type = 'button'; b.onclick = () => { try { closeDialog(); } catch (e) { /* closed */ } setTimeout(() => _hsLetterPage(M, _hsPostHad()), 60); }; box.appendChild(b); }
+    for (const M of more.slice(0, 8)) { const b = gpEl('button', 'btn btn-ghost btn-sm', `${M.from}${M.r ? '' : ' (new)'}`); b.type = 'button'; b.onclick = () => { _hsDlgClose(); setTimeout(() => _hsLetterPage(M, _hsPostHad()), 60); }; box.appendChild(b); }
     el.appendChild(box);
   } });
 }

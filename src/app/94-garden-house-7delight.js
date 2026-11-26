@@ -56,7 +56,7 @@ function _hsDyeOpen(R, S, pot) {
       if (visit) ok = typeof _hsGuestDo === 'function' && _hsGuestDo(R, S, op);
       else { const r = houseDo(op, v ? 'Dyed the ' + houseLowName(gardenDecor(pick.d)) + ' ' + colour.dye.name.toLowerCase() : 'Washed the ' + houseLowName(gardenDecor(pick.d))); if (!r.ok) { gardenToast(r.msg + '.', { icon: 'droplets' }); return; } ok = true; _hsRoomRefresh(R, S, false); }
       if (!ok) return;
-      try { closeDialog(); } catch (e) { /* closed */ }
+      _hsDlgClose();
       const name = houseLowName(gardenDecor(pick.d));
       _grmSay(v ? `You boil the ${colour.crop.slice(5).replace(/-/g, ' ')}, dip the ${name}, and hang it to dry. ${colour.dye.name}. It suits it.` : `You wash the ${name} through. Its own colours come back.`, 7000);
       _hsDyeSteam(pot, v ? colour.dye.c : '#dfe8ee');
@@ -102,7 +102,7 @@ function _hsBannerOpen() {
     save.onclick = () => {
       const bn = cells.join(''); const r = houseDo({ o: 'banner', b: bn }, 'Changed your banner');
       if (!r.ok && !/like that already/.test(r.msg)) { gardenToast(r.msg + '.', { icon: 'flag' }); return; }
-      try { closeDialog(); } catch (e) { /* closed */ }
+      _hsDlgClose();
       const first = _hsGrant('hs-banner', { 'decor:hf-banner': 1 });
       gardenToast(first ? 'Your banner is flying over the cottage. A framed one for indoors is in your things.' : 'Your banner is flying over the cottage.', { icon: 'flag', kind: 'ok' });
       if (typeof _hsOutsideSoon === 'function') _hsOutsideSoon();
@@ -116,7 +116,7 @@ function _hsPlanExtras(el, v, again) {
   if (typeof _hsStarsRow === 'function') _hsStarsRow(el, v);
   const row = gpEl('div', 'hs-ban-row'), sw = gpEl('span', 'hs-ban-mini'); sw.innerHTML = _hsBannerMini(v.bn || HOUSE_BANNER0, 48);
   row.appendChild(sw); row.appendChild(gpEl('span', 'hs-ban-t', gpVisiting() ? 'Their banner, flying over their house.' : 'Your banner flies over the cottage.'));
-  if (!gpVisiting()) { const b = gpEl('button', 'btn btn-secondary btn-sm', 'Change it'); b.type = 'button'; b.onclick = () => { try { closeDialog(); } catch (e) { /* closed */ } setTimeout(_hsBannerOpen, 60); }; row.appendChild(b); }
+  if (!gpVisiting()) { const b = gpEl('button', 'btn btn-secondary btn-sm', 'Change it'); b.type = 'button'; b.onclick = () => { _hsDlgClose(); setTimeout(_hsBannerOpen, 60); }; row.appendChild(b); }
   el.appendChild(row); void again;
 }
 /** A banner as a little SVG (for panels): w px wide. */
