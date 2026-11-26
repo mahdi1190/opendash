@@ -1,8 +1,8 @@
 /* ============================================================
    GARDEN DESIGNER, the strict rules. The owner, 1 Nov 2026: "make the designer a lot stricter so we don't have anything silly looking." Every number is in GDZ_STRICT.
-   These rules run only when you draw or put something down yourself, in the designer. They never run on what is already there, on Put it back, or on a design from a friend or an old layout:
-   what was placed before stays until it is moved, and gardenDesignClean still draws any design it can read. Only the reach rule in 94-garden-design-2tools.js checks an old layout.
-   No DOM here. Each check gives back words a person can act on; snapping (gardenDesignAnchor, _gdzSnapNear in the tools) fixes most things before anyone reads them.
+   These rules run only when you lay or put something down yourself, with the building tools in the game (94-garden-zz-8build2-land.js). They never run on what is already there, on Put it back, or on a design from a friend or an old layout:
+   what was placed before stays until it is moved, and gardenDesignClean still draws any design it can read. Only the reach rule (94-garden-zz-8build2-land.js) checks an old plan.
+   No DOM here. Each check gives back words a person can act on; snapping (gardenDesignAnchor, the hands' slide of up to two squares) fixes most things before anyone reads them.
    ============================================================ */
 const GDZ_STRICT = Object.freeze({
   snap: 2,                  // cells: a building or a decoration slides this far to the nearest spot that works

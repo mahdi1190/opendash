@@ -158,8 +158,16 @@ const GARDEN_KINDS = Object.freeze({
   holt: { name: 'the holt', art: 'holt', place: true, w: 2.1, h: 0.45, solid: 'block', noPerch: true, home: true },
   nest: { name: 'the nest', place: true, w: 1, h: 0.4, noPerch: true, home: true },
   tent: { name: 'the tent', place: true, w: 1.6, h: 0.6, solid: 'block', noPerch: true, home: true },
-  finds: { name: 'your finds', arts: ['finds', 'museum'], words: ['finds', 'museum'], noPerch: true },
+  finds: { name: 'your finds', arts: ['finds'], words: ['finds'], noPerch: true },
   lamp: { name: 'the lamp', arts: ['lamp', 'lampbox'], paint: 'lamp', w: 0.5, h: 0.3, decor: ['lantern'], words: ['lamp'], top: 33 },
+  // (build2) home storage: any thing of this kind, in the garden or inside a home, opens the same storage (store: 94-garden-build2-1pockets.js)
+  chest: { name: 'the chest', decor: ['storage-chest'], store: true, pet: 'bed', top: 24, petSeat: 24 },
+  // (build2) a museum: any thing of this kind opens the one collection (94-garden-build2-3museum.js): the lake hall (art 'hall', by the
+  // village from the first day), the Little museum you can build (art 'museum'), and a museum building a layout places through its data
+  // (a `things` row of this kind where there is room for one, painted by 'vale-museum': 94-garden-native-painted-zb2museum.js; the
+  // Fleetwater Vale's village has no free lot for it yet). fill: a building, so its whole footprint is kept clear of paths, plots, trunks and
+  // water, and stops the feet; door: its door in the middle of its front
+  museum: { name: 'the museum', arts: ['museum', 'hall'], words: ['museum'], museum: true, place: true, paint: 'vale-museum', fill: true, door: true, w: 5, h: 2.4, solid: 'block', noPerch: true },
   /* known, nothing to do yet: listed so the audit does not call them unknown */
   scenery: { name: 'the rock', words: ['stone', 'rock', 'boulder', 'block', 'bollard', 'buoy', 'shingle', 'haze', 'ruin', 'crutch', 'posternpier', 'gatepier', 'plinth', 'crate', 'crates', 'pots', 'net', 'anchor', 'face', 'hatch', 'fence', 'baskets', 'sacks', 'barrel', 'barrels', 'hurdle', 'gap', 'water', 'brick', 'hedge', 'oldman', 'wallend', 'foot', 'weir', 'haze'], noPerch: true },   // the land's own stones and the harbour's clutter: nothing to do
   building: { name: 'the building', arts: ['hall', 'oldhouse', 'summer', 'boathouse', 'hide', 'smoke', 'shepherd', 'ice', 'grotto', 'temple', 'folly', 'hull', 'lectern', 'smoker', 'bench', 'cross', 'statue', 'topiary', 'gate', 'cairn', 'barrels', 'boles', 'beacon', 'warren', 'ring', 'frogstone', 'drift', 'cart', 'office', 'thatched-cottage', 'arch', 'bandstand', 'barrel', 'boots', 'circle', 'dew', 'help', 'kettle', 'lookout', 'moon', 'oak', 'observatory', 'rack', 'rg-fields', 'rg-garden', 'rg-hill', 'rg-lake', 'rg-marsh', 'rg-orchards', 'scarecrow', 'shelf', 'skeps', 'stars', 'stone', 'worms', 'chest'],

@@ -9,7 +9,7 @@
    Also the little card in the garden's side panel: your rod, your bait, the casts you have left, the bugs about.
    ============================================================ */
 const _gdc = { zone: '', found: '', bag: 'bag', bagKind: '', tackle: 'now' };
-const GDC_TABS = Object.freeze([['bag', 'Bag and market', 'shopping-basket'], ['tackle', 'Tackle', 'store'], ['show', 'Showcase', 'trophy'], ['lake', 'The lake', 'waves'], ['hall', 'The lake hall', 'landmark']]);
+const GDC_TABS = Object.freeze([['bag', 'Bag and market', 'shopping-basket'], ['tackle', 'Tackle', 'store'], ['show', 'Showcase', 'trophy'], ['lake', 'The lake', 'waves'], ['hall', typeof gardenMuseumTab === 'function' ? 'The museum' : 'The lake hall', 'landmark']]);
 function _gdcTab() { const t = _gdG().prefs.catchTab; return GDC_TABS.some(x => x[0] === t) ? t : 'bag'; }
 function _gdcSetTab(t) { const a = document.activeElement; if (a && a.classList && a.classList.contains('gdb-search')) a.blur(); _gdG().prefs.catchTab = t; if (typeof saveUI === 'function') saveUI(); _gdc.pick = null; _gdc.q = ''; _gdxRepaintTab(); }
 function _gdcRar(r) { return GARDEN_RARITY[r] || GARDEN_RARITY.common; }

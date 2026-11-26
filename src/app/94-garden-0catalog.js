@@ -501,6 +501,8 @@ const GARDEN_DECOR = _gdRows([
   _gD('dc-mossy-steps', 'Steps to nowhere', 'ornament', { price: 20, lv: 5, look: { c: '#a39b8c', c2: '#5a8a4a', h: 0.5 }, blurb: 'Ruins. Three steps up, then you have to come down.' }),
   _gD('dc-stone-lion', 'Worn stone lion', 'ornament', { craft: 1, price: 0, look: { c: '#a39b8c', c2: '#c4bdae', h: 0.9 }, blurb: 'Ruins. His nose has been patted away.' }),
   _gD('rose-arch', 'Rose arch', 'structure', { craft: 1, price: 0, w: 2, look: { c: '#7a5a3a', c2: '#d8405a', h: 1.4, parts: [['post', { x: -24, w: 5, h: 72 }], ['post', { x: 24, w: 5, h: 72 }], ['block', { y: -70, w: 58, h: 6 }], ['bush', { x: -24, y: -22, w: 14, h: 30, clip: 'sway' }], ['bush', { x: 24, y: -22, w: 14, h: 30, clip: 'sway' }], ['bush', { y: -74, w: 40, h: 16, clip: 'sway' }]] }, blurb: 'Left by a friend, with a note.' }),
+  // (build2) home storage: every chest of the kind `chest` opens the same storage (94-garden-build2-1pockets.js). The first one is a gift
+  _gD('storage-chest', 'Storage chest', 'ornament', { price: 40, look: { c: '#8a5a34', c2: '#b8862e', h: 0.6 }, blurb: 'Your storage at home. Open it to take things from your pockets or put them away. Every chest opens the same storage.' }),
 ]);
 const _GD_DECOR = new Map(GARDEN_DECOR.map(d => [d.id, d]));
 
@@ -642,6 +644,9 @@ const GARDEN_TOOLS = _gdRows(([
   { id: 'hose', name: 'Garden hose', kind: 'hose', price: 120, lv: 6, icon: 'waves', blurb: 'Water a whole row with one click.' },
   { id: 'golden-shears', name: 'Golden shears', kind: 'shears', price: 200, lv: 10, icon: 'scissors', blurb: 'Pruning finds a cutting twice as often.' },
   { id: 'fertiliser', name: 'Compost', kind: 'consumable', price: 6, lv: 1, icon: 'flask-conical', noShop: 1, blurb: 'Weeds and leaves from the compost bin. A feed gives a plant half a day’s growth.' },   // (made, never sold: JOURNAL.md section 9)
+  // (build2) bigger pockets (94-garden-build2-0rules.js GB2_SIZE): worked out from what you own
+  { id: 'satchel', name: 'Satchel', kind: 'bag', price: 300, lv: 12, icon: 'package', blurb: 'Ten more pockets: 30 in all, so fewer walks home.' },
+  { id: 'big-bag', name: 'Big bag', kind: 'bag', price: 600, lv: 20, needs: 'satchel', icon: 'package', blurb: 'Ten more again: 40 pockets in all.' },
 ]).map(x => Object.assign({}, x, { price: _gdUp(x.price) })));
 const _GD_TOOL = new Map(GARDEN_TOOLS.map(t => [t.id, t]));
 /* Bouquets: the first style whose rule the chosen flowers meet (gardenBouquetOf). n = how many stems at least. */
@@ -1060,6 +1065,7 @@ function gardenSnapshotClean(raw) {
   if (raw.sp && typeof gardenSpecClean === 'function') { const sp = gardenSpecClean(raw.sp); if (sp) out.sp = sp; }   // their best specimens (94-garden-fish-0variants.js)
   if (raw.jn && typeof gardenJournalSnapClean === 'function') { const jn = gardenJournalSnapClean(raw.jn); if (jn) out.jn = jn; }   // what they have caught for the Field Journal: vale ids, best sizes (94-garden-fish-0catalog.js)
   if (raw.ca && typeof gardenCatchWireClean === 'function') { const ca = gardenCatchWireClean(raw.ca); if (ca) out.ca = ca; }   // the lake: what it shows to friends
+  if (raw.mu && typeof gardenMuseumClean === 'function') { const mu = gardenMuseumClean(raw.mu); if (mu) out.mu = mu; }   // (build2) their museum: ids and sizes (94-garden-build2-0museum.js)
   { const tg = gardenTogetherClean(raw.tg); if (tg) out.tg = tg; }   // 94-garden-zz-*.js: ids and numbers only
   if (raw.rf && typeof raw.rf === 'object' && !Array.isArray(raw.rf)) {   // what they have put in their hidden rooms: {room: [[decor, x, y]]} (94-garden-world-4rooms2.js); an older app drops it
     const rf = {};

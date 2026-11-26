@@ -304,7 +304,7 @@ function _gcBugsBase(mArg) {
   // one more for each region you have opened: the vale's bugs are spread over all its pages, and with two for the whole vale a player in the village saw none for long stretches
   const zones = island ? m.areas.filter(a => /^zn-\d+$/.test(a)).length : (woods ? 1 : 0);
   const n = Math.max(1, Math.min(cap, 1 + Math.floor(blooms.length / 8) + Math.floor(trees.length / 6) + zones + (m.tod === 'night' ? -1 : 0) + (wet ? -1 : 0)));
-  const weights = pool.map(b => gardenBugWeight(b, ctx) * (typeof gardenBugHabitat === 'function' ? gardenBugHabitat(b, m) : 1));   // (habitats you built: a kind comes more often, never more bugs)
+  const weights = pool.map(b => gardenBugWeight(b, ctx) * (typeof gardenBugHabitat === 'function' ? gardenBugHabitat(b, m) : 1) * (typeof gardenB2BugWeight === 'function' ? gardenB2BugWeight(b.id) : 1));   // (habitats you built: a kind comes more often, never more bugs)
   rg.even(pool, weights);
   const out = []; let beachUsed = false;
   for (let i = 0; i < n * 3 && out.length < n; i++) {

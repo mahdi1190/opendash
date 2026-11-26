@@ -259,7 +259,7 @@ window.GardenNative = (function () {
         const plant = it && it.kind === 'plant' ? gardenPlantById(model, it.uid) : cell ? _gdpPlantAtCell(model, cell) : null;
         if (plant && plant.thirsty && !plant.ripe && plant.def.thirst && !model.rain.now) _gdp.sweep = { done: new Set(), n: 0, undo0: _gd.undo.length, tool: 'water', last: '' };
       }
-      if (!_gdp.sweep && !_gdp.moving && mode !== 'decorate' && tool !== 'seed') { const action = gardenWorldPick(it, cell, ev, model); if (action.kind === 'ground' && gardenHoldStart(ev)) _gdp.press.hold = true; }
+      if (!_gdp.sweep && !_gdp.moving && mode !== 'decorate' && tool !== 'seed' && !(typeof gardenB2Holding === 'function' && gardenB2Holding())) { const action = gardenWorldPick(it, cell, ev, model); if (action.kind === 'ground' && gardenHoldStart(ev)) _gdp.press.hold = true; }
     });
     s.scene.input.on('pointermove', pointer => { if (!active() || designing()) return; const ev = normalizeEvent(pointer); if (inRoom()) { GardenNativeRooms.pointerMove(ev); return; } if (touches.has(pointer.id)) touches.set(pointer.id, { x: ev.clientX, y: ev.clientY }); if (pinch && touches.size > 1) { const [a, b] = [...touches.values()], distance = Math.hypot(a.x - b.x, a.y - b.y); if (distance > pinch * 1.12) { s.world.zoom(-1); pinch = distance; } else if (distance < pinch / 1.12) { s.world.zoom(1); pinch = distance; } return; } const pr = _gdp.press; if (pr && (Math.abs(ev.clientX - pr.x0) > 9 || Math.abs(ev.clientY - pr.y0) > 9)) pr.moved = true; if (pr && pr.hold) gardenHoldMove(ev); else if (pr && pr.moved) _gdpDragMove(ev); else { _gdpHover(ev); hoverProjection(s, true); } });
     const release = pointer => { if (!active()) return; const ev = normalizeEvent(pointer); touches.delete(pointer.id); if (designing()) { touches.clear(); pinch = null; return; } if (touches.size < 2 && pinch) { pinch = null; _gdp.press = null; return; } if (inRoom()) { GardenNativeRooms.up(); return; } const pr = _gdp.press; _gdp.press = null; if (!pr) return; if (pr.hold) { gardenHoldEnd(); return; } if (_gdp.sweep) { if (pr.moved) { _gdpSweepEnd(); return; } _gdp.sweep = null; } if (pr.moved && pr.drag) _gdpDragDrop(ev, pr); else if (!pr.moved) _gdpClick(pr.it, pr.cell, ev); };
@@ -267,6 +267,7 @@ window.GardenNative = (function () {
     s.contextmenu = ev => {
       if (!active() || designing() || inRoom() || _gdpPopOpen() || _gwFishBusy()) return;
       ev.preventDefault(); const model = gardenHere(), cell = _gdpCellOf(ev), item = _gdpPickItem(ev, cell);
+      if (typeof gardenB2HandsEsc === 'function' && gardenB2HandsEsc()) return;   // (build2) a right click while you hold something: nothing changes, your hands are empty
       if (_gdpMode() === 'decorate' || _gdp.moving || _gdpTool() === 'seed') { _gdpEsc(); return; }
       const plant = item && item.kind === 'plant' ? gardenPlantById(model, item.uid) : cell ? _gdpPlantAtCell(model, cell) : null;
       if (plant) { _gdp.sel = plant.uid; _gdpPaintSel(model); gardenPlantBubble(plant, model); return; }

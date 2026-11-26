@@ -22,6 +22,7 @@ function gardenGearLook() {
   const out = { r: gardenRod().id, n: gardenNet().id, b: gardenBobber().id };
   for (const id of ['can-4', 'can-3', 'can-2']) if (gardenHas('tool:' + id) > 0) { out.c = id; break; }
   if (typeof gardenStyleLook === 'function') gardenStyleLook(out);   // the look of your rod and net, what you carry: 94-garden-style-0rules.js
+  if (typeof gardenB2GearLook === 'function') gardenB2GearLook(out);   // (build2) the tool from your ring in your hand (t)
   return typeof gardenTackleLook === 'function' ? gardenTackleLook(out) : out;   // reel, line, hook, lantern, jar, boat: 94-garden-fish-8catch.js
 }
 /** Yours, for your own figure (it is asked every frame; what you carry changes rarely). */
@@ -34,6 +35,7 @@ function _gplMyGear() {
 /** What hangs on someone's back: nothing while their hands are full of it, and nothing for the starter ones. Feet at 0,0, the walker's units. */
 function _gplSlung(gear, pose) {
   if (!gear || pose === 'fish' || pose === 'hold') return '';
+  if ((gear.t === 'rod' || gear.t === 'net') && pose === 'idle') gear = Object.assign({}, gear, gear.t === 'rod' ? { r: '', rk: '', rl: '' } : { n: '', nk: '' });   // (build2) in the hand while you stand, so not on the back as well
   const rod = gear.r ? gardenGearDef(gear.r) : null, net = gear.n ? gardenGearDef(gear.n) : null;
   let s = '';
   const netSkin = gear.nk && typeof gardenLookNetOnBack === 'function' ? gardenLookNetOnBack(gear.nk) : '';   // a look shows even on the starter one; an id this app does not know is left out

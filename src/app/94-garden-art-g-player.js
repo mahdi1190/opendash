@@ -239,7 +239,7 @@ function _gplDraw(a, dir, pose, o) {
   { const col = o.gear && o.gear.c && typeof GARDEN_CAN_LOOK !== 'undefined' ? GARDEN_CAN_LOOK[o.gear.c] : null; if (col) { const can0 = Tools.can; Tools.can = () => can0().split('#6f9ab0').join(col); } }
   if (o.gear && o.gear.rk && typeof gardenLookRodInHand === 'function' && gardenLookDef(o.gear.rk)) Tools.rod = () => gardenLookRodInHand(o.gear.rk);
   const slung = o.gear && typeof _gplSlung === 'function' ? _gplSlung(o.gear, pose) : '';
-  const held = o.gear && o.gear.hd && typeof gardenLookHeldTool === 'function' ? gardenLookHeldTool(o.gear.hd) : null;   // an umbrella, a balloon: in the hand when it is free
+  const held = (o.gear && o.gear.t && typeof gardenB2HeldTool === 'function' ? gardenB2HeldTool(o.gear.t, o.gear, pose) : null) || (o.gear && o.gear.hd && typeof gardenLookHeldTool === 'function' ? gardenLookHeldTool(o.gear.hd) : null);   // the tool from the ring (build2), else an umbrella, a balloon: in the hand when it is free
   const side = dir === 'e', back = dir === 'n';
   const yaw = Number.isFinite(o.yaw) ? o.yaw : side ? 90 : back ? 180 : 0;   // (move360) 0 facing you, 90 side on (east), 180 away; 22.5 steps
   // The Painted village (94-garden-art-g-cast.js, -g-paint.js): the head a little smaller on the body, as the scene kit's people are in proportion,
