@@ -278,7 +278,7 @@ function _glhSendSnap(fid) {
  * Plants and decorations go as changes (gl:d). Everything else a snapshot says (the land, what is built, the design, how buildings are painted, rooms, the lake, wonders, weather, the season) has no change message: when any of it differs from
  * what everyone was last given, everyone gets the whole garden. Looked at every few seconds and only sent on a real change, so it costs next to nothing. The draft in the designer is not in a snapshot: only what is saved.
  */
-function _glhWorldSig(s) { const { v, at, ac, plants, decor, hearts, pf, dr, ...rest } = s; void v; void at; void ac; void plants; void decor; void hearts; void pf; void dr; return JSON.stringify(rest); }   // (pf: which way you face, not a change to the garden; dr, build phase 1: where carried things lie travels on its own, gl:dr: never the whole garden again)
+function _glhWorldSig(s) { const { v, at, ac, plants, decor, hearts, pf, dr, pw, ...rest } = s; void v; void at; void ac; void plants; void decor; void hearts; void pf; void dr; void pw; return JSON.stringify(rest); }   // (pf: which way you face, not a change to the garden; dr, build phase 1: where carried things lie travels on its own, gl:dr: never the whole garden again)
 /* ---------- designing together (full co-op, 2.75) ----------
    A friend here draws paths, paints ground, moves fixed things and makes things in your garden as you do (Menu > Design). Their finished
    design comes as text in up to two pieces (gl:dz); every row is checked (gardenDesignClean) and it becomes your garden's design in use,

@@ -724,6 +724,8 @@ const GARDEN_RIBBONS = _gdRows([
   { id: 'generous-gardener', label: 'Generous gardener', hint: "Leave 5 gifts in friends' gardens.", icon: 'gift', fact: 'giftsGiven', of: 5, reward: { c: 60, i: { 'seed:camellia': 1 } } },
   { id: 'much-loved', label: 'Much loved', hint: 'Get 10 hearts from friends for your garden.', icon: 'heart', fact: 'heartsReceived', of: 10, reward: { c: 77, i: { 'decor:wind-chimes': 1 } } },
   // ── end garden-social ──
+  // (the depth lane) under things: facts from gardenDepthFacts() (94-garden-zz-8depth-1under.js), counted from the layout's own bridges and piers
+  { id: 'under-every-bridge', label: 'Under every bridge', hint: 'Swim under every bridge and pier you can reach.', icon: 'waves', fact: 'underAll', of: 1, reward: { c: 120 } },
 ]);
 
 /* ---------- daily garden tasks and weekly garden quests ----------
@@ -1016,6 +1018,7 @@ function gardenSnapshotClean(raw) {
   if (Array.isArray(raw.wk)) out.wk = raw.wk.slice(0, 13).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.38: what they have built for the lake (ids; one this version does not know is ignored)
   if (Array.isArray(raw.bk)) { const bk = raw.bk.slice(0, 12).filter(r => Array.isArray(r) && r.length === 8 && typeof r[0] === 'string' && /^[a-z0-9-]{1,32}$/.test(r[0]) && r.slice(1).every(n => Number.isInteger(n) && n >= 0 && n <= 31)); if (bk.length) out.bk = bk; }   // how they have painted their buildings, by building id; a number this version does not know draws as built
   if (Array.isArray(raw.pf) && raw.pf.length === 2 && int(raw.pf[0], 0, 15) !== null && ['w', 'r', 'c'].includes(raw.pf[1])) out.pf = [raw.pf[0], raw.pf[1]];   // (move360) which way the gardener faces, in sixteenths, and how they last walked
+  if (typeof gardenDepthClean === 'function') gardenDepthClean(raw, out);   // (the depth lane) pw: where the gardener is (a floor, beneath a bridge, a tunnel); dp: the tunnels' state (94-garden-zz-8depth-0rules.js)
   if (Array.isArray(raw.tk)) out.tk = raw.tk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.23: ids of tricks; the page ignores any it does not know
   if (Array.isArray(raw.dr)) {   // (build phase 1) where carried things were set down, one row per thing (94-garden-build-0rules.js gardenDropClean says the same)
     const seen = new Set(); out.dr = [];

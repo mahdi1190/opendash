@@ -694,6 +694,7 @@ function gardenSnapshot() {
     try { const tg = typeof gardenTogetherWire === 'function' ? gardenTogetherWire() : null; if (tg) out.tg = tg; } catch (e) { /* optional */ }   // what you share with friends (94-garden-zz-*.js)
     try { if (typeof gartMoveTell === 'function') { const t = gartMoveTell(); out.pf = [t.h, t.g]; } } catch (e) { /* optional */ }   // (move360) which way you face (sixteenths) and how you last walked: a friend who arrives sees you turned the right way
     if (typeof gardenDropRows === 'function') out.dr = gardenDropRows(_gdG());   // (build phase 1) where carried things were set down: [[key, item, x tenths, y tenths]], always there (empty: all at home), so a friend knows this garden says it
+    try { const dw = typeof gardenDepthWire === 'function' ? gardenDepthWire() : null; if (dw && dw.pw) out.pw = dw.pw; if (dw && dw.dp) out.dp = dw.dp; } catch (e) { /* optional */ }   // (the depth lane) where you are (up on a floor, beneath a bridge, in a tunnel), the tunnels' state: an older app drops both
     return out;
   } catch (e) { console.error('[garden]', e); return null; }
 }
@@ -745,7 +746,10 @@ function gardenFacts(mArg) {
   try { soc = typeof gardenSocialFacts === 'function' ? gardenSocialFacts() : null; } catch (e) { soc = null; }
   let rgn = null;   // a region's page finished (94-garden-regions-1core.js)
   try { rgn = typeof gardenRegionFacts === 'function' ? gardenRegionFacts() : null; } catch (e) { rgn = null; }
+  let dep = null;   // (the depth lane) the bridges and piers you have swum under (94-garden-zz-8depth-1under.js)
+  try { dep = typeof gardenDepthFacts === 'function' ? gardenDepthFacts() : null; } catch (e) { dep = null; }
   return {
+    ...(dep || {}),
     ...(rgn || {}),
     ...(soc || {}),
     ...(cat || {}),

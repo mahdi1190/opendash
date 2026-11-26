@@ -80,16 +80,16 @@
       const nx = -mid.ty, ny = mid.tx, span = c.kind === 'footbridge' ? hw + .7 : hw + .15;
       const A = deck ? deck.a : { x: (mid.x + nx * span) * cw, y: W.sky + (mid.y + ny * span) * ch }, Bp = deck ? deck.b : { x: (mid.x - nx * span) * cw, y: W.sky + (mid.y - ny * span) * ch };
       const box = [Math.min(A.x, Bp.x) - 40, Math.min(A.y, Bp.y) - 40, Math.max(A.x, Bp.x) + 40, Math.max(A.y, Bp.y) + 40];
-      if (c.kind === 'footbridge') { add(box, 61, (B, r) => footbridge(B, r, P, A, Bp, deck)); nearRail(thing, c, P, A, Bp, deck); }
+      if (c.kind === 'footbridge') { add(box, 61, (B, r) => footbridge(B, r, P, A, Bp, deck)); nearRail(thing, c, P, A, Bp, deck); if (V.lidSet) V.lidSet(c.id, box, B => footbridge(B, C.kit.rng(61), P, A, Bp, deck, true)); }   // (the same planks drawn again over a swimmer beneath it: 94-garden-zz-8depth-2lids.js)
       else if (c.kind === 'log' && V.fallenLog) add(box, 62, (B, r) => V.fallenLog(B, r, P, A, Bp, C.season, deck));   // (round 3: Wren's log, 94-garden-paint-vale-1woodland.js)
       else add(box, 62, (B, r) => stones(B, r, P, A, Bp, C.season, deck));
     }
   }
-  function footbridge(B, r, P, A, Bp, deck) {
+  function footbridge(B, r, P, A, Bp, deck, lid) {
     const L = Math.hypot(Bp.x - A.x, Bp.y - A.y), ux = (Bp.x - A.x) / L, uy = (Bp.y - A.y) / L, vx = -uy, vy = ux, hw = deck ? deck.halfWidth : 17;
     const ground = (t, s) => ({ x: A.x + ux * t + vx * s, y: A.y + uy * t + vy * s });
     const q = (t, s, lift = 0) => { const p = deck ? deck.deckPoint(t / L, s) : ground(t, s); return { x: p.x, y: p.y - lift }; };
-    B.cx.filter = 'blur(3px)'; B.f(B.poly([ground(8, -hw + 4), ground(L - 8, -hw + 4), ground(L - 8, hw + 10), ground(8, hw + 10)]), '#1e2e34', .3); B.cx.filter = 'none';
+    if (!lid) { B.cx.filter = 'blur(3px)'; B.f(B.poly([ground(8, -hw + 4), ground(L - 8, -hw + 4), ground(L - 8, hw + 10), ground(8, hw + 10)]), '#1e2e34', .3); B.cx.filter = 'none'; }   // (lid: the deck alone, drawn again over a swimmer; its shadow stays on the water)
     // Flush stone abutments finish in the bank, rather than a dirt blot over
     // the boards. The continuous bed and every plank stay inside support.
     B.f(B.poly([q(0, -hw), q(L, -hw), q(L, hw), q(0, hw)]), P.woodDk);

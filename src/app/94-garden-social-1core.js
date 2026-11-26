@@ -169,7 +169,7 @@ function _gscSnapBody() {
   if (!s || !Array.isArray(s.plants)) return null;
   const v = _gsc.data && _gsc.data.tally ? _gsc.data.tally : null;
   const body = { v: 1, lv: Math.max(1, Math.min(999, Number(s.lv) || 1)), season: s.season, areas: s.areas.slice(0, 12), plants: s.plants, decor: s.decor, heart: Math.max(0, Math.min(6, Number(s.heart) || 0)), at: Math.floor(Number(s.at) || _gscNow()) };
-  for (const k of ['wv', 'lh', 'fp', 'rp', 'ls', 'lf', 'lc', 'lz', 'lr', 'wk', 'sh', 'tk', 'wd', 'dz', 'bk', 'rf', 'tg', 'ca', 'tz', 'sr', 'ss', 'wx', 'pa', 'jn', 'gk', 'ex', 'fk', 'pf', 'dr']) if (s[k] !== undefined) body[k] = s[k];   // Preserve the island identity and optional placements alongside the land, lake works, showcase and pet tricks in the saved copy.
+  for (const k of ['wv', 'lh', 'fp', 'rp', 'ls', 'lf', 'lc', 'lz', 'lr', 'wk', 'sh', 'tk', 'wd', 'dz', 'bk', 'rf', 'tg', 'ca', 'tz', 'sr', 'ss', 'wx', 'pa', 'jn', 'gk', 'ex', 'fk', 'pf', 'dr', 'pw', 'dp']) if (s[k] !== undefined) body[k] = s[k];   // Preserve the island identity and optional placements alongside the land, lake works, showcase and pet tricks in the saved copy.
   if (v && Number(v['in.like']) > 0) body.hearts = Math.min(1e7, Number(v['in.like']));
   for (const k of ['cv', 'sp']) if (s[k] != null) body[k] = s[k];   // the saved copy too: can they take a catch, and their best specimens
   if (JSON.stringify(body).length > _GSC_BYTES) delete body.ca;
@@ -195,7 +195,7 @@ async function _gscPublish(force) {
   if (!_gscFriendList().length) return;
   const body = _gscSnapBody();
   if (!body) return;
-  const sig = String(gardenHash(JSON.stringify(Object.assign({}, body, { at: 0, pf: 0 }))));   // (which way you face is not a change worth sending)
+  const sig = String(gardenHash(JSON.stringify(Object.assign({}, body, { at: 0, pf: 0, pw: 0 }))));   // (which way you face, or where you are, is not a change worth sending)
   const memo = _gscPubMemo(), now = Date.now();   // clock-ok: spacing messages, not a date
   if (!force && memo.sig === sig && now - (memo.at || 0) < _GSC_PUB_STALE) return;
   if (!force && now - (memo.at || 0) < _GSC_PUB_GAP) { _gscPublishSoon((memo.at || 0) + _GSC_PUB_GAP - now + 1000); return; }
