@@ -209,9 +209,12 @@ function homeEnter(els) {
 function homeGridPack(grid) {
   if (!grid || !grid.isConnected) return false;
   grid.classList.add('is-packed');
-  _hgWidth = grid.clientWidth;
+  // (speed pass) the labels and the gap fill first, at the width of the last pack, then the width: one layout of the page after the
+  // writes, which the glide's measuring then reuses (reading the width first laid the page out twice); a new width fills again
   _hgSections(grid);
   _hgFill(grid);
+  const w = grid.clientWidth;
+  if (w !== _hgWidth) { _hgWidth = w; _hgFill(grid); }
   return false;
 }
 /* The labelled sections (2.19.1): Today, Coming up, Money and life. A widget belongs to the section its place in the
