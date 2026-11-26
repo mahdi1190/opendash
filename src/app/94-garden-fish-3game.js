@@ -373,6 +373,10 @@ function gardenFishClickPt(pt, m) {
   cands.sort((a, b) => a.d - b.d);
   let best = null, bl = 1e9;
   for (const c of cands.slice(0, 12)) {
+    // (speed pass) a walk is never shorter than the straight line (c.d), and the spots come nearest first: once the best walk found
+    // is shorter than this spot's straight line, no spot left can win. The same spot is chosen, from one or two route searches
+    // instead of twelve (each a search of the whole map, up to a tenth of a second on one click).
+    if (c.d > bl + 1e-6) break;
     const r = _gwRoute({ x: _gw.px, y: _gw.py }, c); if (!r) continue;
     let len = 0, at = { x: _gw.px, y: _gw.py }; for (const w of r) { len += Math.hypot((w.x - at.x) * W.cellW, (w.y - at.y) * W.cellH); at = w; }
     if (len < bl) { bl = len; best = c; }

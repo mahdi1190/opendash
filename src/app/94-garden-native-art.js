@@ -150,7 +150,7 @@ window.GardenNativeArt = (function () {
     while (i < css.length) { const open = css.indexOf('{', i); if (open < 0) break; const head = css.slice(i, open).trim(); let depth = 1, end = open + 1, quote = ''; for (; end < css.length && depth; end++) { const c = css[end]; if (quote) { if (c === quote && css[end - 1] !== '\\') quote = ''; } else if (c === '"' || c === "'") quote = c; else if (c === '{') depth++; else if (c === '}') depth--; } callback(head, css.slice(open + 1, end - 1)); i = end; }
   }
   function configure(cssText, renderer) {
-    if (renderer) installNativeTriangleBatch(renderer);
+    if (renderer) { installNativeTriangleBatch(renderer); installOffTargetCull(renderer); }
     if (cssText === null && renderer) return { rules: rules.length, keyframes: keyframes.size };
     rules.length = 0; indexedRules.clear(); keyframes.clear(); matchedRules.clear(); selectorAttrs.clear(); selectorClasses.clear(); selectorIds.clear(); compiledSelectors.clear(); compiledAtoms.clear(); candidateRules.clear(); styleClassKeys.clear(); ruleOrder = 0; styleVersion++; positionalSelectors = false; positionalAny = false; positionalNeeds.length = 0;
     const css = String(cssText || '').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -605,6 +605,37 @@ window.GardenNativeArt = (function () {
     // Specialize this existing default instance, retaining all native buffers.
     batch.batch = batchIndependentTriangle; triangleBatchStates.set(renderer, activity);
     if (typeof matrixX === 'function' && typeof matrixY === 'function') { fusedRun = fusedFillTri; fill.run = fusedFillTri; }
+  }
+  // (speed pass) Phaser submits every image whose flags say visible, wherever it is: in the vale nine in ten of the images drawn
+  // each frame (the painted ground's chunks, the woods' shade, trees and sprites far from the view) lay off the screen, and each
+  // still went through the batch, its texture binding and the flushes those cause. Here the default image submitter works out
+  // the image's quad exactly as its own run does (the default texturer and transformer only compute their frame, UVs and quad,
+  // so the run that follows gets the same numbers) and skips the submission only when the whole quad lies outside the target it
+  // is being drawn into (the screen, a capture, a filter's frame): nothing of it would be drawn there. Everything else is the
+  // engine's own run. Camera-relative, so photos and captures cull against their own view.
+  const offTargetStates = new WeakMap(), OFF_TARGET_MARGIN = 64;
+  function installOffTargetCull(renderer) {
+    if (!renderer || offTargetStates.has(renderer)) return;
+    const engine = window.Phaser, webgl = engine && engine.Renderer && engine.Renderer.WebGL, nodes = webgl && webgl.RenderNodes;
+    const manager = renderer.renderNodes, existing = manager && manager._nodes, submitter = existing && existing.SubmitterQuad;
+    if (!engine || engine.VERSION !== '4.2.1' || !nodes || !nodes.SubmitterQuad || !nodes.TexturerImage || !nodes.TransformerImage || !nodes.RenderNode) { offTargetStates.set(renderer, null); return; }
+    if (!submitter) return;   // (made with the first image: asked again from updateAll)
+    const proto = nodes.SubmitterQuad.prototype, run = proto.run, base = nodes.RenderNode.prototype, texturerProto = nodes.TexturerImage.prototype, transformerProto = nodes.TransformerImage.prototype, texturerRun = texturerProto.run, transformerRun = transformerProto.run;
+    if (Object.getPrototypeOf(submitter) !== proto || submitter.run !== run || typeof run !== 'function' || typeof texturerRun !== 'function' || typeof transformerRun !== 'function' || submitter.onRunBegin !== base.onRunBegin || submitter.onRunEnd !== base.onRunEnd || manager.debug) { offTargetStates.set(renderer, null); return; }
+    const activity = { culled: 0, submitted: 0 };
+    function submitUnlessOffTarget(context, object, parentMatrix, elementIndex, texturer, transformer) {
+      if (this === submitter && context && texturer && transformer && texturer.run === texturerRun && transformer.run === transformerRun && Object.getPrototypeOf(texturer) === texturerProto && Object.getPrototypeOf(transformer) === transformerProto && !manager.debug) {
+        const width = context.width, height = context.height;
+        if (width > 0 && height > 0) {
+          texturer.run(context, object, elementIndex); transformer.run(context, object, texturer, parentMatrix, elementIndex);
+          const q = transformer.quad, left = Math.min(q[0], q[2], q[4], q[6]), right = Math.max(q[0], q[2], q[4], q[6]), top = Math.min(q[1], q[3], q[5], q[7]), bottom = Math.max(q[1], q[3], q[5], q[7]);
+          if (right < -OFF_TARGET_MARGIN || left > width + OFF_TARGET_MARGIN || bottom < -OFF_TARGET_MARGIN || top > height + OFF_TARGET_MARGIN) { activity.culled++; return; }
+        }
+      }
+      activity.submitted++;
+      return run.apply(this, arguments);
+    }
+    submitter.run = submitUnlessOffTarget; offTargetStates.set(renderer, activity);
   }
   let neutralInnerComponents = null;
   function installNeutralInnerRenderer(inner) {
@@ -1338,6 +1369,7 @@ window.GardenNativeArt = (function () {
   }
   function updateAll(scene, time, sharp) {
     const state = stateFor(scene); updateMotionState(scene, time);
+    { const renderer = scene.sys && scene.sys.renderer; if (renderer && !offTargetStates.has(renderer)) installOffTargetCull(renderer); }
     viewMemo = ++viewMemoSerial;
     try { updateCaches(scene, state, time, sharp); } finally { viewMemo = 0; }
     for (const node of state.animations) animateNode(node, time);
@@ -1441,7 +1473,7 @@ window.GardenNativeArt = (function () {
     } catch (e) { state.cacheFailures = (state.cacheFailures || 0) + 1; node._inner.setRotation(oldRotation).setScale(oldScaleX, oldScaleY).setAlpha(oldAlpha); for (const tile of tiles) tile.destroy(); if (previous && node._cache === previous) showCache(node, true); else { for (const original of originals) if (original.active) original.setVisible(visible.get(original)); restoreBase(node); } }
   }
   function element(scene, tag, attrs) { const node = new NativeNode(scene, tag, attrs, { defs: stateFor(scene).defs, options: {} }); stateFor(scene).roots.add(node); return node; }
-  function stats(scene) { const s = stateFor(scene), triangleBatch = scene.sys && triangleBatchStates.get(scene.sys.renderer), cacheQualities = {}; let croppedCaches = 0, pinnedBases = 0, pinnedBaseBytes = 0, radialLeaves = 0, radialLeafCaches = 0, radialLeafVectors = 0; for (const node of s.cacheTrackedNodes) { if (node._cacheRecipe && node._cacheRecipe.radialLeaf) { radialLeaves++; if (node._cache) { radialLeafCaches++; if (node._cache.showingVectors) radialLeafVectors++; } } const base = node._cacheBase || node._cache && node._cache.recipe.retainBase && !node._cache.cropped && node._cache.quality === (node._cache.recipe.baseQuality || 1) && node._cache; if (base) { pinnedBases++; pinnedBaseBytes += base.bytes; } } for (const node of s.cachedNodes) if (node._cache) { cacheQualities[node._cache.quality] = (cacheQualities[node._cache.quality] || 0) + 1; if (node._cache.cropped) croppedCaches++; } return { created: s.created, shapes: s.shapes, animations: s.animations.size, motionOn: s.motionOn, roots: s.roots.size, labels: s.labels.size, cachedTiles: s.cachedTiles, cacheBytes: s.cacheBytes, cacheBudgetBytes: s.cacheBudget, cacheQualities, croppedCaches, trackedCaches: s.cacheTrackedNodes.size, pendingRecaches: s.recaches.size, capturesThisFrame: s.captureCount || 0, cacheEvictions: s.cacheEvictions || 0, cachePressureDeferrals: s.cachePressureDeferrals || 0, cacheFailures: s.cacheFailures || 0, pinnedBases, pinnedBaseBytes, staticBaseCopies: s.baseCopies || 0, unknownImages: s.unknownImages, radialLeaves: { tracked: radialLeaves, cached: radialLeafCaches, showingVectors: radialLeafVectors }, innerRender: s.innerRender ? { ...s.innerRender } : null, triangleBatch: triangleBatch ? { ...triangleBatch } : null, parsedAssets: parsed.size, cachedPaths: paths.size, styleRules: rules.length, matchedStyleCache: matchedRules.size }; }
+  function stats(scene) { const s = stateFor(scene), triangleBatch = scene.sys && triangleBatchStates.get(scene.sys.renderer), cacheQualities = {}; let croppedCaches = 0, pinnedBases = 0, pinnedBaseBytes = 0, radialLeaves = 0, radialLeafCaches = 0, radialLeafVectors = 0; for (const node of s.cacheTrackedNodes) { if (node._cacheRecipe && node._cacheRecipe.radialLeaf) { radialLeaves++; if (node._cache) { radialLeafCaches++; if (node._cache.showingVectors) radialLeafVectors++; } } const base = node._cacheBase || node._cache && node._cache.recipe.retainBase && !node._cache.cropped && node._cache.quality === (node._cache.recipe.baseQuality || 1) && node._cache; if (base) { pinnedBases++; pinnedBaseBytes += base.bytes; } } for (const node of s.cachedNodes) if (node._cache) { cacheQualities[node._cache.quality] = (cacheQualities[node._cache.quality] || 0) + 1; if (node._cache.cropped) croppedCaches++; } return { created: s.created, shapes: s.shapes, animations: s.animations.size, motionOn: s.motionOn, roots: s.roots.size, labels: s.labels.size, cachedTiles: s.cachedTiles, cacheBytes: s.cacheBytes, cacheBudgetBytes: s.cacheBudget, cacheQualities, croppedCaches, trackedCaches: s.cacheTrackedNodes.size, pendingRecaches: s.recaches.size, capturesThisFrame: s.captureCount || 0, cacheEvictions: s.cacheEvictions || 0, cachePressureDeferrals: s.cachePressureDeferrals || 0, cacheFailures: s.cacheFailures || 0, pinnedBases, pinnedBaseBytes, staticBaseCopies: s.baseCopies || 0, unknownImages: s.unknownImages, radialLeaves: { tracked: radialLeaves, cached: radialLeafCaches, showingVectors: radialLeafVectors }, innerRender: s.innerRender ? { ...s.innerRender } : null, triangleBatch: triangleBatch ? { ...triangleBatch } : null, offTarget: scene.sys && offTargetStates.get(scene.sys.renderer) ? { ...offTargetStates.get(scene.sys.renderer) } : null, parsedAssets: parsed.size, cachedPaths: paths.size, styleRules: rules.length, matchedStyleCache: matchedRules.size }; }
   function pauseAmbient(next) {
     next = { hush: !!(next && next.hush), frozen: !!(next && next.frozen) }; if (next.hush === ambientPause.hush && next.frozen === ambientPause.frozen) return;
     ambientPause = next; const now = performance.now();
