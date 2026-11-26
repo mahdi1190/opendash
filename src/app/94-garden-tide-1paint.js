@@ -86,7 +86,7 @@ void main () {
   } else if (h < wet + 1.5) {
     // the wet band behind a falling tide: darker sand, the sky caught in it here and there
     float k = 1.0 - smoothstep(line, wet + 1.5, h);
-    float a = (0.08 + 0.22 * k) * uLook.z;
+    float a = (0.11 + 0.29 * k) * uLook.z;
     vec3 c = mix(uWet, uWet * 0.8, rocky);
     float sheen = smoothstep(0.58, 0.9, n) * k * (1.0 - rocky * 0.6);
     c = mix(c, uSky, sheen * 0.6);
