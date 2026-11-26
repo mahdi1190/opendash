@@ -303,7 +303,7 @@ const GardenTideLostSprites = {
         if (!inView) { if (o) for (const im of Object.values(o)) im.setVisible(false); continue; }
         if (!o) { o = this.o[k] = { thing: scene.add.image(0, 0, GT_LATLAS, w.frame).setDepth(-9345.16).setOrigin(.5, .7), tw: scene.add.image(0, 0, GT_ATLAS, 'twinkle').setDepth(-9345.15).setBlendMode(1) }; this.root.add(o.thing); this.root.add(o.tw); if (this.root.sort) this.root.sort('depth'); }
         if (o.thing.frame.name !== w.frame) o.thing.setFrame(w.frame);
-        o.thing.setVisible(true).setPosition(x, y).setScale(19 / 36); o.tw.setVisible(true).setPosition(x + 4, y - 10); o.x = x; o.y = y;
+        o.thing.setVisible(true).setPosition(x, y).setScale(19 / 36); o.tw.setVisible(true).setPosition(x + 4, y - 10);
       }
     }
     // the glint: brighter now and then, so it catches your eye from a little way off

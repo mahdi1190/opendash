@@ -57,9 +57,10 @@ function _gtrAt(tr, s, i) { const W = GARDEN_WORLD, a = 10 + s * (tr.L - 20), b 
 function gardenTideRaceRows(px, py, T) {
   const out = []; if (T.level > .45 || _gtcr.R) return out;
   for (const p of gardenTidePools()) {
-    if (Math.hypot(p.x - px, (p.y - py) * 1.3) > 2.6) continue;
+    if (Math.hypot(p.x - px, (p.y - py) * 1.3) > 6) continue;
     const h = gardenTideH(p.x, p.y); if (!(Number.isFinite(h) && h > T.line + 3)) continue;
     const tr = gardenTideRaceTrack(p, T); if (!tr) continue;
+    if (Math.hypot(p.x - px, (p.y - py) * 1.3) > 2.6 && Math.hypot(tr.mid.x - px, (tr.mid.y - py) * 1.3) > 2.4) continue;   // (by the pool, or by its track)
     out.push({ key: 'tide:race:' + p.id, act: 'cheer', tide: { kind: 'race', pool: p.id }, words: 'Race the crabs', name: 'the crab race', x: p.x, y: p.y, stand: tr.stand, pri: .25 });
   }
   return out;

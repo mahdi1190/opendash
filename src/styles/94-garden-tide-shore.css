@@ -58,7 +58,7 @@
 .gtp-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
 .gtp-pit, .gtp-store { position: relative; display: grid; place-items: center; min-height: 58px; border: 0; border-radius: 50%; background: radial-gradient(circle at 50% 35%, #4e3620, #6e4e2c 70%, #8a6238); box-shadow: inset 0 3px 6px rgba(30, 16, 4, .6), 0 1px 0 rgba(255, 236, 200, .35); color: #fff3dc; font: 700 12px/1 system-ui, sans-serif; padding: 6px; }
 .gtp-store { border-radius: 30px; min-height: 124px; }
-.gtp-store small { position: absolute; bottom: -18px; color: #4a3a24; font-weight: 600; white-space: nowrap; }
+.gtp-store small { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; color: #fff3dc; font-weight: 600; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 3px; }
 .gtp-pit b, .gtp-store b { position: absolute; top: 3px; right: 7px; font-size: 11px; opacity: .85; }
 .gtp-pit.is-mine { cursor: pointer; }
 .gtp-pit.is-mine:not([disabled]):hover, .gtp-pit.is-mine:not([disabled]):focus-visible { outline: 3px solid #f0c64a; outline-offset: 2px; }
@@ -68,7 +68,7 @@
 .gtp-store .gtp-pebs { max-width: 50px; }
 .gtp-peb { display: inline-block; width: calc(var(--pr) * 2); height: calc(var(--pr) * 1.6); border-radius: 50%; background: radial-gradient(circle at 35% 30%, var(--pc2), var(--pc) 70%); box-shadow: 0 1px 1px rgba(0, 0, 0, .45); }
 .gtp-peb.is-glass { opacity: .88; background: radial-gradient(circle at 35% 30%, #ffffff, var(--pc) 55%, var(--pc2)); }
-.gtp-how { margin: 26px 0 6px; }
+.gtp-how { margin: 12px 0 6px; }
 
 /* the spotter card */
 .gtsp-card { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0 10px; padding: 10px; border-radius: 14px; background: #f6efdc; box-shadow: inset 0 0 0 2px #d9c49a; }

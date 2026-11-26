@@ -58,7 +58,7 @@ function _gtp2Colours() {
   const plain = [['#9a968c', '#c8c4b8', false, false], ['#8a7a68', '#b8a890', false, false], ['#a8a49a', '#e0dcd0', false, false]];
   return out.length ? out.concat(plain.slice(0, Math.max(1, 3 - out.length))) : plain;
 }
-function _gtp2Pebble(cols, k) { const c = cols[k % cols.length], r = 3.6 + (k * 7 % 5) * .25; return `<span class="gtp-peb${c[2] ? ' is-glass' : ''}" style="--pc:${c[0]};--pc2:${c[1]};--pr:${r}px${c[3] ? ';--band:1' : ''}"></span>`; }
+function _gtp2Pebble(cols, k) { const c = cols[k % cols.length], r = 4.4 + (k * 7 % 5) * .25; return `<span class="gtp-peb${c[2] ? ' is-glass' : ''}" style="--pc:${c[0]};--pc2:${c[1]};--pr:${r}px${c[3] ? ';--band:1' : ''}"></span>`; }
 
 /* ---------- playing ---------- */
 /** Start a game with one of the folk (who), on the card; you kneel at a board scratched in front of you if you stand on bare ground. */
