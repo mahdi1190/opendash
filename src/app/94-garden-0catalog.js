@@ -729,6 +729,10 @@ const GARDEN_RIBBONS = _gdRows([
   // (the depth lane) the ways underground (94-garden-zz-8depth-3tunnel.js), counted from the layout's own tunnels
   { id: 'down-below', label: 'Down below', hint: 'Find a way underground and come out again.', icon: 'lamp', fact: 'tunnelsSeen', of: 1, reward: { c: 40, i: { 'mat:stone': 4 } } },
   { id: 'knows-the-way-under', label: 'Knows the way under', hint: 'Explore every way underground in the vale.', icon: 'map', fact: 'tunnelsAll', of: 1, reward: { c: 150, i: { 'mat:timber': 6 } } },
+  // (the depth lane) what lives and lies underneath, and the secret ways (94-garden-zz-8depth-5life.js, 6finds.js, 7secret.js)
+  { id: 'life-below', label: 'Life below', hint: 'Watch every creature that lives under the bridges, piers and hills.', icon: 'bug', fact: 'lifeBelowAll', of: 1, reward: { c: 80, i: { 'decor:log-pile': 1 } } },
+  { id: 'finders-keepers', label: 'Finders keepers', hint: 'Find 8 things under the bridges and down below.', icon: 'gem', fact: 'depthFinds', of: 8, reward: { c: 60, i: { 'decor:sea-chest': 1 } } },
+  { id: 'secret-way', label: 'A secret way', hint: 'Find a way underground that everyone forgot.', icon: 'key-round', fact: 'secretWays', of: 1, reward: { c: 50, i: { 'mat:stone': 6 } } },
 ]);
 
 /* ---------- daily garden tasks and weekly garden quests ----------
