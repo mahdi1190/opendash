@@ -189,7 +189,7 @@ function _gb2lDec(g) { const m = new Map(); for (const row of g || []) for (let 
 function _gb2lStyles(kind) {
   let m = null; try { m = gardenHere(); } catch (e) { return [0]; }
   let c = null, rw = null; try { c = gardenDesignCtx(m); } catch (e) { c = null; } try { rw = typeof gardenDesignRows === 'function' ? gardenDesignRows(m) : null; } catch (e) { rw = null; }
-  const out = []; (kind === 'path' ? GDZ_PATHS : GDZ_GROUND).forEach((st, i) => { try { if (!c || gardenDesignOpen(st, c, rw)) out.push(i); } catch (e) { /* not this one */ } });
+  const out = []; (kind === 'path' ? GDZ_PATHS : GDZ_GROUND).forEach((st, i) => { if (kind === 'ground' && st.id === 'grass') return; try { if (!c || gardenDesignOpen(st, c, rw)) out.push(i); } catch (e) { /* not this one */ } });   // (grass laid on grass only drew flat blobs: As it was takes laid ground back to the lawn; grass in a saved design still draws)
   if (kind === 'ground') out.unshift(-1);   // (as it was: laid ground taken up again)
   return out.length ? out : [0];
 }
@@ -609,7 +609,7 @@ function _gb2lDrawPlans(body) {
   const arch = gardenDesignArchives(_gdG()), P = _gb2lArchivePending();
   if (arch.length) {
     const sec = _gb2lE('section', 'gb2-archive'); sec.appendChild(_gb2lE('h3', '', 'Earlier layouts, from before the island'));
-    for (const a of arch) { const r = _gb2lE('div', 'gb2-planrow'), t = _gb2lE('div', 'gb2-detail-t'); t.append(_gb2lE('b', '', String((a.layout && a.layout.n) || 'Earlier layout')), _gb2lE('small', '', 'Kept safe, just as it was')); r.append(t, _gb2lBtn(P && P.archive.key === a.key ? '' : 'is-go', P && P.archive.key === a.key ? 'In use' : 'Bring it back', 'undo-2', () => { gardenB2ArchiveBring(a.key); _gb2.popKey = ''; _ghBag(); })); sec.appendChild(r); }
+    for (const a of arch) { const r = _gb2lE('div', 'gb2-planrow'), t = _gb2lE('div', 'gb2-detail-t'); t.append(_gb2lE('b', '', String((a.layout && a.layout.n) || 'Earlier layout')), _gb2lE('small', '', 'Kept safe, just as it was')); const using = !!(P && P.archive.key === a.key), b = _gb2lBtn(using ? '' : 'is-go', using ? 'In use' : 'Bring it back', using ? 'check' : 'undo-2', () => { gardenB2ArchiveBring(a.key); _gb2.popKey = ''; _ghBag(); }); b.disabled = using; r.append(t, b); sec.appendChild(r); }
     if (P && (P.moved.length || P.made.length)) {
       sec.appendChild(_gb2lE('p', 'gb2-hint', 'Its other things, to put out one by one where they fit now:'));
       const wrap = _gb2lE('div', 'gb2-archthings');
