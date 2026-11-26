@@ -483,7 +483,13 @@ if (typeof gartActFrame === 'function') {
 }
 if (typeof gartActInteract === 'function') {
   const _ghtE0 = gartActInteract;
-  gartActInteract = function () { if (_ght.climb || (_ght.swim && !_ght.swim.on)) return true; return _ghtE0(); };   // eslint-disable-line no-func-assign   (E on a ladder: you finish the climb)
+  // (E on a ladder: you finish the climb. Swimming, E is nothing: the ground's fallbacks after this, a door, a room, a net or a cast,
+  // were done from mid-water. On a floor only the floor's own moves: beyond their reach E went on to ground doors and casts.)
+  gartActInteract = function () {   // eslint-disable-line no-func-assign
+    if (_ght.climb || _ght.swim) return true;
+    if (_ght.lv) { if (!_ghtE0() && typeof _gh !== 'undefined' && _gh.bubble) { const b = _gh.bubble.el.querySelector('.gd-bub-btn'); if (b) b.click(); } return true; }   // (an open bubble still takes E)
+    return _ghtE0();
+  };
 }
 if (typeof gartActMoved === 'function') {
   const _ghtMoved0 = gartActMoved;
