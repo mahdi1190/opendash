@@ -330,6 +330,7 @@ function _hsSync(R, S) {
   _hst.onReady = () => { if (_hsInside() && _grm.S === S && _hsNative() === s) _hsSync(R, S); };
   for (const p of S.pieces) {
     if (S.carry && S.carry.u === p.u) continue;
+    { const sh0 = houseShape(gardenDecor(p.d)); if (sh0 && sh0.hp === 'string') continue; }   // (fairy lights draw themselves: 94-garden-house-7lights.js)
     const key = houseTexture(scene, p.d, p.v, _hsLitKey(p)); if (!key) continue;
     keep.add(p.u);
     let it = S.imgs.get(p.u);
@@ -363,6 +364,7 @@ function _hsSync(R, S) {
   }
   for (const [u, C] of S.clocks) if (!clocks.has(u)) { if (C.g.active) C.g.destroy(); S.clocks.delete(u); }
   _hsClocks(S);
+  if (typeof _hsStringsSync === 'function') _hsStringsSync(R, S);
 }
 function _hsClocks(S) {
   let h = 12, mi = 0; try { const p = Clock.parts(_gdNow()); h = p.h; mi = p.mi; } catch (e) { const d = new Date(); h = d.getHours(); mi = d.getMinutes(); }
@@ -425,7 +427,7 @@ function _hsWalkTo(S, pt, then) { const c = _grmClamp(pt.x, pt.y); _grmWalk(c.x,
 const HOUSE_USE = Object.freeze({
   light: p => p.l ? 'Put it out' : 'Light it', store: () => 'Open the chest', bed: () => 'Have a nap', seat: () => 'Sit a while', books: () => 'Read a while',
   clock: () => 'What time is it?', plant: () => 'Water it', picture: () => 'Look at it', shelf: () => 'Look at the jars',
-  guestbook: () => gpVisiting() ? 'Sign the guest book' : 'Read the guest book', dye: () => 'Use the dye pot', banner: () => gpVisiting() ? 'Look at their banner' : 'Change your banner',
+  lights: () => 'Look at the lights', guestbook: () => gpVisiting() ? 'Sign the guest book' : 'Read the guest book', dye: () => 'Use the dye pot', banner: () => gpVisiting() ? 'Look at their banner' : 'Change your banner',
 });
 function _hsUseOf(p) { const sh = houseShape(gardenDecor(p.d)); const f = sh && HOUSE_USE[sh.fk]; return f ? f(p) : ''; }
 /** The nearest thing to use, from where you stand: a piece by kind, or the door, the window, the fire. */
@@ -440,8 +442,8 @@ function _hsNearest(S) {
   const F = sh.fire; if (F) consider(Math.max(F.x0, Math.min(F.x1, M.x)), 456, { shell: 'fire', words: sh.kind === 'parlour' ? 'Sit by the fire' : 'Warm your hands', x: (F.x0 + F.x1) / 2, y: F.y0 - 20 });
   for (const p of S.pieces) {
     const w = _hsUseOf(p); if (!w) continue;
-    const sh = houseShape(gardenDecor(p.d)), fy = sh.hp === 'wall' ? 420 : p.y, fx = sh.hp === 'wall' ? p.x : Math.max(p.x - sh.w / 2, Math.min(p.x + sh.w / 2, M.x));
-    consider(fx, fy, { p, words: w + ' (' + houseLowName(gardenDecor(p.d)) + ')', x: p.x, y: p.y - (p.z || 0) - sh.h });
+    const sh = houseShape(gardenDecor(p.d)), str = sh.hp === 'string', fy = sh.hp === 'wall' || str ? 420 : p.y, fx = str ? Math.max(p.x, Math.min(p.x + houseSpan(p.v), M.x)) : sh.hp === 'wall' ? p.x : Math.max(p.x - sh.w / 2, Math.min(p.x + sh.w / 2, M.x));
+    consider(fx, fy, { p, words: w + (str ? '' : ' (' + houseLowName(gardenDecor(p.d)) + ')'), x: str ? fx : p.x, y: str ? p.y - 14 : p.y - (p.z || 0) - sh.h });
   }
   return best;
 }
@@ -478,6 +480,7 @@ function _hsUse(R, S, p) {
     case 'plant': _grmSay(_hsLine('plant', p, [`You water the ${name}. It looks pleased about it.`, `The ${name} is doing well. You turn it to the light.`])); try { gpTone([660, 880], { force: true, len: .18, vol: .04 }); } catch (e) { /* no sound */ } return;
     case 'picture': _grmSay(p.d === 'hf-mirror' ? 'You check your hat. It is fine. It was always fine.' : ['The hills, in a summer that went on and on.', 'The falls, painted from somewhere very wet.', 'The quay at evening, with one boat coming in.'][(p.v | 0) % 3]); return;
     case 'shelf': _grmSay('Jam, pickled onions, and one jar nobody has ever managed to open.'); return;
+    case 'lights': { const t = _hsLight().tod; _grmSay(t === 'dusk' || t === 'night' ? 'You watch the little lights for a while. One of them is blue, and it is your favourite.' : 'They come on by themselves at dusk, one by one.'); return; }
     case 'guestbook': if (typeof _hsGuestBookOpen === 'function') _hsGuestBookOpen(); return;
     case 'dye': if (typeof _hsDyeOpen === 'function') _hsDyeOpen(R, S, p); return;
     case 'banner': if (typeof _hsBannerOpen === 'function') _hsBannerOpen(); return;
@@ -622,6 +625,7 @@ function _hsUi(R, S) {
 function _hsEnd(R, S) {
   if (typeof _hsMoveEnd === 'function') _hsMoveEnd(R, S);
   if (S.warm && typeof _hsWarmEnd === 'function') _hsWarmEnd(S);
+  if (typeof _hsStringsEnd === 'function') _hsStringsEnd(S);
   _hst.onReady = null;
   if (S.swap) { try { S.swap.old.destroy(); } catch (e) { /* gone with the room */ } S.swap = null; }
   S.imgs = new Map(); S.lamps = new Map(); S.clocks = new Map(); S.prompt = null;
@@ -639,7 +643,7 @@ function _hsSvgSpots(R, S) {
   }
   for (const p of S.pieces) {
     if (C && C.u === p.u) continue;
-    const def = gardenDecor(p.d), sh = houseShape(def); if (!sh) continue;
+    const def = gardenDecor(p.d), sh = houseShape(def); if (!sh || sh.hp === 'string') continue;
     const b = houseArtBox(p.d), url = houseArtUrl(p.d, p.v, _hsLitKey(p)), use = _hsUseOf(p);
     out.push({ id: 'p:' + p.u, x: p.x, y: p.y - (p.z || 0), w: Math.max(30, sh.w), h: Math.max(24, sh.hp === 'rug' ? 40 : sh.h), still: !S.move && !use, tip: S.move ? 'Pick it up' : use || def.name, art: `<g${p.r ? ' transform="scale(-1 1)"' : ''}><image href="${url}" x="${b[0]}" y="${b[1]}" width="${b[2] - b[0]}" height="${b[3] - b[1]}"/></g>` });
   }

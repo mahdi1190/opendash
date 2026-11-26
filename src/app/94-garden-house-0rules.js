@@ -189,16 +189,34 @@ function houseFindHome(things, heart, taken, doorOf, open) {
   return best;
 }
 
+/* ---------- fairy lights: a string hung along the top of a wall (94-garden-house-7lights.js) ---------- */
+/** How long a string of lights is, by its look v (room px). */
+const HOUSE_SPANS = _hsF([140, 190, 240, 290, 340, 400, 460, 520]);
+function houseSpan(v) { return HOUSE_SPANS[Math.max(0, Math.min(HOUSE_SPANS.length - 1, v | 0))]; }
+/** A string's box: x is its left pin, y its pins' height, and it droops a seventh of its length. */
+function houseStringBox(p) { const w = houseSpan(p.v); return { x0: p.x, x1: p.x + w, y0: p.y - 8, y1: p.y + w * .14 + 12 }; }
+/** '' when a string of length v may hang from (x, y) in this room: along the top of the wall, under the ceiling, not over another string. */
+function houseStringFits(pieces, x, y, v, self, shell) {
+  const H = shell || HOUSE_SHELL, b = houseStringBox({ x, y, v });
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return 'Not there';
+  if (b.x0 < H.wall.x0 + 8 || b.x1 > H.wall.x1 - 8) return 'It needs wall at both ends';
+  if (y < Math.max(houseCeilAt(H, b.x0), houseCeilAt(H, b.x1)) + 6) return 'The ceiling is in the way there';
+  if (y > H.hang.y0 + 90) return 'Fairy lights go up near the top of the wall';
+  for (const q of pieces || []) { if (q.u === self) continue; const qs = houseShape(_hsDecor(q.d)); if (qs && qs.hp === 'string' && _hsOver(b, houseStringBox(q), 4)) return 'Another string is there already'; }
+  return '';
+}
+
 /* ---------- where a piece stands ---------- */
 /** Its footprint on the floor (floor things, rugs, a small thing on the floor) or its picture's box (wall things), room px. */
 function houseBox(p, def) {
   const S = houseShape(def); if (!S) return null;
   const hw = S.w / 2;
+  if (S.hp === 'string') return houseStringBox(p);
   if (S.hp === 'wall') return { x0: p.x - hw, x1: p.x + hw, y0: p.y - S.h, y1: p.y };
   return { x0: p.x - hw, x1: p.x + hw, y0: p.y - S.d, y1: p.y };
 }
 /** Its drawn picture's box (for what it would cover on the wall): from its foot up its height. */
-function houseDrawn(p, def) { const S = houseShape(def); return S ? { x0: p.x - S.w / 2, x1: p.x + S.w / 2, y0: p.y - (p.z || 0) - S.h, y1: p.y - (p.z || 0) } : null; }
+function houseDrawn(p, def) { const S = houseShape(def); if (S && S.hp === 'string') return houseStringBox(p); return S ? { x0: p.x - S.w / 2, x1: p.x + S.w / 2, y0: p.y - (p.z || 0) - S.h, y1: p.y - (p.z || 0) } : null; }
 const _hsOver = (a, b, m) => a.x0 < b.x1 - (m || 0) && a.x1 > b.x0 + (m || 0) && a.y0 < b.y1 - (m || 0) && a.y1 > b.y0 + (m || 0);
 /** The surface small things stand on, of a piece that has one: { x0, x1, y, z } (y: the foot small things take on it). */
 function houseTopOf(p, def) { const S = houseShape(def); if (!S || !S.top || (p.z || 0) > 0) return null; const hw = S.top.w / 2; return { x0: p.x - hw, x1: p.x + hw, y: p.y - 2, z: S.top.h, u: p.u }; }
@@ -212,8 +230,9 @@ function houseOnTop(pieces, u) {
  * on it: skip), else the plain reason. Nothing overlaps (rule 12): pieces, rugs with rugs, the hearth, the way to the door,
  * the window and the door; a rug lies under floor things (meant to), a small thing may stand on a table's top.
  */
-function houseFits(pieces, def, x, y, z, self, skip, shell) {
+function houseFits(pieces, def, x, y, z, self, skip, shell, v) {
   const S = houseShape(def); if (!S) return 'That does not go indoors';
+  if (S.hp === 'string') return houseStringFits((pieces || []).filter(q => !(skip && skip.has(q.u))), x, y, v | 0, self, shell);
   const H = shell || HOUSE_SHELL, others = (pieces || []).filter(q => q.u !== self && !(skip && skip.has(q.u))), me = { x, y, z: z || 0 };
   if (!Number.isFinite(x) || !Number.isFinite(y)) return 'Not there';
   if (S.hp === 'wall') {
@@ -253,7 +272,7 @@ function houseFits(pieces, def, x, y, z, self, skip, shell) {
   }
   for (const q of others) {
     if ((q.z || 0) > 0) continue;
-    const qd = _hsDecor(q.d), qs = houseShape(qd); if (!qs || qs.hp === 'wall') continue;
+    const qd = _hsDecor(q.d), qs = houseShape(qd); if (!qs || qs.hp === 'wall' || qs.hp === 'string') continue;
     const rugs = (S.hp === 'rug') + (qs.hp === 'rug');
     if (rugs === 1) continue;   // a rug lies under a floor thing: meant to
     if (_hsOver(b, houseBox(q, qd), 1)) return rugs ? 'Another rug is there' : 'Something is in the way there';
@@ -311,7 +330,7 @@ function houseMakeWayPlan(g, slot, shell) {
   const tops = new Map(); for (const p of room) tops.set(p.u, houseOnTop(room, p.u).map(q => q.u));
   const kind = p => { const S = houseShape(_hsDecor(p.d)); return S.hp === 'wall' ? 2 : S.hp === 'rug' ? 1 : 0; }, area = p => { const S = houseShape(_hsDecor(p.d)); return S.w * S.d; };
   // floor things first (the biggest first), then rugs, then wall things; small things on top go with what they stand on
-  const order = room.filter(p => !(p.z > 0)).sort((a, b) => kind(a) - kind(b) || area(b) - area(a) || a.u.localeCompare(b.u));
+  const order = room.filter(p => !(p.z > 0) && houseShape(_hsDecor(p.d)).hp !== 'string').sort((a, b) => kind(a) - kind(b) || area(b) - area(a) || a.u.localeCompare(b.u));
   for (const p of order) {
     const def = _hsDecor(p.d), S = houseShape(def), riders = new Set(tops.get(p.u) || []);
     const others = room.filter(q => !gone.has(q.u));
@@ -338,7 +357,7 @@ function houseOpShape(op) {
   const id = v => _HS_ID_RE.test(String(v || '')), px = (v, hi) => Number.isInteger(v) && v >= 0 && v <= hi;
   switch (op.o) {
     case 'home': return typeof op.h === 'string' && /^[a-z][a-z0-9:,-]{0,40}$/.test(op.h) && Array.isArray(op.us) && op.us.length === HOUSE_START.length && op.us.every(id) ? '' : 'home';
-    case 'put': return _hsInt(op.s, 0, HOUSE_SLOTS - 1) && id(op.u) && typeof op.d === 'string' && px(op.x, 960) && px(op.y, 640) && px(op.z || 0, 300) && px(op.r || 0, 3) ? '' : 'put';
+    case 'put': return _hsInt(op.s, 0, HOUSE_SLOTS - 1) && id(op.u) && typeof op.d === 'string' && px(op.x, 960) && px(op.y, 640) && px(op.z || 0, 300) && px(op.r || 0, 3) && px(op.v || 0, 7) ? '' : 'put';
     case 'move': return id(op.u) && px(op.x, 960) && px(op.y, 640) && px(op.z || 0, 300) && px(op.r || 0, 3) ? '' : 'move';
     case 'lift': case 'use': return id(op.u) ? '' : 'id';
     case 'wall': case 'floor': return _hsInt(op.s, 0, HOUSE_SLOTS - 1) && typeof op.d === 'string' ? '' : 'finish';
@@ -373,12 +392,13 @@ function houseOpCheck(W, op, who) {
       if (_hsOwn(g.hf, op.u)) return 'That is set out already';
       const room = housePieces(g, op.s); if (room.length >= HOUSE_ROOM_MAX) return `There is room for ${HOUSE_ROOM_MAX} things in here: put something away first`;
       if (op.r && !S.rot) return `${def.name} looks the same either way round`;
-      return houseFits(room, def, op.x, op.y, op.z || 0, op.u, null, houseShellOfG(g, op.s)) || feetOn(def, op.x, op.y, op.z || 0);
+      return houseFits(room, def, op.x, op.y, op.z || 0, op.u, null, houseShellOfG(g, op.s), op.v || 0) || feetOn(def, op.x, op.y, op.z || 0);
     }
     case 'move': {
       const rec = _hsOwn(g.hf, op.u) ? g.hf[op.u] : null; if (!rec) return 'That is not here any more';
       const def = _hsDecor(rec.d), S = houseShape(def); if (!S) return 'That is not here any more';
       if (op.r && !S.rot) return `${def.name} looks the same either way round`;
+      if (S.hp === 'string') return 'Take it down and hang it again';
       const room = housePieces(g, rec.s), riders = new Set(houseOnTop(room, op.u).map(q => q.u));
       return houseFits(room, def, op.x, op.y, op.z || 0, op.u, riders, houseShellOfG(g, rec.s)) || feetOn(def, op.x, op.y, op.z || 0);
     }
@@ -469,7 +489,7 @@ function houseOpApply(g, op, who, W) {
       break;
     }
     case 'put': {
-      map('hf')[op.u] = Object.assign({ d: op.d, s: op.s, x: op.x, y: op.y, z: op.z || 0, r: op.r || 0, v: 0, l: 0, at: now }, who ? { by: who } : {});
+      map('hf')[op.u] = Object.assign({ d: op.d, s: op.s, x: op.x, y: op.y, z: op.z || 0, r: op.r || 0, v: op.v || 0, l: 0, at: now }, who ? { by: who } : {});
       touch('hf', op.u);
       if (!who && op.lk) { map('led')[op.lk] = { d: today, k: 'hs', i: { ['decor:' + op.d]: -1 }, n: 0 }; touch('led', op.lk); }   // (out of your bag; a friend's came out of theirs)
       break;
@@ -549,7 +569,7 @@ function houseCallersFor(seed, awake) {
  */
 function houseStars(pieces, rooms) {
   const kinds = new Set(); let lit = 0, wall = 0, rug = 0, plant = 0;
-  for (const p of pieces || []) { const S = houseShape(_hsDecor(p.d)); if (!S) continue; kinds.add(S.fk); if (S.lit) lit++; if (S.hp === 'wall') wall++; if (S.hp === 'rug') rug++; if (S.fk === 'plant') plant++; }
+  for (const p of pieces || []) { const S = houseShape(_hsDecor(p.d)); if (!S) continue; kinds.add(S.fk); if (S.lit || S.fk === 'lights') lit++; if (S.hp === 'wall') wall++; if (S.hp === 'rug') rug++; if (S.fk === 'plant') plant++; }
   let score = Math.min(4, kinds.size * .55) + Math.min(2, (pieces || []).length / 9) + (lit ? 1 : 0) + (rug ? .5 : 0) + (plant ? .6 : 0) + (wall >= 2 ? .6 : 0);
   let papered = 0, built = 0;
   for (const r of Object.values(rooms || {})) { if (!r || Number(r.st) !== 2) continue; built++; if ((r.w && r.w !== HOUSE_WALL0) || (r.f && r.f !== HOUSE_FLOOR0)) papered++; }

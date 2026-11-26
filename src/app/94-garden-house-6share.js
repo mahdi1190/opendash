@@ -25,7 +25,7 @@ function _hsSnapSoon() {
 function _hsOpOfIntent(ev) {
   const slot = Number.isInteger(ev.x) ? ev.x : 0, z = (Number.isInteger(ev.y) ? ev.y : 0) * 2, r = Number.isInteger(ev.r) ? ev.r & 1 : 0;
   switch (ev.item) {
-    case 'put': return { o: 'put', s: slot, d: String(ev.p || ''), x: ev.fx, y: ev.fy, z, r, u: String(ev.u || '') };
+    case 'put': { const d = gardenDecor(String(ev.p || '')), str = !!(d && d.hp === 'string'); return { o: 'put', s: slot, d: String(ev.p || ''), x: ev.fx, y: ev.fy, z: str ? 0 : z, r, u: String(ev.u || ''), v: str ? Math.max(0, Math.min(7, ev.y | 0)) : 0 }; }
     case 'move': return { o: 'move', u: String(ev.u || ''), x: ev.fx, y: ev.fy, z, r };
     case 'lift': return { o: 'lift', u: String(ev.u || '') };
     case 'use': return { o: 'use', u: String(ev.u || '') };
@@ -76,7 +76,7 @@ function _hsGuestDo(R, S, op) {
   if (!(typeof _glvLive === 'function' && _glvLive())) { _grmSay('Your friend is out just now. You look round and leave everything as it is.'); return false; }
   const f = { item: op.o, x: op.s != null ? op.s : S.slot };
   let debit = '';
-  if (op.o === 'put') { Object.assign(f, { p: op.d, u: op.u, fx: op.x, fy: op.y, y: Math.round((op.z || 0) / 2), r: op.r || 0 }); debit = 'decor:' + op.d; if (gardenHas(debit) < 1) { _grmSay('You have none of those left.'); return false; } }
+  if (op.o === 'put') { Object.assign(f, { p: op.d, u: op.u, fx: op.x, fy: op.y, y: (gardenDecor(op.d) || {}).hp === 'string' ? op.v | 0 : Math.round((op.z || 0) / 2), r: op.r || 0 }); debit = 'decor:' + op.d; if (gardenHas(debit) < 1) { _grmSay('You have none of those left.'); return false; } }
   else if (op.o === 'move') Object.assign(f, { u: op.u, fx: op.x, fy: op.y, y: Math.round((op.z || 0) / 2), r: op.r || 0 });
   else if (op.o === 'lift' || op.o === 'use') f.u = op.u;
   else if (op.o === 'wall' || op.o === 'floor') { f.p = op.d; if (op.d !== HOUSE_WALL0 && op.d !== HOUSE_FLOOR0) { debit = 'decor:' + op.d; if (gardenHas(debit) < 1) { _grmSay('You have none of those left.'); return false; } } }
@@ -107,7 +107,7 @@ function _hsGuestOver(v) {
   const pieces = v.pieces.map(p => Object.assign({}, p)), rooms = JSON.parse(JSON.stringify(v.rooms));
   for (const P of S.pend.values()) {
     const op = P.op, i = op.u ? pieces.findIndex(q => q.u === op.u) : -1;
-    if (op.o === 'put' && i < 0) pieces.push({ u: op.u, d: op.d, s: op.s, x: op.x, y: op.y, z: op.z || 0, r: op.r || 0, v: 0, l: 0, pend: 1 });
+    if (op.o === 'put' && i < 0) pieces.push({ u: op.u, d: op.d, s: op.s, x: op.x, y: op.y, z: op.z || 0, r: op.r || 0, v: op.v || 0, l: 0, pend: 1 });
     else if (op.o === 'move' && i >= 0) { const p = pieces[i], dx = op.x - p.x, dy = op.y - p.y; for (const q of houseOnTop(pieces, p.u)) { q.x += dx; q.y += dy; } Object.assign(p, { x: op.x, y: op.y, z: op.z || 0, r: op.r || 0, pend: 1 }); }
     else if (op.o === 'lift' && i >= 0) { const riders = new Set(houseOnTop(pieces, op.u).map(q => q.u)); for (let j = pieces.length - 1; j >= 0; j--) if (pieces[j].u === op.u || riders.has(pieces[j].u)) pieces.splice(j, 1); }
     else if (op.o === 'use' && i >= 0) pieces[i].l = pieces[i].l ? 0 : 1;

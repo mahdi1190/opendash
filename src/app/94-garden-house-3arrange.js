@@ -29,12 +29,14 @@ function _hsMoveUi(R, S, bar) {
 }
 function _hsMoveEnd(R, S) {
   if (S.carry) _hsCarryClear(S);
+  if (S.stringing && typeof _hsStringClear === 'function') _hsStringClear(S);
   if (S.ptrBox && S.onPtr) S.ptrBox.removeEventListener('pointermove', S.onPtr);
   S.ptrBox = S.onPtr = null; S.ghost = null; S.move = false;
 }
 function _hsMoveToggle(R, S, on) {
   const want = on == null ? !S.move : !!on;
   if (!want && S.carry) _hsCarryCancel(R, S);
+  if (!want && S.stringing && typeof _hsStringCancel === 'function') _hsStringCancel(R, S);
   S.move = want; S.chest = false;
   if (S.btnMove) { S.btnMove.textContent = want ? 'Done' : 'Move things'; S.btnMove.classList.toggle('is-on', want); }
   _hsBagPaint(R, S); _hsHint(R, S);
@@ -43,7 +45,7 @@ function _hsMoveToggle(R, S, on) {
 }
 function _hsHint(R, S) {
   const el = S.hintEl; if (!el) return;
-  const text = S.carry ? 'Click or E: put it here · R: turn it · Q: put it away · Esc: put it back' : S.move ? 'Click a thing to pick it up, or walk up to it and press E · Esc when you are done' : '';
+  const text = S.stringing ? 'Walk to stretch the lights out · E or click: pin the other end · Esc: roll them back up' : S.carry ? 'Click or E: put it here · R: turn it · Q: put it away · Esc: put it back' : S.move ? 'Click a thing to pick it up, or walk up to it and press E · Esc when you are done' : '';
   if (el.textContent !== text) el.textContent = text;
   el.hidden = !text;
   if (S.btnUndo) S.btnUndo.hidden = !(S.move && _hsCanUndo());
@@ -102,6 +104,7 @@ function _hsOthers(S, u) {
   return { list: S.pieces.filter(q => q.u !== u && !riders.has(q.u)), riders };
 }
 function _hsPickUp(R, S, p, drag) {
+  { const sh0 = houseShape(gardenDecor(p.d)); if (sh0 && sh0.hp === 'string' && typeof _hsStringDown === 'function') { _hsStringDown(R, S, p); return; } }   // (fairy lights are taken down, then walked out again)
   if (!S.move) _hsMoveToggle(R, S, true);
   if (S.carry) _hsCarryCancel(R, S);
   const def = _hsDefOf(p.d); if (!def) return;
@@ -112,6 +115,7 @@ function _hsPickUp(R, S, p, drag) {
 }
 function _hsCarryFromBag(R, S, d) {
   const def = _hsDefOf(d); if (!def) return;
+  if (houseShape(def).hp === 'string' && typeof _hsStringStart === 'function') { if (S.carry) _hsCarryCancel(R, S); if (!S.move) _hsMoveToggle(R, S, true); if (S.stringing) _hsStringClear(S); _hsStringStart(R, S, d); return; }
   if (S.carry) _hsCarryCancel(R, S);
   if (!S.move) _hsMoveToggle(R, S, true);
   S.chest = false;
@@ -198,6 +202,7 @@ function _hsSnap(S, def, tx, ty, tz) {
   return { x: tx, y: ty, z: 0, ok: false, why: first, moved: false };
 }
 function _hsMoveFrame(R, S, dt) {
+  if (S.stringing) { if (typeof _hsStringFrame === 'function') _hsStringFrame(R, S); return; }
   const C = S.carry; if (!C) return;
   const def = gardenDecor(C.d); if (!def) return;
   const M = _grm.me;
@@ -312,6 +317,7 @@ function _hsSweep(S, which) {
 /* ---------- input while setting out ---------- */
 function _hsMoveTap(R, S, p) {
   S.ptr = p;
+  if (S.stringing) return _hsStringPin(R, S);
   if (S.carry) { S.carry.mode = 'pointer'; S.carry.dirty = true; _hsMoveFrame(R, S, 0); if (S.carry.drag) return true; return _hsPlace(R, S); }
   if (!S.move) return false;
   const hit = _hsHit(S, p.x, p.y);
@@ -326,6 +332,7 @@ function _hsMoveUp(R, S) {
 }
 function _hsMoveCancelDrag(R, S) { if (S.carry) S.carry.drag = false; }
 function _hsMoveKey(R, S, k) {
+  if (S.stringing) { if (k === 'e' || k === 'Enter' || k === ' ') return _hsStringPin(R, S); if (k === 'q') { _hsStringCancel(R, S); return true; } return false; }
   if (S.carry) {
     if (k === 'e' || k === 'Enter' || k === ' ') { S.carry.mode = 'keys'; return _hsPlace(R, S); }
     if (k === 'r') return _hsTurn(R, S);
@@ -346,6 +353,7 @@ function _hsMoveKey(R, S, k) {
   return false;
 }
 function _hsMoveEsc(R, S) {
+  if (S.stringing) { _hsStringCancel(R, S); return true; }
   if (S.carry) { _hsCarryCancel(R, S); _grmSay('Put back where it was.', 2500); return true; }
   if (S.chest && !S.move) { S.chest = false; _hsBagPaint(R, S); return true; }
   if (S.move) { _hsMoveToggle(R, S, false); return true; }
@@ -353,7 +361,7 @@ function _hsMoveEsc(R, S) {
 }
 /** The prompt while setting out: what E picks up. */
 function _hsMovePromptRow(R, S) {
-  if (S.carry) return null;
+  if (S.carry || S.stringing) return null;
   const M = _grm.me; if (!M) return null;
   let best = null, bd = HOUSE_REACH;
   for (const q of S.pieces) { const def = gardenDecor(q.d), sh = houseShape(def); if (!sh) continue; const fy = sh.hp === 'wall' ? 420 : q.y, fx = Math.max(q.x - sh.w / 2, Math.min(q.x + sh.w / 2, M.x)), d = Math.hypot(M.x - fx, (M.y - fy) * 1.2) + ((q.z || 0) > 0 ? -6 : 0); if (d < bd) { bd = d; best = { words: 'Pick up the ' + houseLowName(def), x: q.x, y: q.y - (q.z || 0) - sh.h }; } }

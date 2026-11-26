@@ -231,6 +231,15 @@ const HOUSE_ART = {
     for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; T.stroke(`M${Math.cos(a) * 15} ${-50 + Math.sin(a) * 15}L${Math.cos(a) * (i % 3 ? 16.5 : 17.5)} ${-50 + Math.sin(a) * (i % 3 ? 16.5 : 17.5)}`, '#3a2a1a', i % 3 ? 1 : 2); }
     T.ell(0, -50, 1.8, 1.8, '#2a1a10');
   } },
+  'hf-fairy-lights': { box: [-40, -52, 40, 6], draw(T) {
+    T.soft(0, 1, 26, 4, .45);
+    // a wooden reel on its side, the green flex wound on it, a loose end with its bulbs trailing over the floor
+    T.ell(-6, -22, 20, 20, '#8a6238'); T.ell(-6, -22, 16, 16, T.rad(-10, -26, 18, [[0, '#4a6a3a'], [1, '#26381e']]));
+    for (let i = 0; i < 6; i++) T.stroke(`M${-20 + i} ${-34 + i * 4}q14 -2 28 0`, '#3a5a2e', 1, .7);
+    T.ell(-6, -22, 5, 5, '#c8945a'); T.ell(-6, -22, 2, 2, '#5a3a20');
+    T.stroke('M10 -14Q22 -2 34 -6', '#2e3a2a', 1.6);
+    [[16, -8, '#ffd86a'], [24, -4, '#ff8a6a'], [31, -6, '#8ad0ff'], [-20, -40, '#b8f08a'], [-2, -42, '#ffb0e0'], [8, -36, '#ffd86a']].forEach(([x, y, c]) => { T.glow(x, y + 3, 10, c, .35); T.ell(x, y + 3, 3, 4, c); T.ell(x - .8, y + 2, 1, 1, '#ffffff', .8); });
+  } },
   'hf-guest-book': { box: [-24, -76, 24, 6], draw(T) {
     T.soft(0, 1, 20, 4.5, .5);
     // the stand: a turned post on a cross foot, a sloping desk
