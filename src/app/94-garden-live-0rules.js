@@ -83,7 +83,9 @@ const GL_EMOTES = Object.freeze(['wave', 'cheer', 'clap', 'bow', 'shrug', 'sit',
   // and back on the ground (down from a floor or out of the water any way at all, a reset, a floor no longer drawn): their copy comes down
   'act-onground',
   // music (20 Nov): the band's other places at a pitch
-  'act-whistle', 'act-squeeze', 'act-drum']);
+  'act-whistle', 'act-squeeze', 'act-drum',
+  // after dark: the reel, learned at a barn dance (94-garden-zz-afterdark-9music.js)
+  'reel']);
 const GL_PHRASES = Object.freeze([
   Object.freeze({ id: 'hi', t: 'Hello!' }), Object.freeze({ id: 'lovely', t: 'Your garden is lovely' }), Object.freeze({ id: 'look', t: 'Look at this!' }),
   Object.freeze({ id: 'help', t: 'Can I help?' }), Object.freeze({ id: 'thanks', t: 'Thank you!' }), Object.freeze({ id: 'follow', t: 'Follow me!' }),
@@ -96,7 +98,7 @@ const GL_TOGETHER = Object.freeze(['high5', 'follow', 'unfollow', 'sit', 'greet'
  *  an id this version does not know is ignored. `c` is the family, `e` the step or the id: pet (a clip of the pet library, or pat / eat), petplay (an environment/guide endpoint or critical exact-request guide stop; optional u 1..3 plus i species addresses the host pack), wow (a pet spectacle), nap (on / off), roam (a species of the host's pack),
  *  fish (a step of the line), bug (a step of the net), got (what was caught or found: `e` its kind, `i` its id), make (a recipe's id), cheer (a moment of yours: a garden level, an achievement's id, a photo taken), ct (a contest round: the host's, see GL_CT), snap (ask for a group photo: `i` its id, `x` and `y` the middle of the frame, see GL_SNAP). `to` and `w` are slots as in gl:em. */
 const GL_FX_KINDS = Object.freeze(['pet', 'petplay', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make', 'cr', 'egg', 'pick', 'cheer', 'ct', 'snap', 'hall', 'fs', 'sync', 'use', 'pose', 'kite', 'soap', 'leaf', 'marble', 'tune', 'folk', 'nt']);
-const GL_FX_STEPS = Object.freeze({ folk: Object.freeze(['talk', 'bye']), sync: Object.freeze(['ask', 'at', 'away', 'back']), fs: Object.freeze(['hook', 'land', 'free']), fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in', 'big', 'help']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), ct: Object.freeze(['start', 'board', 'end', 'stop']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop', 'gear']), cheer: Object.freeze(['level', 'ach', 'photo']), snap: Object.freeze(['ask']), hall: Object.freeze(['in', 'at', 'out']), use: Object.freeze(['bell', 'wish', 'collect', 'machine']), kite: Object.freeze(['take', 'letgo', 'state']), soap: Object.freeze(['take', 'letgo', 'release', 'state']), leaf: Object.freeze(['launch', 'control', 'retrieve', 'state']), marble: Object.freeze(['set', 'roll', 'reset', 'state']), tune: Object.freeze(['on', 'off', 'ping', 'pong']), nt: Object.freeze(['bow', 'bowin', 'bowgot', 'lan', 'sky', 'star', 'name']) });   // nt: after dark (94-garden-zz-afterdark-*.js), glNightFxOk below
+const GL_FX_STEPS = Object.freeze({ folk: Object.freeze(['talk', 'bye']), sync: Object.freeze(['ask', 'at', 'away', 'back']), fs: Object.freeze(['hook', 'land', 'free']), fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in', 'big', 'help']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), ct: Object.freeze(['start', 'board', 'end', 'stop']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop', 'gear']), cheer: Object.freeze(['level', 'ach', 'photo']), snap: Object.freeze(['ask']), hall: Object.freeze(['in', 'at', 'out']), use: Object.freeze(['bell', 'wish', 'collect', 'machine']), kite: Object.freeze(['take', 'letgo', 'state']), soap: Object.freeze(['take', 'letgo', 'release', 'state']), leaf: Object.freeze(['launch', 'control', 'retrieve', 'state']), marble: Object.freeze(['set', 'roll', 'reset', 'state']), tune: Object.freeze(['on', 'off', 'ping', 'pong']), nt: Object.freeze(['bow', 'bowin', 'bowgot', 'lan', 'sky', 'star', 'name', 'dance']) });   // nt: after dark (94-garden-zz-afterdark-*.js), glNightFxOk below
 /** What only the garden's host may say (the host decides: who netted a bug, who took a gift, which creatures are about, what the pets notice), and what goes to the host alone (a claim, a poke). A guest's own fx of these kinds is refused at both ends. */
 const GL_FX_HOST_ONLY = Object.freeze(new Set(['tune|pong', 'bug|gone', 'bug|lost', 'cr|react', 'cr|look', 'cr|greet', 'egg|fire', 'pick|spawn', 'pick|take', 'pick|gone', 'roam|*', 'ct|*', 'kite|state', 'soap|state', 'leaf|state', 'marble|state', 'nt|bow', 'nt|bowgot']));
 const GL_FX_TO_HOST = Object.freeze(new Set(['folk|talk', 'folk|bye', 'tune|ping', 'bug|claim', 'pick|claim', 'cr|poke', 'fs|hook', 'fs|land', 'fs|free', 'sync|ask', 'sync|away', 'sync|back', 'pose|on', 'pose|off', 'kite|take', 'kite|letgo', 'soap|take', 'soap|letgo', 'soap|release', 'leaf|launch', 'leaf|control', 'leaf|retrieve', 'marble|set', 'marble|roll', 'marble|reset', 'nt|bowin']));
@@ -414,7 +416,8 @@ function glGoalOk(b) {
 /** AFTER DARK (94-garden-zz-afterdark-*.js): the family 'nt'. bow (host): a rainbow's foot came down, i its round, x y its cell, tt seconds
  *  it stays; bowin (to the host): you reached it; bowgot (host): who got there in what order, l [[slot, rank 1-9, colour 0-6]], so each
  *  person's own app pays itself once for that round. lan: a lantern set on the water (i its id, x y the bank's cell, n colour * 4 +
- *  pattern); sky: i a pattern, n 1 opened or 0 closed; star: i a pattern, n a star of it pressed; name: n the star, v the two word numbers.
+ *  pattern); sky: i a pattern, n 1 opened or 0 closed; star: i a pattern, n a star of it pressed, v the other ends of the lines it closed
+ *  ('3-5'); name: n the star, v a word's number and its half ('14-1'); dance: i a dance floor, n 1 dancing there or 0 stopped.
  *  '' when it fits. Pure: the server runs it too. */
 function glNightFxOk(b) {
   const id = v => typeof v === 'string' && /^[a-z0-9-]{1,24}$/.test(v), int = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
@@ -430,7 +433,8 @@ function glNightFxOk(b) {
   const n0 = (hi) => b.n == null || int(b.n, 0, hi);   // (gardenLiveFx leaves out an n of 0)
   if (b.e === 'lan') return cell() && n0(31) ? '' : 'nt';
   if (b.e === 'sky') return n0(1) ? '' : 'nt';
-  if (b.e === 'star') return n0(15) ? '' : 'nt';
+  if (b.e === 'star') return n0(15) && (b.v == null || typeof b.v === 'string' && /^\d{1,2}(-\d{1,2}){0,7}$/.test(b.v)) ? '' : 'nt';   // (v: the other ends of the lines this press closed)
   if (b.e === 'name') return n0(15) && typeof b.v === 'string' && /^\d{1,2}-\d{1,2}$/.test(b.v) ? '' : 'nt';
+  if (b.e === 'dance') return n0(1) ? '' : 'nt';   // (i: the floor; n 1 dancing on it, 0 stopped)
   return 'nt';
 }

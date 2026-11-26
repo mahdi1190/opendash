@@ -30,6 +30,8 @@ function gardenNightBoard(el, m) {
   if (typeof adSkyTomorrow === 'function') p(adSkyTomorrow(N));
   if (typeof adStarsNow === 'function') { const st = adStarsNow(N, m).find(s => s.fresh); if (st && !adGet('sf.' + st.nn)) p('Something came down in the night. Look for a thin line of smoke.'); }
   if (typeof adRainedLast === 'function' && m.season !== 'winter' && N.hour >= 5 && N.hour < 13 && adRainedLast(m, N)) p('It rained in the night. There may be mushrooms under the trees.');
+  if (typeof gardenNightDanceBoard === 'function') p(gardenNightDanceBoard(m, N));   // (9music: Friday for tomorrow, Saturday for tonight)
+  if (typeof adLanternNight === 'function' && adLanternNight(Object.assign({}, m, { tod: 'night' }), N)) p('It is lantern week. After dusk, fold a paper lantern by the still water and set it drifting. Your friends’ lanterns drift on yours too.');
   // Wick's weather: what the signs say today (reading it here counts as hearing them)
   if (!m.visit && typeof _adrSigns === 'function') {
     const signs = _adrSigns(m, N);
@@ -54,6 +56,12 @@ function gardenNightJournal(right, m) {
   const sfn = Number(adGet('sfn')) || 0; if (sfn) bits.push(`${_wdPlural(sfn, 'star stone')} picked up where stars fell.`);
   const gt = Number(adGet('gt')) || 0; if (gt) bits.push(`${_wdPlural(gt, 'glade')} found at the end of the little lights.`);
   const sy = AD_SAYINGS.filter(s => adGet('sy.' + s.id)).length; if (sy) bits.push(`${sy} of ${AD_SAYINGS.length} weather sayings heard.`);
+  // with friends (8friends, 9music)
+  const named = typeof adNamedStars === 'function' ? adNamedStars(null) : [];
+  if (named.length) bits.push('Named with a friend: ' + named.map(r => `${r.name}, in ${r.row.name.replace(/^The /, 'the ')}`).join('; ') + '.');
+  const ln = Object.keys(_wdG()).filter(k => /^ad\.ly\d{4}$/.test(k)).reduce((n, k) => n + (Number(_wdG()[k]) || 0), 0); if (ln) bits.push(`${_wdPlural(ln, 'paper lantern')} set on still water.`);
+  const bk = Number(adGet('bkt')) || 0; if (bk) bits.push(`${_wdPlural(bk, 'coin')} in the busking hat, all told.`);
+  const dn = Number(adGet('dn')) || 0; if (dn) bits.push(`Danced at ${_wdPlural(dn, 'barn dance')}.`);
   for (const b of bits) box.appendChild(_gjEl('p', 'gj-hand', b));
   const act = box.appendChild(_gjEl('div', 'gj-acts')); act.appendChild(_gdpBtn('The moon calendar', { icon: 'moon', run: () => gardenNightMoonOpen() }));
 }

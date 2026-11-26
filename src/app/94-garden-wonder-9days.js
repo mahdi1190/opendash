@@ -22,6 +22,7 @@ function _wdLanternFloat(m, i, fresh) {
 }
 const _wdLantern = {
   up(m) {
+    if (typeof gardenNightLanternsUp === 'function' && gardenNightLanternsUp(m)) return null;   // after dark has lantern night while it is on: a basket on still water, friends' lanterns, visits too (94-garden-zz-afterdark-8friends.js)
     const W = _wdG(), k = 'dl.' + _wdYear(m), had = Number(W[k]) || 0, a = WD_AT.lanterns;
     _wdy.L = [];
     for (let i = 0; i < had; i++) _wdLanternFloat(m, i, false);
@@ -127,7 +128,7 @@ const WD_DAYS = Object.freeze([
   { id: 'midfire', name: 'The midsummer fire', from: '06-20', to: '06-24', tod: ['dusk', 'night'], run: _wdFire, blurb: 'A fire by the lane on the shortest nights. You can jump it.' },
   { id: 'august-stars', name: 'The August stars', from: '08-11', to: '08-13', tod: ['night'], sky: 1, run: _wdStarNight, blurb: 'Falling stars, every few minutes, on the same nights every year. They are real: look out of the window too.' },
   { id: 'supper', name: 'The harvest supper', from: '09-22', to: '09-28', run: _wdSupper, blurb: 'A long table with what you grew this year on it, and everyone who has called sitting down.' },
-  { id: 'lanterns', name: 'Lantern night', from: '11-01', to: '11-07', tod: ['dusk', 'night'], run: _wdLantern, blurb: 'Float paper lanterns out on the lake, from the pier, after dusk.' },
+  { id: 'lanterns', name: 'Lantern night', from: '11-01', to: '11-07', tod: ['dusk', 'night'], run: _wdLantern, blurb: 'Fold a paper lantern after dusk and set it on still water. Friends’ lanterns drift on yours all week.' },
   { id: 'december-stars', name: 'The December stars', from: '12-13', to: '12-15', tod: ['night'], sky: 1, run: _wdStarNight, blurb: 'The best falling stars of the year, if the sky is clear. They are real too.' },
 ]);
 wdMod({

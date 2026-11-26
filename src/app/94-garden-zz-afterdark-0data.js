@@ -12,6 +12,8 @@
      AD_SAYINGS   old weather sayings, each with the sign the game shows for it and what tomorrow must be for it to be said
      AD_SHROOMS   what grows under the trees the morning after rain, and what Mother Thistle says about each
      AD_GLADES    where a glow trail ends
+     with friends (8friends, 9music): AD_MYTHS (Wick's star myths, one a pattern), AD_STAR_WORDS (naming a star together, a word each),
+                  AD_LANTERN (papers, patterns, how many), AD_CALLS (the barn dance caller), AD_BUSK and AD_DANCE (their numbers)
    ============================================================ */
 const AD_MOONS = Object.freeze([
   Object.freeze({ id: 'snow', mo: 1, name: 'The Snow Moon', tint: 0xe6eef8, css: '#e6eef8', keep: 'ad-snow-hair', line: 'The white stag came down to the open grass, and left a silver hair on a fence.', hint: 'The first full moon of the year. Look along the fences.',
@@ -73,6 +75,12 @@ const AD_KEEPS = Object.freeze([
   ['ad-rainbow-blue', 'A blue rainbow scale', '#4a8ae0', 'dust', 'Where a rainbow really touches the ground.'],
   ['ad-rainbow-indigo', 'An indigo rainbow scale', '#5a5ac8', 'dust', 'Where a rainbow really touches the ground.'],
   ['ad-rainbow-violet', 'A violet rainbow scale', '#9a5ac0', 'dust', 'Where a rainbow really touches the ground.'],
+  // with friends (8friends, 9music)
+  ['ad-two-halves', 'Two halves of a sky', '#e8eeff', 'star', 'Join a pattern of stars with a friend, half the stars each.'],
+  ['ad-paper-lantern', 'A paper lantern', '#f2a65a', 'note', 'Fold one on lantern night and set it on still water.'],
+  ['ad-two-lanterns', 'Two lanterns together', '#ffd08a', 'note', 'Float a lantern within a minute of a friend’s.'],
+  ['ad-first-penny', 'The first penny in the hat', '#d8b24a', 'stone', 'Play at a band’s pitch until somebody stops to listen.'],
+  ['ad-dance-ribbon', 'A barn dance ribbon', '#d8405a', 'spine', 'Dance in the lantern light, on a barn dance night.'],
 ].map(([id, name, c, kind, hint]) => Object.freeze(Object.assign({ id, name, c, hint }, kind ? { kind } : {}))));
 const AD_RAINBOW = Object.freeze(['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet']);
 /** Old weather sayings. sign: what the game shows (2: by kind or terrain, 6rain draws it); when: what tomorrow (or today) must be;
@@ -107,3 +115,36 @@ const AD_SHEET = Object.freeze({ every: 3, cap: 4, max: 6, garden: 8, near: 6 })
 const AD_FALL = Object.freeze({ odds: 6, reach: 30, days: 7, bloom: 2, seed: 3 });   // one night in 6; within 30 cells of the arrival point; the scorch lasts 7 days, flowers from day 2, a seed from day 3
 const AD_SHROOM = Object.freeze({ every: 9, show: 6, autumn: 8, ring: 3, hold: 5 });   // one tree in 9 has a cluster; at most 6 drawn in view (8 in autumn); a ring one morning in 3; 5 seconds in it
 const AD_TRAIL = Object.freeze({ step: 0.7, min: 8, max: 22, reach: 34, trees: 3, glade: 4 });
+
+/* ---------- with friends (8friends: stargazing and lantern night; 9music: the busking hat and the barn dance) ---------- */
+/** Wick's star myths, one for each pattern of WD_STARS (94-garden-wonder-6sky.js): told in the sky view once the pattern is joined, alone
+ *  or together. Small stories in Wick's dry voice, never the vale's main story. */
+const AD_MYTHS = Object.freeze({
+  trowel: Object.freeze(['The first gardener dropped it on the first evening, and went to bed cross about it.', 'In the night it rolled uphill. Trowels do that, if nobody is watching.', 'By morning it was up there, handle down, pointing at where she had left it.', 'She never found it. She did find a great many potatoes, looking.']),
+  hare: Object.freeze(['The hare raced the moon once, all the way round the sky.', 'The moon is very slow and very sure of itself, and it won.', 'She still runs that track every spring, in case it has got lazy.', 'It has not. But I admire the practice.']),
+  swallows: Object.freeze(['Two swallows argued about the way south every autumn for ninety years.', 'One said left at the big hill. The other said right at the big hill.', 'Somebody pinned them to the sky side by side, so they would have to go together.', 'They still argue. They always arrive.']),
+  can: Object.freeze(['The first summer there was no rain at all, and one gardener with one can.', 'She watered every garden in the vale at night, so nobody would feel they owed her.', 'The stars kept the can when she was done, and tip it out for her every August.', 'That is why it rains on the flower show. It is a thank-you. It is very badly timed.']),
+  heron: Object.freeze(['Before the vale there was no river. Only a heron with long legs and a longer patience.', 'She carried the river down from the hills a beakful at a time.', 'It took her a thousand years. She did not mind. She is a heron.', 'When it was done she stood in it, and she has not seen a reason to move since.']),
+  bench: Object.freeze(['A carpenter was asked for a bench long enough for everyone in the vale.', 'Every time he finished, somebody new moved in.', 'So he kept going, over the hill and up into the dark, and the bench went with him.', 'Sit anywhere along it. He saved you a place.']),
+  lantern: Object.freeze(['Somebody put a lantern in the window for a sailor who was late home.', 'He was very late. Several hundred years, at the last count.', 'The lantern got tired of the window and went up where he could see it from anywhere.', 'If you are ever late, look up. It is for you too. It is not fussy.']),
+  barrow: Object.freeze(['A fox once stole the moon’s reflection off the lake and hid it under the apples in a barrow.', 'The lake was very dark, and very upset about it.', 'Up the hill went the barrow, the moon inside, the fox pushing, everybody shouting.', 'It is still going. The lake has its moon back. Nobody has told the fox.']),
+  boat: Object.freeze(['A boy lost a little boat off the end of the pier, cried, and went home for his tea.', 'The boat had never been anywhere, so it decided to go everywhere.', 'It sailed off the far edge of the lake and kept going, up.', 'He is an old man now. He waves at it. It always waves back.']),
+  goose: Object.freeze(['The snow goose is looking for the one warm night in winter.', 'Every year she flies over, and every year it is the night before, or the night after.', 'She is not put off. She says the looking is the best part.', 'I have told her it is next Tuesday. I am usually right about Tuesdays.']),
+  bear: Object.freeze(['The bear fell asleep at the very first frost there ever was.', 'She dreams the spring, and everything that grows in it is something she dreamed.', 'So be quiet in winter. Somebody is working.', 'If you hear snoring on a clear night, that is the wind. Probably.']),
+  sisters: Object.freeze(['Three sisters were given one field and told to share it.', 'The tall one held the beans up, the beans held her steady, and the broad one kept the weeds off both.', 'They argued every single day and grew the best crop in the vale.', 'They are still arguing up there. On a clear night it sounds a lot like friendship.']),
+});
+/** Naming a star together: the first of you picks one of the first twelve words, the other one of the last twelve ("the Little Wren").
+ *  Word numbers go on the wire and in the snapshot; nobody types anything. */
+const AD_STAR_WORDS = Object.freeze(['Little', 'Old', 'Bright', 'Quiet', 'Kind', 'Brave', 'Sleepy', 'Silver', 'Wandering', 'Lucky', 'Patient', 'Merry',
+  'Wren', 'Lantern', 'Heron', 'Apple', 'Kettle', 'Boat', 'Fox', 'Acorn', 'Robin', 'Moth', 'Bell', 'Hare']);
+/** Paper lanterns: five papers and three patterns (the snapshot's nt.l keeps their numbers). */
+const AD_LANTERN = Object.freeze({
+  papers: Object.freeze([['Saffron', '#f0a052', '#ffd28c'], ['Primrose', '#eed062', '#fff2a8'], ['Rose', '#e47c66', '#ffc4ac'], ['Cream', '#efe2bc', '#fff8e2'], ['Heather', '#c48cc8', '#f2ccf2']].map(r => Object.freeze(r))),
+  patterns: Object.freeze(['Plain', 'Stars', 'Moon']),
+  night: 3, year: 7, friends: 8, each: 2, together: 60000,
+});
+/** The caller's calls at a barn dance, one every four bars, picked by the bar of the shared tune (the same on every screen). */
+const AD_CALLS = Object.freeze(['Bow to your partner!', 'Swing your corner!', 'Promenade, two by two!', 'Do-si-do!', 'Circle to the left!', 'Circle to the right!', 'Into the middle, and back out!', 'Strip the willow!', 'Heel and toe, heel and toe!', 'Turn your neighbour round!', 'Clap on the beat!', 'Back to your places!', 'Once more round the floor!', 'Everybody, up the middle!']);
+/* numbers: busking (9music) and the barn dance (9music) */
+const AD_BUSK = Object.freeze({ near: 10, crowd: 3, coins: 4, day: 8, from: 6, to: 23, play: 30000, good: 130, streak: 8 });   // villagers within 10 cells stop by, 3 (+1 a player); at most 4 coins a tune, 8 a day; between 06:00 and 23:00; a tune counts after 30 s of it; a tap within 130 ms of the beat
+const AD_DANCE = Object.freeze({ w: 5, d: 3, cells: 12, min: 6, late: 22.5, ear: 12, lamps: 5, great: 85, good: 175, lead: 1500, every: 4, reel: 16, xp: 16, watch: 4 });   // a floor of 5 x 3 cells (12 at most, 6 at least) in front; Saturdays from dusk to 22:30; the quiet beat heard within 12 cells; 5 lanterns; steps judged within 85 / 175 ms; an arrow is seen 1.5 s before its beat
