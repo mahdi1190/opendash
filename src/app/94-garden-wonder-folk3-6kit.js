@@ -275,17 +275,21 @@ function gardenKitThings() {
   return out;
 }
 function gardenKitSpots(t) { return t && Array.isArray(t.spots) ? t.spots : []; }
+/** Is the day's kit set out now: from an hour before its hours to an hour or so after (stalls go up in the morning, the card table at
+ *  dusk); outside that the places are still the plan's, but nothing stands. */
+function _vkHour() { try { const p = Clock.parts(_gdNow()); return p.h + p.mi / 60; } catch (e) { const d = new Date(); return d.getHours() + d.getMinutes() / 60; } }
+function _vkIsOut() { const R = _vk.row; return !!(R && R.hours && _vkHour() >= R.hours[0] - 1 && _vkHour() < R.hours[1] + 1.2); }
 /** What stops your feet: a stall's counter (the front strip: its keeper stands behind it), the brazier, the table, a lantern's post. */
 function gardenKitSolids() {
-  if (!_vk.plan || !_vk.plan.pieces.length) return [];
+  if (!_vk.plan || !_vk.plan.pieces.length || !_vk.out) return [];
   if (_vk.solids) return _vk.solids;
   const out = [];
   for (const q of _vk.plan.pieces) {
     const P = VK_PIECES[q.kind]; if (!P) continue;
     if (q.kind === 'stall') out.push({ x0: q.x - P.hw + 0.1, y0: q.y - 0.36, x1: q.x + P.hw - 0.1, y1: q.y + 0.02, src: 'festival stall' });
-    else if (q.kind === 'table') out.push({ x0: q.x - 0.45, y0: q.y - 0.3, x1: q.x + 0.45, y1: q.y + 0.02, src: 'card table' });
+    else if (q.kind === 'table') out.push({ x0: q.x - 0.34, y0: q.y - 0.22, x1: q.x + 0.34, y1: q.y + 0.02, src: 'card table' });
     else if (q.kind === 'brazier') out.push({ x0: q.x - 0.38, y0: q.y - 0.32, x1: q.x + 0.38, y1: q.y + 0.04, src: 'the brazier' });
-    else if (q.kind === 'lantern') out.push({ x0: q.x - 0.16, y0: q.y - 0.14, x1: q.x + 0.16, y1: q.y + 0.04, src: 'lantern post' });
+    else if (q.kind === 'lantern') out.push({ x0: q.x - 0.12, y0: q.y - 0.12, x1: q.x + 0.12, y1: q.y + 0.03, src: 'lantern post' });
   }
   _vk.solids = out; return out;
 }
@@ -353,7 +357,7 @@ function _vkStallSvg(look, seed) {
 /** The brazier: an iron basket on three legs, coals and flames (lit at the fair's hours), a few logs beside it. About 0.9 H. */
 function _vkBrazierSvg(lit) {
   const A = GART, iron = ['#3e4246', '#2a2c30', '#6a7078'];
-  let s = A.P('#2a2018', A.ell(0, 1, 26, 5.4), 0.28) + A.P('#5a4a3a', A.ell(0, 0.6, 18, 3.4), 0.4) + _vkFoot(40, 'brz', false);
+  let s = A.P('#2a2018', A.ell(0, 1, 26, 5.4), 0.28) + _vkFoot(40, 'brz', false) + A.P('#8a8478', A.rrect(-19, -6, 38, 7, 2.4)) + A.P('#a8a294', A.rrect(-19, -6, 38, 2.4, 1.2), 0.8) + A.P('#6a6458', A.rect(8, -4, 11, 5), 0.35);   // (on a flat hearth stone, its block)
   s += A.S(iron[0], 2.6, 'M-11 0L-7 -18M11 0L7 -18M0 2L0 -16') + A.S(iron[2], 0.8, 'M-11.6 -1L-7.6 -17', 0.5);
   s += A.P(iron[1], 'M-15 -18Q-14 -34 0 -34Q14 -34 15 -18z') + A.P(iron[0], 'M-15 -18Q-14 -32 -2 -33.4L-3 -18z') + A.S(iron[2], 1, 'M-13 -22h26M-12 -27h24', 0.5) + A.S(iron[1], 1.6, 'M-15 -33.6h30');
   s += A.P(lit ? '#c8401e' : '#4a3a30', A.ell(0, -34, 14, 3.4)) + (lit ? A.P('#ff8a3a', A.ell(-2, -34.6, 9, 2), 0.8) : '');
@@ -364,7 +368,7 @@ function _vkBrazierSvg(lit) {
 /** A lantern post: a post with a crook and a paper lantern, lit at dusk. About 1.9 H. */
 function _vkLanternSvg(c, lit) {
   const A = GART, t = _vkTone(c), H = 76;
-  let s = _vkFoot(14, 'lan' + c, false) + _vkPole(0, -H, '#6a4a2e') + A.S('#4a3424', 2.6, `M0 ${-H}q0 -8 10 -8q5 0 5 5`) + A.S('#3a2a1c', 0.8, `M15 ${-H - 3}v5`);
+  let s = _vkFoot(14, 'lan' + c, false) + A.P('#8a8478', A.rrect(-6, -4, 12, 5, 1.6)) + A.P('#a8a294', A.rect(-6, -4, 12, 1.4), 0.8) + _vkPole(0, -H, '#6a4a2e') + A.S('#4a3424', 2.6, `M0 ${-H}q0 -8 10 -8q5 0 5 5`) + A.S('#3a2a1c', 0.8, `M15 ${-H - 3}v5`);   // (its post in a stone foot, the block)
   const y = -H + 2;
   s += A.P(t[1], A.ell(15, y + 8, 8, 9.6)) + A.P(lit ? A.mix(c, '#fff2c0', 0.5) : t[0], A.ell(14, y + 7.2, 6.6, 8.6)) + A.P(lit ? '#fff4c8' : t[2], A.ell(12.4, y + 4.6, 2.4, 3.6), lit ? 0.95 : 0.6);
   s += A.S(t[3], 0.6, `M10 ${y + 2}q5 5 0 11M15 ${y - 2}v18M20 ${y + 2}q-5 5 0 11`, 0.45) + A.P('#3a2a1c', A.rect(11, y - 2.6, 8, 2) + A.rect(11.6, y + 15.6, 7, 1.6));
@@ -385,7 +389,7 @@ function _vkTableSvg(lit) {
   const A = GART, wood = _vkTone('#8a6a46'), cloth = _vkTone('#3a6a4a');
   let s = _vkFoot(84, 'tbl', true);
   for (const x of [-44, 44]) s += A.P('#2a2418', A.ell(x, 0.6, 9, 2.2), 0.25) + A.P(wood[1], A.rect(x - 7, -13, 2.6, 13) + A.rect(x + 4.4, -13, 2.6, 13)) + A.P(wood[0], A.rrect(x - 9, -16, 18, 4.4, 1.8)) + A.P(wood[2], A.rect(x - 9, -16, 18, 1.4), 0.7);
-  s += A.S(wood[1], 2.4, 'M-14 0L10 -20M14 0L-10 -20') + A.S(wood[2], 0.8, 'M-14.6 -1L9.4 -21', 0.5);
+  s += A.S(wood[1], 2.4, 'M-14 0L10 -20M14 0L-10 -20') + A.S(wood[2], 0.8, 'M-14.6 -1L9.4 -21', 0.5) + A.P(wood[1], A.rrect(-17, -5, 34, 5, 1.6)) + A.P(wood[2], A.rect(-17, -5, 34, 1.4), 0.7);   // (a footboard joining the legs: the table stands on it)
   s += A.P(cloth[1], A.rrect(-20, -24, 40, 6, 1.6)) + A.P(cloth[0], A.rrect(-20, -24, 37, 5, 1.6)) + A.P(cloth[1], 'M-20 -19h40l-2 6h-36z', 0.9) + A.P(cloth[2], A.rect(-19, -24, 34, 1.2), 0.6);
   for (let i = 0; i < 5; i++) s += `<g transform="translate(${-11 + i * 2.6} -25) rotate(${-20 + i * 10})">${A.P('#f8f2e4', A.rect(-2.2, -5.4, 4.4, 6))}${A.P(i % 2 ? '#c84a3a' : '#3a4a6a', A.rect(-1.2, -4.4, 2.4, 2.2), 0.8)}</g>`;
   s += A.P('#f8f2e4', A.rect(4, -27, 6, 4)) + A.P('#3a4a6a', A.rect(5, -26.4, 4, 2.6), 0.6);
@@ -402,7 +406,9 @@ function _vkPieceSvg(q, i, lit) {
   return '';
 }
 function _vkUp(m) {
-  const K = gardenKitToday(m), want = new Map();
+  const K0 = gardenKitToday(m), out = !!K0 && _vkIsOut();
+  if (out !== !!_vk.out) { _vk.out = out; _vk.solids = null; _vkSolidsChanged(); }
+  const K = out ? K0 : null, want = new Map();
   if (K) K.pieces.forEach((q, i) => { if (VK_PIECES[q.kind]) want.set('p' + i + '|' + _vk.key, { q, i }); if (q.kind === 'stall') want.set('pb' + i + '|' + _vk.key, { q, i, back: true }); });
   // bunting between neighbouring lantern posts (each span its own sprite, hung from the left post's crook)
   if (K && K.row.kit === 'fair') { const L = K.pieces.map((q, i) => ({ q, i })).filter(o => o.q.kind === 'lantern').sort((a, b) => a.q.s - b.q.s); for (let k = 1; k < L.length; k++) { const a = L[k - 1].q, b = L[k].q, d = Math.hypot(b.x - a.x, b.y - a.y); if (d > 2.4 && d < 8.5) want.set('b' + k + '|' + _vk.key, { bunting: [a, b], i: k }); } }
@@ -422,7 +428,7 @@ function _vkBuildOne() {
   if (S) { S._vk = o; _vk.S.set(k, S); }
 }
 function _vkGlows(m) {
-  if (!_vk.plan || !_vk.lit) { for (const id of _vk.glowIds || []) wdGlowOff(id); _vk.glowIds = []; return; }
+  if (!_vk.plan || !_vk.lit || !_vk.out) { for (const id of _vk.glowIds || []) wdGlowOff(id); _vk.glowIds = []; return; }
   const ids = [];
   _vk.plan.pieces.forEach((q, i) => {
     if (q.kind === 'lantern') { const id = 'vkg' + i; ids.push(id); wdGlow(id, '<circle cx="15" cy="-62" r="30" fill="#ffc768" opacity="0.2"/><circle cx="15" cy="-62" r="11" fill="#ffe2a0" opacity="0.42"/>', q.x, q.y); }
@@ -449,7 +455,7 @@ function _vkReplan(m) {
 }
 /* ---------- your moves at the kit: the prompt's rows (asked through the games' rows) ---------- */
 function gardenKitActRows(px, py) {
-  const out = []; if (!_vk.plan || !_vk.plan.pieces.length) return out;
+  const out = []; if (!_vk.plan || !_vk.plan.pieces.length || !_vk.out) return out;
   const day = _vk.row;
   _vk.plan.pieces.forEach((q, i) => {
     const d = Math.hypot(q.x - px, (q.y + 0.4 - py) * 1.3);

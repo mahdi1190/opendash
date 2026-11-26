@@ -29,6 +29,7 @@
 .vsc-ui.is-on .vsc-top, .vsc-ui.is-on .vsc-bot { transform: translateY(0); }
 .vsc-veil { position: absolute; inset: 0; background: #14110c; opacity: 0; transition: opacity .3s ease; pointer-events: none; }
 .vsc-ui.is-skip .vsc-veil { opacity: .85; }
+.vsc-ui.is-cut .vsc-veil { opacity: 1; transition: none; }
 .vsc-title { position: absolute; left: 18px; top: 0; height: 7%; display: flex; align-items: center; font: italic 600 13px/1 Georgia, 'Times New Roman', serif; letter-spacing: .04em; color: #e8dcc0; opacity: 0; transition: opacity .8s .5s; }
 .vsc-ui.is-on .vsc-title { opacity: .85; }
 .vsc-skip { position: absolute; right: 14px; top: calc(7% + 10px); z-index: 12; display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px 6px 12px; border: 1px solid rgba(232, 220, 192, .45); border-radius: 999px; background: rgba(20, 17, 12, .62); color: #f4ead2; font: 600 13px/1 inherit; cursor: pointer; opacity: 0; transition: opacity .6s .6s, background .2s; }

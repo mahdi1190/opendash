@@ -166,7 +166,7 @@ function gardenSceneCam(ar, wpx, hpx) {
   return { x: cx - vw / 2, y: cy - vh / 2, w: vw, h: vh };
 }
 /* ---------- the bars, Skip, and the garden's buttons faded ---------- */
-function _vscUi(on, title) {
+function _vscUi(on, title, cut) {
   const box = typeof _ghBox === 'function' ? _ghBox() : null; if (!box) return;
   if (!on) { box.classList.remove('vsc-on'); const u = _vsc.ui; _vsc.ui = null; if (u) { u.classList.remove('is-on'); setTimeout(() => u.remove(), 700); } return; }
   let u = _vsc.ui; if (u && u.isConnected) return;
@@ -176,6 +176,7 @@ function _vscUi(on, title) {
   u.querySelector('.vsc-title').textContent = title || '';
   u.addEventListener('pointerdown', (ev) => { if (!ev.target.closest('.vsc-skip')) { ev.stopPropagation(); ev.preventDefault(); } });   // (no click-to-walk while a moment plays)
   u.addEventListener('wheel', (ev) => { ev.stopPropagation(); ev.preventDefault(); }, { passive: false });
+  if (cut) { u.classList.add('is-cut'); setTimeout(() => u.classList.remove('is-cut'), 520); }   // (a cut in: the veil lifts once the cast is in place)
   box.appendChild(u); _vsc.ui = u; box.classList.add('vsc-on');
   requestAnimationFrame(() => requestAnimationFrame(() => u.classList.add('is-on')));
 }
@@ -222,14 +223,20 @@ function gardenScenePlay(id, o) {
     }
   } else lines = (sc.lines || []).slice();
   const S = _vsc.S = { id, sc, R, i: -1, step: null, t0: performance.now(), st: 0, lines, after, acts, replay: !!o.replay, public: !!(o.public || sc.public), teller: o.teller || sc.teller, driven: new Set(), follow: false };
-  for (const [role, aid] of R.actors) {
-    const V = _vscV(aid); if (!V) continue;
-    // (watching again: someone far off is by the stage already, put there while the shot is still on you: never seen to jump)
-    if (o.replay && Math.hypot(V.x - R.stage.x, V.y - R.stage.y) > 9 && !_vscOnShot(V.x, V.y) && !_vscOnShot(R.stage.x, R.stage.y)) { const q = _vscStand(R.stage.x + (role === 'teller' ? -1.6 : 1.8), R.stage.y + 2.2); if (q) { V.x = q.x; V.y = q.y; V.path = null; } }
-    gardenFolkDrive(aid, { by: 'scene', noTalk: true, face: { x: _gw.px, y: _gw.py } }); S.driven.add(aid);
+  // (watching again with the cast far off: the moment opens on a short cut, and under it they are at their first marks; never seen to jump)
+  if (o.replay) {
+    const far = [];
+    for (const [role, aid] of R.actors) { const V = _vscV(aid); if (V && Math.hypot(V.x - R.stage.x, V.y - R.stage.y) > 9) far.push([role, V, null]); }
+    for (const c of R.crowd) { const V = _vscV(c.id); if (V && Math.hypot(V.x - c.to.x, V.y - c.to.y) > 9) far.push(['crowd', V, c.to]); }
+    for (const [role, V, to] of far) {
+      let q = to; if (!q) { const w = sc.steps.find(x => x.walk === role), mk = w && R.marks.get(w.to); q = mk && !Array.isArray(mk) ? mk : _vscStand(R.stage.x + (role === 'teller' ? -1.6 : 1.8), R.stage.y + 2.2); }
+      if (q) { V.x = q.x; V.y = q.y; V.path = null; if (V.S) { V.S.x = q.x; V.S.y = q.y; } }
+    }
+    S.cut = far.length > 0;
   }
+  for (const [, aid] of R.actors) { const V = _vscV(aid); if (V) { gardenFolkDrive(aid, { by: 'scene', noTalk: true, face: { x: _gw.px, y: _gw.py } }); S.driven.add(aid); } }
   try { if (typeof wdTalkClose === 'function') wdTalkClose(true); } catch (e) { /* none open */ }
-  _vscKeys(); _vscUi(true, sc.name);
+  _vscKeys(); _vscUi(true, sc.name, S.cut);
   try { wdSound([[392, 0.5, 'sine', 0.018], [523, 0.7, 'sine', 0.014, 0.18]]); } catch (e) { /* quiet */ }
   if (S.public) _vscSend('play', S);
   _vscNext(S);
@@ -264,7 +271,7 @@ function _vscNext(S) {
     S.i++; const st = S.sc.steps[S.i]; S.step = st; S.st = performance.now();
     if (!st || st.end) { _vscEnd(S, false); return; }
     if (st.if && !S.R.names.has(st.if)) continue;
-    if (st.cam) { _vscCamTo(st.cam.filter(n => n === 'you' || S.R.names.has(n)), st.t); S.follow = st.cam.some(n => { const p = S.R.names.get(n); return p && (p.id || p.pts); }); continue; }
+    if (st.cam) { _vscCamTo(st.cam.filter(n => n === 'you' || S.R.names.has(n)), S.cut && !S.cutCam ? 0.02 : st.t); S.cutCam = true; S.follow = st.cam.some(n => { const p = S.R.names.get(n); return p && (p.id || p.pts); }); continue; }
     if (st.pose) { const face = _vscFace(S, st.pose, st.face); for (const id of _vscIds(S, st.pose)) { const V = _vscV(id); const f = face && typeof face === 'object' && V && st.pose === 'crowd' && st.face === 'stage' ? { x: S.R.stage.x, y: S.R.stage.y } : face; if (typeof gardenFolkPose === 'function') gardenFolkPose(id, st.p || '', f); } continue; }
     if (st.fx) { _vscFx(S, st.fx); continue; }
     if (st.walk) {
