@@ -134,6 +134,7 @@ function valeFolkSolveHomes(rows, things, saved, ctx) {
     const s = saved && saved[row.id], t = s && byId.get(s);
     if (t && Number.isFinite(_vfHomeScore(row, t, Object.assign({}, c, { open: null })))) { out.set(row.id, t.id); if (!row.home.postbox) taken.add(t.id); }
   }
+  for (const id of c.reserved || []) taken.add(id);   // (your own house: nobody new moves into it, 94-garden-house-2room.js gardenHouseReserve)
   for (const row of rows) {
     if (out.has(row.id)) continue;
     if (row.with && out.has(row.with)) { out.set(row.id, out.get(row.with)); continue; }

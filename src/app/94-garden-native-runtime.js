@@ -358,6 +358,7 @@ window.GardenNative = (function () {
   function presentationKey(model) {
     const { now, occ, visit, ...view } = model, saved = { ..._gdG() }, prefs = { ...saved.prefs };
     delete saved.prefs; delete prefs.cam; delete prefs.zoom;
+    delete saved.hf; delete saved.hr; delete saved.hs;   // (your house's rooms and furniture are drawn indoors only: moving a chair never repaints the garden, 94-garden-house-*.js)
     const weather = typeof _gdWeather === 'function' ? _gdWeather() : null;
     view.plants = model.plants.map(({ hours, dry, nextIn, lastWater, ...plant }) => ({ ...plant, lastWater: plant.def.special === 'heart' ? 0 : model.rain.now ? 1 : lastWater }));
     view.rain = { ...model.rain, last: model.rain.now ? 1 : model.rain.last };
@@ -368,7 +369,7 @@ window.GardenNative = (function () {
     // Bag and menu visibility belong to their retained HUD handlers; opening
     // those panels does not change the world's plants, scenery or lighting.
     return JSON.stringify([
-      view, Math.floor(now / 60000), visit && { ...visit, key: undefined }, saved, prefs,
+      view, Math.floor(now / 60000), visit && { ...visit, key: undefined, snap: visit.snap && { ...visit.snap, hs: undefined } }, saved, prefs,
       typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0,
       state.profile, state.wardrobe, state.pet, state.game && state.game.seen,
       typeof _gm !== 'undefined' && _gm.rev, gardenFun(), gardenMotionOn(), ui,

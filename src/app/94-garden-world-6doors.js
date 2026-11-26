@@ -59,7 +59,7 @@ const GRM_SYM = Object.freeze({
   hothouse() { const A = _GD(); return A.p('M-14 0V-28Q-14 -42 0 -42Q14 -42 14 -28V0Z', '#bfe0c4', 0.85) + A.s('M-14 0V-28Q-14 -42 0 -42Q14 -42 14 -28V0M0 -42V0M-14 -24H14M-14 -12H14', '#f4f4ec', 2.2) + A.fern(-3, 0, 0.4, '#2f7a4e') + `<circle class="grm-steam" cx="10" cy="-44" r="4" fill="#fff"/>`; },
   capfloor() { const A = _GD(); let t = ''; for (let i = 0; i < 8; i++) t += `<rect x="-3" y="-19" width="6" height="6" fill="#3a2814" transform="rotate(${i * 45})"/>`; return A.r(-11, -24, 22, 24, '#5a4228', null, 2) + A.c(10, -30, 2, 'none') + `<g transform="translate(0 -34) scale(.8)">${t}<circle r="14" fill="#7a5634"/><circle r="4" fill="#ffd86a"/></g>`; },
 });
-function gardenRoomSym(R, px) { const s = GRM_SYM[R.id]; return `<svg viewBox="-30 -60 60 66" width="${px}" height="${px}" aria-hidden="true">${s ? s() : ''}</svg>`; }
+function gardenRoomSym(R, px) { const s = GRM_SYM[R.id] || (typeof R.sym === 'function' ? R.sym : null); return `<svg viewBox="-30 -60 60 66" width="${px}" height="${px}" aria-hidden="true">${s ? s() : ''}</svg>`; }
 
 /* ---------- going through ---------- */
 /** Walk up to it (here: you are already there), see whether it is open, and go in. */
@@ -82,6 +82,7 @@ function gardenRoomGo(R, here) {
 }
 function _grmDoorProp(R) { try { return gardenPropsNow().find(p => p.lf === R.at && !p.site) || null; } catch (e) { return null; } }
 function _grmDoorPt(R) {
+  if (R.house && typeof gardenHouseDoorPt === 'function') return gardenHouseDoorPt(R);   // a house's door, from the layout (94-garden-house-2room.js)
   const p = _grmDoorProp(R); if (!p) return null;
   if (typeof gardenSightIsSetOut === 'function' && gardenSightIsSetOut(R.at) && p.door) return { x: p.door.x + .5, y: p.door.y + .5 };
   // The Vale's current row owns its approach, including accepted Designer
