@@ -746,7 +746,10 @@ function gardenFacts(mArg) {
   try { soc = typeof gardenSocialFacts === 'function' ? gardenSocialFacts() : null; } catch (e) { soc = null; }
   let rgn = null;   // a region's page finished (94-garden-regions-1core.js)
   try { rgn = typeof gardenRegionFacts === 'function' ? gardenRegionFacts() : null; } catch (e) { rgn = null; }
+  let hsf = null;   // your own house: rooms built, housewarmings, cosy stars (94-garden-house-4grow.js)
+  try { hsf = typeof gardenHouseFacts === 'function' ? gardenHouseFacts() : null; } catch (e) { hsf = null; }
   return {
+    ...(hsf || {}),
     ...(rgn || {}),
     ...(soc || {}),
     ...(cat || {}),

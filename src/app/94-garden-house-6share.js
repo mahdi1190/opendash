@@ -30,6 +30,9 @@ function _hsOpOfIntent(ev) {
     case 'lift': return { o: 'lift', u: String(ev.u || '') };
     case 'use': return { o: 'use', u: String(ev.u || '') };
     case 'wall': case 'floor': return { o: ev.item, s: slot, d: String(ev.p || ''), lk: 'hfw.' + slot + '.' + String(ev.i || '').slice(0, 24) };
+    case 'jar': return { o: 'jar', s: slot, c: ev.p === 'coin' ? ev.fx | 0 : 0, t: ev.p === 'timber' ? 1 : 0, st: ev.p === 'stone' ? 1 : 0 };   // (what they put in came out of their own purse, on their page)
+    case 'help': { const n = typeof _glhByName === 'function' ? _glhByName(ev.f) : ''; return { o: 'help', s: slot, seed: Math.floor(Math.random() * 9999), i: String(n || '?').charAt(0), col: gardenHash(String(ev.f || '')) % 16 }; }
+    case 'dye': return Object.assign({ o: 'dye', u: String(ev.u || ''), v: ev.fx | 0 }, ev.fx ? { k: 'crop:' + String(ev.p || '') } : {});
   }
   return null;
 }
@@ -38,16 +41,17 @@ function gardenHouseHostDo(ev, put, g) {
   const op = _hsOpOfIntent(ev); if (!op) return 'That cannot be done';
   if (!g.hs || !g.hs.home) return 'Nobody lives here yet';
   const inside = _hsInside() && _grm.R.slot === (op.s != null ? op.s : (g.hf[op.u] || {}).s);
-  const W = { g, has: () => 1, feet: inside ? _hsFeet(_grm.S) : null };
+  const W = { g, has: () => 1, feet: inside ? _hsFeet(_grm.S) : null, today: _gdToday() };
   const why = houseOpCheck(W, op, ev.f); if (why) return why;
   const rec = op.u && g.hf[op.u] ? g.hf[op.u] : null, d = op.d || (rec && rec.d) || '';
   const mark = _gdMark(houseOpTouches(op, g));
-  houseOpApply(g, op, ev.f, { now: _gdNow(), today: _gdToday() });
+  houseOpApply(g, op, ev.f, { now: _gdNow(), today: _gdToday(), tomorrow: _gdAddDays(_gdToday(), 1) });
   _hsSnapSoon();
-  if (_hsInside()) _grm.S.dirty = true;
-  // (what a friend brought, a piece or a paper, is a gift to the house: like a gift outdoors it stays, so it has no Undo in the diary)
-  const gift = op.o === 'put' || ((op.o === 'wall' || op.o === 'floor') && op.d !== HOUSE_WALL0 && op.d !== HOUSE_FLOOR0);
-  return put(mark, { hi: ev.item, p: d, u: op.u || '', mp: 'hf', ...(gift ? { noUndo: true } : {}), ...(op.o === 'use' ? { on: g.hf[op.u] && g.hf[op.u].l ? 1 : 0 } : {}) });
+  if (_hsInside()) { _grm.S.dirty = true; if (op.o === 'help' || op.o === 'jar') { try { _hsRoomRefresh(_grm.R, _grm.S, false); } catch (e) { /* the next frame catches up */ } } }
+  if (op.o === 'help' && typeof _hsBuiltNow === 'function') _hsBuiltNow(op.s, ev.f);   // (a room finished: the cottage grows outside, and its housewarming waits for you)
+  // (what a friend brought, a piece, a paper, coins in the jar, a hand with the building, is a gift to the house: like a gift outdoors it stays, so it has no Undo in the diary)
+  const gift = op.o === 'put' || op.o === 'jar' || op.o === 'help' || ((op.o === 'wall' || op.o === 'floor') && op.d !== HOUSE_WALL0 && op.d !== HOUSE_FLOOR0);
+  return put(mark, { hi: ev.item, p: op.o === 'jar' ? String(ev.p || '') : op.o === 'help' ? String(op.s) : d, u: op.u || '', mp: 'hf', ...(op.o === 'jar' ? { n: op.c || 1 } : {}), ...(op.o === 'dye' ? { v: op.v } : {}), ...(gift ? { noUndo: true } : {}), ...(op.o === 'use' ? { on: g.hf[op.u] && g.hf[op.u].l ? 1 : 0 } : {}) });
 }
 /** The friend diary's words for a change in your house. */
 function gardenHouseDiary(e, who, n) {
@@ -59,6 +63,9 @@ function gardenHouseDiary(e, who, n) {
     case 'use': return e.on ? `${who} lit the ${name} in your house` : `${who} put out the ${name} in your house`;
     case 'wall': return `${who} put up ${name} in your house`;
     case 'floor': return `${who} laid ${name} in your house`;
+    case 'jar': return e.p === 'coin' ? `${who} put ${e.n || 1} coins in your builders’ jar` : `${who} put ${e.p === 'timber' ? 'timber' : 'stone'} in your builders’ jar`;
+    case 'help': return `${who} lent the builders a hand: ${houseRoomName(Number(e.p) || 1).replace(/^The /, 'the ')} is finished`;
+    case 'dye': { const dy = typeof HOUSE_DYE_OF !== 'undefined' ? HOUSE_DYE_OF.get(e.v | 0) : null; return dy ? `${who} dyed the ${name} ${dy.name.toLowerCase()} in your house` : `${who} washed the ${name} back to its own colour in your house`; }
   }
   return `${who} helped in your house`;
 }
@@ -73,6 +80,7 @@ function _hsGuestDo(R, S, op) {
   else if (op.o === 'move') Object.assign(f, { u: op.u, fx: op.x, fy: op.y, y: Math.round((op.z || 0) / 2), r: op.r || 0 });
   else if (op.o === 'lift' || op.o === 'use') f.u = op.u;
   else if (op.o === 'wall' || op.o === 'floor') { f.p = op.d; if (op.d !== HOUSE_WALL0 && op.d !== HOUSE_FLOOR0) { debit = 'decor:' + op.d; if (gardenHas(debit) < 1) { _grmSay('You have none of those left.'); return false; } } }
+  else if (op.o === 'dye') { Object.assign(f, { u: op.u, fx: op.v | 0 }); if (op.v) { f.p = String(op.k || '').replace(/^crop:/, ''); debit = op.k; if (gardenHas(debit) < 1) { _grmSay('You have nothing to boil for that colour.'); return false; } } }
   try { _glvIntent('house', f, debit || undefined); } catch (e) { console.error('[house]', e); return false; }
   S.pend.set(op.o + ':' + (op.u || op.s) + ':' + Date.now(), { op, at: Date.now(), ref: S.snapRef });   // clock-ok: how long a change waits for its answer
   _hsRoomRefresh(R, S, false);
@@ -85,6 +93,7 @@ function _hsPendDone(v, op) {
     case 'put': case 'move': return !!p && p.x === op.x && p.y === op.y;
     case 'lift': return !p;
     case 'use': return false;   // (a toggle: the next snapshot settles it)
+    case 'dye': return !!p && (p.v | 0) === (op.v | 0);
     case 'wall': return (v.rooms[String(op.s)] || {}).w === op.d;
     case 'floor': return (v.rooms[String(op.s)] || {}).f === op.d;
   }
@@ -102,6 +111,7 @@ function _hsGuestOver(v) {
     else if (op.o === 'move' && i >= 0) { const p = pieces[i], dx = op.x - p.x, dy = op.y - p.y; for (const q of houseOnTop(pieces, p.u)) { q.x += dx; q.y += dy; } Object.assign(p, { x: op.x, y: op.y, z: op.z || 0, r: op.r || 0, pend: 1 }); }
     else if (op.o === 'lift' && i >= 0) { const riders = new Set(houseOnTop(pieces, op.u).map(q => q.u)); for (let j = pieces.length - 1; j >= 0; j--) if (pieces[j].u === op.u || riders.has(pieces[j].u)) pieces.splice(j, 1); }
     else if (op.o === 'use' && i >= 0) pieces[i].l = pieces[i].l ? 0 : 1;
+    else if (op.o === 'dye' && i >= 0) Object.assign(pieces[i], { v: op.v | 0, pend: 1 });
     else if ((op.o === 'wall' || op.o === 'floor') && rooms[String(op.s)]) rooms[String(op.s)][op.o === 'wall' ? 'w' : 'f'] = op.d;
   }
   return Object.assign({}, v, { pieces, rooms });

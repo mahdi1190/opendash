@@ -15,7 +15,8 @@ const _hsBrass = (T, x, y, w, h) => { T.rrect(x, y, w, h, Math.min(w, h) / 2.2, 
 const _hsFlame = (T, x, y, k, lit) => { if (!lit) { T.stroke(`M${x} ${y}v-4`, '#2a1a10', 1.2); return; } T.glow(x, y - 8 * k, 30 * k, '#ffb050', .5); T.fill(`M${x} ${y - 16 * k}Q${x + 5 * k} ${y - 6 * k} ${x + 3 * k} ${y - 1.5 * k}Q${x} ${y + 1.5 * k} ${x - 3 * k} ${y - 1.5 * k}Q${x - 5 * k} ${y - 6 * k} ${x} ${y - 16 * k}Z`, '#ffc860'); T.ell(x, y - 5 * k, 1.6 * k, 3.6 * k, '#fff8d8'); };
 const _hsQuilt = ['#c8584a', '#e8c878', '#5a7a9a', '#f0e6d0', '#7a9a5a', '#d88a6a', '#a8604a', '#8aa8c0'];
 const HOUSE_ART = {
-  'hf-cottage-bed': { box: [-100, -92, 100, 10], draw(T) {
+  'hf-cottage-bed': { box: [-100, -92, 100, 10], draw(T, o) {
+    const Q = o && o.v ? _hsDyeQuilt(T, o.v) : _hsQuilt;
     T.soft(4, 2, 104, 9, .55);
     _hsWood(T, -94, -82, 12, 82, '#8a5a32', true); T.rrect(-96, -86, 16, 8, 3, '#a87444'); _hsWood(T, 82, -58, 12, 58, '#8a5a32', true); T.rrect(80, -62, 16, 7, 3, '#a87444');
     for (const x of [-86, 86]) T.rect(x - 4, -8, 8, 8, '#5a3a20');
@@ -24,16 +25,17 @@ const HOUSE_ART = {
     T.rrect(-80, -62, 36, 18, 8, T.lin(0, -62, 0, -44, [[0, '#ffffff'], [1, '#d8d0c0']])); T.ell(-64, -58, 12, 3, '#ffffff', .7);
     // the quilt over the mattress and hanging over the rail, patch by patch
     const q = 'M-40 -50Q20 -54 80 -48L84 -14Q22 -6 -40 -12Z';
-    T.fill(q, '#c8584a'); T.clip(q, () => { let i = 0; for (let y = -54; y < -6; y += 11) for (let x = -44; x < 88; x += 14) T.rect(x, y, 14, 11, _hsQuilt[(i++ * 5 + Math.floor(y)) % _hsQuilt.length], .95); for (let x = -44; x < 88; x += 14) T.stroke(`M${x} -56V-4`, '#3a2010', .7, .35); for (let y = -54; y < -6; y += 11) T.stroke(`M-44 ${y}H88`, '#3a2010', .7, .35); T.rect(-44, -56, 132, 8, '#ffffff', .2); T.rect(-44, -26, 132, 22, '#000', .18); });
+    T.fill(q, Q[0]); T.clip(q, () => { let i = 0; for (let y = -54; y < -6; y += 11) for (let x = -44; x < 88; x += 14) T.rect(x, y, 14, 11, Q[(i++ * 5 + Math.floor(y)) % Q.length], .95); for (let x = -44; x < 88; x += 14) T.stroke(`M${x} -56V-4`, '#3a2010', .7, .35); for (let y = -54; y < -6; y += 11) T.stroke(`M-44 ${y}H88`, '#3a2010', .7, .35); T.rect(-44, -56, 132, 8, '#ffffff', .2); T.rect(-44, -26, 132, 22, '#000', .18); });
     T.stroke('M-40 -12Q22 -6 84 -14', '#6a2a1a', 1.6, .5); T.stroke('M-40 -50Q20 -54 80 -48', '#ffffff', 1.4, .4);
   } },
-  'hf-brass-bed': { box: [-98, -106, 98, 10], draw(T) {
+  'hf-brass-bed': { box: [-98, -106, 98, 10], draw(T, o) {
+    const band = houseDyeCol(o && o.v, '#5a7a9a');
     T.soft(4, 2, 100, 9, .55);
     for (const [x0, top] of [[-90, -96], [74, -66]]) { for (const x of [x0, x0 + 16]) _hsBrass(T, x - 2.5, top, 5, -top); T.rect(x0, top + 8, 16, 3, '#c8963e'); for (let i = 1; i < 4; i++) _hsBrass(T, x0 + i * 4 - 1, top + 12, 2, -top - 30); T.ell(x0, top - 2, 4.5, 4.5, '#e8c060'); T.ell(x0 + 16, top - 2, 4.5, 4.5, '#e8c060'); }
     T.rect(-74, -28, 148, 8, '#6a6a70');
     T.rrect(-76, -48, 152, 22, 7, '#f4f2ec');
     T.rrect(-74, -64, 34, 18, 8, '#ffffff'); T.ell(-58, -60, 12, 3, '#e8eef4');
-    const q = 'M-40 -52Q20 -56 76 -50L80 -12Q20 -4 -40 -10Z'; T.fill(q, '#f4f6f8'); T.clip(q, () => { T.rect(-44, -26, 130, 6, '#5a7a9a'); T.rect(-44, -20, 130, 2, '#d8b45a'); for (let x = -36; x < 80; x += 18) T.ell(x, -40, 4, 3, '#a8c0d8', .5); T.rect(-44, -26, 130, 22, '#000', .1); });
+    const q = 'M-40 -52Q20 -56 76 -50L80 -12Q20 -4 -40 -10Z'; T.fill(q, '#f4f6f8'); T.clip(q, () => { T.rect(-44, -26, 130, 6, band); T.rect(-44, -20, 130, 2, '#d8b45a'); for (let x = -36; x < 80; x += 18) T.ell(x, -40, 4, 3, T.shade(band, .5), .5); T.rect(-44, -26, 130, 22, '#000', .1); });
   } },
   'hf-stool': { box: [-22, -42, 22, 6], draw(T) {
     T.soft(0, 1, 22, 5, .5);
@@ -52,9 +54,9 @@ const HOUSE_ART = {
     // the rush seat, woven
     T.poly([[-18, -38], [18, -38], [20, -32], [-18, -32]], '#c8a860'); for (let i = 0; i < 9; i++) T.stroke(`M${-16 + i * 4} -38l2 6`, '#8a6a30', 1, .7); T.rect(-18, -39, 37, 2, '#e8d090', .7); T.rect(-18, -32, 38, 2.5, '#6a4426');
   } },
-  'hf-armchair': { box: [-48, -96, 48, 8], draw(T) {
+  'hf-armchair': { box: [-48, -96, 48, 8], draw(T, o) {
     T.soft(0, 2, 48, 8, .55);
-    const c = '#7a3a3a', d = T.shade(c, -.35), l = T.shade(c, .22);
+    const c = houseDyeCol(o && o.v, '#7a3a3a'), d = T.shade(c, -.35), l = T.shade(c, .22);
     for (const x of [-34, 30]) T.rect(x, -6, 6, 6, '#3a2414');
     T.fill('M-40 -92Q-40 -100 -26 -100L16 -100Q30 -100 30 -86L30 -36L-40 -36Z', T.lin(-40, 0, 30, 0, [[0, l], [.6, c], [1, d]]));
     T.fill('M-30 -90Q-30 -94 -22 -94L12 -94Q20 -94 20 -86L20 -46L-30 -46Z', T.shade(c, .08)); T.stroke('M-5 -92V-50', d, 1.4, .4);
@@ -74,13 +76,14 @@ const HOUSE_ART = {
     T.rrect(-20, -46, 40, 8, 3, '#e8d8b0'); T.rect(-20, -40, 40, 3, T.shade(wood, -.2));
     T.stroke('M-18 -64Q0 -66 18 -56', wood, 3.4); T.stroke('M18 -56V-40', wood, 3.4);
   } },
-  'hf-settle': { box: [-72, -112, 72, 8], draw(T) {
+  'hf-settle': { box: [-72, -112, 72, 8], draw(T, o) {
+    const cush = houseDyeCol(o && o.v, '#a8603a');
     T.soft(0, 2, 72, 7, .55);
     const wood = '#6a4a2a';
     _hsWood(T, -66, -104, 132, 64, wood, true, .3); for (let i = 1; i < 4; i++) T.rect(-66 + i * 33, -104, 3, 64, '#000', .3);
     for (let i = 0; i < 4; i++) { T.rect(-60 + i * 33, -96, 24, 46, T.shade(wood, -.15)); T.rect(-60 + i * 33, -96, 24, 2, '#ffffff', .12); }
     T.rect(-70, -108, 140, 8, T.shade(wood, .2)); T.rect(-70, -108, 140, 2, '#ffffff', .2);
-    _hsWood(T, -66, -40, 132, 8, T.shade(wood, .1), false); T.rrect(-60, -46, 120, 8, 3, '#a8603a'); T.rect(-58, -46, 116, 2, '#d88a5a', .6);
+    _hsWood(T, -66, -40, 132, 8, T.shade(wood, .1), false); T.rrect(-60, -46, 120, 8, 3, cush); T.rect(-58, -46, 116, 2, T.shade(cush, .3), .6);
     _hsWood(T, -66, -32, 132, 32, T.shade(wood, -.2), false); for (const x of [-70, 62]) _hsWood(T, x, -70, 8, 70, wood, true);
   } },
   'hf-kitchen-table': { box: [-78, -70, 78, 8], draw(T) {
@@ -179,16 +182,18 @@ const HOUSE_ART = {
     T.fill('M-13 -20L-10 0H10L13 -20Z', T.lin(-13, 0, 13, 0, [[0, '#d0784a'], [1, '#8a4a28']])); T.rrect(-15, -24, 30, 6, 2, '#c8724a'); T.rect(-12, -10, 24, 2, '#a85a34', .6);
     for (let i = 0; i < 9; i++) { const a = -Math.PI / 2 + (i - 4) * .34, len = 26 + (4 - Math.abs(i - 4)) * 3, ex = Math.cos(a) * len, ey = -22 + Math.sin(a) * len * .8; T.stroke(`M0 -22Q${ex * .4} ${-22 + Math.sin(a) * len * .9} ${ex} ${ey}`, '#3f7a3a', 1.6); for (let k = 1; k < 7; k++) { const t = k / 7, px = ex * t * (1 - .1 * t), py = -22 + (ey + 22) * t - Math.sin(t * 3.14) * 4; T.ell(px, py, 3.6 * (1 - t * .5), 1.6, T.pick(['#4f8f46', '#5ea050', '#3f7a3a']), 1, a + (k % 2 ? .8 : -.8)); } }
   } },
-  'hf-rag-rug': { box: [-72, -48, 72, 4], draw(T) {
+  'hf-rag-rug': { box: [-72, -48, 72, 4], draw(T, o) {
     const cx = T.cx; cx.save(); cx.translate(0, -21); cx.scale(1, 21 / 66);
-    for (const [r, c] of [[66, '#6a4a3a'], [62, '#a8604a'], [55, '#c8b078'], [47, '#5a6a7a'], [39, '#a8604a'], [31, '#e0c898'], [22, '#7a8a5a'], [13, '#c8584a']]) T.ell(0, 0, r, r, c);
+    const d = o && o.v ? houseDyeCol(o.v, '#a8604a') : null, rings = d ? [T.shade(d, -.5), d, T.shade(d, .5), T.shade(d, -.25), d, T.shade(d, .6), T.shade(d, -.1), T.shade(d, .3)] : ['#6a4a3a', '#a8604a', '#c8b078', '#5a6a7a', '#a8604a', '#e0c898', '#7a8a5a', '#c8584a'];
+    [66, 62, 55, 47, 39, 31, 22, 13].forEach((r, i) => T.ell(0, 0, r, r, rings[i]));
     for (let i = 0; i < 40; i++) { const a = i / 40 * 6.283, r = 20 + (i % 5) * 9; T.ell(Math.cos(a) * r, Math.sin(a) * r, 3, 2, '#000', .12); }
     cx.restore();
     T.ell(0, -21, 66, 21, T.rad(-20, -30, 70, [[0, '#fff4e0', .12], [1, '#000', .18]]));
   } },
-  'hf-braided-rug': { box: [-80, -56, 80, 4], draw(T) {
+  'hf-braided-rug': { box: [-80, -56, 80, 4], draw(T, o) {
     const cx = T.cx; cx.save(); cx.translate(0, -25); cx.scale(1, 25 / 75);
-    for (let i = 0; i < 9; i++) { const r = 75 - i * 8, c = i % 3 === 0 ? '#5a7a9a' : i % 3 === 1 ? '#e8c070' : '#3a5a7a'; T.ell(0, 0, r, r, c); for (let k = 0; k < 28; k++) { const a = k / 28 * 6.283; T.ell(Math.cos(a) * (r - 4), Math.sin(a) * (r - 4), 3.4, 1.8, T.shade(c, -.25), .35, a + 1); } }
+    const d = o && o.v ? houseDyeCol(o.v, '#5a7a9a') : null, C3 = d ? [d, T.shade(d, .55), T.shade(d, -.35)] : ['#5a7a9a', '#e8c070', '#3a5a7a'];
+    for (let i = 0; i < 9; i++) { const r = 75 - i * 8, c = C3[i % 3]; T.ell(0, 0, r, r, c); for (let k = 0; k < 28; k++) { const a = k / 28 * 6.283; T.ell(Math.cos(a) * (r - 4), Math.sin(a) * (r - 4), 3.4, 1.8, T.shade(c, -.25), .35, a + 1); } }
     cx.restore(); T.ell(0, -25, 75, 25, T.rad(-20, -34, 80, [[0, '#fff4e0', .1], [1, '#000', .16]]));
   } },
   'hf-wall-shelf': { box: [-56, -48, 56, 6], draw(T) {
@@ -226,7 +231,53 @@ const HOUSE_ART = {
     for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; T.stroke(`M${Math.cos(a) * 15} ${-50 + Math.sin(a) * 15}L${Math.cos(a) * (i % 3 ? 16.5 : 17.5)} ${-50 + Math.sin(a) * (i % 3 ? 16.5 : 17.5)}`, '#3a2a1a', i % 3 ? 1 : 2); }
     T.ell(0, -50, 1.8, 1.8, '#2a1a10');
   } },
+  'hf-guest-book': { box: [-24, -76, 24, 6], draw(T) {
+    T.soft(0, 1, 20, 4.5, .5);
+    // the stand: a turned post on a cross foot, a sloping desk
+    for (const [x0, x1] of [[-14, -2], [14, 2]]) T.stroke(`M${x0} 0L${x1} -8`, '#5a3a20', 4);
+    T.ell(0, -8, 5, 2.4, '#4a2e18');
+    T.stroke('M0 -8V-50', '#6a4426', 5.5); T.stroke('M-1.2 -10V-50', '#a87444', 1.4, .6); for (const y of [-22, -38]) T.ell(0, y, 4.2, 2.6, '#7a5232');
+    T.poly([[-22, -50], [22, -58], [22, -54], [-22, -46]], '#5a3a20'); T.poly([[-22, -52], [22, -60], [22, -58], [-22, -50]], '#8a5a32');
+    // the open book on it, its pages and a few lines of writing, a ribbon down the middle
+    T.poly([[-20, -54], [-1, -59], [-1, -72], [-20, -67]], '#f4ecd8'); T.poly([[1, -59], [20, -64], [20, -77], [1, -72]], '#fbf6ea');
+    T.poly([[-20, -54], [-1, -59], [-1, -60], [-20, -55]], '#c8b894', .8);
+    for (let i = 0; i < 4; i++) { T.stroke(`M${-17} ${-58.5 - i * 2.4 + 0}L${-4} ${-61.5 - i * 2.4}`, '#6a5a4a', .7, .7); T.stroke(`M${4} ${-62.5 - i * 2.4}L${17} ${-65.5 - i * 2.4}`, '#6a5a4a', .7, .55); }
+    T.stroke('M0 -59V-50', '#a83a3a', 1.6);
+    // a pen in a little ink pot on the desk's edge
+    T.ell(17, -58, 3, 1.4, '#1a1a22'); T.rect(14, -63, 6, 5, '#2a2a34'); T.stroke('M17 -63L24 -80', '#e8e4d8', 1.4); T.fill('M24 -80q4 2 2 8q-2 -3 -4 -6z', '#f4f0e6');
+  } },
+  'hf-dye-pot': { box: [-36, -66, 36, 6], draw(T, o) {
+    T.soft(0, 2, 32, 6, .55);
+    // the iron trivet, three legs
+    for (const [x0, x1] of [[-22, -16], [22, 16], [3, 2]]) T.stroke(`M${x0} 0L${x1} -16`, '#26262a', 3);
+    T.ell(0, -16, 22, 4, '#3a3a40');
+    // the copper pot: lit on its left, a dark rim, the dye inside, steam
+    T.ell(0, -30, 26, 20, T.lin(-26, 0, 26, 0, [[0, '#e8a060'], [.3, '#c87a3a'], [.7, '#8a4a22'], [1, '#5a2e14']]));
+    T.ell(-9, -34, 6, 9, '#ffd8a8', .35);
+    T.ell(0, -46, 26, 6, '#5a2e14'); T.ell(0, -46, 22, 4.6, o && o.v ? houseDyeCol(o.v, '#3f6ea8') : '#6a5a7a');
+    T.ell(-5, -47, 8, 1.6, '#ffffff', .25);
+    for (const x of [-27, 27]) T.ell(x, -40, 3, 4, '#8a4a22');
+    // a wooden paddle leaning in it
+    T.stroke('M6 -46L22 -84', '#9a7448', 3.2); T.stroke('M6 -46L22 -84', '#c8a070', 1, .6);
+    for (const [x, y] of [[-6, -54], [4, -60], [-2, -66]]) T.ell(x, y, 5, 3.4, '#f4f4f8', .28);
+  } },
+  'hf-banner': { box: [-32, -74, 32, 6], draw(T, o) {
+    const bn = (o && o.bn) || (typeof _hsBannerNow === 'function' ? _hsBannerNow() : HOUSE_BANNER0), B = HOUSE_BANNER;
+    T.soft(0, -30, 26, 34, .25);
+    // a little iron bracket on the wall, its pole, and the banner hanging from it in folds
+    T.rect(-28, -70, 5, 12, '#2a2a30'); T.ell(-25.5, -64, 1.4, 1.4, '#8a8a92');
+    T.stroke('M-24 -66L28 -70', '#5a3a20', 3); T.ell(28, -70, 2.4, 2.4, '#d8b45a');
+    const cw = 6, x0 = -22, y0 = -66;
+    for (let r = 0; r < B.rows; r++) for (let c = 0; c < B.cols; c++) {
+      const k = parseInt(bn[r * B.cols + c], 12) || 0, fold = Math.sin(c / (B.cols - 1) * Math.PI * 2) * 1.6, x = x0 + c * cw, y = y0 + r * cw + fold + c * -.5;
+      T.rect(x, y, cw + .4, cw + .4, B.colours[k]);
+      T.rect(x, y, cw + .4, cw + .4, c % 2 ? '#000' : '#fff', .07);
+    }
+    T.stroke(`M${x0} ${y0 + B.rows * cw + 1}l8 4l8 -4l8 4l8 -4l8 4l6 -3`, '#2a2418', .7, .25);
+  } },
 };
+/** A quilt's patches in shades of one dye. */
+function _hsDyeQuilt(T, v) { const d = houseDyeCol(v, '#c8584a'); return [d, T.shade(d, .45), T.shade(d, -.25), '#f0e6d0', T.shade(d, .2), T.shade(d, -.45), T.shade(d, .65), '#e8dcc0']; }
 /** A swatch for the shop and your things: a roll of the paper, or a square of the floor. */
 function _hsFinishArt(id) {
   const def = typeof gardenDecor === 'function' ? gardenDecor(id) : null; if (!def || !def.finish) return null;
@@ -265,7 +316,7 @@ function housePaintPiece(cx, id, o) {
 /* ---------- textures: baked one to a task, kept a while ---------- */
 const HOUSE_TEX_K = 2, HOUSE_TEX_MAX = 48;
 const _hst = { queue: new Map(), pumping: false, keys: [], onReady: null, ms: [], urls: new Map() };
-const houseTexKey = (id, v, lit) => 'gdhouse-' + id + '-' + ((v | 0) % 8) + (lit ? '-lit' : '');
+const houseTexKey = (id, v, lit) => 'gdhouse-' + id + '-' + ((v | 0) % 8) + (lit ? '-lit' : '') + (id === 'hf-banner' && typeof _hsBannerNow === 'function' ? '-' + _hsBannerNow() : '');
 function _hsBakeCanvas(id, v, lit, K) {
   const a = houseArt(id); if (!a) return null;
   const [x0, y0, x1, y1] = houseArtBox(id), c = document.createElement('canvas');

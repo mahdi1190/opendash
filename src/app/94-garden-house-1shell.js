@@ -98,16 +98,18 @@ const HOUSE_SKY = Object.freeze({
   dusk: Object.freeze({ top: '#6a5a8a', low: '#f0a070', sun: '#ffb070', shaft: '#ffc890', shaftA: .1, amb: .68, win: .14 }),
   night: Object.freeze({ top: '#0c1630', low: '#22345a', sun: '#c8d8ff', shaft: '#a8b8e8', shaftA: .035, amb: .52, win: .05 }),
 });
-function houseShellKey(P) { return ['hs', P.look, P.wall, P.floor, P.tod, P.season, P.wx || 0].join('|'); }
+function houseShellKey(P) { return ['hs', P.slot | 0, P.open ? 1 : 0, P.look, P.wall, P.floor, P.tod, P.season, P.wx || 0].join('|'); }
+/** The shell this painting is for (P.slot; P.open: its way on is built). */
+function _hsShellP(P) { const slot = P.slot | 0; return houseShellFor(slot, P.open ? { [String(slot === 0 ? 1 : (houseShellFor(slot, {}).shut || {}).to)]: { st: 2 } } : {}); }
 
 /* ---------- the parts ---------- */
-function* _hsPaintCeiling(T, P, L) {
-  const top = 150;
+function* _hsPaintCeiling(T, P, L, o) {
+  o = o || {}; const top = 150;
   // the ceiling seen from below: plaster (or boards) between beams running across the room, each nearer one bigger,
   // with short joists between them going back to the wall
   if (P.look === 'timber') { T.rect(0, 0, 960, top, L.ceilDark); for (let x = -20; x < 980; x += 26) { const c = T.shade(L.ceil, (T.r() - .5) * .2); T.rect(x, 0, 26, top, T.lin(0, 0, 0, top, [[0, T.shade(c, -.25)], [1, c]])); T.rect(x + 24, 0, 2, top, '#000', .3); } }
   else { T.rect(0, 0, 960, top, T.lin(0, 0, 0, top, [[0, T.shade(L.ceil, -.3)], [1, L.ceil]])); T.plaster(0, 0, 960, top, T.shade(L.ceil, -.08), { var: .14 }); }
-  T.ell(724, 60, 280, 110, T.rad(724, 60, 280, [[0, L.ceilDark, .5], [1, L.ceilDark, 0]]));   // smoke over the years, darker over the fire
+  if (o.soot !== null) { const sx = o.soot == null ? 724 : o.soot, sr = o.sootR || 280; T.ell(sx, 60, sr, 110, T.rad(sx, 60, sr, [[0, L.ceilDark, .5], [1, L.ceilDark, 0]])); }   // smoke over the years, darker over the fire
   const rows = P.look === 'stone' ? [[52, 26]] : [[106, 13], [64, 18], [10, 27]];
   let farY = top - 16;
   for (const [y, h] of rows) {
@@ -124,7 +126,8 @@ function* _hsPaintCeiling(T, P, L) {
   T.grain(0, top - 16, 960, 20, '#120a04', .45, false, 4);
   for (let x = 30; x < 960; x += 150) { T.ell(x, top - 6, 2.4, 2.4, '#140c06', .7); T.ell(x - .6, top - 6.6, .9, .9, L.beamLit, .6); }
   T.rect(0, top + 4, 960, 10, T.lin(0, top + 4, 0, top + 14, [[0, '#000', .32], [1, '#000', 0]]));
-  if (P.look === 'thatch') {   // bunches of herbs drying from the beam, and a string of onions
+  if (o.hatch && typeof _hsPaintCeilHatch === 'function') _hsPaintCeilHatch(T, P, L, o.hatch);
+  if (P.look === 'thatch' && o.herbs !== false) {   // bunches of herbs drying from the beam, and a string of onions
     for (const [x, c, n] of [[178, '#6a8a4a', 7], [214, '#8a9a5a', 6], [846, '#7a7a3e', 6]]) {
       T.stroke(`M${x} ${top - 4}v12`, '#c8b088', 1.2, .9);
       for (let i = 0; i < n; i++) { const a = (i - n / 2) * .16, l = 22 + T.r() * 8; T.stroke(`M${x} ${top + 8}q${Math.sin(a) * 6} ${l * .5} ${Math.sin(a) * 9} ${l}`, T.shade(c, (T.r() - .5) * .4), 2.2, .95); T.ell(x + Math.sin(a) * 9, top + 8 + l, 2.4, 3.2, T.shade(c, -.2), .9); }
@@ -140,11 +143,12 @@ function _hsPaintWall(T, P, L) {
   // the room's corners fall into shadow; the light comes from the window and the fire
   T.rect(0, 150, 960, 250, T.lin(0, 0, 960, 0, [[0, '#0a0604', .42], [.16, '#0a0604', .08], [.5, '#0a0604', 0], [.86, '#0a0604', .06], [1, '#0a0604', .36]]));
   T.rect(0, 150, 960, 250, T.lin(0, 150, 0, 400, [[0, '#0a0604', .22], [.3, '#0a0604', 0], [1, '#0a0604', .12]]));
-  if (P.look === 'timber') { for (const x of [150, 560, 900]) { T.rect(x - 9, 150, 18, 250, T.lin(x - 9, 0, x + 9, 0, [[0, L.beamLit], [.4, L.beam], [1, T.shade(L.beam, -.4)]])); T.grain(x - 9, 150, 18, 250, '#140a04', .45, true, 4); } }
+  const SH = _hsShellP(P), clear = x => ![SH.door, SH.window, SH.hearth, SH.way].some(z => z && x > z.x0 - 24 && x < z.x1 + 24);
+  if (P.look === 'timber') { for (const x of [150, 560, 900, 250, 620, 720].filter(clear).slice(0, 3)) { T.rect(x - 9, 150, 18, 250, T.lin(x - 9, 0, x + 9, 0, [[0, L.beamLit], [.4, L.beam], [1, T.shade(L.beam, -.4)]])); T.grain(x - 9, 150, 18, 250, '#140a04', .45, true, 4); } }
   if (P.look === 'stone') { T.rect(0, 292, 960, 8, T.lin(0, 292, 0, 300, [[0, '#f4ece0'], [1, '#a89a84']])); T.rect(0, 300, 960, 3, '#000', .2); }   // the dado rail
 }
 function* _hsPaintWindow(T, P, L) {
-  const W = HOUSE_SHELL.window, S = HOUSE_SKY[P.tod] || HOUSE_SKY.day, gx0 = W.x0 + 12, gx1 = W.x1 - 12, gy0 = W.y0 + 10, gy1 = W.y1 - 14;
+  const W = _hsShellP(P).window, S = HOUSE_SKY[P.tod] || HOUSE_SKY.day, gx0 = W.x0 + 12, gx1 = W.x1 - 12, gy0 = W.y0 + 10, gy1 = W.y1 - 14;
   const season = P.season || 'summer', rain = P.wx === 1, snow = P.wx === 2;
   // the reveal: the wall is thick, and lit from outside
   T.soft((W.x0 + W.x1) / 2, W.y1 + 6, (W.x1 - W.x0) * .62, 10, .4);
@@ -209,7 +213,7 @@ function* _hsPaintWindow(T, P, L) {
   if (S.shaftA > .05) { T.shaft([[gx0 + 6, gy1 + 2], [gx1 - 6, gy1 + 2], [gx1 + 190, 600], [gx0 + 60, 600]], S.shaft, S.shaftA * .8, gy1, 600); T.ell((gx0 + gx1) / 2 + 110, 520, 150, 34, T.rad((gx0 + gx1) / 2 + 110, 520, 150, [[0, S.shaft, S.shaftA * 1.2], [1, S.shaft, 0]])); }
 }
 function* _hsPaintHearth(T, P, L) {
-  const H = HOUSE_SHELL.hearth, F = HOUSE_SHELL.fire, cxm = (H.x0 + H.x1) / 2, night = P.tod === 'night' || P.tod === 'dusk';
+  const SH = _hsShellP(P), H = SH.hearth, F = SH.fire, cxm = (H.x0 + H.x1) / 2, night = P.tod === 'night' || P.tod === 'dusk';
   // the chimney breast stands out from the wall: its face, and its sides in shadow
   T.soft(cxm, 404, (H.x1 - H.x0) * .62, 12, .5);
   const face = P.look === 'stone' ? null : P.look === 'timber' ? L.brick : L.hearth;
@@ -273,7 +277,7 @@ function* _hsPaintHearth(T, P, L) {
   if (P.look !== 'timber') T.glow((F.x0 + F.x1) / 2, F.y1 - 20, night ? 240 : 170, '#ff9a4a', night ? .26 : .13);
 }
 function _hsPaintDoor(T, P, L) {
-  const D = HOUSE_SHELL.door, w = D.x1 - D.x0, h = D.y1 - D.y0, col = L.door;
+  const D = _hsShellP(P).door, w = D.x1 - D.x0, h = D.y1 - D.y0, col = L.door;
   T.soft((D.x0 + D.x1) / 2, D.y1 + 4, w * .7, 8, .5);
   // the frame and lintel, set deep in the wall
   T.rect(D.x0 - 10, D.y0 - 14, w + 20, h + 14, T.shade(L.hearth, -.25));
@@ -302,14 +306,14 @@ function _hsPaintFloor(T, P, L) {
   T.skirt(402, .5);
   // the skirting board along the foot of the wall
   T.rect(0, 388, 960, 13, T.lin(0, 388, 0, 401, [[0, T.shade(L.skirt, .25)], [1, L.skirt]])); T.rect(0, 388, 960, 2, '#ffffff', .18);
-  const H = HOUSE_SHELL.hearth, F = HOUSE_SHELL.fire;
+  const SH = _hsShellP(P), H = SH.hearth, F = SH.fire;
   // the hearthstone: big flags in front of the fire, scorched near it
   T.poly([[H.x0 + 8, 400], [H.x1 - 8, 400], [H.x1 + 6, 446], [H.x0 - 6, 446]], '#6a645a');
   for (let i = 0; i < 5; i++) { const a = H.x0 + 8 + (H.x1 - H.x0 - 16) * i / 5, b = H.x0 + 8 + (H.x1 - H.x0 - 16) * (i + 1) / 5, c = T.shade('#9a948a', (T.r() - .5) * .2); T.poly([[a + 2, 402], [b - 2, 402], [b + (b - 480) * .03 - 2, 444], [a + (a - 480) * .03 + 2, 444]], c); T.rect(a + 4, 403, b - a - 8, 2, '#ffffff', .2); }
   T.ell((F.x0 + F.x1) / 2, 408, 70, 10, '#1a1008', .45);
   T.rect(H.x0 - 6, 444, H.x1 - H.x0 + 12, 4, '#3a342c', .7);
   // a doormat inside the front door
-  const D = HOUSE_SHELL.door; T.soft((D.x0 + D.x1) / 2 + 4, 426, 56, 8, .4);
+  const D = SH.door; T.soft((D.x0 + D.x1) / 2 + 4, 426, 56, 8, .4);
   T.poly([[D.x0 - 4, 408], [D.x1 + 10, 408], [D.x1 + 18, 434], [D.x0 - 10, 434]], '#8a6a3a');
   for (let i = 0; i < 12; i++) { const x = D.x0 - 4 + i * 10; T.stroke(`M${x} 409l${2 + i * .6} 24`, '#6a4e28', 1.2, .6); }
   T.poly([[D.x0 - 4, 408], [D.x1 + 10, 408], [D.x1 + 11, 411], [D.x0 - 5, 411]], '#b8945a', .7);
@@ -321,7 +325,8 @@ function _hsPaintFloor(T, P, L) {
 /* ---------- the painter ---------- */
 /** The room's painting and its light, for this house as it is now. */
 function houseShellSpec(P) {
-  P = Object.assign({ look: 'thatch', wall: HOUSE_WALL0, floor: HOUSE_FLOOR0, tod: 'day', season: 'summer', wx: 0 }, P || {});
+  P = Object.assign({ look: 'thatch', wall: HOUSE_WALL0, floor: HOUSE_FLOOR0, tod: 'day', season: 'summer', wx: 0, slot: 0, open: false }, P || {});
+  if ((P.slot | 0) !== 0 && typeof _hsSpecRoom === 'function') return _hsSpecRoom(P);   // (the rooms built on: 94-garden-house-1shell2.js)
   const L = HOUSE_LOOK_PAL[P.look] || HOUSE_LOOK_PAL.thatch, S = HOUSE_SKY[P.tod] || HOUSE_SKY.day, W = HOUSE_SHELL.window, F = HOUSE_SHELL.fire;
   const night = P.tod === 'night', rain = P.wx === 1, fireX = (F.x0 + F.x1) / 2;
   const fx = { flicker: [{ x: fireX, y: F.y1 - 30, r: 120, c: '#ff8a3a', a: night ? .26 : .15, amt: .32 }, { x: fireX, y: 470, r: 200, c: '#ff9a4a', a: night ? .12 : .06, amt: .22, depth: 60 }] };
@@ -342,6 +347,7 @@ function houseShellSpec(P) {
       yield* _hsPaintWindow(T, P, L); yield;
       yield* _hsPaintHearth(T, P, L); yield;
       _hsPaintDoor(T, P, L); yield;
+      if (P.open && typeof _hsPaintOpening === 'function') { _hsPaintOpening(T, P, L, _hsShellP(P).way, { beyond: 'parlour' }); yield; }   // (the doorway through to the parlour, once it is built)
       _hsPaintFloor(T, P, L); yield;
       if (P.tod === 'night' || P.tod === 'dusk') { const nt = P.tod === 'night'; T.rect(0, 0, 960, 600, nt ? '#0a0c1e' : '#1e1020', nt ? .36 : .14); T.glow(fireX, 390, nt ? 380 : 300, '#ff9a4a', nt ? .2 : .1); }
       T.finish({ vignette: .42, vcol: '#0a0604', dabs: 420 });

@@ -132,7 +132,7 @@ function _hsCarryStart(R, S) {
     _hsGhostTexture(S);
     _hsSync(R, S);   // (its own picture leaves its place)
   } else _grmPaint();
-  S.blocks = houseBlocks(C.others, S.slot);
+  S.blocks = _hsBlocksFor(S, C.others);
   _hsHint(R, S); S.promptKey = null;
   if (typeof _hsHoldSend === 'function') _hsHoldSend(S, C.d);   // (friends here see it in your arms)
   try { if (typeof _fxSound === 'function') _fxSound('tick'); } catch (e) { /* no sound */ }
@@ -152,7 +152,7 @@ function _hsCarryClear(S) {
 function _hsCarryCancel(R, S) {
   if (!S.carry) return;
   _hsCarryClear(S);
-  S.blocks = houseBlocks(S.pieces, S.slot);
+  S.blocks = _hsBlocksFor(S, S.pieces);
   if (S.native) _hsSync(R, S); else _grmPaint();
   _hsHint(R, S); _hsBagPaint(R, S); S.promptKey = null;
 }
@@ -161,13 +161,13 @@ function _hsMoveDrop(R, S, why) { if (!S.carry) return; _hsCarryClear(S); if (wh
 /** Where a piece would go in front of you, by its kind: beside you on the floor, or on the wall above you. */
 function _hsInFront(S, def, M) {
   const sh = houseShape(def), face = M && M.face < 0 ? -1 : 1, mx = M ? M.x : 480, my = M ? M.y : 480;
-  if (sh.hp === 'wall') return { x: mx + face * (sh.w / 2 + 24), y: Math.min(HOUSE_SHELL.hang.y1 - 8, 360), z: 0 };
+  if (sh.hp === 'wall') return { x: mx + face * (sh.w / 2 + 24), y: Math.min((S.shell || HOUSE_SHELL).hang.y1 - 8, 360), z: 0 };
   if (sh.hp === 'rug') return { x: mx + face * (sh.w / 2 + 20), y: my + sh.d / 2, z: 0 };
   return { x: mx + face * (sh.w / 2 + 26), y: my + 4, z: 0 };
 }
 /** Does it fit here? '' or why. Feet in the room count for floor things. */
 function _hsFitWhy(S, def, x, y, z, feet) {
-  const C = S.carry, why = houseFits(C.others, def, x, y, z, C.u || '', null); if (why) return why;
+  const C = S.carry, why = houseFits(C.others, def, x, y, z, C.u || '', null, S.shell || HOUSE_SHELL); if (why) return why;
   const sh = houseShape(def); if (z || sh.hp !== 'floor') return '';
   const b = houseBox({ x, y }, def); feet = feet || _hsFeet(S);
   for (const [fx, fy] of feet) if (fx > b.x0 - 6 && fx < b.x1 + 6 && fy > b.y0 - 6 && fy < b.y1 + 8) return 'Someone is standing there';
@@ -186,8 +186,9 @@ function _hsSnap(S, def, tx, ty, tz) {
     }
     tz = 0;
   }
-  if (sh.hp === 'wall') ty = Math.max(HOUSE_SHELL.hang.y0 + sh.h, Math.min(HOUSE_SHELL.hang.y1, ty));
-  else { const F = HOUSE_SHELL.floor; ty = Math.max(F.y0 + (sh.hp === 'rug' ? sh.d : sh.d) - 2, Math.min(F.y1, ty)); }
+  const SH = S.shell || HOUSE_SHELL;
+  if (sh.hp === 'wall') ty = Math.max(SH.hang.y0 + sh.h, Math.min(SH.hang.y1, ty));
+  else { const F = SH.floor; ty = Math.max(F.y0 + (sh.hp === 'rug' ? sh.d : sh.d) - 2, Math.min(F.y1, ty)); }
   tx = Math.round(tx); ty = Math.round(ty);
   const first = _hsFitWhy(S, def, tx, ty, 0, feet); if (!first) return { x: tx, y: ty, z: 0, ok: true, why: '', moved: false };
   for (let r = 6; r <= HOUSE_SNAP; r += 6) for (let a = 0; a < 16; a++) {
@@ -337,7 +338,9 @@ function _hsMoveKey(R, S, k) {
     let best = null, bd = HOUSE_REACH;
     for (const q of S.pieces) { const sh = houseShape(gardenDecor(q.d)); if (!sh) continue; const fy = sh.hp === 'wall' ? 420 : q.y, fx = Math.max(q.x - sh.w / 2, Math.min(q.x + sh.w / 2, M.x)), d = Math.hypot(M.x - fx, (M.y - fy) * 1.2) + ((q.z || 0) > 0 ? -6 : 0); if (d < bd) { bd = d; best = q; } }
     if (best) { _hsPickUp(R, S, best, false); return true; }
-    if (Math.hypot(M.x - HOUSE_SHELL.stand.x, M.y - HOUSE_SHELL.stand.y) < HOUSE_REACH) { gardenRoomLeave(); return true; }
+    const SH = S.shell || HOUSE_SHELL;
+    if (Math.hypot(M.x - SH.stand.x, M.y - SH.stand.y) < HOUSE_REACH) { _hsBack(R, S); return true; }
+    if (SH.way && Math.hypot(M.x - SH.way.stand.x, M.y - SH.way.stand.y) < HOUSE_REACH) { _hsOn(R, S); return true; }
     return true;
   }
   return false;
