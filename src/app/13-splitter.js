@@ -287,6 +287,11 @@ function rzSave(key, v) {
   } catch (e) { /* storage full or off: sizes are not remembered */ }
 }
 const _RZ_CUR = { n: 'ns', s: 'ns', e: 'ew', w: 'ew', ne: 'nesw', sw: 'nesw', nw: 'nwse', se: 'nwse' };
+/* One window resize listener for every resizable (LEAK-2). A closed dialog, card or palette leaves the set as
+   soon as another one opens (or the window resizes), so window never keeps a detached one alive for days. */
+const _rzLive = new Set();
+function _rzFitAll() { for (const r of [..._rzLive]) { if (!r.el.isConnected) _rzLive.delete(r); else r.fit(); } }
+window.addEventListener('resize', _rzFitAll);
 function makeResizable(el, o) {
   o = o || {};
   const key = o.key || 'window';
@@ -392,11 +397,13 @@ function makeResizable(el, o) {
     if (!drag.last || drag.last.w !== sz.w || drag.last.h !== sz.h) { set(sz); if (o.onResize) o.onResize(sz, true); }
     drag.last = sz;
   }
-  const onWin = () => { if (!el.isConnected) { window.removeEventListener('resize', onWin); return; } if (!drag) apply(); };
-  window.addEventListener('resize', onWin);
+  // Every caller puts el in the page first, so any entry whose element is gone now was closed.
+  for (const r of _rzLive) if (!r.el.isConnected) _rzLive.delete(r);
+  const live = { el, fit: () => { if (!drag) apply(); } };
+  _rzLive.add(live);
   apply();
   el.classList.add('rz-on');
-  return { reset, apply, size: () => saved(), destroy: () => { window.removeEventListener('resize', onWin); handles.forEach(h => h.remove()); el.classList.remove('rz-on'); } };
+  return { reset, apply, size: () => saved(), destroy: () => { _rzLive.delete(live); handles.forEach(h => h.remove()); el.classList.remove('rz-on'); } };
 }
 
 /** render() calls this: remembered sizes -> CSS variables, handles on the panes that exist. */

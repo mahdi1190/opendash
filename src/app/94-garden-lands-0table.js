@@ -580,7 +580,7 @@ function gardenLandsOfSnap(snap) {
 }
 /** What a snapshot may say about land: ids from these tables, numbers in bounds. Called by gardenSnapshotClean. */
 function gardenLandsClean(raw, out) {
-  if (Array.isArray(raw.ls)) out.ls = raw.ls.slice(0, 130).filter(id => typeof id === 'string' && gardenLandRow(id) && !!gardenLandRow(id).plot);
+  if (Array.isArray(raw.ls)) out.ls = raw.ls.slice(0, 130).filter(id => typeof id === 'string' && gardenLandRow(id) && !!(gardenLandRow(id).plot || gardenLandRow(id).trail));   // sections, and paths opened early with pegs (gardenRewardTrailsWire: trail rows have no plot)
   if (Array.isArray(raw.lf)) out.lf = raw.lf.slice(0, 50).filter(id => typeof id === 'string' && !!gardenLandFeature(id));
   if (Array.isArray(raw.lc)) out.lc = raw.lc.slice(0, GARDEN_LAND_CURIOS.length + 1).filter(id => id === GARDEN_LAND_KEY_ID || GARDEN_LAND_CURIOS.some(c => c.id === id));
   if (Array.isArray(raw.lz)) out.lz = raw.lz.slice(0, GARDEN_LAND_SKY.length).filter(id => GARDEN_LAND_SKY.some(c => c.id === id));

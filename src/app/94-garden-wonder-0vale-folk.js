@@ -639,7 +639,10 @@ function gardenFolkActRows(px, py) {
   return out.filter(r => r.words);
 }
 /** A stand-in for the old caller sprite, so their talk code (94-garden-wonder-1folk.js) runs as it always did. */
-function _vfrProxy(V) { return { row: WD_FOLK_ROW.get(V.id), x: V.x, y: V.y, svg: '', node: null, gave: V.gave, path: [], home: { x: V.x, y: V.y }, remove() { }, set hold(v) { } }; }
+/* One gift a day to each villager: read from the gift's own record (fg.<id>.<n>, dated, saved and synced; "Take it back" removes it),
+   never a copy of a flag: the proxy was given V.gave when the talk opened, the gift set it on the proxy later, and V never knew. */
+function _vfrGaveToday(id) { const W = _wdG(), n = Number(W['fgn.' + id] || 0), r = n ? W['fg.' + id + '.' + n] : null; return !!(r && r.d === _wdToday()); }
+function _vfrProxy(V) { const row = WD_FOLK_ROW.get(V.id), id = row ? row.id : V.id; return { row, x: V.x, y: V.y, svg: '', node: null, get gave() { return _vfrGaveToday(id); }, set gave(v) { void v; }, path: [], home: { x: V.x, y: V.y }, remove() { }, set hold(v) { } }; }
 function gardenFolkTalkTo(id) {
   if (typeof gardenGameFolkTap === 'function' && gardenGameFolkTap(id)) return true;   // (folk3: a click on someone in a game is a move in it: Found you!)
   if (typeof _gll !== 'undefined' && _gll.role === 'visit' && _vfg.V.has(id)) return gardenFolkGuestTalk(id);
@@ -671,7 +674,7 @@ function gardenFolkTalkTo(id) {
  *  the host and for a visiting friend (friends are trusted: full co-op), each kept in the talker's own vale. False: nothing to say. */
 function _vfrTalkWith(id, V, m) {
   if (id === 'angler') return !!(typeof wdAnglerTalk === 'function' && wdAnglerTalk({ door: { x: V.x - 0.5, y: V.y - 0.5 } }));
-  if (WD_FOLK_ROW.get(id)) { const P = _vfrProxy(V); _wdFolkTalk(P); V.gave = P.gave; return true; }
+  if (WD_FOLK_ROW.get(id)) { _wdFolkTalk(_vfrProxy(V)); return true; }
   if (typeof WD_TALE_RESIDENTS !== 'undefined' && WD_TALE_RESIDENTS.get(id)) { _wtResTalk(WD_TALE_RESIDENTS.get(id), { x: V.x, y: V.y }); return true; }
   if (id === 'perpetua') { _vfrPerpetuaTalk(V, m); return true; }
   return false;

@@ -23,12 +23,13 @@ import { RESOURCE_QUERIES } from './ops-resources.mjs';
 import { AUTOLINK_QUERIES } from './ops-autolink.mjs';
 import { DAYNOTE_QUERIES } from './ops-daynotes.mjs';
 import { pplLinked, pplBuildIndex } from '../../lib/people-tags.mjs';
+import { leavesView } from '../../lib/waiting-rules.mjs';
 
 const obj = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
 const DATE = { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$', formatHint: 'YYYY-MM-DD' };
 
 export const VIEWS = Object.freeze(['today', 'overdue', 'tomorrow', 'week', 'this-week', 'next-week', 'no-date', 'all', 'pinned', 'doing', 'completed', 'bin']);
-const VIEW_HELP = 'today = due today or overdue; overdue; tomorrow; week = due in the next 7 days (and overdue); this-week / next-week = calendar weeks; no-date; all (open); pinned; doing; completed; bin';
+const VIEW_HELP = 'today = due today or overdue (or planned for today); overdue; tomorrow = due or planned tomorrow; week = due or planned in the next 7 days (and overdue); this-week / next-week = calendar weeks; no-date; all (open); pinned; doing; completed; bin. As on the dashboard, tasks waiting on someone leave today, tomorrow, week and no-date, blocked ones leave today and someday ones leave no-date (in progress always stays)';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 const statusOf = (s, id) => (s.statuses && s.statuses[id]) || 'todo';
@@ -235,6 +236,7 @@ export const QUERIES = [
       const range = view === 'this-week' ? weekRange(today, q.cfg.weekStart, 0) : view === 'next-week' ? weekRange(today, q.cfg.weekStart, 1) : null;
       const words = p.text ? p.text.toLowerCase().split(/\s+/).filter(Boolean) : [];
       const pm = peopleMap(s);
+      const tomorrow = addDaysIso(today, 1), weekEnd = addDaysIso(today, 7);
       let items = liveTasks(s).filter(t => {
         const st = statusOf(s, t.id);
         if (status === 'open' && st === 'done') return false;
@@ -243,8 +245,11 @@ export const QUERIES = [
         // Today = due today or earlier, planned for today (or a past day), or in progress (as on the page).
         if (view === 'today' && !((d !== null && d <= 0) || (t.plannedFor && t.plannedFor <= today) || st === 'doing')) return false;
         if (view === 'overdue' && !(d !== null && d < 0)) return false;
-        if (view === 'tomorrow' && d !== 1) return false;
-        if (view === 'week' && !(d !== null && d <= 7)) return false;
+        // Tomorrow and week count the planned day too (as on the page: 21-task-query.js inViewScope).
+        if (view === 'tomorrow' && !(d === 1 || t.plannedFor === tomorrow)) return false;
+        if (view === 'week' && !((d !== null && d <= 7) || (t.plannedFor && t.plannedFor <= weekEnd))) return false;
+        // Waiting on someone, blocked or parked for someday: out of the active lists, as on the page (rfLeavesView).
+        if (st !== 'done' && leavesView(s, t, view)) return false;
         if (range && !(t.dueDate && t.dueDate >= range.from && t.dueDate <= range.to)) return false;
         if (view === 'no-date' && t.dueDate) return false;
         if (view === 'pinned' && !(s.pinned && s.pinned[t.id])) return false;
@@ -311,7 +316,13 @@ export const QUERIES = [
         people: linkedPeople(s, t).map(pid => ({ id: pid, name: pm.get(pid) ? pm.get(pid).name : null, ...((t.people || []).includes(pid) ? {} : { via: 'tag' }) })),
         recurrence: t.recurrence || 'none', pinned: !!(s.pinned && s.pinned[id]),
         ...(t.waitingOn || t.waiting === true ? { waitingOn: t.waitingOn ? { id: t.waitingOn, name: pm.get(t.waitingOn) ? pm.get(t.waitingOn).name : null } : 'someone', waitingSince: t.waitingSince || null } : {}),
-        ...(Array.isArray(t.blockedBy) && t.blockedBy.length ? { blockedBy: t.blockedBy.map(bid => { const b = (s.custom || []).find(x => x.id === bid); return { id: bid, title: b ? b.title : null, done: ((s.statuses || {})[bid] || 'todo') === 'done' }; }) } : {}),
+        // A binned or missing dependency no longer blocks (as on the page): it says so rather than look open.
+        ...(Array.isArray(t.blockedBy) && t.blockedBy.length ? { blockedBy: t.blockedBy.map(bid => {
+          const b = (s.custom || []).find(x => x && x.id === bid);
+          if (b && isLive(s, b)) return { id: bid, title: b.title, done: statusOf(s, bid) === 'done' };
+          const bb = binnedTasks(s).find(x => x.id === bid);
+          return bb || b ? { id: bid, title: (bb || b).title || null, binned: true } : { id: bid, title: null, gone: true };
+        }) } : {}),
         detail: t.detail || '',
         subtasks: (t.subtasks || []).map(x => ({ id: x.id, title: x.title, done: !!x.done })),
         // Times on the user's own clock (config.timezone), like every other date here.

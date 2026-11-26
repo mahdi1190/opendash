@@ -20,12 +20,12 @@ function _glhSend(to, k, body) { return _gllPipe('/api/garden-live/host', { to, 
 function _glhIsLegacyWorld() { return typeof gardenWorldIsLegacy === 'function' && gardenWorldIsLegacy(); }
 function _glhAmbientClock() { const native = window.GardenNative, light = native && native.active() && native.lighting(), clock = light && light.ambientClock ? light.ambientClock() : null; return clock || (typeof gardenTravellerAmbientClock === 'function' ? gardenTravellerAmbientClock() : null); }
 function _glhHereBody(on) { const l = gardenLiveLook(); if (typeof _gw !== 'undefined') { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; if (typeof gartMoveWhole === 'function') Object.assign(l, gartMoveWhole()); } return { role: 'host', on, ...glWorldFields(), v: GL_V, look: l, name: _gllMyName(), tab: _GLL_TAB, hidden: typeof document !== 'undefined' && !!document.hidden }; }
-/** What this friend may do here, as the server reads it (lib/friends/live.mjs permOf): full co-op for a friend you made yourself, unless you sent them home; a group-made friend keeps the group rule. */
+/** What this friend may do here, as the server reads it (lib/friends/live.mjs permOf): full co-op for a friend you made yourself, unless you sent them home; a group-made friend keeps the group rule, and so does one this page does not know (the narrower rule, never the wider one). */
 function _glhPerm(fid) {
   const v = _gll.view, p = v && v.perms && v.perms[fid];
   if (p) return p.lv === 'none' ? p : Object.assign({}, p, { lv: 'play', touch: true });
   const f = typeof _gscFriend === 'function' ? _gscFriend(fid) : null;
-  if (f && f.how === 'group') return { lv: v && v.groupLook ? 'look' : 'none', touch: false, share: 'keeper' };
+  if (!f || !f.how || f.how === 'group') return { lv: v && v.groupLook ? 'look' : 'none', touch: false, share: 'keeper' };
   return { lv: 'play', touch: true, share: 'keeper' };
 }
 
@@ -615,7 +615,10 @@ function _glhSolve(ev, put, m) {
   if (typeof gpSet === 'function') gpSet('explore.' + id, m.today);
   g.led[lk] = { d: m.today, k: 'gl', i: {}, n: 0, by: ev.f };
   let out = typeof gardenIslandDefaultSight === 'function' && gardenIslandDefaultSight(id);   // (a place the layout already holds stands where it is)
-  if (!out && typeof gardenSightSetNearby === 'function' && typeof gardenSightIsSetOut === 'function' && !gardenSightIsSetOut(id)) { try { out = !!(gardenSightSetNearby(id).ok && gardenSightIsSetOut(id)); } catch (e) { out = false; } }
+  if (!out && typeof gardenSightSetNearby === 'function' && typeof gardenSightIsSetOut === 'function' && !gardenSightIsSetOut(id)) {
+    const A = _gll.actors.get(ev.w), them = ev.x != null ? { x: ev.x, y: ev.y } : A && Number.isFinite(A.x) ? { x: Math.floor(A.x), y: Math.floor(A.y) } : null;   // (next to them, else by you)
+    for (const at of them ? [them, null] : [null]) { try { if (gardenSightSetNearby(id, at).ok && gardenSightIsSetOut(id)) { out = true; break; } } catch (e) { /* by you, then the land office */ } }
+  }
   _gdEmit('landshow', {});
   setTimeout(() => { try { _glhSnapAll(); } catch (e) { /* the next world check */ } }, 60);
   return put(mark, { noUndo: true, land: id, solve: 1, ...(out ? {} : { wait: 1 }) });

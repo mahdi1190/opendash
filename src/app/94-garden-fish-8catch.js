@@ -454,7 +454,7 @@ const GARDEN_ANGLER_JOBS = Object.freeze([
   _gJ('j-bait', 'Worms are fine. But a fish likes a change.', 'Buy some bait at the tackle shop, and catch a fish with it.', (e) => e.kind === 'fish' && e.def.cat === 'fish' && e.bait !== 'worm', { c: 10 }),
   _gJ('j-reeds', 'See the reeds to the east? Shy fish hide in there. Go gently.', 'Catch a fish at the reed bank.', (e) => e.kind === 'fish' && e.spot === 'reed-bank', { pay: { 'bait:maggot': 3 } }),
   _gJ('j-reel', 'That reel of yours sounds like a bag of spoons.', 'Buy a better reel at the tackle shop.', (e) => e.kind === 'buy' && e.tackle === 'reel', { c: 15, have: () => _gcaWorn('reel').tier > 1 }),
-  _gJ('j-bug', 'Not everything worth catching swims. Bring a net, walk slowly.', 'Net any bug. Creep up on it: hold Shift, or just click it.', (e) => e.kind === 'bug', { pay: { 'bait:cricket': 3 } }),
+  _gJ('j-bug', 'Not everything worth catching swims. Bring a net, walk slowly.', 'Net any bug. Click it, and you creep up on it.', (e) => e.kind === 'bug', { pay: { 'bait:cricket': 3 } }),
   _gJ('j-letgo', 'Now the hard one. Let one go. It comes back, one way or another.', 'Open your bag and let a fish go.', (e) => e.kind === 'release', { c: 10 }),
   _gJ('j-dusk', 'They feed at the edges of the day. I set my watch by it.', 'Catch a fish at dawn or at dusk.', (e) => e.kind === 'fish' && e.def.cat === 'fish' && (e.tod === 'dawn' || e.tod === 'dusk'), { c: 15 }),
   _gJ('j-hall', 'That old hall by the reeds needs fish, and it needs somebody to care.', 'Give one fish or bug to the lake hall.', (e) => e.kind === 'hall', { c: 15 }),

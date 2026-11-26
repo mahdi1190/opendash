@@ -236,6 +236,11 @@ function _pplCallout(box) {
   box.appendChild(c);
 }
 
+/** What I owe them / what they owe me: the person card's split (rfPersonOwe), so the panel, the filter and the card agree. */
+function _pplOweSplit(p, open) {
+  return typeof rfPersonOwe === 'function' ? rfPersonOwe(p.id, open) : { owe: open.filter(i => !pplIsWaiting(i)), theyOwe: open.filter(i => pplIsWaiting(i)) };
+}
+
 /* ---------- table / cards ---------- */
 function _pplPaintBody() {
   const body = document.querySelector('#main-body .ppl-body');
@@ -249,7 +254,7 @@ function _pplPaintBody() {
   if (pref.group !== 'all' && pref.group !== '_none' && !groups.some(([g]) => g === pref.group)) pref.group = 'all';
   const inGroup = (p) => pref.group === 'all' || (pref.group === '_none' ? !p.group : p.group === pref.group);
   const SHOW = { all: 'Everyone', open: 'With open tasks', waiting: 'Waiting on them', inactive: 'Inactive' };
-  const shows = (p, f) => pref.show === 'all' ? true : pref.show === 'inactive' ? !!p.inactive : pref.show === 'open' ? f.open.length > 0 : f.open.some(pplIsWaiting);
+  const shows = (p, f) => pref.show === 'all' ? true : pref.show === 'inactive' ? !!p.inactive : pref.show === 'open' ? f.open.length > 0 : _pplOweSplit(p, f.open).theyOwe.length > 0;
   const rows = all.filter(p => match(p) && inGroup(p)).map(p => ({ p, f: _pplFacts(p) })).filter(r => shows(r.p, r.f));
   const cmpName = (a, b) => String(a.p.name).localeCompare(String(b.p.name));
   const sorters = {
@@ -498,8 +503,10 @@ function _pplPanel(el, p) {
 
   // Open tasks: I owe them / waiting on them
   const s2 = document.createElement('section'); s2.className = 'dp-section';
-  const owe = f.open.filter(i => !pplIsWaiting(i)).sort(_pplByDue);
-  const wait = f.open.filter(i => pplIsWaiting(i)).sort(_pplByDue);
+  // The person card's rule (rfPersonOwe, 34-waiting.js): the waiting flags too, and not what waits on someone else.
+  const split = _pplOweSplit(p, f.open);
+  const owe = split.owe.sort(_pplByDue);
+  const wait = split.theyOwe.sort(_pplByDue);
   const done = f.tasks.filter(i => statusOf(i.id) === 'done');
   // Mockup 04: the first few open tasks and "View all"; the "I owe them" /
   // "Waiting on them" headings only appear when there is something to wait on.
