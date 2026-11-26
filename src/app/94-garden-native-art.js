@@ -1173,19 +1173,9 @@ window.GardenNativeArt = (function () {
     // checks consume the scratch result synchronously; it never escapes.
     return object.getWorldTransformMatrix(state.cacheWorldMatrix, state.cacheParentMatrix);
   }
-  // (speed pass) inside updateAll's scheduling passes nothing moves (no transform, camera or zoom changes until its animation
-  // pass), yet each tracked node's view and pixel density were worked out three to five times a frame, a world-matrix walk and
-  // four camera projections each. viewMemo is the pass's serial while those passes run (0 otherwise): the first answer is kept.
-  let viewMemo = 0, viewMemoSerial = 0;
-  // A box to read, never to change: getBBox copies it for its callers; these scheduling helpers only compare against it.
+  // (speed pass) a box to read, never to change: getBBox copies it for its callers; these scheduling helpers only compare against it.
   function bboxOf(node) { return node.nativeBounds || node._bounds || node.getBBox(); }
   function effectivePixels(node) {
-    if (viewMemo && node._epMemo === viewMemo) return node._epValue;
-    const value = effectivePixelsNow(node);
-    if (viewMemo) { node._epMemo = viewMemo; node._epValue = value; }
-    return value;
-  }
-  function effectivePixelsNow(node) {
     const scene = node.scene, zoom = scene.cameras && scene.cameras.main ? scene.cameras.main.zoom : 1, resolution = num(scene.game && scene.game.renderer && scene.game.renderer.resolution, num(scene.game && scene.game.config && scene.game.config.resolution, 1));
     let scale = 1;
     if (node.target.getWorldTransformMatrix) { const m = cacheTransform(node, node.target), aa = m.a * m.a + m.b * m.b, bb = m.c * m.c + m.d * m.d, cross = m.a * m.c + m.b * m.d; scale = Math.sqrt(Math.max(0, (aa + bb + Math.hypot(aa - bb, 2 * cross)) / 2)); }
@@ -1205,12 +1195,6 @@ window.GardenNativeArt = (function () {
   function expandedBox(b, x, y) { return { x: b.x - x, y: b.y - y, width: b.width + x * 2, height: b.height + y * 2 }; }
   function nativeVisible(node) { if (node._dead || !node.target.active) return false; for (let n = node; n; n = n.parentNode) if (!n.target.visible) return false; return !!node.isConnected; }
   function localView(node) {
-    if (viewMemo && node._lvMemo === viewMemo) return node._lvView;
-    const view = localViewNow(node);
-    if (viewMemo) { node._lvMemo = viewMemo; node._lvView = view; }
-    return view;
-  }
-  function localViewNow(node) {
     const camera = node.scene.cameras && node.scene.cameras.main;
     if (!camera || !camera.getWorldPoint || !node._inner.getWorldTransformMatrix) return null;
     const x = num(camera.x), y = num(camera.y), width = num(camera.width), height = num(camera.height);
@@ -1386,13 +1370,6 @@ window.GardenNativeArt = (function () {
   function updateAll(scene, time, sharp) {
     const state = stateFor(scene); updateMotionState(scene, time);
     { const renderer = scene.sys && scene.sys.renderer; if (renderer && !offTargetStates.has(renderer)) installOffTargetCull(renderer); }
-    viewMemo = ++viewMemoSerial;
-    try { updateCaches(scene, state, time, sharp); } finally { viewMemo = 0; }
-    for (const node of state.animations) animateNode(node, time);
-    // Parent pose tracks can raise effective pixels after the scheduler pass.
-    for (const node of state.cachedNodes) if (node._cache.recipe.radialLeaf && !cacheValid(node)) { showCache(node, false); if (!sharp && nativeVisible(node)) queueCache(node, 80, 'quality'); }
-  }
-  function updateCaches(scene, state, time, sharp) {
     // Keep covered captures through a moving zoom. Rebuilding a whole scene
     // at each intermediate scale causes repeated GPU allocation and raw-path
     // rendering in the same frames that need a smooth camera transition.
@@ -1424,6 +1401,9 @@ window.GardenNativeArt = (function () {
     }
     const rebuildAt = performance.now(); if (!sharp) for (const [node, pending] of state.recaches) { if (node._dead || !nativeVisible(node)) { state.recaches.delete(node); continue; } if (node._cache && cacheValid(node) && !cacheRefreshNeeded(node) && pending.reason !== 'demote') { state.recaches.delete(node); continue; } if (scene._nativeViewTransition && node._cache && cacheCoversView(node)) continue; if (pending.due > rebuildAt || rebuildAt < (node._cacheRetryAfter || 0)) continue; const view = localView(node); if (view && !intersectBox(bboxOf(node), view)) { state.recaches.delete(node); continue; } if (!cacheAllowance(node, pending.recipe, false)) break; const before = state.captureCount || 0; cacheNative(node, { ...pending.recipe, demote: pending.reason === 'demote' }); if (node._cache && cacheValid(node)) state.recaches.delete(node); else pending.due = rebuildAt + 80; if ((state.captureCount || 0) > before || performance.now() - rebuildAt > 3) break; }
     let cached = 0; const began = performance.now(); if (!sharp) for (const node of state.actorCaches) { state.actorCaches.delete(node); if (!node._dead && node.isConnected) cacheNative(node, { staticOnly: true, quality: 2 }); if (++cached >= 2 || performance.now() - began > 4) break; }
+    for (const node of state.animations) animateNode(node, time);
+    // Parent pose tracks can raise effective pixels after the scheduler pass.
+    for (const node of state.cachedNodes) if (node._cache.recipe.radialLeaf && !cacheValid(node)) { showCache(node, false); if (!sharp && nativeVisible(node)) queueCache(node, 80, 'quality'); }
   }
   function create(scene, markup, options) {
     options = options || {}; const defs = new Map(stateFor(scene).defs), context = { defs, options, building: true }, ast = parse((options.defs || '') + String(markup || '')); collectDefs(ast, defs); for (const [id, value] of defs) stateFor(scene).defs.set(id, value);
