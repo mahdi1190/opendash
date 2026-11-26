@@ -72,6 +72,7 @@ function _hsPaintOpening(T, P, L, D, o) {
   if (o.beyond === 'kitchen') { T.rect(D.x0 + w * .55, D.y0 + 28, w * .45, 44, '#5a7a8a'); T.rect(D.x0 + w * .55, D.y0 + 40, w * .45, 3, '#e8e4dc', .8); for (let i = 0; i < 2; i++) T.ell(D.x0 + w * .66 + i * 14, D.y0 + 52, 5, 5, '#f4f0e6'); }   // the dresser's end, its plates
   else { T.rect(D.x0 + w * .18, D.y0 + 24, 26, 20, '#c8963e'); T.rect(D.x0 + w * .18 + 3, D.y0 + 27, 20, 14, '#7aa060'); T.stroke(`M${D.x0 + w * .62} ${D.y1 - 22}V${D.y0 + 52}M${D.x0 + w * .84} ${D.y1 - 22}V${D.y0 + 52}M${D.x0 + w * .62} ${D.y0 + 58}H${D.x0 + w * .84}`, '#6a4426', 4, .9); }   // a little picture, a chair's back
   T.rect(D.x0, D.y0, w, h, T.lin(0, D.y0, 0, D.y1, [[0, '#ffcf80', night ? .22 : .08], [1, '#ffcf80', 0]]));   // the lamp-light in there
+  if (o.beyond === 'parlour') T.clipRect(D.x0, D.y0, w, h, () => T.glow(D.x1 - 6, D.y1 - 18, 46, '#ff9a4a', night ? .4 : .2));   // (the parlour's fire, round the corner)
   T.rect(D.x0, D.y0, w, h, T.lin(D.x0, 0, D.x1, 0, [[0, '#000', .28], [.3, '#000', .05], [1, '#000', .18]]));
   // the reveal: the wall is thick; its right side catches the light, the left is in shade
   const rv = 12;
