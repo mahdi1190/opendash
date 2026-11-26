@@ -216,7 +216,11 @@ function _gdSunKept() {
 }
 /** The fallback shower: about one morning in five, the same on every device. */
 function _gdShowerAt(iso) { const h = gardenHash('gd-rain|' + iso); return h % 5 === 0 ? _gdDayMs(iso, 6 * 60 + (h >> 8) % 50) : 0; }
-/** {now: raining, snow, last: when it last rained (ms, 0 = not in 3 days), label} */
+/** {now: raining, snow, last: when it last rained (ms, 0 = not in 3 days), label}
+ *  `last` never goes backwards: the real weather's rows are today's only, so at midnight yesterday's rain was forgotten, plants
+ *  went back a stage and watering then banked a drought that never was. It is the latest of today's wet hours, the gentle
+ *  showers of the last three days (what a device without the weather goes by, so every device agrees) and the last wet time
+ *  kept in the garden (seen.rainAt, written by gardenTick, synced). */
 function _gdRain(now) {
   // the weather the app has is for now: a time-lapse frame in the past uses the gentle showers instead
   const live = Math.abs(now - _gdNow()) < 2 * _GD_H;
@@ -229,12 +233,13 @@ function _gdRain(now) {
     for (const x of (Array.isArray(w.hourly) ? w.hourly : [])) {
       if (x && x.date === today && x.hour <= h && _GD_WET.has(x.cond)) { const t = _gdDayMs(today, x.hour * 60 + 30); if (t <= now && t > out.last) out.last = t; }
     }
-    return out;
   }
   for (let k = 0; k < 3; k++) {
     const d = _gdAddDays(today, -k), t = _gdShowerAt(d);
-    if (t && t <= now) { if (t > out.last) out.last = t; if (now - t < 50 * 60000) { out.now = true; out.label = 'A morning shower'; } break; }
+    if (t && t <= now) { if (t > out.last) out.last = t; if (!w && now - t < 50 * 60000) { out.now = true; out.label = 'A morning shower'; } break; }
   }
+  let kept = 0; try { const g = _gdG(); kept = Number(g && g.seen && g.seen.rainAt) || 0; } catch (e) { kept = 0; }
+  if (kept && kept <= now && kept > out.last) out.last = kept;
   return out;
 }
 /**
@@ -806,6 +811,8 @@ function gardenTick() {
     }
     // tidy: keep a week of per-day maps, fold old ledger entries by month
     if (g.seen.tidy !== today) { g.seen.tidy = today; changed = _gdTidy(g, today) || changed; }
+    // the last time it rained, kept for good (once a wet hour at most): tomorrow's weather has no rows for today's rain
+    if (m.rain && m.rain.last > (Number(g.seen.rainAt) || 0) && m.rain.last <= m.now) { g.seen.rainAt = m.rain.last; changed = true; }
     // several rare seeds at once (the first visit after an update): one line, not a queue of toasts
     const grants = moments.filter(x => x.kind === 'grant');
     if (grants.length > 2) { const names = grants.map(x => (gardenPlant(x.id) || {}).name).filter(Boolean); moments.splice(0, moments.length, { kind: 'grant', text: `Rare seeds for you: ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`, icon: 'sparkles' }, ...moments.filter(x => x.kind !== 'grant')); }
