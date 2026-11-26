@@ -885,7 +885,8 @@ function calTaskMenu(anchor, id) {
     { label: 'Add to Google Calendar', icon: 'calendar-plus', run: () => calAddTaskToGoogle(id) },
     ...(t.dueTime ? [{ label: 'Remove the time', icon: 'clock', run: () => calScheduleTask(id, effDate(t), null) }] : []),
     ...(t.plannedFor && t.plannedTime && typeof setPlannedSlot === 'function' ? [{ label: 'Remove the planned time', icon: 'circle-x', run: () => setPlannedSlot(id, t.plannedFor, null) }] : []),
-    { label: 'Remove the date', icon: 'circle-dashed', run: () => { const prev = effDate(t); setDateWithReason(id, null, 'Removed on the calendar'); delete t.dueTime; toast('Date removed', { action: { label: 'Undo', run: () => calScheduleTask(id, prev, undefined) } }); } },
+    // Undo puts the time back too (removing the date also removed the time).
+    { label: 'Remove the date', icon: 'circle-dashed', run: () => { const prev = effDate(t), prevTime = t.dueTime || null; setDateWithReason(id, null, 'Removed on the calendar'); delete t.dueTime; toast('Date removed', { action: { label: 'Undo', run: () => calScheduleTask(id, prev, prevTime) } }); } },
   ], { align: 'start' });
 }
 
