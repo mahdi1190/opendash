@@ -363,7 +363,11 @@ function promoteSubtask(taskId, stId) {
     tags: [...effTags(parent)], stream: effStream(parent), detail: '', subtasks: [], recurrence: 'none',
     people: parent.people ? [...parent.people] : [], createdAt: Date.now(), createdVia: 'ui',
   });
-  if (st.done) state.statuses[id] = 'done';
+  if (st.done) {
+    state.statuses[id] = 'done';
+    // Done as a subtask: its completion is when it was ticked, so it reaches Finished tasks (DASH-08; server ops-tasks.mjs the same).
+    (state.completionLog[id] = state.completionLog[id] || []).push(Number(st.doneAt) || Date.now());
+  }
   logActivity(id, 'created', { text: 'From a subtask of: ' + effTitle(parent) });
   parent.subtasks = getSubtasks(taskId).filter(x => x.id !== stId);
   logActivity(taskId, 'subtask-promoted', { text: st.title, to: id });

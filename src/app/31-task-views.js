@@ -62,7 +62,8 @@ function renderTaskView(main, subEl) {
   } else if (view === 'completed') {
     const cutoff = Date.now() - _logbookDays * 86400000;
     const allClosed = all.filter(i => statusOf(i.id) === 'done');
-    open = allClosed.filter(i => (closedAt(i) || 0) >= cutoff);
+    // A closed task with no close time counts as old: it shows once you ask for older ones, so "Show older" never stays with nothing to show (DASH-08).
+    open = allClosed.filter(i => { const ts = closedAt(i) || 0; return ts ? ts >= cutoff : _logbookDays > 30; });
     closed = [];
     renderTaskView._olderCount = allClosed.length - open.length;
   } else {

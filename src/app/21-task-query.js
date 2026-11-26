@@ -26,7 +26,7 @@ function _dayLabel(iso, opts) {
 function isArchived(item) {
   if (statusOf(item.id) !== 'done') return false;
   const ts = closedAt(item);
-  if (!ts) return false;
+  if (!ts) return true;   // closed with no close time: old, not "just finished" for good (DASH-08)
   return (Date.now() - ts) > (state.archiveDays || 7) * 86400000;
 }
 function _closedOn(item) { const ts = closedAt(item); return ts ? Clock.parts(Number(ts)).iso : null; }
