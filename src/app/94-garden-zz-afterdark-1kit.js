@@ -189,7 +189,10 @@ function adOpen(x, y, m) { try { return !gardenZoneLockOf(Math.floor(x), Math.fl
  *  trunks and the things found standing, any kind, any layout. */
 function adHidden(x, y, near) {
   const R = near || 1.8, W = GARDEN_WORLD;
-  for (const t of adTrees()) { const dy = t.y - y; if (dy > 0.1 && dy < 6 && Math.abs(t.x - x) < R) return true; }   // (a tree is 3.5 to 5 H: its crown reaches six cells up)
+  // (a tree is 3.5 to 5 H: its crown reaches six cells up; a fruit tree is 2 to 2.5 H, about three and a half, and narrower: measured as
+  // a big tree, every place in an orchard was "under" the next tree to the south, and the Harvest Moon's fruit and the mushrooms at
+  // fruit trees' feet found nowhere to be)
+  for (const t of adTrees()) { const dy = t.y - y, fruit = t.kind === 'fruit-tree'; if (dy > 0.1 && dy < (fruit ? 3.5 : 6) && Math.abs(t.x - x) < (fruit ? Math.min(R, 1.3) : R)) return true; }
   // what a painter planted that stands up (the village's trees and shrubs), by its own drawn height (as 94-garden-zz-7act-1core.js gartActGroundClear reads it)
   try { const tall = window.GardenNativePainted && GardenNativePainted.tall ? GardenNativePainted.tall() : []; for (const t of tall) { const tx = t.x / W.cellW, ty = (t.y - W.sky) / W.cellH, hw = (t.w || 30) / 2 / W.cellW; if (Math.abs(tx - x) < hw + 0.4 && ty - y > 0.05 && ty - y < Math.max(0.6, (t.h || 0) / W.cellH)) return true; } } catch (e) { /* no planting list */ }
   try { for (const o of gardenAffordThings()) { if (o.src === 'decor') continue; const big = o.kind === 'building' || (o.h || 1) >= 1.5 || o.tall; if (!big) continue; const dy = o.y - y; if (dy > 0.05 && dy < 5.5 && Math.abs(o.x - x) < (o.w || 1) / 2 + 0.6) return true; } } catch (e) { /* nothing found yet */ }
@@ -281,7 +284,9 @@ function adSpritesOff(prefix, keep) { for (const id of [..._ad.sprites.keys()]) 
 function adPick(id, spec) {
   if (!spec) { _ad.picks.delete(id); return adSprite(id, null); }
   const run = () => { try { spec.run(); } catch (e) { console.error('[after dark]', id, e); } };
-  _ad.picks.set(id, { x: spec.x, y: spec.y, words: spec.words, run, promptY: spec.promptY, pri: spec.pri });
+  // (the E prompt just over the thing as drawn: these are small things on the ground, and the act prompt's own default, 1.9 cells up for a
+  // thing you stand at, left it hanging in the air far above them: over the lantern basket it lay on a lantern out on the water)
+  _ad.picks.set(id, { x: spec.x, y: spec.y, words: spec.words, run, promptY: spec.promptY != null ? spec.promptY : spec.y - (spec.up != null ? spec.up : 1), pri: spec.pri });
   return adSprite(id, { x: spec.x, y: spec.y, z: spec.z, svg: spec.svg, hit: spec.hit || 0.8, hitUp: spec.hitUp == null ? 8 : spec.hitUp, label: spec.label || spec.words, cursor: 'hand', onClick: run });
 }
 /** The E prompt's rows (94-garden-zz-7act-1core.js gartActNearby): each thing here you can pick up or use, within a step and a half. */

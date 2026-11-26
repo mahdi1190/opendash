@@ -286,7 +286,7 @@ function adGuess(v) {
   const dn = gtgDayNum(gtgToday()); if (adGet('vg.' + dn) === v) return;
   adSet('vg.' + dn, v); gtgPublishSoon();
   wdSound([[523, 0.2, 'triangle', 0.02], [659, 0.3, 'triangle', 0.018, 0.12]]);
-  gpNote(`The weathervane says ${AD_GUESS[v].toLowerCase()} for tomorrow, if you say so. Come back after noon tomorrow`);
+  gpNote(`You told the weathervane: ${AD_GUESS[v].toLowerCase()} tomorrow. Come back after noon tomorrow to see if you were right`);
 }
 /** After noon: was yesterday's guess right about today? Right: a seed packet (once a day). Nothing is lost for a wrong guess. */
 function _adrVaneCheck(m, N) {

@@ -102,6 +102,15 @@ if (typeof _wdSkyClose === 'function') {
     return out;
   };
 }
+/* The sky view lies over the whole world, but the world did not count it as a panel: the E prompt of whatever stood near ("Pick up the
+   feather") showed in the middle of the stars, and E or Space did that thing behind the sky (Space on the myth's "Go on" picked up the
+   feather instead). While it is open the world is covered: no prompt, and E, Space and Enter are the sky's own. */
+if (typeof gardenWorldCovered === 'function') {
+  const _adgCovered0 = gardenWorldCovered;
+  gardenWorldCovered = function () {   // eslint-disable-line no-func-assign
+    return _adgCovered0.apply(this, arguments) || (typeof _wdk !== 'undefined' && !!_wdk.el && _wdk.el.isConnected);
+  };
+}
 /** While the sky is open: say so to the garden now and then (a friend who opens it later finds you), and notice a friend gone. */
 function _adgBeat() {
   if (_adg.beatT) return;
@@ -529,7 +538,7 @@ wdMod({
     if (!_adl.on || _adl.upKey !== up) { _adlDown(); _adl.upKey = up; _adlUp(m, N); }
     const s = _adlSpot();
     if (s) wdGlow('adl-basket', AD_BASKET_GLOW, s.bx, s.by); else wdGlowOff('adl-basket');
-    if (s) adPick('lan-basket', { x: s.bx, y: s.by, z: s.by, svg: _adlBasketSvg((() => { try { return gardenTerrainAt(s.bx, s.by) !== 'path'; } catch (e) { return true; } })()), words: 'Fold a paper lantern', label: 'Paper lanterns: fold one and set it on the water', hitUp: 12, run: () => _adlFoldOpen() });
+    if (s) adPick('lan-basket', { x: s.bx, y: s.by, z: s.by, svg: _adlBasketSvg((() => { try { return gardenTerrainAt(s.bx, s.by) !== 'path'; } catch (e) { return true; } })()), words: 'Fold a paper lantern', label: 'Paper lanterns: fold one and set it on the water', hitUp: 12, up: 1.45, run: () => _adlFoldOpen() });
     else adPick('lan-basket', null);
   },
   end() { _adlDown(); },

@@ -85,7 +85,7 @@ function _admPickHere(id, s, row, part, N, bolted, svg, z) {
   const art = bolted ? (row.id === 'hare' ? _AD_ART.hair() : _AD_ART.drop()) : svg;
   adPick(id, { x: s.x + (bolted ? 0.2 : 0), y: s.y, z: z == null ? s.y : z, svg: art, words: _admWords(row, part), run: () => _admTake(id, s, row, part, N) });
 }
-function _admWords(row, part) { return { candle: 'Look at the candle', mug: 'Drink the warm mug', fruit: 'Pick up the moonlit fruit', owl: 'Pick up the feather' }[part.art] || 'Pick it up'; }
+function _admWords(row, part) { return { candle: 'Look at the candle', mug: 'Drink the warm mug', fruit: 'Pick up the moonlit fruit', feather: 'Pick up the owl’s feather', hair: 'Pick up the silver hair', hares: 'Pick up the hare’s whisker', pebble: 'Pick up the singing pebble', petal: 'Pick up the glowing petal', honey: 'Take the drop of moon honey', scale: 'Pick up the moonlit scale', lampworm: 'Look at the glow-worm', froststar: 'Pick up the frost star', bluescale: 'Pick up the blue scale' }[part.art] || 'Pick it up'; }   // (keyed by the find's own drawing: the Owl Moon's was keyed 'owl', the bird, so its feather said only "Pick it up")
 /** Picked: the moon's keepsake the first time, then a little; its own gift each time. Once a night for each place, for each person. */
 function _admTake(id, s, row, part, N) {
   const n0 = adNow(); if (adGet('p.' + n0.nn + '.' + s.id)) return;
@@ -172,7 +172,7 @@ function gardenNightMoonOpen() {
     big.innerHTML = `<svg viewBox="-34 -34 68 68" width="96" height="96" aria-hidden="true"><circle r="33" fill="${tonight ? tonight.css : '#f6f2d8'}" opacity="0.12"/>${adMoonSvg(M.age, 24, tonight ? tonight.css : '')}</svg>`;
     const words = gpEl('div', 'ad-cal-words');
     words.appendChild(gpEl('h3', 'gd-h3', tonight ? `Tonight: ${tonight.name.replace(/^The /, 'the ')}` : `Tonight: a ${M.name === 'new' ? 'new' : M.name} moon`));
-    words.appendChild(gpEl('p', null, tonight ? (adHas(tonight.keep) ? tonight.line : 'Something happens on its nights. Go out and look, near the kind of place it says.') : nx ? `${nx.row.name} is in ${_wdPlural(nx.days, 'night')}, on ${_adDayWords(nx.iso)}.` : 'The next full moon is a little way off.'));
+    words.appendChild(gpEl('p', null, tonight ? (adHas(tonight.keep) ? tonight.line : 'Something happens on its nights. Go out and look: the line below says where.') : nx ? `${nx.row.name} is in ${_wdPlural(nx.days, 'night')}, on ${_adDayWords(nx.iso)}.` : 'The next full moon is a little way off.'));
     if (tonight && !adHas(tonight.keep)) words.appendChild(gpEl('p', 'muted', tonight.hint));
     top.append(big, words); el.appendChild(top);
     // the next four weeks, night by night
