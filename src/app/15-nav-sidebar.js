@@ -40,6 +40,7 @@ function setView(v) {
   // The person panel only renders when no task is selected, so going to a
   // person must close any open task panel (otherwise the person never shows).
   if (person) state.selectedTaskId = null;
+  if (typeof smartListModeLeave === 'function') smartListModeLeave(from, v);   // a smart list's own layout goes with it (DASH-14)
   state.view = v; saveUI();
   _syncViewHash();
   closePopovers();
