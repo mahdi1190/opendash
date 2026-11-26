@@ -10,6 +10,117 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.75.7] - 2026-11-26
+
+### Fixed
+
+**Your data stays safe**
+
+- Expenses and Owed to me can no longer be wiped out. If OneDrive or an antivirus holds the file for a moment while you save, the app now says "try again in a moment" and changes nothing. Before, it could save an empty list over everything, on all your devices.
+- The same protection now covers your cards, account choices, pending payments, shared money edits, saved places, profile settings, your friends list, friends' gardens and garden visits.
+- A damaged file is now kept aside as a copy before anything replaces it.
+- The app opens even when its data file is busy for a moment, instead of showing a bare "internal error" page.
+- Closing or restarting the app during an update no longer leaves it half old and half new. Restart and Stop wait for the update to finish, and an update that was cut off is put back on the next start.
+- Trying an update a second time no longer deletes the only backup of the old version.
+- If the app cannot finish setting up after an update, the previous version is put back and started. Before, the new version could run on data that had not been upgraded.
+- Settings > Server shows why the app last stopped, even after a long session.
+
+**Tasks and Home**
+
+- Quick edits to a task note are saved even if you click away or close the card straight away.
+- Monthly repeats follow the date you set. A bill moved from the 30th to the 5th now comes back on the 5th.
+- Board shortcuts no longer change a task while its card is open over the board, and M enlarges the card again.
+- New task in a list keeps that list's settings, so a task made in the Inbox stays in the Inbox.
+- A smart list's Board layout no longer changes the layout of every other list, on every device.
+- Picking a person from the @ suggestions in the quick-add box links that person, even when two people share a first name.
+- Home Focus no longer shows tasks you are waiting on or that are blocked.
+- A done checklist item made into a task now shows in Finished tasks.
+- The Today ring no longer counts a task you ticked and then unticked as done.
+- The sidebar's red overdue count no longer includes tasks you are waiting on or that are blocked.
+- Duplicate keeps the time estimate, contexts (like @phone) and energy.
+- In the command palette, "All N matching tasks" now shows the same number as the list it opens. "Filter this list" is now "Search every task", which is what it does.
+- If Home ever fails to open, the button on the error card takes you to Today instead of doing nothing.
+- Renaming or merging a tag keeps boards, board columns and the Deadline runway pointing at it. Merging keeps the tag pinned.
+- Dropping a card on a person's column starts the wait from today. Moving a card from one person's column to another's moves it, instead of linking both people.
+
+**Calendar and people**
+
+- Events longer than two months, such as a whole term, show on every day again.
+- Adding two guests to the same event in quick succession now invites both.
+- Merging or deleting a person keeps "waiting on", and the follow-up email, on the right person.
+- The People page now agrees with the person card about what you owe someone and what you are waiting on from them.
+- Undo after "Remove the date" brings the time back too.
+- The ticks in the calendar's Filter menu now match what is shown.
+- Clicking a day in the agenda list moves Day view to that day.
+- Alt+arrow on an all-day event no longer leaves it greyed out with a ghost bar.
+
+**Money**
+
+- Pausing, stopping or setting an end date on a rent-style repeating split now sticks. Starting it again no longer bills everyone for the paused months at once.
+- "Someone else paid" splits now count the payer's own share, so you no longer owe more than you should.
+- Editing a "someone else paid" split opens it as it was saved, so changing only the note no longer resets the amounts.
+- Updating a split in another currency after the payment settles keeps everyone's share right.
+- Settling up now uses up any money paid too much, so after "We're settled" nothing is left owed either way.
+- Editing a split keeps its repeat, its trip and its group.
+- "Mark as expense" on several payments leaves out the ones already split with friends.
+- The expense claim pack shows totals, VAT and mileage in your own currency, and adds up other currencies separately.
+- Emptying an expense's VAT box now removes the VAT.
+- A receipt too big to keep is now explained, instead of being dropped without a word.
+- "Download all as CSV" includes every expense, not just the latest 200.
+- Attaching a payment to an expense now links exactly the one you pick.
+- Confirming a friend's "I've paid" after the bank already matched it no longer shows an error.
+- The trip Spending card fills in on the Trips page instead of staying a grey placeholder.
+
+**Friends**
+
+- Friends you only know through a group now get the group's rules in your live garden, not full co-op.
+- Things friends planted while you were away are no longer sent back when their level allows them.
+- Gifts and messages to a friend whose computer is off no longer get stuck behind old copies of your garden or go missing. Only the newest copy waits.
+- Turning garden sharing off for a friend now sticks, even if older copies reach them late.
+- Watering a friend's plant, and hiding a gift, now work anywhere on the map, not just in one corner.
+- Paths you opened early now show as open to friends too.
+
+**Garden**
+
+- Winter no longer freezes the whole map. From 1 December only still ponds freeze, with holes left for fishing. The sea and the rivers stay water, and you can build on land as usual.
+- The alpha boost is given once only. It would have come again every 40 days from early January.
+- Orchard shortcuts you opened stay open, and gifts in letters are given once only.
+- "Set out nearby" for discovered places you put away works again.
+- Rain is no longer forgotten at midnight, so plants no longer go backwards overnight.
+- The assistant's garden shop sells only what the shop sells, and buying the hose works.
+- Bug ribbons and the order board now give real seeds.
+- The message for a closed area now says the level at which its gate really opens.
+- One error no longer freezes the whole garden until you reopen it.
+- Friends visiting you live can now catch butterflies with a net in rooms.
+- While swimming you can no longer fish, swing a net or go through doors.
+- A villager takes one gift a day.
+- Furnishing a room on two devices at once no longer loses or doubles a decoration.
+- A friend waiting at the top of a ladder no longer stops you climbing it.
+- The hints name the key that really creeps (Z, or Shift in the Classic look) and say that Shift runs.
+- Fish leave the helper's second line alone during a big fish fight.
+- Your pet now notices when you are fishing.
+- No shooting star or doze message after you have already got up.
+
+**Speed and memory**
+
+- The sidebar no longer leaks memory and keyboard handlers on every refresh. This should help with the stuttery feel over a long day.
+- Closed dialogs, task cards and the command palette are now let go of instead of being kept in memory.
+- The Profile page no longer adds another music listener on every refresh.
+- After a long press that turns into a scroll, the next tap works.
+- Garden music no longer slowly wears the app down by leaving files open.
+
+**The assistant**
+
+- The assistant's preview of a split now shows the right people and who owes whom.
+- The assistant no longer mixes up what you owe someone and what you are waiting on from them.
+- The assistant's task lists leave out waiting, blocked and someday tasks, as the app's lists do.
+- Taking a task off waiting through the assistant now clears every kind of wait, and starting a wait takes the task off your plan.
+- The assistant can remove a blocker that has been put in the Bin.
+- The assistant can rename and recolour every calendar it lists.
+- Long messages sent from claude.ai keep accents, £ signs and emoji whole.
+- The read-only permission setting now covers every reading tool, so the assistant does not ask each time it reads.
+- A few unusual requests now get a plain "not found" instead of an error.
+
 ## [2.75.6] - 2026-11-24
 
 ### Added

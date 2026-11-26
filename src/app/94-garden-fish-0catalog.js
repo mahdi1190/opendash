@@ -1131,6 +1131,9 @@ function _gfRodWords(tier) { const r = GARDEN_RODS.find(x => x.tier === tier); r
 function _gfNetWords(tier) { const r = GARDEN_NETS.find(x => x.tier === tier); return r ? _gfAnA(r.name.toLowerCase()) + (tier < GARDEN_NETS.length ? ' or better' : '') : 'a better net'; }
 function _gfThingName(id) { const d = gardenDecor(id) || gardenGearDef(id); return d ? _gfAnA(d.name.toLowerCase()) : id.replace(/-/g, ' '); }
 function _gfPlantName(id) { const p = gardenPlant(id); return p ? p.name.toLowerCase() : id.replace(/-/g, ' '); }
+/** The key that creeps: Z in the default look, where Shift runs (94-garden-native-world.js); Shift in the Classic one. The help, the
+ *  stomp hint and the bug book said Shift for both, and following them in the default look ran: the fish bolted and the bugs fled. */
+function gardenCreepKey() { try { return typeof GardenNative !== 'undefined' && GardenNative && GardenNative.wanted && !GardenNative.wanted() ? 'Shift' : 'Z'; } catch (e) { return 'Z'; } }
 const _GF_FIGHT = Object.freeze({ smooth: 'it pulls steadily', dart: 'it darts about', floater: 'it drifts up and down', sinker: 'it dives for the bottom', mixed: 'it does a bit of everything' });
 /** The how-to-catch lines as rows: {k: what it is about, label, text}. */
 function gardenCatchNeedsRows(def) {
@@ -1159,7 +1162,7 @@ function gardenCatchNeedsRows(def) {
   if (lv > 1) add('level', 'Level', 'From garden level ' + lv + '.');
   if (bug) {
     if (n.net) add('net', 'Net', 'You need ' + _gfNetWords(n.net) + '.');
-    add('fight', 'How', def.skit >= 4 ? 'Very jumpy. Hold Shift to creep up, and swing from as far as you can.' : def.skit === 3 ? 'A bit jumpy. Hold Shift to creep up on it.' : 'Easy. Walk up slowly and swing.');
+    add('fight', 'How', def.skit >= 4 ? `Very jumpy. Hold ${gardenCreepKey()} to creep up, and swing from as far as you can.` : def.skit === 3 ? `A bit jumpy. Hold ${gardenCreepKey()} to creep up on it.` : 'Easy. Walk up slowly and swing.');
     return rows;
   }
   if (n.rod) add('rod', 'Rod', 'You need ' + _gfRodWords(n.rod) + '.');

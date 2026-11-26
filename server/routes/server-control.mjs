@@ -27,7 +27,7 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { HttpError, MIME } from '../http.mjs';
 import { ensureLocalToken, tokenMatches, TOKEN_HEADER, pageKeyMatches } from '../actions/auth.mjs';
-import { runtimeInfo, checkRestartAllowed, claimLifecycle, requestLifecycle, lifecycleAvailable, lifecyclePending, readLogLines } from '../lifecycle.mjs';
+import { runtimeInfo, checkRestartAllowed, claimLifecycle, requestLifecycle, lifecycleAvailable, lifecyclePending, readLogLines, UPDATE_BUSY } from '../lifecycle.mjs';
 import { createOsIntegration, OsIntegrationError, SCHEME } from '../../lib/os-integration.mjs';
 import { createShortcut, ShortcutError } from '../../lib/shortcuts.mjs';
 import { writeJson, readJson } from '../../lib/fsutil.mjs';
@@ -92,16 +92,20 @@ export default function register(app) {
 
   app.route({ path: '/api/server/status', method: 'GET', sameOrigin: true, quiet: true, handler: () => status() });
 
-  function accept(c, action, rebuild, extra) {
+  // {claimed: true}: the caller took the slot itself earlier (an update claims it before it installs anything).
+  function accept(c, action, rebuild, extra, { claimed = false } = {}) {
     if (!lifecycleAvailable()) throw new HttpError(501, 'restart is only available when OpenDash was started with start-opendash or node serve.mjs');
-    const ok = action === 'restart' ? checkRestartAllowed() : (lifecyclePending() ? { ok: false, status: 409, message: 'already stopping or restarting' } : { ok: true });
-    if (!ok.ok) {
-      if (ok.retryAfter) c.res.setHeader('Retry-After', String(ok.retryAfter));
-      throw new HttpError(ok.status, ok.message);
+    if (!claimed) {
+      const pend = lifecyclePending();
+      const ok = action === 'restart' ? checkRestartAllowed() : (pend ? { ok: false, status: 409, message: pend.update ? UPDATE_BUSY : 'already stopping or restarting' } : { ok: true });
+      if (!ok.ok) {
+        if (ok.retryAfter) c.res.setHeader('Retry-After', String(ok.retryAfter));
+        throw new HttpError(ok.status, ok.message);
+      }
+      // Claimed in this same tick (no await since the checks above): concurrent
+      // requests cannot all pass the checks and all get a 202.
+      if (!claimLifecycle({ action, rebuild })) throw new HttpError(409, 'already stopping or restarting');
     }
-    // Claimed in this same tick (no await since the checks above): concurrent
-    // requests cannot all pass the checks and all get a 202.
-    if (!claimLifecycle({ action, rebuild })) throw new HttpError(409, 'already stopping or restarting');
     const mode = action === 'stop' ? 'stop' : (ctx.lifecycle && ctx.lifecycle.supervised ? 'supervisor' : 'respawn');
     log('note', `${action === 'stop' ? 'stop' : rebuild ? 'rebuild and restart' : 'restart'} requested from the dashboard (${mode})`);
     // Answer first, then go: the 202 must reach the page before the listener closes.

@@ -385,9 +385,22 @@ function _bdApply(kind, id, to, from, board, o) {
     }
     if (!getPerson(to)) return null;
     let changed = false;
+    // Person columns swap like tag columns (B17): the person the card leaves is unlinked (and kept out when a
+    // name or tag would link them again), unless the column is a custom column's rule.
+    const leaving = !!(from && from !== '_none' && from !== to && !o.rule && getPerson(from));
+    const wasWaitOnFrom = leaving && it.waitingOn === from;
+    if (leaving) {
+      let gone = false;
+      if (ppl.includes(from)) { it.people = ppl.filter(x => x !== from); gone = true; }
+      if (_bdPeopleOf(it).includes(from)) { const excl = Array.isArray(it.peopleExcluded) ? it.peopleExcluded : []; if (!excl.includes(from)) it.peopleExcluded = [...excl, from]; gone = true; }
+      if (gone) { logActivity(id, 'people', { added: [], removed: [from] }); changed = true; }
+    }
+    const cur = Array.isArray(it.people) ? it.people : [];
     if (Array.isArray(it.peopleExcluded) && it.peopleExcluded.includes(to)) { it.peopleExcluded = it.peopleExcluded.filter(x => x !== to); if (!it.peopleExcluded.length) delete it.peopleExcluded; changed = true; }
-    if (!ppl.includes(to) && !_bdPeopleOf(it).includes(to)) { it.people = [...ppl, to]; logActivity(id, 'people', { added: [to], removed: [] }); changed = true; }
-    if (board.personDrop === 'wait' && it.waitingOn !== to) { it.waiting = true; it.waitingOn = to; return 'waiting on ' + _bdPersonName(to); }
+    if (!cur.includes(to) && !_bdPeopleOf(it).includes(to)) { it.people = [...cur, to]; logActivity(id, 'people', { added: [to], removed: [] }); changed = true; }
+    // A wait starts the way the D key starts one (RF_DO.wait: since today, no old nudge, out of progress and the
+    // plan, logged) (B5); a wait on the person the card left moves with it.
+    if ((board.personDrop === 'wait' || wasWaitOnFrom) && it.waitingOn !== to) { RF_DO.wait(it, { person: to }); return 'waiting on ' + _bdPersonName(to); }
     return changed ? 'linked to ' + _bdPersonName(to) : null;
   }
   if (kind === 'due') {
@@ -399,6 +412,7 @@ function _bdApply(kind, id, to, from, board, o) {
     logActivity(id, 'date', { from: cur || null, to: d, reason: 'board' });
     it.dueDate = d;
     if (!d) delete it.dueTime;
+    if (typeof repeatAnchorFollow === 'function') repeatAnchorFollow(it);   // a new date moves a monthly series' day (DASH-05)
     return d ? 'due ' + (typeof dueLabel === 'function' ? dueLabel(d) : d) : 'date cleared';
   }
   return null;

@@ -119,6 +119,7 @@ function _gllFxPlay(A, ev) {
   if (c === 'sync') { if (e === 'ask') { if (typeof _glyAsked === 'function') _glyAsked(A); } else if (e === 'away' || e === 'back') { if (typeof _glyAwayIn === 'function') _glyAwayIn(A, e === 'away'); } else if (typeof _glyAtIn === 'function') _glyAtIn(A, ev); return; }   // (staying in step: 94-garden-live-8sync.js)
   if (c === 'fs') { if (typeof _gfsHeard === 'function') _gfsHeard(A, ev); return; }   // (the fish at a guest's line: the host decides)
   if (c === 'got' && e === 'fish' && typeof gardenCatchHeard === 'function') { try { gardenCatchHeard(A, ev); } catch (err) { /* only a record */ } }   // (the lake's records, and the second line)
+  if (c === 'fish' && e === 'help' && A && A.fish) A.fish.help = true;   // (their float is the second line on a friend's monster: no fish comes to it, 94-garden-fish-6school.js _gfsLinesNow)
   if (c === 'fish' && (e === 'big' || e === 'help')) { if (typeof gardenHelpHeard === 'function') gardenHelpHeard(A, e, ev); return; }   // a monster on someone's line
   if (c === 'fish') { _gllFishFx(A, e, ev); return; }
   if (c === 'bug') {

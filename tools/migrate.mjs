@@ -19,13 +19,27 @@
 import { readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { copyTree } from '../lib/fsutil.mjs';
-import { resolveDataDir, dataPaths, ensureDataDir, legacyStatus } from '../lib/datadir.mjs';
-import { movedAwayNotice, movedAwayText } from '../lib/relocate/index.mjs';
-import { applyMigration, loadApplied } from './migrations/_lib.mjs';
-import { othersLive, seenText } from '../lib/hosts.mjs';
+import { spawnSync } from 'node:child_process';
+import { guardLaunch } from '../lib/update-guard.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+// The launchers run this first. An update cut off part-way (the app folder half old, half new), or one an earlier
+// start could not finish, is put back before any other app file loads (lib/update-guard.mjs, Node stdlib only), and
+// then the previous version's own copy of this script runs instead.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv.includes('--auto')) {
+  const g = await guardLaunch({ repoRoot: join(HERE, '..') });
+  if (g.message) console.log(`\n  ${g.message}`);
+  if (g.go === 'fail') process.exit(1);
+  if (g.go === 'rerun') {
+    const again = spawnSync(process.execPath, [...process.execArgv, ...process.argv.slice(1)], { stdio: 'inherit' });
+    process.exit(again.status == null ? 1 : again.status);
+  }
+}
+const { copyTree } = await import('../lib/fsutil.mjs');
+const { resolveDataDir, dataPaths, ensureDataDir, legacyStatus } = await import('../lib/datadir.mjs');
+const { movedAwayNotice, movedAwayText } = await import('../lib/relocate/index.mjs');
+const { applyMigration, loadApplied } = await import('./migrations/_lib.mjs');
+const { othersLive, seenText } = await import('../lib/hosts.mjs');
 const MIG_DIR = join(HERE, 'migrations');
 const BACKUP_KEEP = 5;
 

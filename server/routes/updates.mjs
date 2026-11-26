@@ -14,7 +14,7 @@
 // and GitHub is asked again at apply time (the stored check file is never trusted alone).
 
 import { HttpError } from '../http.mjs';
-import { lifecycleAvailable, checkRestartAllowed } from '../lifecycle.mjs';
+import { lifecycleAvailable, checkRestartAllowed, claimLifecycle, releaseLifecycle, runInstall } from '../lifecycle.mjs';
 import { checkLatest, readUpdateState, writeUpdateState, describeState, compareVersions, installKind, applyZipUpdate, applyGitUpdate } from '../../lib/updater.mjs';
 
 export default function register(app) {
@@ -70,11 +70,16 @@ export default function register(app) {
       const ok = checkRestartAllowed();
       if (!ok.ok) throw new HttpError(ok.status, ok.message);
       if (busy) throw new HttpError(409, 'an update is already being installed');
-      const state = await readUpdateState(dataDir);
-      if (!state.latest || state.latest.version !== b.version) throw new HttpError(409, 'check for updates first: that is not the latest version found');
+      // The restart slot is taken now, in the same tick as the checks and before anything is downloaded or written: a
+      // restart or stop asked for meanwhile (another tab, Settings, the assistant) is refused, and only this route
+      // restarts the server, once the new files are in. A stop from outside (Ctrl+C, the supervisor) waits for the
+      // writing part (runInstall, serve.mjs).
+      if (!claimLifecycle({ action: 'restart', rebuild: true, update: true })) throw new HttpError(409, 'already stopping or restarting');
       busy = true;
       let updated;
       try {
+        const state = await readUpdateState(dataDir);
+        if (!state.latest || state.latest.version !== b.version) throw new HttpError(409, 'check for updates first: that is not the latest version found');
         // update-check.json sits in the (possibly synced) data folder: ask GitHub again and
         // install only the release it names now, so a planted file cannot pick an old one.
         let release;
@@ -87,15 +92,16 @@ export default function register(app) {
         if (compareVersions(release.version, ctx.version) !== 1) throw new HttpError(409, 'this version is already installed');
         log('note', `installing update ${ctx.version} -> ${release.version} (${installKind(ctx.repoRoot)})`);
         updated = installKind(ctx.repoRoot) === 'git'
-          ? await applyGitUpdate({ repoRoot: ctx.repoRoot, release, current: ctx.version })
-          : await applyZipUpdate({ repoRoot: ctx.repoRoot, dataDir, release, current: ctx.version });
+          ? await applyGitUpdate({ repoRoot: ctx.repoRoot, release, current: ctx.version, track: runInstall })
+          : await applyZipUpdate({ repoRoot: ctx.repoRoot, dataDir, release, current: ctx.version, track: runInstall });
       } catch (e) {
+        releaseLifecycle();
         if (e instanceof HttpError) throw e;
         log('error', `update failed: ${e.message}`);
-        throw new HttpError(502, `Not updated: ${e.message}`);
+        throw new HttpError(e && e.status === 503 ? 503 : 502, `Not updated: ${e.message}`);
       } finally { busy = false; }
       log('note', `update installed (${updated.mode}): ${updated.written ?? 'git'} files; restarting to rebuild`);
-      return ctx.acceptLifecycle(c, 'restart', true, { updated });
+      return ctx.acceptLifecycle(c, 'restart', true, { updated }, { claimed: true });
     },
   });
 }

@@ -44,7 +44,7 @@ function owdReceiptAsk(file, pre) {
       if (e && e.name === 'AbortError') { if (close) close(); return; }
       err = e && e.plain ? e.message : 'Freeflo isn’t answering. Try again in a moment.';
     }
-    if (j) { if (close) close(); owdReceiptDialog({ pre, token: j.token, receipt: j.receipt, checks: j.checks || [] }); return; }
+    if (j) { if (close) close(); owdReceiptDialog({ pre, token: j.token, receipt: j.receipt, checks: j.checks || [], keepable: j.keepable }); return; }
     paint('err', err);
   };
   const paint = (st, err) => {
@@ -101,7 +101,8 @@ function owdReceiptDialog(o) {
   const curIn = _xInput('text', rc.currency && rc.currency !== home ? rc.currency : '', home, { maxLength: 3, autocomplete: 'off' }); curIn.className += ' owd-fx-cur'; curIn.setAttribute('aria-label', 'The currency on the receipt');
   const rateIn = _xInput('number', '', '', { step: '0.0001', min: '0', inputMode: 'decimal' }); rateIn.className += ' owd-fx-rate'; rateIn.setAttribute('aria-label', 'How much of that currency for one of yours');
   const FX = { source: 'typed', at: '', note: '', bank: pre.source && pre.source.k && Number(pre.total) > 0 ? Number(pre.total) : 0 };
-  const keep = _xe('label', 'owd-me', `<input type="checkbox"${o.token ? ' checked' : ''}><span>Keep the picture with this split</span>`);
+  // Too big to keep (receipts are kept up to 5 MB, as in Expenses): it can still be read, but it is not kept, and that is said.
+  const keep = o.keepable === false ? _xe('label', 'owd-me', '<input type="checkbox" disabled><span>Too big to keep with this split (5 MB at most)</span>') : _xe('label', 'owd-me', `<input type="checkbox"${o.token ? ' checked' : ''}><span>Keep the picture with this split</span>`);
   let listEl, sumEl, errEl, fxNote, fxRow;
   const cur = () => { const c = curIn.value.trim().toUpperCase(); return /^[A-Z]{3}$/.test(c) && c !== home ? c : ''; };
   const rate = () => Number(rateIn.value) || 0;
