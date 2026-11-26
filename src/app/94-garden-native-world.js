@@ -1436,7 +1436,7 @@ window.GardenNativeWorld = (function () {
         const step = _gw.spd * dt;
         if (target && distance <= step) {
           _gw.px = target.x; _gw.py = target.y; _gw.path.shift(); _gw.moving = !!_gw.path.length;
-          if (!_gw.path.length) { _gw.spd = 0; const fn = _gw.then; _gw.then = null; if (typeof fn === 'function') fn(true); }
+          if (!_gw.path.length) { _gw.spd = 0; const fn = _gw.then; _gw.then = null; if (typeof fn === 'function') { try { fn(true); } catch (e) { console.error('[garden]', e); } } }   // (an arrival action that throws must not take the frame with it: as the Classic loop does)
         } else { const ux0 = ux, uy0 = uy, x0 = _gw.px, y0 = _gw.py; let steered = false; if (direct && typeof _gwCrossingSteer === 'function') { const steer = _gwCrossingSteer(ux, uy, step) || (typeof _gwDoorSteer === 'function' ? _gwDoorSteer(ux, uy) : null); if (steer) { ux = steer[0]; uy = steer[1]; steered = true; } }   // (onto and along a crossing: 94-garden-world-0walk.js)
           _gw.moving = _gwMoveBy(ux * step / W.cellW, uy * step / W.cellH);
           // (round 2) what is left of a step steered onto a crossing's middle never goes back against the press (at the shut plank gate a south-east press crept you north)

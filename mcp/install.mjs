@@ -22,6 +22,10 @@ const sq = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
 // builders add their own) plus describe_operations. Derived, so a new query is
 // never left out of the "read freely" permission set.
 export const READ_TOOLS = Object.freeze([...new Set([...QUERIES.map(q => q.tool), 'describe_operations'])]);
+// The read-only entries of mcp/server.mjs EXPENSE_TOOLS (read: true); that file is the server itself, so not imported.
+export const EXPENSE_READ_TOOLS = Object.freeze(['list_expenses', 'list_owed']);
+// Every tool that only reads: what the readOnly preset lets the model use without asking.
+const ALL_READ_TOOLS = Object.freeze([...new Set([...READ_TOOLS, ...AGENT_READ_TOOLS, ...EXPENSE_READ_TOOLS])]);
 
 /**
  * opts: { dataDir, platform = process.platform, nodePath = process.execPath, name = 'dashboard', writeTools }
@@ -50,7 +54,7 @@ export function installInfo({ dataDir, platform = process.platform, nodePath = p
 
   const pre = `mcp__${name}__`;
   const permissions = {
-    readOnly: { allow: READ_TOOLS.map(t => pre + t), ask: [`${pre}*`] },
+    readOnly: { allow: ALL_READ_TOOLS.map(t => pre + t), ask: [`${pre}*`] },
     allowAll: { allow: [`${pre}*`] },
     note: 'Put one of these in the "permissions" block of ~/.claude/settings.json. readOnly lets the model read freely and asks before every change; allowAll never asks (every change can still be undone with undo_changes).',
   };
@@ -62,7 +66,7 @@ export function installInfo({ dataDir, platform = process.platform, nodePath = p
     proposeMode: { args: proposeArgs, note: 'read tools + propose_changes only; never applies anything (what the in-app assistant uses)' },
     mcpConfigJson: { mcpServers: { [name]: { command: 'node', args } } },
     permissions,
-    tools: { read: [...READ_TOOLS, ...AGENT_READ_TOOLS], write: writeTools },
+    tools: { read: [...ALL_READ_TOOLS], write: writeTools },
   };
 }
 

@@ -50,6 +50,8 @@ function makeSortable(container, opts) {
     window.addEventListener('pointermove', onMove, true);
     window.addEventListener('pointerup', onUp, true);
     window.addEventListener('pointercancel', onCancel, true);
+    // Esc only matters while pressing or dragging: an idle sortable holds no page-wide listener (LEAK-1).
+    document.addEventListener('keydown', onKey, true);
   }
 
   function start(e) {
@@ -187,6 +189,7 @@ function makeSortable(container, opts) {
     window.removeEventListener('pointermove', onMove, true);
     window.removeEventListener('pointerup', onUp, true);
     window.removeEventListener('pointercancel', onCancel, true);
+    document.removeEventListener('keydown', onKey, true);
     press = null;
   }
   function finish(commit) {
@@ -232,7 +235,6 @@ function makeSortable(container, opts) {
   function onKey(e) { if (e.key === 'Escape' && drag) { e.stopPropagation(); e.preventDefault(); cleanup(); finish(false); } }
 
   container.addEventListener('pointerdown', onDown);
-  document.addEventListener('keydown', onKey, true);
   // Native HTML drag would fight the pointer drag.
   const noNative = (e) => { if (e.target.closest && e.target.closest(opts.items)) e.preventDefault(); };
   container.addEventListener('dragstart', noNative);

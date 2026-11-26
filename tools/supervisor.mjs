@@ -28,6 +28,7 @@ import { pathToFileURL } from 'node:url';
 import { REPO_ROOT, resolveDataDir, dataPaths } from '../lib/datadir.mjs';
 import { createLogger } from '../server/log.mjs';
 import { EXIT, classifyExit, describeExit, describeSignal, withNoOpen, rebuildApp, runNodeStep } from '../server/lifecycle.mjs';
+import { readUpdateMarker } from '../lib/update-guard.mjs';
 
 export const BACKOFF_MS = Object.freeze([1000, 2000, 5000, 10000, 30000]);
 export const CRASH_LIMIT = 5;
@@ -47,11 +48,14 @@ export const REQUEST_DELAY_MS = 10000;
  *   now(), sleep(ms)      clock
  * run() resolves with the supervisor's own exit code.
  */
+// The app's update marker (lib/update-guard.mjs) -> {step, pid, from, to} | null.
+const updateMarker = () => readUpdateMarker(REPO_ROOT).catch(() => null);
+
 export function createSupervisor({
   args = [], env = process.env, spawnChild, rebuild = (a) => rebuildApp({ args: a }), log = () => {},
   now = () => Date.now(), sleep = (ms) => new Promise(r => setTimeout(r, ms)),
   backoff = BACKOFF_MS, crashLimit = CRASH_LIMIT, crashWindowMs = CRASH_WINDOW_MS, stopTimeoutMs = 10000,
-  requestLimit = REQUEST_LIMIT, requestDelayMs = REQUEST_DELAY_MS,
+  requestLimit = REQUEST_LIMIT, requestDelayMs = REQUEST_DELAY_MS, marker = updateMarker, installWaitMs = 90000,
 } = {}) {
   const say = (level, msg) => { try { log(level, 'supervisor: ' + msg); } catch { /* log not writable */ } };
   let child = null, stopping = false, stopReason = null, wake = null, killTimer = null;
@@ -84,9 +88,15 @@ export function createSupervisor({
     const c = child;
     if (!c) return;
     try { if (c.connected && typeof c.send === 'function') c.send({ cmd: 'stop', reason }); } catch { /* channel closed */ }
-    killTimer = setTimeout(() => {
-      if (child === c) { say('warn', `the server did not stop within ${Math.round(stopTimeoutMs / 1000)} s; ending it`); try { c.kill(); } catch { /* gone */ } }
-    }, stopTimeoutMs);
+    const askedAt = now();
+    const end = async () => {
+      if (child !== c) return;
+      // An update this server is writing into the app folder is let finish (it stops right after).
+      const m = await marker();
+      if (child === c && m && m.step === 'install' && m.pid === c.pid && now() - askedAt < installWaitMs) { killTimer = setTimeout(end, 2000); killTimer.unref?.(); return; }
+      if (child === c) { say('warn', `the server did not stop within ${Math.round((now() - askedAt) / 1000)} s; ending it`); try { c.kill(); } catch { /* gone */ } }
+    };
+    killTimer = setTimeout(end, stopTimeoutMs);
     killTimer.unref?.();
   }
 
@@ -124,7 +134,15 @@ export function createSupervisor({
         try { r = await rebuild(args); } catch (e) { r = { ok: false, step: 'rebuild', code: -1, at: new Date(now()).toISOString(), message: String(e && e.message || e) }; }
         lastRebuild = r;
         if (r.ok) { lastStop = 'rebuild requested'; say('info', 'rebuild done; starting the new build'); }
-        else { lastStop = `rebuild requested; the ${r.step} step failed, so the previous build was restarted`; say('error', `the rebuild failed at the ${r.step} step (exit ${r.code}); starting the previous build. ${r.message || ''}`.trim()); }
+        else {
+          lastStop = `rebuild requested; the ${r.step} step failed, so the previous build was restarted`;
+          // After an update the server starts by putting the previous version's files back (lib/update-guard.mjs).
+          const m = await marker();
+          const next = !(m && m.step === 'rebuild') ? 'starting the previous build'
+            : m.mode === 'git' ? `the update to ${m.to} stays in place, so the server will not start (it says why)`
+            : `the update to ${m.to} is undone and the previous version started`;
+          say('error', `the rebuild failed at the ${r.step} step (exit ${r.code}); ${next}. ${r.message || ''}`.trim());
+        }
         if (stopping) return EXIT.OK;
       } else {
         const tc = now();

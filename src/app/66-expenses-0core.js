@@ -354,8 +354,9 @@ window.Expenses = {
 };
 /** Mark several transactions as expenses: one question (who pays you back), one request, one Undo (POST /create-batch). */
 function expFromTransactions(rows, after) {
-  const fresh = rows.filter(x => x && x.a < 0 && !expForTx(x));
-  if (!fresh.length) { toast('Those are expenses already, or are not payments out.'); return; }
+  // Split with friends already: Owed to me has it, so it is not an expense too (it would come off spending twice).
+  const fresh = rows.filter(x => x && x.a < 0 && !expForTx(x) && !(typeof owdForTx === 'function' && owdForTx(x)));
+  if (!fresh.length) { toast('Those are expenses or splits already, or are not payments out.'); return; }
   let payer;
   openDialog({
     title: `Expense ${fresh.length} payment${fresh.length === 1 ? '' : 's'}`, size: 'sm',
@@ -366,7 +367,7 @@ function expFromTransactions(rows, after) {
       payer = document.createElement('input'); payer.className = 'xp-in'; payer.type = 'text'; payer.placeholder = 'e.g. your employer'; payer.autocomplete = 'off';
       if (EXP.data && EXP.data.payers.length) payer.value = EXP.data.payers[0].name;
       w.append(l, payer); el.appendChild(w);
-      if (fresh.length < rows.length) { const n = document.createElement('p'); n.className = 'xp-fh'; n.textContent = `${rows.length - fresh.length} of what you selected ${rows.length - fresh.length === 1 ? 'is' : 'are'} left out: already an expense, or money in.`; el.appendChild(n); }
+      if (fresh.length < rows.length) { const n = document.createElement('p'); n.className = 'xp-fh'; n.textContent = `${rows.length - fresh.length} of what you selected ${rows.length - fresh.length === 1 ? 'is' : 'are'} left out: already an expense or split with friends, or money in.`; el.appendChild(n); }
       setTimeout(() => payer.focus(), 30);
     },
     actions: [{ label: 'Cancel' }, { label: 'Add expenses', primary: true, icon: 'check', run: async () => {

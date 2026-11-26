@@ -12,6 +12,8 @@
    Task fields (documented in 20-task-model.js): waitingOn, waiting, waitingSince,
    waitingNudgedAt, blockedBy. Someday is the tag 'someday', so it needs no new
    field and has a list of its own (#someday).
+   The server's copy of the waiting / blocked / someday rules is lib/waiting-rules.mjs
+   (list_tasks views, get_person, set_task_waiting, Home Focus): change both together.
    ============================================================ */
 const RF_SOMEDAY_TAG = 'someday';
 

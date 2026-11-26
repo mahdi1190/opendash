@@ -282,8 +282,10 @@ function _palResults(raw) {
     const others = _palSources('').some(o => o.group !== 'Commands' && Math.max(_palScore(o.label, ql), o.keywords ? _palKwScore(o.keywords, ql) : 0) > 0);
     const cap = others ? 3 : 7;
     for (const { it } of hits.slice(0, cap)) push('Tasks', _palTaskItem(it));
-    if (hits.length > cap) {
-      push('Tasks', { icon: 'list-filter', label: `All ${hits.length} matching tasks`, hint: 'Search in All tasks', run: () => {
+    // The count is what the list it opens will show (the task search, matchesSearch), not the palette's fuzzy hits (DASH-09).
+    const listN = typeof matchesSearch === 'function' ? (() => { const parsed = parseTaskSearch(q); let n = 0; for (const it of getAllItems()) if (matchesSearch(it, parsed)) n++; return n; })() : hits.length;
+    if (listN > 0 && (hits.length > cap || listN > cap)) {
+      push('Tasks', { icon: 'list-filter', label: `All ${listN} matching task${listN === 1 ? '' : 's'}`, hint: 'Search in All tasks', run: () => {
         setView('all');
         searchQuery = q;
         const si = document.getElementById('search-input'); if (si) si.value = q;
@@ -358,7 +360,8 @@ function _palResults(raw) {
       }
     }
     if (typeof isTaskView === 'function' && isTaskView(state.view)) {
-      push('Commands', { icon: 'list-filter', label: `Filter this list for “${q}”`, run: () => {
+      // The search looks through every task (the list says "Searching every task"), so the label says so (DASH-09).
+      push('Commands', { icon: 'list-filter', label: `Search every task for “${q}”`, run: () => {
         const si = document.getElementById('search-input'); if (si) si.value = q;
         searchQuery = q; renderMain();
       } });

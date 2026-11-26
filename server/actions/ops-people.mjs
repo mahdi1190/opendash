@@ -253,20 +253,27 @@ export const PEOPLE_OPS = [
       for (const f of ['role', 'org', 'group', 'phone', 'linkedin', 'avatarUrl', 'photo', 'cover']) if (!b[f] && a[f]) b[f] = a[f];
       ch.push(pchange(b, 'merged', null, a.name));
       let moved = 0;
-      const fix = (t, live) => {
+      const fix = (t, live, binId) => {
         let hit = false;
         for (const key of ['people', 'peopleExcluded']) {
           if (!Array.isArray(t[key]) || !t[key].includes(a.id)) continue;
-          if (live && !hit) ctx.touch('task:' + t.id);
+          if (!hit) ctx.touch('task:' + (live ? t.id : binId));
           hit = true;
           const cur = t[key];
           t[key] = [...new Set(cur.map(x => (x === a.id ? b.id : x)))];
           if (key === 'people' && live) { ch.push(tchange(t, 'people', cur, t[key])); ctx.log(t.id, 'people', { text: `${a.name} merged into ${b.name}` }); }
         }
+        // The wait moves too (as on the page): a waitingOn left on the old id fell back to another linked person.
+        if (t.waitingOn && String(t.waitingOn) === a.id) {
+          if (!hit) ctx.touch('task:' + (live ? t.id : binId));
+          hit = true;
+          t.waitingOn = b.id;
+          if (live) ch.push(tchange(t, 'waitingOn', a.id, b.id));
+        }
         if (hit && live) moved++;
       };
       for (const t of ctx.s.custom || []) if (t) fix(t, true);
-      for (const bt of (ctx.s.bin && ctx.s.bin.tasks) || []) if (bt && bt.customData) fix(bt.customData, false);
+      for (const bt of (ctx.s.bin && ctx.s.bin.tasks) || []) if (bt && bt.id && bt.customData) fix(bt.customData, false, bt.id);
       ctx.s.people = people(ctx).filter(x => x.id !== a.id);
       return { summary: `Merge ${a.name} into ${b.name} (${moved} task${moved === 1 ? '' : 's'} relinked)`, changes: ch };
     },
@@ -280,17 +287,27 @@ export const PEOPLE_OPS = [
       if (who.self) throw new ActionError('FORBIDDEN', "your own record can't be deleted", { field: 'id', status: 400 });
       ctx.touch('person:' + who.id);
       const ch = [pchange(who, 'deleted', who.name, null)];
+      let unlinked = 0;
+      // A task that waited on them still waits, on someone (as on the page): a waitingOn left on the old id fell back to another linked person.
+      const waitsOn = (t) => !!(t && t.waitingOn && String(t.waitingOn) === who.id);
       for (const t of ctx.s.custom || []) {
         if (!t) continue;
         const hasP = Array.isArray(t.people) && t.people.includes(who.id);
         const hasX = Array.isArray(t.peopleExcluded) && t.peopleExcluded.includes(who.id);
-        if (!hasP && !hasX) continue;
+        const hasW = waitsOn(t);
+        if (!hasP && !hasX && !hasW) continue;
         ctx.touch('task:' + t.id);
-        if (hasP) { const cur = t.people; t.people = cur.filter(x => x !== who.id); ch.push(tchange(t, 'people', cur, t.people)); ctx.log(t.id, 'people', { text: `Unlinked ${who.name} (person deleted)` }); }
+        if (hasP) { const cur = t.people; t.people = cur.filter(x => x !== who.id); ch.push(tchange(t, 'people', cur, t.people)); ctx.log(t.id, 'people', { text: `Unlinked ${who.name} (person deleted)` }); unlinked++; }
         if (hasX) { t.peopleExcluded = t.peopleExcluded.filter(x => x !== who.id); if (!t.peopleExcluded.length) delete t.peopleExcluded; }
+        if (hasW) { delete t.waitingOn; t.waiting = true; ch.push(tchange(t, 'waitingOn', who.id, 'someone')); ctx.log(t.id, 'waiting', { text: `Waiting on someone (${who.name} was deleted)` }); }
+      }
+      for (const bt of (ctx.s.bin && ctx.s.bin.tasks) || []) {
+        if (!bt || !bt.id || !waitsOn(bt.customData)) continue;
+        ctx.touch('task:' + bt.id);
+        delete bt.customData.waitingOn; bt.customData.waiting = true;
       }
       ctx.s.people = people(ctx).filter(x => x.id !== who.id);
-      return { summary: `Delete ${who.name} (unlinked from ${ch.length - 1} task${ch.length === 2 ? '' : 's'})`, changes: ch };
+      return { summary: `Delete ${who.name} (unlinked from ${unlinked} task${unlinked === 1 ? '' : 's'})`, changes: ch };
     },
   },
   {

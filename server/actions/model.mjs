@@ -136,11 +136,17 @@ function recurrenceStepIso(from, rec, anchorDay) {
   if (rec === 'weekly') return addDaysIso(from, 7);
   if (rec === 'biweekly') return addDaysIso(from, 14);
   if (rec === 'monthly') {
+    const onAnchor = (iso) => {
+      const [y, m] = iso.split('-').map(Number);
+      const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+      return `${iso.slice(0, 8)}${String(Math.min(anchorDay, last)).padStart(2, '0')}`;
+    };
+    // A date moved before its series day (a snooze, a postpone past the month's end): the series' own day
+    // that month comes next, so no month is skipped (the page's recurrenceStep; DASH-05).
+    if (anchorDay) { const same = onAnchor(from); if (same > from) return same; }
     const next = addMonthsIso(from, 1);
     if (!anchorDay) return next;
-    const [y, m] = next.split('-').map(Number);
-    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
-    return `${next.slice(0, 8)}${String(Math.min(anchorDay, last)).padStart(2, '0')}`;
+    return onAnchor(next);
   }
   if (rec === 'weekdays') {
     let d = addDaysIso(from, 1);
@@ -154,6 +160,17 @@ function recurrenceStepIso(from, rec, anchorDay) {
  * nextOccurrence): step from the current due date until it lands AFTER today,
  * so a daily task completed 9 days late moves to tomorrow, not into the past.
  */
+/**
+ * The month anchor (repeatDay) follows the due date the user sets (the page's repeatAnchorFollow in
+ * 20-task-model.js; DASH-05): a monthly task with a date keeps that date's day; any other repeat, or no
+ * date, has none. Called when the repeat changes, when a task is made and when a new due date is set;
+ * a shift (push back / postpone) keeps it.
+ */
+export function repeatAnchorFollow(t) {
+  if (!t) return;
+  const day = (t.recurrence ?? 'none') === 'monthly' && isIsoDate(t.dueDate) ? Number(String(t.dueDate).slice(8, 10)) : 0;
+  if (day >= 1 && day <= 31) t.repeatDay = day; else delete t.repeatDay;
+}
 export function advanceByRecurrence(iso, rec, today, anchorDay) {
   const from = iso || today;
   if (!rec || rec === 'none') return from;

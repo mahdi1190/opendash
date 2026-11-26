@@ -237,6 +237,8 @@ function mergePeople(fromId, intoId, opts) {
       t[key] = [...new Set(t[key].map(x => (x === a.id ? b.id : x)))];
       hit = true;
     }
+    // The wait moves too: a waitingOn left on the old id fell back to the task's first linked person.
+    if (t.waitingOn && String(t.waitingOn) === a.id) { t.waitingOn = b.id; hit = true; }
     return hit;
   };
   for (const t of state.custom || []) if (t && fix(t)) { moved++; logActivity(t.id, 'people', { text: `${a.name} merged into ${b.name}` }); }
@@ -245,6 +247,12 @@ function mergePeople(fromId, intoId, opts) {
   if (!(opts && opts.noSave)) saveData();
   return moved;
 }
+/** A task that waits on a deleted person still waits, on someone (a waitingOn left on the old id fell back to another linked person). */
+function _pplDropWaitOn(t, id) {
+  if (!t || !t.waitingOn || String(t.waitingOn) !== id) return false;
+  delete t.waitingOn; t.waiting = true;
+  return true;
+}
 function deletePersonById(id, opts) {
   const p = getPerson(id); if (!p || p.self) return 0;
   let n = 0;
@@ -252,7 +260,9 @@ function deletePersonById(id, opts) {
     if (!t) continue;
     if (Array.isArray(t.people) && t.people.includes(id)) { t.people = t.people.filter(x => x !== id); n++; logActivity(t.id, 'people', { text: `Unlinked ${p.name} (person deleted)` }); }
     if (Array.isArray(t.peopleExcluded) && t.peopleExcluded.includes(id)) { t.peopleExcluded = t.peopleExcluded.filter(x => x !== id); if (!t.peopleExcluded.length) delete t.peopleExcluded; }
+    if (_pplDropWaitOn(t, id)) logActivity(t.id, 'waiting', { text: `Waiting on someone (${p.name} was deleted)` });
   }
+  for (const bt of (state.bin && state.bin.tasks) || []) if (bt && bt.customData) _pplDropWaitOn(bt.customData, id);
   state.people = _pplList().filter(x => x.id !== id);
   if (!(opts && opts.noSave)) saveData();
   return n;

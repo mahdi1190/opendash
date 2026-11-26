@@ -277,6 +277,7 @@ function setDueWithNote(id, d, t) {
   if (fromT !== time && d) logActivity(id, 'dueTime', { from: fromT, to: time });   // no date: the date entry says it all
   it.dueDate = d;
   if (time) it.dueTime = time; else delete it.dueTime;
+  if (from !== d) repeatAnchorFollow(it);   // a new date moves a monthly series' day (DASH-05)
   saveData(); render();
   if (from !== d) dueMovedToast(id, d, snap);
 }
@@ -473,7 +474,7 @@ function bulkPlanToday(list) {
 function bulkSetDue(list, d) {
   const today = todayStr();
   const wasDue = new Set(list.filter(id => { const x = getItem(id); const due = x && effDate(x); return !!due && due <= today; }));
-  batchTasks(list, id => { const it = getItem(id); const from = it.dueDate || null; if (from !== d) { logActivity(id, 'date', { from, to: d, reason: 'bulk' }); it.dueDate = d; if (!d) delete it.dueTime; } });
+  batchTasks(list, id => { const it = getItem(id); const from = it.dueDate || null; if (from !== d) { logActivity(id, 'date', { from, to: d, reason: 'bulk' }); it.dueDate = d; if (!d) delete it.dueTime; repeatAnchorFollow(it); } });
   // Moved out of today but planned for today: they stay in Today's "Planned for today", and the toast says so.
   const kept = !d || d > today ? list.filter(id => { const x = getItem(id); return wasDue.has(id) && x && x.plannedFor && x.plannedFor <= today && statusOf(id) !== 'done'; }) : [];
   _toastWithExtra(`${list.length} moved to ${d ? dueMoveLabel(d) : 'no date'}${kept.length ? ` · ${kept.length} still planned for today` : ''}`,

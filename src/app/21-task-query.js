@@ -26,7 +26,7 @@ function _dayLabel(iso, opts) {
 function isArchived(item) {
   if (statusOf(item.id) !== 'done') return false;
   const ts = closedAt(item);
-  if (!ts) return false;
+  if (!ts) return true;   // closed with no close time: old, not "just finished" for good (DASH-08)
   return (Date.now() - ts) > (state.archiveDays || 7) * 86400000;
 }
 function _closedOn(item) { const ts = closedAt(item); return ts ? Clock.parts(Number(ts)).iso : null; }
@@ -395,7 +395,8 @@ function todayProgress() {
   // Repeating tasks done today rolled forward and are open again: count the completion.
   for (const [id, log] of Object.entries(state.completionLog || {})) {
     const it = getItem(id);
-    if (!it || statusOf(id) === 'done' || !Array.isArray(log)) continue;
+    // Only repeating ones: a one-off task reopened after a tick keeps its completion in the log, but is not done (DASH-07).
+    if (!it || statusOf(id) === 'done' || effRecurrence(it) === 'none' || !Array.isArray(log)) continue;
     if (log.some(ts => Clock.parts(Number(ts)).iso === today)) done++;
   }
   return { done, total: done + open, open, overdue, doing };

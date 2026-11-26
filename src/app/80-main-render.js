@@ -72,8 +72,11 @@ function _renderMainBody(main) {
       console.error(`[section ${sec.name}] mount failed`, e);
       // One calm empty state with the next step (UI_CLEANUP_PLAN.md 3.6): what went wrong, and a way out.
       main.innerHTML = '';
+      // Home itself failing: "Go to Home" would go nowhere, so the way out is Today (DASH-13).
+      const away = sec.name === 'home' ? { label: 'Go to Today', icon: 'sun', run: () => { navVia('chrome'); setView('today'); } }
+        : { label: 'Go to Home', icon: 'house', run: () => { navVia('chrome'); setView('home'); } };
       mountEmptyState(main, { icon: 'triangle-alert', title: 'This page couldn’t open', text: 'Reload to try again. Nothing you saved is lost.',
-        actions: [{ label: 'Reload', icon: 'refresh-cw', primary: true, run: () => location.reload() }, { label: 'Go to Home', icon: 'house', run: () => { navVia('chrome'); setView('home'); } }] });
+        actions: [{ label: 'Reload', icon: 'refresh-cw', primary: true, run: () => location.reload() }, away] });
     }
     return;
   }

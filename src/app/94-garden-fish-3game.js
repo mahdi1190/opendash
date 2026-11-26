@@ -353,6 +353,7 @@ function _gwFishTarget(pt, m) {
 
 /** Click water (with any tool): cast at its nearest usable cell centre. If the rod does not reach from where you stand, you walk to the nearest place it does and cast from there. */
 function gardenFishClickPt(pt, m) {
+  if (typeof gardenHeightSwimming === 'function' && gardenHeightSwimming()) { _gdpSay({ ok: false, msg: 'Not while you are swimming: climb out on the bank first.' }); return true; }
   const cell = { x: Math.floor(pt.x), y: Math.floor(pt.y) };
   if (typeof gardenWaterContainsPoint === 'function' ? !gardenWaterContainsPoint(pt.x, pt.y) : !gardenIsWater(cell.x, cell.y)) return false;
   const zone = gardenWaterZone(cell.x, cell.y);
@@ -700,6 +701,7 @@ function _gwNetFrame(dt) {
 }
 function gardenNetSwing() {
   // Space / E: the nearest bug in reach
+  if (typeof gardenHeightSwimming === 'function' && gardenHeightSwimming()) return;   // (not from mid-water)
   let best = null, bd = _gwNetReach() * 1.35;
   for (const b of _gw.bugs ? _gw.bugs.values() : []) { const d = Math.hypot((b.x - _gw.px), (b.y - _gw.py) * 1.4); if (d < bd) { bd = d; best = b; } }
   if (!best) { _gdpSay({ ok: false, msg: 'No bug in reach. Click one with the net, and creep up on it.' }); _gwNetAir(); return; }
