@@ -397,7 +397,8 @@ if (typeof gardenLifePetGoal === 'function') {
   gardenLifePetGoal = function (P, dt) {   // eslint-disable-line no-func-assign
     if (P && typeof _gw !== 'undefined' && P === _gw.pet && typeof _ght !== 'undefined' && _ght.swim && _ght.swim.on) {
       const now = performance.now();
-      if (!_gdu.petT || now - _gdu.petT > 400) { _gdu.petT = now; const b = _gduPetBank(_gw.px, _gw.py); if (b) _gdu.petGoal = { x: b.x, y: b.y, near: 12 }; }
+      if (_gdu.petSwim !== _ght.swim) { _gdu.petSwim = _ght.swim; _gdu.petGoal = null; _gdu.petT = 0; }   // (a new swim: no bank from the last one)
+      if (!_gdu.petT || now - _gdu.petT > 400) { _gdu.petT = now; const b = _gduPetBank(_gw.px, _gw.py); if (b) _gdu.petGoal = { x: b.x, y: b.y, near: 12 }; }   // (out of reach of any bank: it waits at the last bank beside you)
       if (_gdu.petGoal) return _gdu.petGoal;
       return { x: P.x, y: P.y, near: 999 };   // (no bank near: it waits where it is)
     }
