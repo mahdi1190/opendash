@@ -638,6 +638,7 @@ window.GardenNativeArt = (function () {
     submitter.run = submitUnlessOffTarget; offTargetStates.set(renderer, activity);
   }
   let neutralInnerComponents = null;
+  const VIEW_CULL_MARGIN = 96;   // world px round the camera's view, as the world's own drawing cull
   function installNeutralInnerRenderer(inner) {
     const engine = window.Phaser, steps = inner._renderSteps, components = engine && engine.GameObjects && engine.GameObjects.Components, container = engine && engine.GameObjects && engine.GameObjects.Container;
     // The pinned GameObject constructor owns one final Container render step.
@@ -659,9 +660,24 @@ window.GardenNativeArt = (function () {
     if (!count) return;
     // The same matrix operations and main/texture render-list decisions apply.
     const transform = container.localTransform; transform.loadIdentity(); transform.multiply(parent); transform.translate(container.x, container.y); transform.rotate(container.rotation); transform.scale(container.scaleX, container.scaleY);
+    // (speed pass) for the scene's camera, a plain unrotated image whose whole frame lies a margin outside the camera's view (the
+    // painted ground's pieces under the world's root, far from where you stand) is not handed to the engine at all: it would draw
+    // nothing. Captures, rotated cameras or containers, flipped or scrolled images go through as before.
+    let culling = false, cullLeft = 0, cullRight = 0, cullTop = 0, cullBottom = 0, ma = 1, md = 1, me = 0, mf = 0;
+    // (the scene's own camera only, whether it draws to the canvas or through its colour grade's frame: captures use their own)
+    if (camera.rotation === 0 && camera.worldView && container.scene && container.scene.cameras && camera === container.scene.cameras.main) {
+      const m = transform.matrix, v = camera.worldView;
+      if (m && m[1] === 0 && m[2] === 0 && m[0] > 0 && m[3] > 0) { ma = m[0]; md = m[3]; me = m[4]; mf = m[5]; cullLeft = v.x - VIEW_CULL_MARGIN; cullRight = v.x + v.width + VIEW_CULL_MARGIN; cullTop = v.y - VIEW_CULL_MARGIN; cullBottom = v.y + v.height + VIEW_CULL_MARGIN; culling = Number.isFinite(cullLeft + cullRight + cullTop + cullBottom + ma + md + me + mf); }
+    }
     let current = context;
     for (let i = 0; i < count; i++) {
       const child = children[i]; if (!child.willRender(camera)) continue;
+      if (culling && child.type === 'Image' && child.rotation === 0 && !child.flipX && !child.flipY && child.scrollFactorX === 1 && child.scrollFactorY === 1 && child.frame) {
+        // (a frame's full size, read once per frame object: its getter walks the frame's data each time)
+        if (child._ncFrame !== child.frame) { child._ncFrame = child.frame; child._ncW = child.frame.realWidth; child._ncH = child.frame.realHeight; }
+        const sx = child.scaleX, sy = child.scaleY, x0 = child.x - child.displayOriginX * sx, x1 = x0 + child._ncW * sx, y0 = child.y - child.displayOriginY * sy, y1 = y0 + child._ncH * sy;
+        if (ma * Math.max(x0, x1) + me < cullLeft || ma * Math.min(x0, x1) + me > cullRight || md * Math.max(y0, y1) + mf < cullTop || md * Math.min(y0, y1) + mf > cullBottom) { counts.offView = (counts.offView || 0) + 1; continue; }
+      }
       const owner = child._nativeNode, childSteps = child._renderSteps, ownedNative = owner && owner.target === child, nativeChild = ownedNative && childSteps && childSteps.length === 1 && childSteps[0] === child.renderWebGL, alpha = child.setAlpha, scroll = child.setScrollFactor;
       // Container's setter is distinct from Components.ScrollFactor. Its third
       // cascade argument defaults false; original renderer calls use two args.
