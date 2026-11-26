@@ -81,6 +81,13 @@ function _adtSegSvg(dots, x0, y0) {
   for (const d of dots) { const px = ((d.x - x0) * W.cellW).toFixed(1), py = ((d.y - y0) * W.cellH).toFixed(1); s += `<g transform="translate(${px} ${py})"><path d="M-1 0.6q-0.6 -2.4 0.4 -4M1.2 0.6q0.8 -2 0 -3.2" stroke="#5e7a3a" stroke-width="0.6" fill="none" opacity="0.6"/><g class="ad-blink" style="animation-delay:${(-d.k * 2.6).toFixed(2)}s"><circle cy="-1.4" r="3.2" fill="#c8ff8a" opacity="0.28"/><circle cy="-1.4" r="1.15" fill="#f2ffc4"/></g></g>`; }
   return s;
 }
+/** The trail's light over the night: each glow-worm a small bright point with a soft halo, in step with its dot's blink. The dots are baked
+ *  into a still picture under the night's shade (adCacheStatic): on their own they read as dull grey rings, not little lights. */
+function _adtSegLight(dots, x0, y0) {
+  const W = GARDEN_WORLD; let s = '';
+  for (const d of dots) { const px = ((d.x - x0) * W.cellW).toFixed(1), py = ((d.y - y0) * W.cellH - 1.4).toFixed(1); s += `<g class="ad-blink" style="animation-delay:${(-d.k * 2.6).toFixed(2)}s"><circle cx="${px}" cy="${py}" r="7.5" fill="#d4ff96" opacity="0.3"/><circle cx="${px}" cy="${py}" r="2.4" fill="#f6ffd8" opacity="0.9"/></g>`; }
+  return s;
+}
 function _adtGladeSvg(T, night) {
   const k = T.kind.id, A = GART;
   if (k === 'pool') {
@@ -131,7 +138,7 @@ wdMod({
         if (!seg.some(d => adInView(d.x, d.y, 2))) continue;
         const id = 'tr-' + T.nn + '-' + i; want.add(id);
         adSprite(id, { x: x0, y: y0, z: my - 0.35, svg: _adtSegSvg(seg, x0, y0), hit: 0, update: adCacheStatic });
-        wdGlow('ad-' + id, `<ellipse cx="${((seg[seg.length - 1].x - x0) * W.cellW / 2).toFixed(1)}" cy="${((seg[seg.length - 1].y - y0) * W.cellH / 2 - 2).toFixed(1)}" rx="${(Math.abs(seg[seg.length - 1].x - x0) * W.cellW / 2 + 16).toFixed(1)}" ry="12" fill="#c8ff8a" opacity="0.12"/>`, x0, y0);
+        wdGlow('ad-' + id, (T.lk || (T.lk = []))[i] || (T.lk[i] = _adtSegLight(seg, x0, y0)), x0, y0);   // (each glow-worm's own light, worked out once a night)
       }
       if (adInView(T.g.x, T.g.y, 4)) {
         const id = 'tg-' + T.nn; want.add(id);

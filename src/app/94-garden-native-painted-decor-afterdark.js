@@ -121,7 +121,7 @@ GardenPaintedDecor.add('afterdark', (function () {
     /* a bandstand (for all four places at a band's pitch played at once): a raised stone floor with three steps, slender green iron
        columns, a white railing, a striped roof with a scalloped valance and a little lantern on top; bunting between the side columns
        and paper lanterns under the eaves that light at dusk. The floor 0.7 H up, 4.2 H to the finial. */
-    bandstand: { box: [-96, -222, 96, 8], glow: { w: 170, halo: -90, radius: 160 }, draw(B, o) {
+    bandstand: { box: [-96, -222, 96, 8], glow: { w: 170, halo: -114, radius: 160 }, draw(B, o) {
       const { r } = o, G = ['#3e6a52', '#2a4a38', '#5f9074', '#1c3326'], CR = ['#f4efe2', '#d6cdb8', '#ffffff', '#a89e86'];
       const FY = -36, EY = -146, at = (a, k, cy, rx, ry) => [Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k], f1 = (n) => n.toFixed(1);
       B.shadow(0, 2, 94, 13, .28);
