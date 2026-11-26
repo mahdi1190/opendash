@@ -21,7 +21,10 @@ import { ActionError, cleanLine, cleanText, isIsoDate, truncate, dateError } fro
 const obj = (properties, required = [], extra = {}) => ({ type: 'object', properties, required, additionalProperties: false, ...extra });
 const HM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const EVENT_ID_RE = /^[A-Za-z0-9_@.\-]{1,200}$/;
-const CAL_ID_RE = /^(primary|[A-Za-z0-9._%+#\-]{1,160}@[A-Za-z0-9.\-]{1,120}\.[A-Za-z]{2,24})$/;
+// The ids list_calendar hands out: 'primary', a Google calendar id (email-shaped), the old
+// snapshot's one 'google' row, and '<sourceId>/<key>' for iCal, Microsoft and direct Google
+// accounts (lib/calendar-sources.mjs: source ids are lower-case words and dashes).
+const CAL_ID_RE = /^(primary|google|[A-Za-z0-9._%+#\-]{1,160}@[A-Za-z0-9.\-]{1,120}\.[A-Za-z]{2,24}|[a-z0-9][a-z0-9-]{1,40}\/[A-Za-z0-9._%+#@=\-]{1,200})$/;
 const THREAD_RE = /^[A-Za-z0-9_\-]{1,120}$/;
 export const CALENDAR_COLORS = Object.freeze(['indigo', 'blue', 'teal', 'green', 'amber', 'orange', 'red', 'pink', 'violet', 'slate']);
 const S = {

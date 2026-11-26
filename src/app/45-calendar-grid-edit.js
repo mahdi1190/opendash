@@ -1071,6 +1071,12 @@ function _cgeNudge(el, act) {
   const ce = calGridCanEdit(ev);
   if (!ce.ok) { const r = el.getBoundingClientRect(); _cgeHint(r.left + r.width / 2, r.top + 4, ce.reason); return; }
   const month = !!el.closest('.month');
+  // A key that does nothing here (an all-day event has no time to move or stretch) must not
+  // start a key edit: it would leave the event dimmed, and a ghost bar after the next render.
+  const allDay = _cgeKey && _cgeKey.id === id ? _cgeKey.g.allDay : cglEventGeom(ev).allDay;
+  const moves = act === 'dayBefore' || act === 'dayAfter' || (month && (act === 'earlier' || act === 'later'))
+    || (!allDay && (act === 'earlier' || act === 'later' || act === 'shorter' || act === 'longer'));
+  if (!moves) return;
   let k = _cgeKey;
   if (k && k.id !== id) { _cgeKeyCommit(); k = null; }
   if (!k) {

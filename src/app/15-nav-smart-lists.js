@@ -66,7 +66,7 @@ function smartListDelete(id) {
   const sl = smartListById(id); if (!sl) return;
   state.smartLists = state.smartLists.filter(x => x && x.id !== id);
   if (typeof sbUnpin === 'function') sbUnpin('list:' + id, { noSave: true });
-  if (state.view === 'list:' + id) state.view = 'all';
+  if (state.view === 'list:' + id) { smartListModeLeave(state.view, 'all'); state.view = 'all'; }
   saveData(); render();
   toast(`Deleted “${sl.name}”`, { icon: 'trash-2', action: { label: 'Undo', run: () => undo() } });
 }
@@ -76,11 +76,30 @@ function smartListDuplicate(id) {
   render();
   openSmartListEditor(nid);
 }
+/* A smart list's own layout applies while you are on it; leaving it puts back the layout you had (DASH-14).
+   The layout (state.viewMode) is one setting for every list and follows you to your other computers, so
+   opening a Board list must not leave Today a board. {view, prev, set} of the list that switched it. */
+let _slModeKeep = null;
 function openSmartList(id) {
   const sl = smartListById(id); if (!sl) return;
   const v = 'list:' + id;
-  if (sl.mode && (sl.mode === 'list' || sl.mode === 'kanban') && state.viewMode !== sl.mode && state.view !== v) { state.viewMode = sl.mode; saveUI(); }
+  const want = sl.mode === 'list' || sl.mode === 'kanban' ? sl.mode : null;
+  if (want && state.view !== v) {
+    const k = _slModeKeep;
+    // From another list that switched the layout: what goes back is still the layout from before either.
+    const prev = k && state.view === k.view && state.viewMode === k.set ? k.prev : (state.viewMode || 'list');
+    _slModeKeep = null;
+    if (state.viewMode !== want) { state.viewMode = want; saveUI(); }
+    if (prev !== want) _slModeKeep = { view: v, prev, set: want };
+  }
   setView(v);
+}
+/** setView (15-nav-sidebar.js) on the way from one view to another: leaving the list that switched the layout puts it back, unless you changed it there. */
+function smartListModeLeave(from, to) {
+  const k = _slModeKeep;
+  if (!k || from !== k.view || to === k.view) return;
+  _slModeKeep = null;
+  if (state.viewMode === k.set) state.viewMode = k.prev;
 }
 function smartListCount(sl, open) {
   const today = todayStr();

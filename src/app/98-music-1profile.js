@@ -176,9 +176,17 @@ function musicProfileCard(changed) {
     if (!linked) body.appendChild(_settingsRow('Spotify', 'Link it to search music and show your top artists.', uiButton({ label: 'Set up Spotify', icon: 'arrow-right', kind: 'secondary', size: 'sm', run: () => spotifySetup() })));
   };
   paint();
-  document.addEventListener('opendash:spotify', () => { if (card.isConnected) paint(); });
+  _muProfileCur = { card, paint };   // the one listener below repaints this card (LEAK-4)
   return card;
 }
+// ONE listener for the Profile Music card, not one per Profile render: it repaints the card in the page now (LEAK-4).
+let _muProfileCur = null;
+document.addEventListener('opendash:spotify', () => {
+  const c = _muProfileCur;
+  if (!c) return;
+  if (!c.card.isConnected) { _muProfileCur = null; return; }
+  c.paint();
+});
 
 // profileExtend is a function declaration in 97-profile-1core.js, which has run by now (this file sorts after it)
 if (typeof profileExtend === 'function') {

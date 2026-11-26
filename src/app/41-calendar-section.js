@@ -274,7 +274,8 @@ function calFilterMenu(anchor) {
   const cals = calCalendars();
   openMenu(anchor, [
     ...(cals.length ? [{ heading: 'Calendars' }] : []),
-    ...cals.map(c => ({ label: c.name, icon: 'calendar', checked: () => !calPrefs().hidden[c.id === 'google' ? 'google' : 'cal:' + c.id], keepOpen: true, run: (e) => { calSetCalendarHidden(c.id, !c.hidden); c.hidden = !c.hidden; _calRefreshMenuChecks(e); } })),
+    // c.hidden (calCalendars) counts a calendar that starts off (defaultOn:false) with no choice saved yet.
+    ...cals.map(c => ({ label: c.name, icon: 'calendar', checked: () => !c.hidden, keepOpen: true, run: (e) => { calSetCalendarHidden(c.id, !c.hidden); c.hidden = !c.hidden; _calRefreshMenuChecks(e); } })),
     { heading: 'From Freeflo' },
     { label: 'Task due dates', icon: 'circle-check', checked: () => !calPrefs().hidden.tasks, keepOpen: true, run: (e) => { toggle('tasks')(); _calRefreshMenuChecks(e); } },
     { label: 'Planned time', icon: 'calendar-clock', checked: () => !calPrefs().hidden.plans, keepOpen: true, run: (e) => { toggle('plans')(); _calRefreshMenuChecks(e); } },   // planned slots (20-task-plan.js)
@@ -385,7 +386,11 @@ function calRail() {
   }
   rail.addEventListener('click', (e) => {
     const h = e.target.closest('.ag-dh[data-day]');
-    if (h) { const iso = h.dataset.day; _calSelectedDate = iso; state.calMonth = iso.slice(0, 7); calSetMode('day'); }
+    if (!h) return;
+    const iso = h.dataset.day;
+    // Already in Day view, calSetMode('day') does nothing: move to that day instead.
+    if (calMode() === 'day' && state.view === 'calendar:day') { calSetFocus(iso); return; }
+    _calSelectedDate = iso; state.calMonth = iso.slice(0, 7); calSetMode('day');
   });
   _calWireRows(rail, { onEvent: (id, el) => calOpenEvent(id, el), onTask: (id, el) => (typeof openTask === 'function' ? openTask(id, { from: el }) : selectTask(id)) });
   return rail;

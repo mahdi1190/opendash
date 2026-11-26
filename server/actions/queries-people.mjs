@@ -20,9 +20,10 @@ import { readMergedCalendar } from '../../lib/calendar-sources.mjs';
 import { calendarRules } from '../../lib/calendar-visibility.mjs';
 import { lastContactFromData } from '../../lib/people-contact.mjs';
 import {
-  pplBuildIndex, pplLinked, pplSuggest, pplOrphans, pplUnknownNames, pplIsWaiting, pplPersonEmails, pplKind, pplFold, pplLooksLikeMailbox,
+  pplBuildIndex, pplLinked, pplSuggest, pplOrphans, pplUnknownNames, pplPersonEmails, pplKind, pplFold, pplLooksLikeMailbox,
   tglUsage, tglRegistry, tglFlags, tglStreamKeys, tglSimilar,
 } from '../../lib/people-tags.mjs';
+import { personOwe } from '../../lib/waiting-rules.mjs';
 
 const obj = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
 
@@ -151,7 +152,7 @@ export const PEOPLE_QUERIES = [
   },
   {
     name: 'person.get', tool: 'get_person',
-    description: "One person: profile, notes, their open tasks split into 'owe' (things you owe them) and 'waiting' (things you are waiting on them for), how many are done, and lastContact {date, kind: meeting|email|note|task, daysAgo} (when the user was last in touch, or null).",
+    description: "One person: profile, notes, their open tasks split into 'owe' (things you owe them) and 'waiting' (things you are waiting on them for; a task waiting on someone else is in neither), how many are done, and lastContact {date, kind: meeting|email|note|task, daysAgo} (when the user was last in touch, or null).",
     schema: obj({ id: { type: 'string', minLength: 1, maxLength: 100, description: 'person id, name or alias' } }, ['id']),
     async run(q, p) {
       const s = q.s;
@@ -163,12 +164,14 @@ export const PEOPLE_QUERIES = [
       const idx = pplBuildIndex(s.people);
       const mine = live(s).filter(t => pplLinked(s, t, idx).includes(who.id));
       const open = mine.filter(t => statusOf(s, t.id) !== 'done').sort((a, b) => String(a.dueDate || '9999').localeCompare(String(b.dueDate || '9999')));
+      // The person card's split (rfPersonOwe): the waiting flags count too, and a task waiting on someone else is in neither list.
+      const split = personOwe(s, who.id, open, (t) => pplLinked(s, t, idx));
       return {
         person: personOut(who),
         ...(who.phone ? { phone: who.phone } : {}), ...(who.linkedin ? { linkedin: who.linkedin } : {}), ...(who.tz ? { tz: who.tz } : {}),
         notes: (Array.isArray(who.notes) ? who.notes : []).slice(0, 20).map(n => ({ date: isoInTz(new Date(n.ts || 0), q.clock.timezone), text: truncate(n.text, 600) })),
-        owe: open.filter(t => !pplIsWaiting(t)).map(t => mini(q, t)),
-        waiting: open.filter(t => pplIsWaiting(t)).map(t => mini(q, t)),
+        owe: split.owe.map(t => mini(q, t)),
+        waiting: split.theyOwe.map(t => mini(q, t)),
         doneCount: mine.length - open.length,
         // The shared last-contact rule (lib/people-contact.mjs = src/app/53-people-contact-logic.js).
         lastContact: (await lastContactFromData(q, { today: q.clock.today }).catch(() => new Map())).get(who.id) || null,

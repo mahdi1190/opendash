@@ -262,10 +262,26 @@ function calwApplyPatch(evIn, patch, opt) {
   return out;
 }
 
-/** Two quick edits to the same event become one: later fields win. */
+/**
+ * Two quick edits to the same event become one: later fields win. The guest lists are
+ * changes, so they add up as if the edits ran in turn: a later remove takes back an
+ * earlier add of the same address, and a later add takes back an earlier remove.
+ */
 function calwMergePatch(a, b) {
   const out = {};
-  [a, b].forEach(function (p) { if (p) Object.keys(p).forEach(function (k) { out[k] = p[k]; }); });
+  let add = [], drop = [], guests = false;
+  [a, b].forEach(function (p) {
+    if (!p) return;
+    Object.keys(p).forEach(function (k) { if (k !== 'addGuests' && k !== 'removeGuests') out[k] = p[k]; });
+    if (p.addGuests === undefined && p.removeGuests === undefined) return;
+    guests = true;
+    const rm = (Array.isArray(p.removeGuests) ? p.removeGuests : []).map(_calwLower).filter(function (e, i, all) { return e && all.indexOf(e) === i; });
+    const ad = calwGuestList(p.addGuests);
+    add = add.filter(function (g) { return rm.indexOf(g.email) < 0 && !ad.some(function (x) { return x.email === g.email; }); }).concat(ad);
+    drop = drop.filter(function (e) { return rm.indexOf(e) < 0 && !ad.some(function (x) { return x.email === e; }); }).concat(rm);
+  });
+  if (guests && add.length) out.addGuests = add;
+  if (guests && drop.length) out.removeGuests = drop;
   return out;
 }
 

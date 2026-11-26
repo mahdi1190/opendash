@@ -299,17 +299,33 @@ function gardenLiveBugClaim(b) {
   if (_gll.role === 'visit' && _glvLive()) {
     _glc.bpend.set(key, b);
     _glvSend('fx', { c: 'bug', e: 'claim', i: id });
-    setTimeout(() => { const p = _glc.bpend.get(key); if (p) { _glc.bpend.delete(key); _gwBugMissed(p); } }, 3000);   // (no answer: a clean miss, nothing given)
+    setTimeout(() => { const p = _glc.bpend.get(key); if (p) { _glc.bpend.delete(key); _glcBugMiss(p, false); } }, 3000);   // (no answer: a clean miss, nothing given)
     return 'wait';
   }
   return 'ok';
 }
+/* A room's bugs live in the room (keys rm<room><day>.<perch>), never in _gw.bugs: the host knows one by the room's perches for
+   the day, and a guest's verdict on one goes to the room's own take and miss, not the outdoor ones (they threw on a room bug). */
+function _glcRoomBug(key) {
+  if (!String(key).startsWith('rm') || typeof _grmNetToday !== 'function' || typeof GRM_ROOMS === 'undefined') return null;
+  for (const R of GRM_ROOMS) {
+    if (!R.perch || !R.kinds || !R.kinds.length || !String(key).startsWith('rm' + R.id)) continue;
+    const q = _grmNetToday(R).find(x => x.key === key && !x.gone); if (q) return { key, id: q.id, v: q.v, def: gardenBugDef(q.id) };
+  }
+  return null;
+}
+function _glcBugMiss(p, someone) {
+  if (!String(p.key).startsWith('rm')) { _gwBugMissed(p); return; }
+  p.state = 'flee'; p.fleeT = 2; p.needPick = true;
+  if (typeof _grmSay === 'function') _grmSay(someone ? 'Somebody else netted that one.' : 'It got away.', 2200);
+}
 function _glcBugClaim(ev) {
   if (_gll.role !== 'host') return;
   const A = _gll.actors.get(ev.w), key = String(ev.i).replace('-', '.'); if (!A) return;
-  const known = !!(_gw.bugs && _gw.bugs.has(key)) && !(_gw.goneKeys && _gw.goneKeys.has(key));
+  const room = _glcRoomBug(key);
+  const known = !!(room || _gw.bugs && _gw.bugs.has(key)) && !(_gw.goneKeys && _gw.goneKeys.has(key));
   if (!known) { _glhSend(A.f, 'fx', { c: 'bug', e: 'lost', i: String(ev.i), to: ev.w }); return; }
-  const bug = _gw.bugs.get(key);
+  const bug = room || _gw.bugs.get(key);
   _gllBugGone(key);
   _glhSend('all', 'fx', { c: 'bug', e: 'gone', i: String(ev.i), to: ev.w });
   if (typeof gardenContestBug === 'function') gardenContestBug(ev.w, bug);   // in a bug contest the host scores who it named
@@ -318,8 +334,8 @@ function _glcBugClaim(ev) {
 /** The host has said who got a bug. */
 function _glcBugVerdict(ev, e) {
   const key = String(ev.i).replace('-', '.'), p = _glc.bpend.get(key);
-  if (e === 'lost') { if (p && ev.to === _glv.w) { _glc.bpend.delete(key); _gwBugMissed(p); } return; }
-  if (p && ev.to === _glv.w) { _glc.bpend.delete(key); _gwBugTaken(p); return; }   // yours: the host said so
-  if (p) { _glc.bpend.delete(key); _gwBugMissed(p); }
+  if (e === 'lost') { if (p && ev.to === _glv.w) { _glc.bpend.delete(key); _glcBugMiss(p, true); } return; }
+  if (p && ev.to === _glv.w) { _glc.bpend.delete(key); if (String(key).startsWith('rm') && typeof _grbTake === 'function') _grbTake(p); else _gwBugTaken(p); return; }   // yours: the host said so
+  if (p) { _glc.bpend.delete(key); _glcBugMiss(p, true); }
   _gllBugGone(key);
 }
