@@ -48,7 +48,7 @@ function _gtqLooseStones() {
     const list = F.bandZ.get(z).filter(at => F.K[at] === 2), r = gardenRand(gardenHash('tide-loose|' + z)); let got = 0;
     for (let k = 0; k < 160 && got < 2 && list.length && out.length < 4; k++) {
       const at = list[Math.floor(r() * list.length)], tx = at % F.FW, ty = (at - tx) / F.FW, x = (tx + .5) * F.P / W.cellW, y = ((ty + .5) * F.P - W.sky) / W.cellH, h = gardenTideH(x, y);
-      if (!(h > 6 && h < 40) || !gardenTideOpenSand(x, y, true) || out.some(q => Math.hypot(q.x - x, q.y - y) < 1.6)) continue;
+      if (!(h > 6 && h < 40) || !gardenTideOpenSand(x, y) || _gtdCrowded(x, y + .35) || out.some(q => Math.hypot(q.x - x, q.y - y) < 1.6)) continue;   // (a stone is small: it needs open sand and room to stand in front of it)
       out.push({ k: 48 + out.length, pool: { id: 'tl' + z + '-' + got, x: x + .45, y: y + .5, zone: z, n: -1 }, x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100, ph: r() }); got++;
     }
   }
