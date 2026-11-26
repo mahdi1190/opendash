@@ -1311,7 +1311,9 @@ window.GardenNativeWorld = (function () {
       if (packGround && window.GardenNativePainted && GardenNativePainted.compose) {
         const items = []; for (const record of drawings.values()) { const meta = record.metadata, foot = meta.foot || record.handle.foot, b = record.bounds; if (!record.handle.painted || !foot || !b || meta.kind === 'decor' || meta.kind === 'ground') continue; items.push({ id: record.id, x: foot.x, y: foot.y, w: Math.min(220, b.width * .8), h: b.height, fw: (Number(meta.prop && meta.prop.w) || Number(meta.model && meta.model.w) || 0) * W.cellW, door: !!(meta.prop && meta.prop.door), shaded: !!record.handle.shaded }); }
         try { GardenNativePainted.compose(scene, items); } catch (e) { GardenNativePainted.lastError = String(e && e.stack || e); }
-        if (typeof window !== 'undefined') window.__gardenPaintedScene = scene;
+        // (speed pass) a handle for probes, let go when the scene ends: kept on the page, it held the whole dead garden (about 80 MB)
+        // on every dashboard page after you left it
+        if (typeof window !== 'undefined' && window.__gardenPaintedScene !== scene) { window.__gardenPaintedScene = scene; try { scene.events.once('destroy', () => { if (window.__gardenPaintedScene === scene) window.__gardenPaintedScene = null; }); } catch (e) { /* no events: kept as before */ } }
       }
       restoreCanopyAlpha();
       solidObjects.length = 0; pointLights.length = 0; fadingProps.length = 0; reflectedScenery.length = 0; landmarkRows.length = 0; canopyOccluders.length = 0; effectFrame = -1;
