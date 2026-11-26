@@ -47,7 +47,7 @@ function _gtbFindIndex(id) { const i = GARDEN_SHORE_FINDS.findIndex(f => f.id ==
 /** Three spots on open sand, low on the shore (under the water at high tide: the bottle bobs there), nearest the arrival point. */
 function gardenTideBottleSpots() {
   const F = typeof GardenTide !== 'undefined' ? GardenTide.field() : null; if (!F || !F.band.length) return null;
-  const key = F.rev + '|' + F.band.length; if (_gtb.spotsKey === key) return _gtb.spots;
+  const pools = typeof gardenTideOnPool === 'function' ? gardenTidePools().length : 0, key = F.rev + '|' + F.band.length + '|' + pools; if (_gtb.spotsKey === key) return _gtb.spots;   // (once the rock pools are drawn, the bottles keep off them)
   const W = GARDEN_WORLD, D = gardenIslandData(), st = (D.anchors && D.anchors.start) || { x: W.cols / 2, y: W.rows / 2 }, cand = [];
   for (let k = 0; k < F.band.length; k += 3) {
     const at = F.band[k], tx = at % F.FW, ty = (at - tx) / F.FW, x = (tx + .5) * F.P / W.cellW, y = ((ty + .5) * F.P - W.sky) / W.cellH, h = gardenTideH(x, y);
@@ -57,7 +57,7 @@ function gardenTideBottleSpots() {
   }
   cand.sort((a, b) => a.d - b.d);
   const out = [];
-  for (const c of cand) { if (out.length >= 3) break; if (out.some(q => Math.hypot(q[0] - c.x, q[1] - c.y) < 3.5) || !gardenTideOpenSand(c.x, c.y)) continue; out.push([Math.round(c.x * 10) / 10, Math.round(c.y * 10) / 10]); }
+  for (const c of cand) { if (out.length >= 3) break; if (out.some(q => Math.hypot(q[0] - c.x, q[1] - c.y) < 3.5) || !gardenTideOpenSand(c.x, c.y) || pools && gardenTideOnPool(c.x, c.y, 12)) continue; out.push([Math.round(c.x * 10) / 10, Math.round(c.y * 10) / 10]); }
   _gtb.spots = out.length ? out : null; _gtb.spotsKey = key;
   return _gtb.spots;
 }

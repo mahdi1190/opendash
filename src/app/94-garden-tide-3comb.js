@@ -56,7 +56,8 @@ function _gtcOpenZone(z) { try { const m = gardenHere(); return !z || (m.areas |
 function gardenTideGlintsShown() {
   const T = gardenTideNow(), list = gardenTideGlints(); if (!list.length) return [];
   const taken = _gtcTakenSet(T.w), out = []; let areas = []; try { areas = gardenHere().areas || []; } catch (e) { areas = []; }
-  for (const g of list) if (!taken.has(g.i) && g.h > T.line + 2 && (!g.zone || areas.includes('zn-' + g.zone))) out.push(g);
+  const pools = typeof gardenTideOnPool === 'function' && gardenTidePools().length > 0;   // (a find never lies on a rock pool's shelf: 94-garden-tide-2rocks.js)
+  for (const g of list) if (!taken.has(g.i) && g.h > T.line + 2 && (!g.zone || areas.includes('zn-' + g.zone)) && !(pools && gardenTideOnPool(g.x, g.y, 8))) out.push(g);
   return out;
 }
 

@@ -47,7 +47,7 @@ function _gtsStormHere(w) { return gardenTideStormBefore(w); }
 /** Where the storm's chest and bottle lie: on open sand in the low band, from the strand's number and the storm's day. */
 function gardenTideChest(w) {
   const s = _gtsStormHere(w); if (s < 0 || !GardenTide.ready()) return null;
-  const F = GardenTide.field(), seed = gardenTideSeed(), key = seed + '|' + s + '|' + F.rev;
+  const pools = typeof gardenTideOnPool === 'function' ? gardenTidePools().length : 0, F = GardenTide.field(), seed = gardenTideSeed(), key = seed + '|' + s + '|' + F.rev + '|' + pools;   // (once the vale has drawn its rock pools, the chest keeps off them)
   if (_gts.chestKey === key) return _gts.chest;
   const W = GARDEN_WORLD, r = gardenRand(gardenHash('tide-chest|' + key)), zones = [...F.bandZ.keys()].filter(z => _gtcOpenZone(z)).sort((a, b) => a - b);
   let chest = null, bottle = null;
@@ -55,7 +55,7 @@ function gardenTideChest(w) {
     const list = F.bandZ.get(z) || [];
     for (let k = 0; k < 80 && list.length; k++) {
       const at = list[Math.floor(r() * list.length)], tx = at % F.FW, ty = (at - tx) / F.FW, x = (tx + .5) * F.P / W.cellW, y = ((ty + .5) * F.P - W.sky) / W.cellH, h = GardenTide.h(x, y);
-      if (!(h > 12 && h < 34) || F.K[at] !== 1 || !gardenTideOpenSand(x, y, true)) continue;   // (on open sand with room to stand and haul, never on a wall's face)
+      if (!(h > 12 && h < 34) || F.K[at] !== 1 || !gardenTideOpenSand(x, y, true) || pools && gardenTideOnPool(x, y, 16)) continue;   // (on open sand with room to stand and haul, never on a wall's face or a rock pool's shelf)
       if (!chest) { chest = { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100, h, day: s, n: s % 1000 }; continue; }
       if (!bottle && Math.hypot(chest.x - x, chest.y - y) > 3) { bottle = { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100, h, day: s }; break; }
     }

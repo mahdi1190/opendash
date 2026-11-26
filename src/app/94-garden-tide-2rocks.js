@@ -10,10 +10,21 @@
    few pebbles on its floor. The stones that wobble at low water are live sprites (94-garden-tide-4pools.js).
    ============================================================ */
 const _gtp = { key: '', list: [], drawn: null, drawnKey: '' };
+// where a pool may lie: a flood height (px above low water) from [0] to [1], as near [2] as its cell allows, so every usual high water
+// covers it and every low water leaves it full; the points of a rocky cell tried for it
+const GT_POOL_BAND = Object.freeze([10, GARDEN_TIDE.reach.usual - 10, 22]);
+const GT_POOL_AT = Object.freeze([[.5, .5], [.25, .25], [.75, .25], [.25, .75], [.75, .75]]);
 const GT_ROCK = Object.freeze({ rockDk: '#5e584c', rockLo: '#857c6a', rock: '#a49b88', rockHi: '#cbc4b0', lichen: '#b8b46a', wet: '#6a6458', weed: ['#4f6a34', '#6a7e3e', '#8a8a4a'], pool: '#5f9296', poolDk: '#3e6e76', sky: '#d6ecea', anem: '#c8484a', anemHi: '#f08a7a', star: '#e0885a', barn: '#ece6d6' });
 /** The pools as drawn: the rule's places (gardenTidePoolPlaces) less any the vale had already stood something on when it was
  *  painted (a drying net, a boat on the sand, a boulder). Empty until the vale has painted, so nothing is offered that is not drawn. */
 function gardenTidePools() { return _gtp.drawn && _gtp.drawnKey === _gtp.key ? _gtp.drawn : []; }
+/** Does (x, y) (cells) lie on a drawn pool's shelf of rock, or within pad px of it? Glints and the storm's chest keep off them. */
+function gardenTideOnPool(x, y, pad) {
+  const P = gardenTidePools(); if (!P.length) return false;
+  const W = GARDEN_WORLD, e = pad || 0;
+  for (const p of P) { const dx = (x - p.x) * W.cellW, dy = (y - p.y) * W.cellH - p.rx * .06, ax = p.rx * 1.75 + e, ay = p.rx * .85 + e; if (dx * dx / (ax * ax) + dy * dy / (ay * ay) < 1) return true; }   // (the shelf: rx 1.72 across, 0.81 down, a little below the pool's middle)
+  return false;
+}
 /** Where the pools may go: rocky tidal cells in the lower half of the beach, clear of paths and standing things, a few cells apart.
  *  clear(p): a further test (the vale's own things); a place it refuses leaves room for its neighbour. */
 function gardenTidePoolPlaces(clear) {
@@ -29,9 +40,10 @@ function gardenTidePoolPlaces(clear) {
   return out;
 }
 function _gtpPlace(c, n) {
-  const r = gardenRand(c.h), x = c.x + .5 + (r() - .5) * .36, y = c.y + .5 + (r() - .5) * .24;
+  const r = gardenRand(c.h), fx = Number.isFinite(c.fx) ? c.fx : .5, fy = Number.isFinite(c.fy) ? c.fy : .5, x = c.x + fx + (r() - .5) * .2, y = c.y + fy + (r() - .5) * .14;   // (at the point of the cell the rule chose, low on the shore)
   // the way to the sea from here (a few coast distances round it): the shelf leans that way, the weed is on that side
-  const e = .4, gx = gardenIslandCoastDistance(x + e, y) - gardenIslandCoastDistance(x - e, y), gy = gardenIslandCoastDistance(x, y + e) - gardenIslandCoastDistance(x, y - e), gl = Math.hypot(gx, gy) || 1;
+  // (in world px: a cell is wider than it is tall, so the coast distance's rise per cell is divided by the cell's size each way)
+  const e = .4, W = GARDEN_WORLD, gx = (gardenIslandCoastDistance(x + e, y) - gardenIslandCoastDistance(x - e, y)) / W.cellW, gy = (gardenIslandCoastDistance(x, y + e) - gardenIslandCoastDistance(x, y - e)) / W.cellH, gl = Math.hypot(gx, gy) || 1;
   return Object.freeze({ id: 'tp' + c.x + '-' + c.y, n, x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100, rx: 19 + r() * 8, seed: c.h, zone: c.zone, d: c.d, sx: -gx / gl, sy: -gy / gl, stones: 1 + (c.h % 3 === 0 ? 1 : 0) });
 }
 function _gtpCands(S) {
@@ -41,8 +53,13 @@ function _gtpCands(S) {
     const b = gardenIslandBaseCell(c.x, c.y); if (!b || b.route || b.staticId || b.reserved || b.solid) continue;
     if (statics.some(s => c.x + .5 > s.x - .9 && c.x + .5 < s.x + (s.w || 1) + .9 && c.y + .5 > s.y - .7 && c.y + .5 < s.y + (s.h || 1) + .7)) continue;
     let near = false; for (const [dx, dy] of [[1, 0], [-1, 0]]) { const q = gardenIslandBaseCell(c.x + dx, c.y + dy); if (q && q.staticId) near = true; } if (near) continue;
-    const d = Math.max(gardenIslandCoastDistance(c.x + .5, c.y + .5), gardenTideRaiseAt(c.x + .5, c.y + .5)); if (d < 8 || d > 80) continue;   // (low enough on the shore that the sea fills it: the lower ones go under at high water, the upper ones only at a big tide or in a storm)
-    cands.push({ x: c.x, y: c.y, d, zone: c.zone, h: gardenHash('tide-pool|' + c.x + ',' + c.y) });
+    // low on the shore, where every usual high water covers it: the cell's middle, or the one of its quarters nearest the middle of that
+    // band (a rocky cell often straddles it). A pool the sea never reaches is not a rock pool: one sat in the grass above the tide line.
+    let at = null; const d0 = Math.max(gardenIslandCoastDistance(c.x + .5, c.y + .5), gardenTideRaiseAt(c.x + .5, c.y + .5));
+    if (d0 < GT_POOL_BAND[0] - 18 || d0 > GT_POOL_BAND[1] + 18) continue;   // (no quarter of it can be in the band: not worked out)
+    for (const [fx, fy] of GT_POOL_AT) { const d = fx === .5 && fy === .5 ? d0 : Math.max(gardenIslandCoastDistance(c.x + fx, c.y + fy), gardenTideRaiseAt(c.x + fx, c.y + fy)); if (d >= GT_POOL_BAND[0] && d <= GT_POOL_BAND[1] && (!at || Math.abs(d - GT_POOL_BAND[2]) < Math.abs(at.d - GT_POOL_BAND[2]))) at = { fx, fy, d }; }
+    if (!at) continue;
+    cands.push({ x: c.x, y: c.y, fx: at.fx, fy: at.fy, d: at.d, zone: c.zone, h: gardenHash('tide-pool|' + c.x + ',' + c.y) });
   }
   return cands.sort((a, b) => a.h - b.h);
 }
@@ -91,7 +108,7 @@ if (window.GardenPaintVale) GardenPaintVale.parts.push({ id: 'tide-rocks', compo
   const W = C.W, kit = C.kit, stood = typeof C.things === 'function' ? C.things() : [];
   // (nothing overlaps: a pool and its shelf keep a stride clear of every thing the vale's other parts have stood up)
   const clear = (p) => { const cx = p.x * W.cellW, cy = W.sky + p.y * W.cellH, rx = p.rx * 2.1 + 10, ry = p.rx * 1.25 + 8; for (const o of stood) { if (!o || !Number.isFinite(o.x) || !Number.isFinite(o.y) || o.depth != null && o.depth < -1000) continue;   /* (a flat piece of ground, the cove's shingle, is not a thing standing there) */ const b = Array.isArray(o.box) ? o.box : [-24, -40, 24, 6]; if (o.x + b[2] > cx - rx && o.x + b[0] < cx + rx && o.y + Math.max(b[3], 4) > cy - ry && o.y + Math.min(b[1], -6) * .35 < cy + ry) return false; } return true; };
-  const offPath = (p) => { for (let k = 0; k <= 24; k++) { const a = k / 12 * Math.PI * 2, ring = k < 12 ? 1.9 : 1.1, x = k === 24 ? p.x : p.x + Math.cos(a) * p.rx * ring / W.cellW, y = k === 24 ? p.y : p.y + Math.sin(a) * p.rx * ring * .5 / W.cellH + .1, c = gardenIslandBaseCell(x, y); if (!c || c.route || c.staticId || c.solid || c.reservation === 'apron') return false; } return true; };   // (the shelf never lies on a path, a building's footing or doorway, or a solid wall or rock: two rings of points, so a narrow wall is not missed)
+  const offPath = (p) => { for (let k = 0; k <= 24; k++) { const a = k / 12 * Math.PI * 2, ring = k < 12 ? 1.9 : 1.1, x = k === 24 ? p.x : p.x + Math.cos(a) * p.rx * ring / W.cellW, y = k === 24 ? p.y : p.y + Math.sin(a) * p.rx * ring * .5 / W.cellH + .1, c = gardenIslandBaseCell(x, y); if (!c || c.route || c.staticId || c.solid || c.freshwater || c.reservation === 'apron') return false; if (c.land && Math.max(gardenIslandCoastDistance(x, y), gardenTideRaiseAt(x, y)) > GARDEN_TIDE.reach.big + 10) return false; } return true; };   // (and below the strand line: the shelf lies on the beach, never up on the grass behind it)   // (the shelf never lies on a path, a building's footing or doorway, or a solid wall or rock: two rings of points, so a narrow wall is not missed)
   const pools = gardenTidePoolPlaces((p) => offPath(p) && clear(p));
   _gtp.drawn = pools; _gtp.drawnKey = _gtp.key;
   if (!pools.length) return;

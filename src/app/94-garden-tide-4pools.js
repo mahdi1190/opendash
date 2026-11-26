@@ -124,6 +124,7 @@ function _gtqQuick(st, id) {
   const motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(), ms = motion ? 1500 : 2600, Q = _gtq.quick = { el, st, id, done: false };
   Q.critter = _gtqCritter(st, id, ms, motion);
   const win = (ev) => { if (Q.done) return; if (ev && ev.type === 'keydown' && !(ev.key === 'e' || ev.key === 'E' || ev.key === ' ')) return; if (ev) { ev.preventDefault(); ev.stopPropagation(); } Q.done = true; Q.caught = true; _gtqQuickEnd(); _gtqCatch(st, id); };
+  Q.win = win;   // (E and Space reach it through the garden's own keys: gartActInteract, below)
   el.addEventListener('click', win); el.addEventListener('pointerdown', (ev) => ev.stopPropagation());
   document.addEventListener('keydown', win, true);
   Q.off = () => document.removeEventListener('keydown', win, true);
@@ -215,5 +216,11 @@ const GardenTideStoneSprites = {
 if (window.GardenPaintTide) GardenPaintTide.parts.push(GardenTideStoneSprites);
 GT_ROW_SOURCES.push((px, py, T) => gardenTidePoolRows(px, py, T));
 GT_RUN.pool = GT_RUN.stone = (spot) => gardenTidePoolRun(spot);
+// E or Space while "Quick, scoop it up!" shows: the garden takes those keys first and stops them (94-garden-world-0walk.js, through
+// gardenWorldInteract), so a listener of the scoop's own never heard them and only a click caught anything. The scoop is taken here.
+if (typeof gartActInteract === 'function') {
+  const _gtqE0 = gartActInteract;
+  gartActInteract = function () { const Q = _gtq.quick; if (Q && !Q.done && typeof Q.win === 'function') { Q.win(); return true; } return _gtqE0.apply(this, arguments); };   // eslint-disable-line no-func-assign
+}
 /** A friend lifted a stone: yours tips on your screen for a moment and settles back (you can still lift your own). */
 function gardenTideStoneSeen(k) { if (!_gtq.peek.has(k)) _gtq.peek.set(k, { t: performance.now(), lift: false, w: gardenTideNow().w }); }

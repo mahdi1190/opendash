@@ -25,26 +25,29 @@ const _gtcr = { R: null, tracks: new Map(), el: null, tok: 0, heard: null };
 function gardenTideRaceTrack(p, T) {
   const key = p.id + '|' + (T.level < .2 ? 0 : 1), was = _gtcr.tracks.get(key); if (was !== undefined) return was;
   const W = GARDEN_WORLD, P = { x: p.x * W.cellW, y: W.sky + p.y * W.cellH };
-  let sx = (Number.isFinite(p.sx) ? p.sx : 0) * W.cellW, sy = (Number.isFinite(p.sy) ? p.sy : 1) * W.cellH; const sl = Math.hypot(sx, sy) || 1; sx /= sl; sy /= sl;   // (towards the sea)
+  let sx = Number.isFinite(p.sx) ? p.sx : 0, sy = Number.isFinite(p.sy) ? p.sy : 1; const sl = Math.hypot(sx, sy) || 1; sx /= sl; sy /= sl;   // (towards the sea, in world px already: 94-garden-tide-2rocks.js)
   let ax = -sy, ay = sx; if (ax < 0 || (Math.abs(ax) < .2 && ay < 0)) { ax = -ax; ay = -ay; }   // (along the shore, left to right on the screen)
   const L = GT_RACE.lenPx, LW = GT_RACE.laneW * 4, clearR = (p.rx || 22) * 1.9 + 8;
   const cell = (x, y) => ({ x: x / W.cellW, y: (y - W.sky) / W.cellH });
-  // (a sample on a path, a standing thing, the pool's rock or the sea never; up to two on the grass at the top of the beach)
-  const open = (x, y) => { const q = cell(x, y), c = gardenIslandBaseCell(q.x, q.y); if (!c || !c.land || c.freshwater) return 2; const h = gardenTideH(q.x, q.y); if (Number.isFinite(h) && h < T.line + 3) return 2; if (_gtdCrowded(q.x, q.y) || Math.hypot(x - P.x, (y - P.y) * 1.6) < clearR) return 2; return Number.isFinite(h) || c.beach ? 0 : 1; };
+  // (a sample on a path, a standing thing, the pool's rock or the sea never; at most one on the grass at the top of the beach)
+  const open = (x, y) => { const q = cell(x, y), c = gardenIslandBaseCell(q.x, q.y); if (!c || !c.land || c.freshwater) return 2; const h = gardenTideH(q.x, q.y); if (Number.isFinite(h) && h < T.line + 3) return 2; if (_gtdCrowded(q.x, q.y) || Math.hypot(x - P.x, (y - P.y) * 1.6) < clearR) return 2; return Number.isFinite(h) && h <= GARDEN_TIDE.reach.big + 4 ? 0 : 1; };   // (above the strand line is the grass or heather at the top of the beach, even on a beach cell: the lanes are scratched in sand)
   let out = null;
   // straight across the screen if there is room (the lanes one under another: the easiest race to follow), else along the shore
   for (const [ux, uy] of [[1, 0], [ax, ay]]) {
   const vx = -uy, vy = ux;
   for (const along of [clearR + 6, -clearR - 6 - L, -L / 2, -L / 2 + 40, -L / 2 - 40]) {
-    for (const across of [-LW - 24, 20, -LW - 40, 34, -LW / 2 - 52, 52, -LW - 64, 66, -LW / 2 - 80, 80]) {
+    for (const across of [-LW / 2 + 12, -LW / 2, -LW / 2 - 12, -LW - 24, 20, -LW - 40, 34, -LW / 2 - 52, 52, -LW - 64, 66, -LW / 2 - 80, 80]) {   // (first at the pool's own height on the beach, beyond it: a narrow strand has room only there)
       const ox = P.x + ux * along + vx * across, oy = P.y + uy * along + vy * across;
-      let bad = 0, worse = false; for (let i = 0; i <= 6 && !worse && bad <= 2; i++) for (const f of [.15, .85]) { const r = open(ox + ux * L * i / 6 + vx * LW * f, oy + uy * L * i / 6 + vy * LW * f); if (r === 2) { worse = true; break; } bad += r; }
-      if (worse || bad > 2) continue;
+      let bad = 0, worse = false; for (let i = 0; i <= 6 && !worse && bad <= 1; i++) for (const f of [.15, .85]) { const r = open(ox + ux * L * i / 6 + vx * LW * f, oy + uy * L * i / 6 + vy * LW * f); if (r === 2) { worse = true; break; } bad += r; }
+      if (worse || bad > 1) continue;   // (one end may just touch the top of the beach, never a lane's length of it)
       try { let hit = false; for (const st of gardenTideStones()) { const d = (st.x * W.cellW - ox) * ux + (W.sky + st.y * W.cellH - oy) * uy, e = (st.x * W.cellW - ox) * vx + (W.sky + st.y * W.cellH - oy) * vy; if (d > -14 && d < L + 14 && e > -10 && e < LW + 10) hit = true; } if (hit) continue; } catch (e) { /* no stones */ }
-      // where to stand: beside the middle of the track, on the side that is clear (the drier, if both), facing it
+      // where to stand: beside the middle of the track, on the side that is clear (the drier, if both), facing it; closer in when a narrow
+      // strand has the fence at the top of the beach on one side and the sea on the other; else at either end of the track
       const mx = ox + ux * L / 2 + vx * LW / 2, my = oy + uy * L / 2 + vy * LW / 2;
       let stand = null, best = -Infinity;
-      for (const sg of [-1, 1]) { const d = LW / 2 + 20, x = mx + vx * d * sg, y = my + vy * d * sg, q = cell(x, y); if (typeof _gwFree === 'function' && !_gwFree(q.x, q.y)) continue; const h = gardenTideH(q.x, q.y), score = Number.isFinite(h) ? h : 200; if (score > best) { best = score; stand = { x: Math.round(q.x * 100) / 100, y: Math.round(q.y * 100) / 100 }; } }
+      const standAt = (x, y) => { const q = cell(x, y); if (typeof _gwFree === 'function' && !_gwFree(q.x, q.y)) return; const h = gardenTideH(q.x, q.y), score = Number.isFinite(h) ? h : 200; if (score > best) { best = score; stand = { x: Math.round(q.x * 100) / 100, y: Math.round(q.y * 100) / 100 }; } };
+      for (const gap of [20, 8]) { if (!stand) for (const sg of [-1, 1]) standAt(mx + vx * (LW / 2 + gap) * sg, my + vy * (LW / 2 + gap) * sg); }
+      if (!stand) for (const e of [-1, 1]) standAt(mx + ux * (L / 2 + 22) * e, my + uy * (L / 2 + 22) * e);
       if (!stand) continue;
       const S = { x: stand.x * W.cellW, y: W.sky + stand.y * W.cellH };
       out = Object.freeze({ ox, oy, ux, uy, vx, vy, L, LW, angle: Math.atan2(uy, ux), stand, deg: Math.round(Math.atan2(my - S.y, mx - S.x) * 180 / Math.PI), pool: p.id, mid: cell(mx, my) });
