@@ -110,6 +110,15 @@ export function send(res, code, body, type = 'text/plain; charset=utf-8', header
   });
   if (body && typeof body.pipe === 'function') {
     body.once('error', () => res.destroy());
+    // A client that goes away early (a song skipped or sought, the garden left, a tab closed) must not keep the body
+    // open: pipe() only pauses it, and a file stream would hold its file handle for the life of the server. A body
+    // others read too (the page shell's shared gzip) is only let go of, and keeps going for them.
+    res.once('close', () => {
+      if (res.writableFinished) return;
+      body.unpipe(res);
+      if (body.listenerCount('data') > 0) body.resume();
+      else if (typeof body.destroy === 'function' && !body.destroyed) body.destroy();
+    });
     body.pipe(res);
   } else res.end(body);
 }
