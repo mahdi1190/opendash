@@ -212,7 +212,14 @@ function tcDraftFrom(prefill, view, defaults) {
     people: uniq([...(d.people || []), ...(p.people || [])]),
     newPeople: [],
     recurrence: p.recurrence || 'none',
-    estimate: Number(p.minutes || p.estimate) || null,
+    estimate: Number(p.minutes || p.estimate) || Number(d.estimate) || null,
+    // The rest of the list's defaults (the Inbox, Do now, a smart list's @context / energy / planned day), so the
+    // new task shows in the list it was made from, as with the inline quick add (DASH-04).
+    contexts: uniq([...(d.contexts || []), ...(p.contexts || [])]),
+    energy: p.energy === 'low' || p.energy === 'high' ? p.energy : (d.energy === 'low' || d.energy === 'high' ? d.energy : null),
+    inbox: !!(p.inbox || d.inbox),
+    plannedFor: p.plannedFor || d.plannedFor || null,
+    status: p.status || d.status || null,
     eventId: p.eventId || null,
     onCreated: typeof p.onCreated === 'function' ? p.onCreated : null,
     // Words in a prefilled title the parser must leave as text (an email subject: "Lunch on Friday").
@@ -1120,6 +1127,7 @@ function _tcCreateSave(close) {
     const nid = addCustomTask(r.title, r.dueDate, r.priority, r.tags, r.stream, r.recurrence, {
       dueTime: r.dueTime, estimate: r.estimate, people: r.people, newPeople: r.newPeople, detail: r.detail,
       contexts: r.contexts, energy: r.energy, peopleExcluded: r.peopleExcluded,
+      inbox: !!d.inbox, plannedFor: d.plannedFor || undefined, status: d.status || undefined,   // the list's defaults (DASH-04)
       // A suggestion's checklist (travel spec 5.6 request 5).
       ...(Array.isArray(d.subtasks) && d.subtasks.some(s => String(s).trim()) ? { subtasks: d.subtasks.map(s => String(s).trim()).filter(Boolean) } : {}),
     });
