@@ -41,6 +41,7 @@ function _gcrHowLine(r) {
   if (L.visitor) { const v = gardenVisitor(L.visitor); return { ic: 'bird', text: (v ? v.name : 'A visitor') + ' might bring it' }; }
   if (L.season) return { ic: 'leaf', text: 'A find, in ' + L.season };
   if (L.bottle) return { ic: 'waves', text: 'Washes up on the shore' };
+  if (L.shore) { const d = typeof gardenTideFindDef === 'function' ? gardenTideFindDef(L.shore) : null; return { ic: 'waves', text: 'Find ' + (d ? d.name.toLowerCase() : 'it') + ' on the shore at low water' }; }   // (94-garden-tide-3comb.js)
   if (L.fact) { const words = { harvests: 'Pick {n} times', bouquets: 'Make {n} bouquets', netted: 'Net {n} bugs', planted: 'Plant {n} seeds', fished: 'Catch {n} fish', bugSpecies: 'Find {n} kinds of bug', plantsFound: 'Discover {n} plants', nightVisitors: 'Spot a night visitor', heartsReceived: 'A friend’s visit', clover: 'Find a four-leaf clover' }[L.fact[0]] || 'Keep gardening'; return { ic: 'target', text: words.replace('{n}', L.fact[1]) }; }
   return { ic: 'book-open', text: 'Keep gardening' };
 }

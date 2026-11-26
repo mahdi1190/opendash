@@ -76,7 +76,7 @@ function _gtdIso(localMin) { const d = new Date(Math.floor(localMin / 1440) * 86
 /** The tide at a moment. o: {now, tz} (a friend's garden: their offset). Cached for a second. */
 function gardenTideNow(o) {
   o = o || {};
-  const now = Number.isFinite(o.now) ? o.now : _gtdNowMs(), tz = Number.isFinite(o.tz) ? o.tz : _gtdTz();
+  const now = Number.isFinite(o.now) ? o.now : _gtdNowMs(), tz = Number.isFinite(o.tz) ? o.tz : o.own ? undefined : _gtdTz();
   const key = Math.floor(now / 1000) + '|' + (Number.isFinite(tz) ? tz : 'own');
   if (_gtd.now && _gtd.nowKey === key && !o.now) return _gtd.now;
   const lm = gardenTideLocalMin(now, tz), iso = _gtdIso(lm), moon = gardenTideMoon(iso), reach = GARDEN_TIDE.reach[moon.kind] || GARDEN_TIDE.reach.usual;
@@ -403,6 +403,7 @@ const GARDEN_SHORE_FINDS = Object.freeze([
   _gsf('glass-float', 'Glass float', 'storm', 'u', 'sr', { s: 'float', c: '#7ac4b4', c2: '#3a8a7a' }, 'A green glass ball from an old fishing net.', { storm: 1 }),
   _gsf('rope-tangle', 'Tangle of rope', 'storm', 'c', 'sre', { s: 'rope', c: '#c8a870', c2: '#8a6a40' }, 'Good rope, only tangled. It counts as timber.', { storm: 1 }),
   _gsf('storm-chest', 'Sea chest', 'storm', 'r', 'sre', { s: 'chest', c: '#8a6038', c2: '#4a3018' }, 'An old sea chest, brought in by the storm.', { storm: 1, chest: 1 }),
+  _gsf('bottle-note', 'Message in a bottle', 'storm', 'u', 'sre', { s: 'bottle', c: '#9cc8b8', c2: '#f4ecd8' }, 'A villager’s note, rolled up tight inside.', { storm: 1, chest: 1 }),
 ]);
 const _GSF_BY = new Map(GARDEN_SHORE_FINDS.map(f => [f.id, f]));
 function gardenTideFindDef(id) { return _GSF_BY.get(String(id || '').replace(/^sh:/, '')) || null; }
@@ -456,6 +457,7 @@ function gardenTideFindArt(d) {
     case 'shipbottle': return sh + `<path d="M-11 -4Q-11 -7 -6 -7L6 -7Q9 -7 10 -4L12 -3V3L10 4Q9 7 6 7L-6 7Q-11 7 -11 4Z" fill="${c}" opacity="0.55" stroke="#5a8a7a" stroke-width="0.8"/><path d="M12 -2h3v4h-3z" fill="#9a7a4a"/><path d="M-6 3Q0 5 6 3L5 5H-5Z" fill="${c2}"/><path d="M-1 3V-5M-1 -5L4 1H-1M-1 -4L-5 1H-1" stroke="#f4f0e4" stroke-width="0.8" fill="#f4f0e4"/><path d="M-8 -5Q-2 -6 4 -6" stroke="#fff" stroke-width="1" opacity="0.6" fill="none"/>`;
     case 'float': return sh + `<circle cx="0" cy="-1" r="9" fill="${c}" opacity="0.88" stroke="${c2}" stroke-width="0.8"/><path d="M-9 -1H9M0 -10V8" stroke="#8a6a40" stroke-width="1" opacity="0.8"/><path d="M-5 -6Q-2 -9 2 -8" stroke="#fff" stroke-width="1.6" opacity="0.6" fill="none"/>`;
     case 'rope': return sh + `<path d="M-10 2Q-12 -6 -4 -6Q4 -7 2 0Q0 6 8 4Q13 2 10 -4Q8 -8 2 -8" stroke="${c2}" stroke-width="3.4" fill="none" stroke-linecap="round"/><path d="M-10 2Q-12 -6 -4 -6Q4 -7 2 0Q0 6 8 4Q13 2 10 -4Q8 -8 2 -8" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round" stroke-dasharray="2 1"/>`;
+    case 'bottle': return sh + `<path d="M-11 2Q-12 -4 -6 -5L5 -5Q8 -5 9 -3L12 -2.4V1.6L9 2Q8 5 4 5L-6 5Q-11 6 -11 2Z" fill="${c}" opacity="0.7" stroke="#4a7a6a" stroke-width="0.8"/><path d="M12 -2.4h3v4h-3z" fill="#a07a4a"/><rect x="-7" y="-2.6" width="11" height="5" rx="2.4" fill="${c2}" stroke="#c8b890" stroke-width="0.5"/><path d="M-8 -3.6Q-2 -4.6 4 -4.4" stroke="#fff" stroke-width="1" opacity="0.6" fill="none"/>`;
     case 'chest': return sh + `<path d="M-11 -2H11V8H-11Z" fill="${c}" stroke="${c2}" stroke-width="0.9"/><path d="M-11 -2Q-11 -10 0 -10Q11 -10 11 -2Z" fill="${c}" stroke="${c2}" stroke-width="0.9"/><path d="M-11 -2H11M-6 -9.4V8M6 -9.4V8" stroke="#c8a04a" stroke-width="1.4"/><rect x="-1.6" y="-3.4" width="3.2" height="4" fill="#e0b84a" stroke="#8a6a20" stroke-width="0.5"/>`;
     default: return sh + `<circle r="7" fill="${c}" stroke="${c2}"/>`;
   }

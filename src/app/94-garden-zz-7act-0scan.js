@@ -170,7 +170,7 @@ function gardenTerrainAt(x, y) {
   if (_gksWet(x, y)) return _gksWet(x, y - 1.2) && _gksWet(x, y - 2.4) && _gksWet(x + 1.2, y - 1.2) && _gksWet(x - 1.2, y - 1.2) ? 'deep' : 'water';
   if (!c.land) return '';
   if (gardenTerrainUp(x, y)) return 'slope';   // (only ground you walk on that rises: by a wall, a scarp or a mountain the ground is flat grass)
-  if (c.beach) return 'sand';
+  if (c.beach) return typeof gardenTideShallows === 'function' && gardenTideShallows(x, y) ? 'shallows' : 'sand';   // (under the tide now: 94-garden-tide-0rules.js)
   if (c.route || (typeof _plStoneAt === 'function' && _plStoneAt(x, y))) return 'path';
   if (c.solid || c.staticId || c.reservation) return 'ground';
   if (_gksSeason() === 'winter') return 'snow';

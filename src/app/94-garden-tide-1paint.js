@@ -64,7 +64,7 @@ void main () {
     float s = smoothstep(0.0, 40.0, d);
     vec3 water = mix(uEdge, uShoal, s * 0.92);
     water = mix(water, uWeed, rocky * (0.18 + 0.32 * s) * (0.7 + 0.6 * n));
-    water = mix(water, uSilt, mud * 0.5);
+    water = mix(water, mix(uShoal * 0.9, uSilt, 0.3), mud * (0.3 + 0.5 * s));   // (over the mud by a river mouth: the river's own green-brown, not a pale film)
     // the light on it: soft bands rolling in towards the shore, broken by the swell
     float band = sin(h * 0.27 + t * 1.15 + n * 5.0 + n2 * 2.0);
     float glint = smoothstep(0.8, 1.0, band) * (0.3 + 0.7 * n2) * (1.0 - s * 0.45);
@@ -180,7 +180,7 @@ void main () {
       if (!a || (a.kind !== 'actor' && a.kind !== 'pet') || (a.lift || 0) > 4) continue;
       const x = a.groundX != null ? a.groundX : a.x, y = a.groundY != null ? a.groundY : a.y;
       if (x < view.x - 40 || x > view.x + view.w + 40 || y < view.y - 40 || y > view.y + view.h + 40) continue;
-      const h = GardenTide.h(x / W.cellW, (y - W.sky) / W.cellH), d = T.line - h; if (!(d > 1.5) || !Number.isFinite(h)) continue;
+      const h = GardenTide.h(x / W.cellW, (y - W.sky) / W.cellH), d = T.line - h; if (!(d > 1.5) || !Number.isFinite(h) || h < 0) continue;   // (only on the sand the tide covers: a swimmer or a boat out in the sea has its own water)
       const k = Math.min(1, d / 18), rx = (a.kind === 'pet' ? Math.max(8, (a.w || 20) * .55) : 11) * (.8 + .4 * k), ry = rx * .3;
       let f = feet.get(a.id); if (!f) { if (feet.size > 40) feet.clear(); feet.set(a.id, f = { x, y, rings: [], at: 0 }); }
       const moved = Math.hypot(x - f.x, y - f.y); f.x = x; f.y = y;
