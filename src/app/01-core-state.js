@@ -108,7 +108,25 @@ const _NON_DATA_KEYS = new Set([...UI_STATE_KEYS, ...BOOKKEEPING_KEYS]);
 // left out when it is imported. Same list in lib/state-keys.mjs.
 const RETIRED_STATE_KEYS = ['boards', 'boardCollapsed', 'canvasConnect'];
 
-function _writeLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+// (speed pass) Browser storage is only the first-paint cache, so a burst of saves makes ONE write: every page switch, every
+// garden action (a watering sweep is ten saves) and every zoom wrote the whole state there at once, a full JSON copy each
+// time. _writeLocal() asks for a write a moment later; _writeLocalNow() writes at once (saveData needs to know storage took
+// it). A hidden or closing tab writes what is pending straight away.
+let _localWriteTimer = 0;
+function _writeLocalNow() {
+  if (_localWriteTimer) { clearTimeout(_localWriteTimer); _localWriteTimer = 0; }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function _writeLocal() {
+  if (_localWriteTimer) return;
+  _localWriteTimer = setTimeout(() => { _localWriteTimer = 0; try { _writeLocalNow(); } catch (e) { /* storage full or blocked: the next data save reports it */ } }, 300);
+}
+function _writeLocalFlush() { if (_localWriteTimer) { try { _writeLocalNow(); } catch (e) { /* storage full or blocked */ } } }
+if (typeof window !== 'undefined' && window.addEventListener) {
+  window.addEventListener('pagehide', _writeLocalFlush);
+  window.addEventListener('beforeunload', _writeLocalFlush);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) _writeLocalFlush(); });
+}
 
 /**
  * Save a DATA change (tasks, notes, people, countdowns...): one undo
@@ -122,7 +140,7 @@ function saveData() {
     // Browser storage is only a first-paint cache (about 5 MiB per site). When it
     // is full (QuotaExceededError) the edit must still be queued for the server.
     let localOk = true;
-    try { _writeLocal(); } catch (e) { localOk = false; }
+    try { _writeLocalNow(); } catch (e) { localOk = false; }
     if (typeof schedulePersist === 'function') schedulePersist();
     if (localOk) showToast('✓ saved', false);
     else _saveLocalFull();

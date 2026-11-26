@@ -309,7 +309,7 @@ function _liveApply(merged, remoteVersion) {
   // AI chats: older messages into this computer's archive before any trim, time order, the panel repainted (70-ai-chats.js).
   // A change here makes the reconcile below save it (it differs from the remote copy).
   if (typeof chatAfterAdopt === 'function') chatAfterAdopt();
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+  try { _writeLocal(); } catch (e) {}   // (coalesced: 01-core-state.js)
   resetUndoHistory();
 }
 function _liveRender() {
