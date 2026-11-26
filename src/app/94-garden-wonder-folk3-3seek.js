@@ -219,3 +219,73 @@ valeGameAdd('seek', {
   gLine(G) { if (G.phase === 1) return 'Eyes shut! Counting...'; const n = G.folk.length - (G.left ? G.left.size : 0); return `Found ${n} of ${G.folk.length}. Walk up to someone and press E.`; },
   gClear() { _vgDim(false); },
 });
+/* ---------- the other way round: you hide, they look (Play again after a round of looking swaps who seeks) ----------
+   Pip (or Quince) counts at the start with eyes in an elbow while you hide: get behind something (any hiding place above, or the hide
+   act at a tree), or keep moving. Then they look, the places nearest the start first, a moment at each, coming towards where you are
+   as time goes on. Stood in the open within a few cells of them, you are seen; hidden, only when they are right by you. Get back to the
+   start while they are away from it ("Home!"), or last out the time, and you win. Played on your own with them (not with friends). */
+function _vgsYouHidden(R) {
+  if (typeof gartActBusy === 'function' && gartActBusy() && typeof _ga !== 'undefined' && _ga.cur && _ga.cur.id === 'hide') return true;
+  for (const s of R.data.spots) if (Math.hypot(_gw.px - s.x, (_gw.py - s.y) * 1.3) < 1.4) return true;
+  return false;
+}
+valeGameAdd('hide', {
+  late: false,
+  can(at) { if (typeof _gll !== 'undefined' && _gll.role === 'host' && typeof _glhAnyone === 'function' && _glhAnyone()) return 'This one is for when it’s just you.'; return _vgsSpots(at).length >= 3 ? '' : 'Nowhere to hide round here.'; },
+  finding() { return 'Everyone round you!'; },
+  setup(R, cb) {
+    const spots = _vgsSpots(R.at); if (spots.length < 3) { cb(false, 'Nowhere to hide here!'); return; }
+    R.folk = R.folk.slice(0, 1); if (!R.folk.length) { cb(false, 'Nobody to do the counting just now.'); return; }
+    R.data.spots = spots.sort((a, b) => a.d - b.d); R.data.k = -1; R.data.state = ''; R.data.found = false; R.data.home = false;
+    cb(true);
+  },
+  gather(R) { return [_vgBeside(R.at, 1)]; },
+  ready(R) {
+    const id = R.folk[0], s = R.data.spots[0];
+    gardenFolkPose(id, 'count', s ? (s.tx < R.at.x ? 1 : -1) : 1);   // (facing away from the nearest hiding place: no peeping)
+    try { gardenToast('Hide! Get behind something, or keep out of sight.', { icon: 'eye-off' }); } catch (e) { /* fine */ }
+  },
+  readyLine(R, secs) { const n = Math.max(1, R.G.ready - Math.floor(secs)); return { line: _vgFolkCap(R.folk[0]) + ' is counting. Hide!', big: String(n) }; },
+  go(R) {
+    const id = R.folk[0], t = vgLine(id, 'hide', 'go'); if (t) try { wdAmbient('“' + t + '”', 3200, 'folk'); } catch (e) { /* quiet */ }
+    R.data.state = 'look'; R.data.lookT = performance.now() + 900;
+    for (const p of R.people.values()) { p.n = 0; p.score = 0; }
+  },
+  tick(R, dt, now) {
+    const id = R.folk[0], V = _vf3V(id), D = gardenFolkDriven(id); if (!V || !D) { R.data.home = true; return; }
+    const me = R.people.get(_vgMeSlot()); if (!me || me.left) return;
+    const t = (now - R.goT) / 1000, dMe = Math.hypot(V.x - _gw.px, (V.y - _gw.py) * 1.3), hidden = _vgsYouHidden(R);
+    if (t > 2.5 && Math.hypot(_gw.px - R.at.x, _gw.py - R.at.y) < R.G.home && Math.hypot(V.x - R.at.x, V.y - R.at.y) > 4) { R.data.home = true; try { wdAmbient('Home! You got back to the start first.', 3400, 'folk'); gardenSfx('cheer'); } catch (e) { /* quiet */ } return; }
+    if (dMe < 1.6 || (!hidden && dMe < 5.5 && t > 1)) { R.data.found = true; D.to = null; if (V.path) V.path.length = 0; D.pose = 'point'; D.face = { x: _gw.px, y: _gw.py }; R.data.foundT = t; return; }
+    if (R.data.state === 'walk' && !D.to) { R.data.state = 'look'; D.pose = 'seek'; R.data.lookT = now + 1500; }
+    if (R.data.state === 'look' && now > R.data.lookT) {
+      // the next place: nearest the start first; after half a minute, the places nearest where you are (they heard something)
+      const S = R.data.spots; let next = null;
+      if (t > 30) { let bd = Infinity; for (const s of S) { if (s.seen && t - s.seen < 20) continue; const d = Math.hypot(s.x - _gw.px, s.y - _gw.py); if (d < bd) { bd = d; next = s; } } }
+      else { R.data.k = (R.data.k + 1) % S.length; next = S[R.data.k]; }
+      if (!next) next = S[0];
+      next.seen = t;
+      gardenFolkDrive(id, { to: { x: next.x + (next.side || 1) * 0.6, y: next.y + 0.5 }, gait: 'w', speed: VALE_FOLK_SPEED * 1.6, by: 'game', noTalk: true });
+      R.data.state = 'walk';
+    }
+  },
+  tap() { return true; },
+  line(R) {
+    if (R.data.found) return 'Found!';
+    const hidden = _vgsYouHidden(R), V = _vf3V(R.folk[0]), d = V ? Math.hypot(V.x - _gw.px, V.y - _gw.py) : 99;
+    return (hidden ? 'Hidden. Keep still.' : 'In the open! Get behind something.') + (d < 4 ? ' They’re close!' : '') + ' Or get back to the start.';
+  },
+  big(R) { return String(Math.max(0, Math.ceil(R.G.cap - (performance.now() - R.goT) / 1000))); },
+  done(R) { return R.data.found || R.data.home || (performance.now() - R.goT) / 1000 > R.G.cap - 1; },
+  result(R) {
+    const id = R.folk[0], won = !R.data.found, t = Math.round(((R.data.found ? R.data.foundT : (performance.now() - R.goT) / 1000)) || 0);
+    const rows = won ? [{ w: _vgMeSlot(), place: 1, score: t, words: R.data.home ? 'home!' : 'never found' }, { v: id, place: 2, words: 'looking' }] : [{ v: id, place: 1, words: 'found you at ' + t + ' s' }, { w: _vgMeSlot(), place: 2, score: t, words: 'hid ' + t + ' s' }];
+    const say = vgLine(id, 'hide', won ? 'lose' : 'win'); if (say) setTimeout(() => { try { wdAmbient('“' + say + '”', 5000, 'folk'); } catch (e) { /* quiet */ } }, 800);
+    const D = gardenFolkDriven(id); if (D) { D.pose = won ? 'laugh' : 'cheer'; D.face = { x: _gw.px, y: _gw.py }; }
+    R.data.secs = t;
+    return rows;
+  },
+  best(mine, won) { return won && Number.isFinite(mine.score) ? mine.score : null; },
+  words(score) { return score + ' s'; },
+  podium(R) { return R.at; },
+});

@@ -28,6 +28,11 @@ const VF3_LINES = Object.freeze({
       memWon: ['You found me last time. I’ve found a new place. I’m not saying where. It’s near a tree.'],
       memLost: ['You never found me last time! I was behind the thing! You walked right past!'],
     }),
+    hide: Object.freeze({
+      go: ['Coming, ready or not! Mostly ready!', 'Ten! Here I come! I counted fast. It still counts!'],
+      win: ['Found you! Found you found you found you!', 'There you are! I knew it. I didn’t know it. I knew it a bit.'],
+      lose: ['Where were you? I looked everywhere! I looked in the river twice!', 'You’re good at this. You’re as good as a heron. A still one.'],
+    }),
     stones: Object.freeze({
       ask: ['Skimming! I can do nine. I did nine once. Bet you can’t do nine.', 'The water’s flat as a plate. Let’s skim stones! Flat ones! I’ve got some!'],
       yes: ['Flat ones! Low! Flick it! Like a fish!', 'You first. No, me. No, you. Go on.'],
@@ -53,6 +58,11 @@ const VF3_LINES = Object.freeze({
       lose: ['Everyone found! You’ve a good eye. My mother had a good eye. Too good.'],
       memWon: ['You found me first last time. I’ve been practising keeping my ears down. It gives me a headache.'],
       memLost: ['You didn’t find me last time! I was right there, counting the stair in my head.'],
+    }),
+    hide: Object.freeze({
+      go: ['Coming! I counted to ten twice, to be fair.', 'Ready or not! That’s what my mother used to say. She always found me.'],
+      win: ['Found you! You hid like my bees do: badly, and all at once.', 'There! I could hear you thinking.'],
+      lose: ['Well, I never. You’re a proper hider. I give up, and I don’t give up.'],
     }),
     race: Object.freeze({
       ask: ['I always won the apple race. Years ago. Race you to {at}? Steady does it.', 'Fancy a run to {at}? I don’t cut corners. That’s how I win.'],

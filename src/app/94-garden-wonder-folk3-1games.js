@@ -82,7 +82,7 @@ function gardenGameStart(game, o) {
   const G = VALE_GAMES[game], I = _vgm.impl.get(game); if (!G || !I || !_vgOn()) return false;
   const at = o.at || { x: _gw.px, y: _gw.py };
   const why = gardenGameCan(game, at); if (why) { try { gardenToast(why); } catch (e) { /* fine */ } return false; }
-  let folk = Array.isArray(o.folk) ? o.folk.filter(id => gardenFolkFree(id, 'game')) : valeGamePlayers(game, _vgAbout(32), o.by);
+  let folk = Array.isArray(o.folk) ? o.folk.filter(id => gardenFolkFree(id, 'game') && valeGamePlays(id, game)) : valeGamePlayers(game, _vgAbout(32), o.by);
   if (folk.length > G.folk[1]) folk = folk.slice(0, G.folk[1]);
   let gid = 'vale'; try { gid = (state && state.garden && state.garden.id) || 'vale'; } catch (e) { gid = 'vale'; }
   _vgm.n = (_vgm.n || 0) + 1;
@@ -474,8 +474,10 @@ function _vgChipHost(R) {
 }
 function _vgResName(r) { return r.v ? _vgFolkCap(r.v) : _vgName(r.w); }
 function _vgAgain(R) {
-  const L = { game: R.game, by: R.by, folk: R.folk.slice() }; _vgEnd(R);
-  setTimeout(() => gardenGameStart(L.game, { by: L.by, folk: L.folk }), 60);
+  // (hide and seek: the other way round next time, when it is just you and them)
+  const swap = R.G.again && _vgm.impl.has(R.G.again) && !gardenGameCan(R.G.again) && ![...R.people.values()].some(p => !p.me && !p.left);
+  const L = { game: swap ? R.G.again : R.game, by: R.by || R.folk[0] || '', folk: R.folk.concat(R.helpers) }; _vgEnd(R);
+  setTimeout(() => gardenGameStart(L.game, swap ? { by: L.by } : { by: L.by, folk: L.folk }), 60);   // (swapped: whoever is about joins in again)
 }
 /* ---------- Esc leaves the game ---------- */
 function _vgKeys() {

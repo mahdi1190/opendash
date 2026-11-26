@@ -37,22 +37,23 @@ const VALE_HUNT_KINDS = Object.freeze(['tree', 'fruit-tree', 'bench', 'stump', '
 const VALE_NO_PLAY_NEAR = Object.freeze({ kinds: ['mill'], r: 10 });
 const VALE_GAMES = Object.freeze({
   race: Object.freeze({ id: 'race', name: 'Race you!', word: 'Race', icon: 'flag', rule: 'First to the finish. Follow the flags.', folk: [0, 3], gather: 12, ready: 3, cap: 75, after: 20, best: 'low', unit: 'time', px: [1600, 6500], wide: [1200, 9000], mat: 'mat:stone', matWords: 'a spare sett from Bramble' }),
-  seek: Object.freeze({ id: 'seek', name: 'Hide and seek', word: 'Hide and seek', icon: 'eye', rule: 'They hide. You look. Walk up to someone and press E: Found you!', folk: [1, 3], gather: 6, ready: 10, cap: 210, best: 'low', unit: 'secs', r: 12, mat: 'mat:timber', matWords: 'a good stick Tam found' }),
+  seek: Object.freeze({ id: 'seek', name: 'Hide and seek', word: 'Hide and seek', icon: 'eye', rule: 'They hide. You look. Walk up to someone and press E: Found you!', folk: [1, 3], gather: 6, ready: 10, cap: 210, best: 'low', unit: 'secs', r: 12, mat: 'mat:timber', matWords: 'a good stick Tam found', again: 'hide' }),
+  hide: Object.freeze({ id: 'hide', name: 'Hide and seek: you hide', word: 'You hide', icon: 'eye-off', rule: 'They count, you hide. Get behind something, or get back to the start before you are found.', folk: [1, 1], gather: 6, ready: 15, cap: 100, best: 'high', unit: 'secs', r: 12, home: 1.3, mat: 'mat:timber', matWords: 'a good stick Tam found', again: 'seek' }),
   stones: Object.freeze({ id: 'stones', name: 'Skimming stones', word: 'Skimming', icon: 'waves', rule: 'Three throws each, turn about. The most skips wins. Throw when the marker is in the middle.', folk: [1, 2], gather: 8, ready: 2, cap: 150, best: 'high', unit: 'skips', throws: 3, r: 6, mat: 'mat:stone', matWords: 'a flat stone, the best kind' }),
   hunt: Object.freeze({ id: 'hunt', name: 'Treasure hunt', word: 'Treasure', icon: 'map', rule: 'Three things are buried. Read the clue, find the place, press E to dig.', folk: [1, 2], gather: 4, ready: 2, cap: 300, best: 'low', unit: 'secs', r: 26, spots: 3, mat: 'mat:timber', matWords: 'an old plank from the chest' }),
 });
 const VALE_GAME_IDS = Object.freeze(Object.keys(VALE_GAMES));
 /** Who plays what, and how. asks: the games they ask you to play, in the order they like them. A villager not listed plays nothing yet. */
 const VALE_GAME_FOLK = Object.freeze({
-  pip: Object.freeze({ asks: ['race', 'stones', 'seek'], race: { pace: 1.05, stop: 'water' }, seek: { hide: 'middle', tell: 'tail', every: [15, 25] }, stones: { skips: [3, 9] }, hunt: { pace: 1.1, wrong: 1 } }),
-  quince: Object.freeze({ asks: ['seek', 'race'], race: { pace: 0.98, steady: 1 }, seek: { hide: 'near', tell: 'giggle', every: [18, 30] }, stones: { skips: [2, 6] } }),
+  pip: Object.freeze({ asks: ['race', 'stones', 'seek'], race: { pace: 1.05, stop: 'water' }, seek: { hide: 'middle', tell: 'tail', every: [15, 25], seeker: 1 }, stones: { skips: [3, 9] }, hunt: { pace: 1.1, wrong: 1 } }),
+  quince: Object.freeze({ asks: ['seek', 'race'], race: { pace: 0.98, steady: 1 }, seek: { hide: 'near', tell: 'giggle', every: [18, 30], seeker: 1 }, stones: { skips: [2, 6] } }),
   tam: Object.freeze({ asks: ['hunt', 'seek'], seek: { hide: 'farthest', tell: 'soil', at: 60 }, hunt: { pace: 0.8, dig: 1 } }),
   bramble: Object.freeze({ asks: ['hunt'], race: { pace: 0.9, starter: 1 }, hunt: { maker: 1 } }),
   angler: Object.freeze({ asks: ['stones'], stones: { skips: [5, 8], few: 1 } }),
   perpetua: Object.freeze({ race: { keeper: 1 } }),
 });
 /** A villager who plays `game` at all (a starter or a keeper only helps). */
-function valeGamePlays(id, game) { const r = VALE_GAME_FOLK[id]; const g = r && r[game]; return !!g && !g.starter && !g.keeper && !g.maker; }
+function valeGamePlays(id, game) { const r = VALE_GAME_FOLK[id]; const g = r && (game === 'hide' ? r.seek && r.seek.seeker && r.seek : r[game]); return !!g && !g.starter && !g.keeper && !g.maker; }
 /** Everyone in the list gets on (never two who are 'no' or 'cold' with each other in one game). */
 function valeGameFolkOk(ids, flags) {
   if (typeof valeFolkRel !== 'function') return true;

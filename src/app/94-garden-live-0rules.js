@@ -102,7 +102,7 @@ const GL_FX_HOST_ONLY = Object.freeze(new Set(['gm|start', 'gm|state', 'gm|end',
 const GL_FX_TO_HOST = Object.freeze(new Set(['gm|act', 'gm|join', 'gm|leave', 'gm|ask', 'folk|talk', 'folk|bye', 'tune|ping', 'bug|claim', 'pick|claim', 'cr|poke', 'fs|hook', 'fs|land', 'fs|free', 'sync|ask', 'sync|away', 'sync|back', 'pose|on', 'pose|off', 'kite|take', 'kite|letgo', 'soap|take', 'soap|letgo', 'soap|release', 'leaf|launch', 'leaf|control', 'leaf|retrieve', 'marble|set', 'marble|roll', 'marble|reset']));
 const glFxHostOnly = (b) => !!b && (GL_FX_HOST_ONLY.has(b.c + '|' + b.e) || GL_FX_HOST_ONLY.has(b.c + '|*') || b.c === 'petplay' && b.u != null);
 const glFxToHost = (b) => !!b && GL_FX_TO_HOST.has(b.c + '|' + b.e);
-const GL_GM_GAMES = Object.freeze(['race', 'seek', 'stones', 'hunt']);   // (folk3: the games a gm message may name, VALE_GAMES in 94-garden-folk3-0rules.js)
+const GL_GM_GAMES = Object.freeze(['race', 'seek', 'hide', 'stones', 'hunt']);   // (folk3: the games a gm message may name, VALE_GAMES in 94-garden-folk3-0rules.js)
 const GL_FX_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 /** WHAT I AM DOING (gl:dg, 2.74.1): one person's whole state, sent when it changes (never a stream), so every screen shows the same, and a late
  *  arrival or a lost message comes right with the next one. a: the move from the things-to-do table (an 'act-' id of GL_EMOTES), none = nothing;
