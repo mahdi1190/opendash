@@ -41,6 +41,7 @@ const GB2_POCKET = [
   Object.freeze({ c: 'fos', re: /^fos:[a-z0-9-]+$/, tab: 'finds', stack: 30, keep: true }),   // keep: kept in the ledger when put on show (every "found" count keeps working)
   Object.freeze({ c: 'cur', re: /^cur:[a-z0-9-]+$/, tab: 'finds', stack: 1, keep: true }),
   Object.freeze({ c: 'clover', re: /^clover$/, tab: 'finds', stack: 30 }),
+  Object.freeze({ c: 'shore', re: /^sh:[a-z0-9-]+$/, tab: 'finds', stack: 30 }),   // (2.76) what the tide leaves on the sand (94-garden-tide-*.js): shells, sea glass, driftwood
   Object.freeze({ c: 'crop', re: /^crop:[a-z0-9-]+$/, tab: 'food', stack: 30 }),
   Object.freeze({ c: 'food', re: /^(egg|flour|honey|dish:[a-z0-9-]+|meal:[a-z0-9-]+)$/, tab: 'food', stack: 30 }),
 ];
@@ -94,6 +95,7 @@ function gardenB2Known(item) {
     if (kind === 'bug') return typeof gardenBugDef !== 'function' || !!gardenBugDef(id);
     if (kind === 'bq') return typeof GARDEN_BOUQUETS === 'undefined' || GARDEN_BOUQUETS.some(b => b.id === id);
     if (kind === 'cur') return typeof GARDEN_LAND_CURIOS === 'undefined' || GARDEN_LAND_CURIOS.some(c => c.id === id);
+    if (kind === 'sh') return typeof gardenTideFindDef !== 'function' || !!gardenTideFindDef(id);
     if (kind === 'dish') return typeof gpDish !== 'function' || !!gpDish(id);
   } catch (e) { return false; }
   return true;

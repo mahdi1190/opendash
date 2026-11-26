@@ -312,16 +312,20 @@ function gardenB2OpenStore(t) {
   const box = _ghBox(); if (!box || !gardenB2On()) return false;
   try { _ghClosePanels(box); gardenBubbleClose(); } catch (e) { /* fine */ }
   if (t && typeof gardenWorldFace === 'function') { try { gardenWorldFace({ x: Math.floor(t.x), y: Math.floor(t.y - 0.5) }); } catch (e) { /* fine */ } }
-  _gb2.panel = 'store'; _gb2.at = typeof _gw !== 'undefined' ? { x: _gw.px, y: _gw.py } : null; _gb2.page = 0; _gb2.popKey = '';
+  _gb2.panel = 'store'; _gb2.at = typeof _gw !== 'undefined' ? { x: _gw.px, y: _gw.py } : null; _gb2.indoor = false; _gb2.page = 0; _gb2.popKey = '';
   _gh.bag = true; _ghBag(); _gh.bar = ''; _ghBar(box, gardenHere());   // (pockets already open: the storage opens in their place)
   try { gardenSfx('open'); } catch (e) { /* quiet */ }
   return true;
 }
 /** (2.76) Your storage from anywhere else you keep things: your cottage's chest indoors asks for it by this name (94-garden-house-3arrange.js).
  *  The same storage every chest opens; indoors it shows over the room (99zz-garden-zbuild2.css). */
-function gardenStorageOpen() { return gardenB2OpenStore(null); }
+function gardenStorageOpen() { const ok = gardenB2OpenStore(null); if (ok && _gb2Indoors()) { _gb2.indoor = true; _gb2.at = null; } return ok; }
+/** Inside a room (your cottage's, a shop's): the garden stage is put away round it. */
+function _gb2Indoors() { try { return !!(window.GardenNative && GardenNative.inRoom && GardenNative.inRoom()) || (typeof _grm !== 'undefined' && !!_grm.on); } catch (e) { return false; } }
 /** Walked away from your chest: the storage closes (you can always send things home from your pockets). */
 function _gb2StoreWalk() {
+  // (2.76) opened from your cottage's chest indoors: it closes as you come out (it stayed open by the door until you walked away)
+  if (_gb2.indoor) { if (!_gh.bag || _gb2.panel !== 'store') { _gb2.indoor = false; return; } if (!_gb2Indoors()) { _gb2.indoor = false; const box = _ghBox(); if (box) _gb2Close(box); } return; }
   if (!_gh.bag || _gb2.panel !== 'store' || !_gb2.at || typeof _gw === 'undefined') return;
   let away = Math.hypot(_gw.px - _gb2.at.x, _gw.py - _gb2.at.y) > 2.6;
   try { if (gardenHere().visit) away = true; } catch (e) { /* fine */ }

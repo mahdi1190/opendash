@@ -6,7 +6,7 @@
      pocket, one of Pip's river stones, Perpetua's stamp), and a little more friendship with the keeper.
    - The card table: join the game once a week; everyone at the table is a little fonder of you, and it goes in the vale's story.
    - The brazier: warm your hands with everyone (the warm act you know). Taking part in a festival (a stall, the brazier with folk round it,
-     the opening) gives its one thing once a year, wherever you are: the Frost Fair's is the Star lantern, for your garden.
+     the opening) gives its one thing once a year, wherever you are: the Frost Fair's is the Frost Fair lantern (a paper star on a crook), for your garden.
    - The Frost Fair opens with a moment when you first come near it on a fair day (94-garden-wonder-folk3-8scene.js): a public one, so a
      friend in your garden sees it too. The week before, one short note says it is coming. If you miss it, nobody says so.
    - Each villager has a line for the day when something is on ("Card night. I always lose. I am very good at losing.").

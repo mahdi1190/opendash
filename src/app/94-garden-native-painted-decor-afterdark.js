@@ -19,32 +19,33 @@ GardenPaintedDecor.add('afterdark', (function () {
   function lanternFlame(B, o, x, y, k) { if (o.night) { B.f(B.circ(x, y - 8 * k, 14 * k), B.rad(x, y - 8 * k, 14 * k, [[0, 'rgba(255,228,150,.55)'], [1, 'rgba(255,220,140,0)']])); o.H.flame(B, x, y - 4 * k, .5 * k); } else B.f(B.rr(x - .8 * k, y - 8 * k, 1.6 * k, 4 * k, .6), '#3a3028', .8); }
   const leafy = (B, o, x, y, w) => { const L = o.K.leafOf(o.season); B.f(o.D.blob(o.r, x, y, w, w * .32, 8, .4), L[0], .85).f(o.D.blob(o.r, x - w * .15, y - w * .12, w * .62, w * .22, 7, .45), L[1], .85); };
   return {
-    /* a white sheet on a line between two ash poles, pegged, with a lantern on a crate in front of it: the moths come to the light */
-    'moth-sheet': { box: [-68, -108, 68, 10], glow: { w: 120, halo: -24, radius: 120 }, draw(B, o) {
-      const { H, r } = o; B.shadow(0, 2, 62, 7, .24);
-      leafy(B, o, -54, 1, 12); leafy(B, o, 54, 1, 12); leafy(B, o, 0, 3, 30);
+    /* a white sheet on a line between two ash poles, pegged, with a lantern on a crate in front of it: the moths come to the light
+     * (2.76: one cell wide, the footprint every moth sheet placed since 2.45 has, so none grows into its neighbour's ground) */
+    'moth-sheet': { box: [-40, -108, 40, 10], glow: { w: 84, halo: -24, radius: 100 }, draw(B, o) {
+      const { H, r } = o; B.shadow(0, 2, 36, 6, .24);
+      leafy(B, o, -28, 1, 10); leafy(B, o, 28, 1, 10); leafy(B, o, 0, 3, 18);
       // the poles: ash, peeled pale at the top, each with a fork the line is tied into
       for (const s of [-1, 1]) {
-        const x = s * 54;
+        const x = s * 28;
         B.f(`M${x - 2.4} 1L${x - 1.6} -94L${x + 1.4} -94L${x + 2.2} 1Z`, B.lin(x - 2.4, 0, x + 2.4, 0, [[0, ASH[2]], [.45, ASH[0]], [1, ASH[1]]]));
         B.s(`M${x + .2} -94l${s * -3} -6M${x + .4} -94l${s * 2.4} -5`, ASH[1], 1.4).s(`M${x - 1} -60l${s * -1.6} 1`, ASH[3], .7, .5);
         B.f(o.D.blob(r, x - 1, -2, 4, 1.6, 6, .4), ASH[3], .35);
         B.tufts(r, x, 1, 14, 7, o.season);
       }
-      H.cord(B, 'M-54 -90Q0 -84 54 -90', 1.1, '#d8ccb0');
+      H.cord(B, 'M-28 -90Q0 -86 28 -90', 1.1, '#d8ccb0');
       // the crate and the lantern on it, in front
       B.f(B.rr(-6, -13, 22, 13, 1.4), ASH[1]).f(B.rect(-6, -13, 22, 2.4), ASH[2], .9).f(B.rect(-6, -7, 22, 1), ASH[3], .5).f(B.rect(-6, -13, 2.4, 13), ASH[2], .5).f(B.rect(13.6, -13, 2.4, 13), ASH[3], .4);
       lantern(B, o, 5, -13, 1.15);
-      B.tufts(r, 5, 2, 30, 6, o.season);
+      B.tufts(r, 5, 2, 22, 5, o.season);
     }, anim: [
-      { id: 'sheet', x: 0, y: -87, kind: 'sway', speed: .55, amp: .018, box: [-52, -2, 52, 70], draw(B, o) {
+      { id: 'sheet', x: 0, y: -87, kind: 'sway', speed: .55, amp: .018, box: [-28, -2, 28, 70], draw(B, o) {
         // the sheet hangs from the line: pale linen lit from the upper left, soft folds, a hem; at night the lantern warms its middle
-        const d = 'M-50 0Q0 4 50 0L48 61Q36 65 24 62Q12 66 0 63Q-12 66 -24 62Q-36 65 -48 61Z';
-        B.f(d, B.lin(-50, 0, 50, 62, [[0, LINEN[2]], [.35, LINEN[0]], [1, LINEN[1]]]));
-        if (o.night) B.f(d, B.rad(4, 52, 46, [[0, 'rgba(255,214,130,.55)'], [.6, 'rgba(255,214,130,.18)'], [1, 'rgba(255,214,130,0)']]));
-        for (const [x, w] of [[-34, 5], [-12, 7], [10, 6], [30, 8]]) B.f(`M${x} 2Q${x + w * .4} 30 ${x - 1} 62L${x + w} 62Q${x + w * .7} 30 ${x + w * .6} 3Z`, LINEN[3], o.night ? .16 : .22);
-        B.s('M-48 60Q-36 64 -24 61Q-12 65 0 62Q12 65 24 61Q36 64 48 60', LINEN[3], 1.1, .6);
-        for (const x of [-40, -14, 14, 40]) B.f(B.rr(x - 1.2, -2.6, 2.4, 6, .8), ASH[1]).f(B.rect(x - 1.2, -2.6, .9, 6), ASH[2], .7);
+        const d = 'M-26 0Q0 3 26 0L25 61Q19 64 12 62Q6 65 0 63Q-6 65 -12 62Q-19 64 -25 61Z';
+        B.f(d, B.lin(-26, 0, 26, 62, [[0, LINEN[2]], [.35, LINEN[0]], [1, LINEN[1]]]));
+        if (o.night) B.f(d, B.rad(4, 52, 30, [[0, 'rgba(255,214,130,.55)'], [.6, 'rgba(255,214,130,.18)'], [1, 'rgba(255,214,130,0)']]));
+        for (const [x, w] of [[-18, 4], [-6, 5], [6, 4], [16, 5]]) B.f(`M${x} 2Q${x + w * .4} 30 ${x - 1} 62L${x + w} 62Q${x + w * .7} 30 ${x + w * .6} 3Z`, LINEN[3], o.night ? .16 : .22);
+        B.s('M-25 60Q-19 63 -12 61Q-6 64 0 62Q6 64 12 61Q19 63 25 60', LINEN[3], 1.1, .6);
+        for (const x of [-21, -7, 7, 21]) B.f(B.rr(x - 1.2, -2.6, 2.4, 6, .8), ASH[1]).f(B.rect(x - 1.2, -2.6, .9, 6), ASH[2], .7);
       } },
       { id: 'flame', x: 5, y: -13, kind: 'flicker', speed: 6.5, box: [-16, -26, 16, 4], draw(B, o) { lanternFlame(B, o, 0, 0, 1.15); } },
     ] },

@@ -46,7 +46,7 @@ function _adwRows(m, sheets, win, min) {
   const out = []; let total = 0;
   sheets.forEach((d, si) => {
     if (total >= AD_SHEET.garden) return;
-    const cx = d.x + (d.def.w || 2) / 2, cy = d.y + (d.def.h || 1);
+    const cx = d.x + (d.def.w || 1) / 2, cy = d.y + (d.def.h || 1);
     const near = m.plants.filter(p => p.stage >= 3 && Math.hypot(p.x + p.fp / 2 - cx, p.y + p.fp / 2 - cy) <= AD_SHEET.near);
     const scented = near.some(p => (p.def.attracts || []).includes('moth') || p.def.night);
     const c2 = Object.assign({}, ctx, { plant: (id) => near.some(p => p.def.id === id) });
@@ -58,7 +58,7 @@ function _adwRows(m, sheets, win, min) {
       const r = gardenRand(N.key + '|' + win + '|' + d.x + ',' + d.y + '|' + j); let v = r() * tw, k = 0;
       for (; k < pool.length - 1; k++) { v -= wts[k]; if (v <= 0) break; }
       const y = cy + 0.06;
-      out.push({ key: 'n' + win + 's' + si + '.' + j, id: pool[k].id, x: cx - 0.6 + r() * 1.2, y, hab: 'light', t: r(), perch: { x0: cx - 0.62, x1: cx + 0.62, y, l0: 24, l1: 56 } });
+      out.push({ key: 'n' + win + 's' + si + '.' + j, id: pool[k].id, x: cx - 0.36 + r() * 0.72, y, hab: 'light', t: r(), perch: { x0: cx - 0.4, x1: cx + 0.4, y, l0: 24, l1: 56 } });   // (2.76: the cloth is one cell wide)
       total++;
     }
   });

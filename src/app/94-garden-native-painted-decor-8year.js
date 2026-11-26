@@ -1,4 +1,4 @@
-/* Painted decorations the vale's year and its story give (the folk3 plan, steps 7 and 10): the Frost Fair's Star lantern (taking part, once a
+/* Painted decorations the vale's year and its story give (the folk3 plan, steps 7 and 10): the Frost Fair lantern (taking part, once a
  * year), and what a whole era of the Chronicle brings (the two-waters stone, the millstone seat). The rows are in GARDEN_DECOR
  * (94-garden-0catalog.js), so friends see them once they are put out. In the house style: lit from the upper left, soft shade below, no
  * outlines, a contact shadow and grass or worn soil round every foot (rule 13). Sized against H (about 52 units here, decorations being

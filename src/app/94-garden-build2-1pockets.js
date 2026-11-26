@@ -203,6 +203,7 @@ function gardenB2Name(item) {
     if (kind === 'bug') { const d = gardenBugDef(id); return d ? d.name : 'A bug'; }
     if (kind === 'fos') { for (const F of GP_FOSSILS) for (const P of F.parts) if (F.id + '-' + P[0] === id) return P[1]; return 'A piece of fossil'; }
     if (kind === 'cur') { const c = GARDEN_LAND_CURIOS.find(x => x.id === id); return c ? c.name : 'A curio'; }
+    if (kind === 'sh') { const d = typeof gardenTideFindDef === 'function' ? gardenTideFindDef(id) : null; return d ? d.name : 'Something from the shore'; }
     if (kind === 'dish') { const d = typeof gpDish === 'function' ? gpDish(id) : null; return d ? d.name : 'Something you cooked'; }
     if (kind === 'meal') return id === 'smoked' ? 'Smoked fish' : 'A meal';
   } catch (e) { /* below */ }
@@ -227,6 +228,7 @@ function gardenB2Svg(item, px) {
     if (kind === 'fish') { const f = gardenFishParse(k); if (f) return gardenCatchSvg('fish', f.id, px, { uid: 'gb2f' + f.id }); }
     if (kind === 'bug') return gardenCatchSvg('bug', id, px, { uid: 'gb2b' + id });
     if (kind === 'cur' && typeof gardenLandCurioSvg === 'function') { const s = gardenLandCurioSvg(id, px); if (s) return s; }
+    if (kind === 'sh' && typeof gardenTideFindSvg === 'function') { const s = gardenTideFindSvg(id, px); if (s) return s; }
     if (kind === 'dish' && typeof gpDish === 'function') { const d = gpDish(id); if (d) return gpDishSvg(d, px); }
     if (k === 'fertiliser' || k === 'honey' || k === 'clover') return gardenIconSvg(k, { kind: 'tool', px });
     if (kind === 'fos' || kind === 'meal' || k === 'egg' || k === 'flour') return _gb2Pic(kind === 'fos' || kind === 'meal' ? kind : k, px);
