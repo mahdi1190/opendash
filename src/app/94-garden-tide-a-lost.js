@@ -112,7 +112,8 @@ function _gtlFriendBack(iso) {
 function _gtlOddKey(iso) { return gardenShoreVisit() && typeof _gtcFriendTag === 'function' ? 'tlov.' + _gtcFriendTag() + '.' + iso : 'tlo.' + iso; }
 /** The things you are carrying for someone: [{kind: 'lost'|'odd', iso, row}]. Today's, and a clue-tag thing from the last few days. */
 function gardenLostCarried() {
-  const out = [], W = _gdG().wd, L = gardenLostToday();
+  const now = performance.now(); if (_gtl.carried && now - _gtl.carriedT < 800) return _gtl.carried;
+  const out = _gtl.carried = [], W = _gdG().wd, L = gardenLostToday(); _gtl.carriedT = now;
   if (L && _gtlState(L.iso) === 'g') out.push({ kind: 'lost', iso: L.iso, row: L.row });
   const pre = gardenShoreVisit() && typeof _gtcFriendTag === 'function' ? 'tlov.' + _gtcFriendTag() + '.' : 'tlo.';
   for (const k of Object.keys(W)) { if (!k.startsWith(pre) || W[k] !== 'g') continue; const iso = k.slice(pre.length), O = _gtlOddFor(iso); if (O) out.push({ kind: 'odd', iso, row: O }); }
@@ -135,7 +136,7 @@ function gardenLostRows(px, py) {
 }
 function _gtlPick(iso) {
   const L = gardenLostToday(); if (!L || L.iso !== iso || _gtlState(iso)) return;
-  const W = _gdG().wd; W[_gtlKey(iso)] = 'g'; _wdSave();
+  const W = _gdG().wd; W[_gtlKey(iso)] = 'g'; _wdSave(); _gtl.carried = null;
   const who = gardenShoreFolkName(L.row.v);
   try { gardenCatchMoment('lost', L.row.id, { isNew: false }); } catch (e) { /* only a picture */ }
   setTimeout(() => gardenShoreSay(`${who}’s ${L.row.name}! ${who} will be glad to have ${L.row.it} back.`, 'heart', 6000), 2700);
@@ -143,14 +144,14 @@ function _gtlPick(iso) {
 }
 function _gtlPickOdd(iso) {
   const O = gardenOddToday(); if (!O || O.iso !== iso) return;
-  const W = _gdG().wd, k = _gtlOddKey(iso); if (W[k]) return; W[k] = 'g'; _wdSave();
+  const W = _gdG().wd, k = _gtlOddKey(iso); if (W[k]) return; W[k] = 'g'; _wdSave(); _gtl.carried = null;
   try { gardenCatchMoment('lost', 'odd-' + O.row.id, { isNew: false }); } catch (e) { /* only a picture */ }
   setTimeout(() => gardenShoreSay(`A ${O.row.name}, with a tag on it: “${O.row.clue}”. Whose could it be? Ask about, or hand it in at a post box.`, 'search', 8000), 2700);
   gardenShoreEmit('lost', { odd: true });
 }
 function _gtlPost(iso) {
   const W = _gdG().wd, k = 'tlo.' + iso, O = _gtlOddFor(iso); if (W[k] !== 'g') return;
-  W[k] = { p: _gdToday() }; _wdSave();
+  W[k] = { p: _gdToday() }; _wdSave(); _gtl.carried = null;
   gardenShoreSay(GT_PERPETUA_GUESS[gardenHash('tide-post|' + iso) % GT_PERPETUA_GUESS.length] + ` (The ${O.name} is in the lost things box. If nobody claims it in a week, it is yours.)`, 'mail', 9000);
 }
 
@@ -176,7 +177,7 @@ gardenShoreFolkOn((row, F, S) => {
 /** The lost thing goes back: delight, why it matters, a reward (and the friend who helped, by name). */
 function _gtlGiveBack(L, T, S) {
   const W = _gdG().wd, k = _gtlKey(L.iso); if (W[k] !== 'g') return;
-  W[k] = 'r'; _wdSave();
+  W[k] = 'r'; _wdSave(); _gtl.carried = null;
   const gift = { c: GT_LOST_PAY.c, x: GT_LOST_PAY.x };
   gardenShoreGive('tlr.' + (gardenShoreVisit() ? _gtcFriendTag() + '.' : '') + L.iso, gift);
   try { if (typeof _wkAdd === 'function') _wkAdd(L.row.v, 2); } catch (e) { /* friendship is a bonus */ }
@@ -190,7 +191,7 @@ function _gtlGiveBack(L, T, S) {
 function _gtlAskOdd(c, row, T, S) {
   const W = _gdG().wd, k = gardenShoreVisit() ? 'tlov.' + _gtcFriendTag() + '.' + c.iso : 'tlo.' + c.iso; if (W[k] !== 'g') return;
   if (row.id !== c.row.v) { T.say(GT_ODD_NO[row.id] || 'Not mine, I am afraid.', []); return; }
-  W[k] = 'r'; _wdSave();
+  W[k] = 'r'; _wdSave(); _gtl.carried = null;
   const gift = { c: GT_LOST_PAY.odd, x: 2 };
   gardenShoreGive('tlor.' + c.iso + '.' + c.row.id, gift);
   try { if (typeof _wkAdd === 'function') _wkAdd(row.id, 1); } catch (e) { /* a bonus */ }

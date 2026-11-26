@@ -241,8 +241,9 @@ function _gtrCrabPaint(B, c, frame) {
   // eyes on stalks
   for (const sd of [-1, 1]) { B.s(`M${sd * 1.3} -5.4l${sd * .3} -1.9`, c.c2, .6); B.f(B.circ(sd * 1.6, -7.5, .85), '#1a1612').f(B.circ(sd * 1.4, -7.8, .3), '#ffffff', .9); }
 }
+/** A crab for the talk card (a fragment in the card's 44 by 56 frame, its feet at 0,0). */
 function _gtrCrabSvg(c) {
-  return `<svg viewBox="-24 -40 48 56" width="44" height="56" aria-hidden="true"><g transform="translate(0 6) scale(2.6)"><ellipse cx="0" cy="1" rx="7" ry="2" fill="#3a3020" opacity="0.25"/><path d="M-4.2 -4L-6 -5.6M4.2 -4L6 -5.6" stroke="${c.c2}" stroke-width="1.2"/><ellipse cx="-6" cy="-6" rx="1.9" ry="1.5" fill="${c.c}"/><ellipse cx="6" cy="-6" rx="1.9" ry="1.5" fill="${c.c}"/><path d="M-3.4 -2l-2.4 -1.4l-1.2 2.6M-4.3 -1.3l-2.4 -1.4l-1.2 2.6M3.4 -2l2.4 -1.4l1.2 2.6M4.3 -1.3l2.4 -1.4l1.2 2.6" stroke="${c.c2}" stroke-width="0.9" fill="none"/><ellipse cx="0" cy="-3" rx="5" ry="3" fill="${c.c}"/><ellipse cx="-1.8" cy="-4.4" rx="1.8" ry="0.8" fill="#fff" opacity="0.35"/><circle cx="-1.6" cy="-7.5" r="0.85" fill="#1a1612"/><circle cx="1.6" cy="-7.5" r="0.85" fill="#1a1612"/></g></svg>`;
+  return `<g transform="translate(0 -4) scale(2.4)"><ellipse cx="0" cy="1" rx="7" ry="2" fill="#3a3020" opacity="0.25"/><path d="M-4.2 -4L-6 -5.6M4.2 -4L6 -5.6" stroke="${c.c2}" stroke-width="1.2"/><ellipse cx="-6" cy="-6" rx="1.9" ry="1.5" fill="${c.c}"/><ellipse cx="6" cy="-6" rx="1.9" ry="1.5" fill="${c.c}"/><path d="M-3.4 -2l-2.4 -1.4l-1.2 2.6M-4.3 -1.3l-2.4 -1.4l-1.2 2.6M3.4 -2l2.4 -1.4l1.2 2.6M4.3 -1.3l2.4 -1.4l1.2 2.6" stroke="${c.c2}" stroke-width="0.9" fill="none"/><ellipse cx="0" cy="-3" rx="5" ry="3" fill="${c.c}"/><ellipse cx="-1.8" cy="-4.4" rx="1.8" ry="0.8" fill="#fff" opacity="0.35"/><path d="M-1.3 -5.4l-.3 -1.9M1.3 -5.4l.3 -1.9" stroke="${c.c2}" stroke-width="0.6"/><circle cx="-1.6" cy="-7.5" r="0.85" fill="#1a1612"/><circle cx="1.6" cy="-7.5" r="0.85" fill="#1a1612"/></g>`;
 }
 const GT_TRBOX = Object.freeze([-6, -10, GT_RACE.len * GARDEN_WORLD.cellW + 8, GT_RACE.rows * GARDEN_WORLD.cellH + 6]);
 function _gtrTrackPaint(B) {

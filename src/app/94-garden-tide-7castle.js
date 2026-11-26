@@ -130,8 +130,9 @@ function gardenTideCastleRows(px, py, T) {
     return out;
   }
   // a new one, just in front of you (you kneel behind it, facing out)
-  const x = Math.round(px * 10) / 10, y = Math.round((py + .62) * 10) / 10;
-  if (_gtkCanBuild(x, y, T)) out.push({ key: 'tide:c:new', act: 'build', tide: { kind: 'castle', uid: '', piece: 9, at: { x, y } }, words: 'Build a sandcastle', name: 'a sandcastle', x, y, stand: { x: px, y: py }, promptY: py - 1.6, pri: .2 });
+  const x = Math.round(px * 10) / 10, y = Math.round((py + .62) * 10) / 10, key = x + '|' + y + '|' + T.w + '|' + gardenTideCastles().length, now = performance.now();
+  if (_gtk.canKey !== key || now - _gtk.canT > 1500) { _gtk.canKey = key; _gtk.canT = now; _gtk.can = _gtkCanBuild(x, y, T); }   // (asked five times a second while you stand there: worked out once)
+  if (_gtk.can) out.push({ key: 'tide:c:new', act: 'build', tide: { kind: 'castle', uid: '', piece: 9, at: { x, y } }, words: 'Build a sandcastle', name: 'a sandcastle', x, y, stand: { x: px, y: py }, promptY: py - 1.6, pri: .2 });
   return out;
 }
 /** A shell of yours to press into a tower: the one you have most of. */
