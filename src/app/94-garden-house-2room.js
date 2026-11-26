@@ -550,7 +550,7 @@ function _hsShellUse(R, S, what) {
  *  outside is hidden and is drawn again once as you leave. */
 function _hsGive(key, gift) {
   const g = _gdG(), today = _gdToday(), k = 'rwd.' + today + '.' + key;
-  if (g.led[k] || gpVisiting()) return false;
+  if (g.led[k]) return false;   // (on a visit it is your own garden's ledger: a friend's thank-you; the owner-only uses check for a visit themselves)
   let matLeft = typeof GR_ECON !== 'undefined' ? GR_ECON.matDay : 6; const i = {};
   for (const [lk, e] of Object.entries(g.led)) if (lk.startsWith('rwd.' + today + '.') && e && e.i) for (const [it, n] of Object.entries(e.i)) if (it.startsWith('mat:')) matLeft -= Number(n) || 0;
   for (const [it, n] of Object.entries(gift)) { const v = it.startsWith('mat:') ? Math.min(n, matLeft) : n; if (v > 0) { i[it] = v; if (it.startsWith('mat:')) matLeft -= v; } }
