@@ -15,6 +15,7 @@
    - A FOUND HIDER stands up laughing, says so, and goes back to the start to cheer the next find.
    - WITH FRIENDS the first to reach someone finds them (the host checks: within 3 cells of them); most finds wins.
    ============================================================ */
+const _vgs0 = { key: '', t: 0, ok: false };
 const _VGS_TELL = Object.freeze({ tail: 'Something moved. A tail?', giggle: 'Somebody giggled.', soil: 'Is that a little heap of fresh soil?', peek: 'Someone peeked out.' });
 function _vgsMillNear(x, y) { const C = _vfr.ctx; if (!C) return false; const N = VALE_NO_PLAY_NEAR; for (const t of C.things) if (N.kinds.includes(t.kind) && Math.hypot(t.x - x, t.y - y) < N.r) return true; return false; }
 /** Every place to hide near a point: [{ x, y (stand), tx (what they hide behind), kind, name, cover (0..1), d (cells from the start) }]. */
@@ -22,7 +23,8 @@ function _vgsSpots(at) {
   const C = typeof _vfr !== 'undefined' && _vfr.ctx; if (!C) return [];
   const out = [], R = 12, m = _vfr.m;
   const ok = (x, y) => (typeof _gwFree !== 'function' || _gwFree(x, y)) && !(typeof _vfrWetAt === 'function' && _vfrWetAt(x, y)) && (!m || _vfrOpenAt(x, y, m)) && Math.hypot(x - at.x, y - at.y) > 3 && !_vgsMillNear(x, y) && (typeof gardenFolkReach !== 'function' || gardenFolkReach(at, { x, y }));
-  let trunks = []; try { trunks = typeof _gwPaintedTrunks === 'function' ? _gwPaintedTrunks(gardenIslandData()) : []; } catch (e) { trunks = []; }
+  // (the painter's trunks, kept by the act system until the trees change: the same list the hide act stands at)
+  let trunks = []; try { if (typeof _ga !== 'undefined' && typeof _gwPaintedTrunks === 'function') { const sig = typeof _gwTrunkSig === 'function' ? _gwTrunkSig() : ''; if (sig !== _ga.trunkSig || !_ga.trunks.length) { _ga.trunkSig = sig; _ga.trunks = _gwPaintedTrunks(gardenIslandData()); } trunks = _ga.trunks; } } catch (e) { trunks = []; }
   for (const b of trunks) {
     if (b.sp === 'water' || b.x1 - b.x0 < 0.28) continue;
     const fx = (b.x0 + b.x1) / 2, fy = b.y1, d = Math.hypot(fx - at.x, fy - at.y); if (d > R) continue;
@@ -64,7 +66,11 @@ function _vgsSoilSvg() {
 valeGameAdd('seek', {
   late: true,
   giveUp: 150,
-  can(at) { if (_vgsSpots(at).length < 3) return 'Nowhere to hide round here.'; return ''; },
+  can(at) {
+    const key = Math.round(at.x / 3) + ',' + Math.round(at.y / 3), now = performance.now(), M = _vgs0;
+    if (M.key !== key || now - M.t > 4000) { M.key = key; M.t = now; M.ok = _vgsSpots(at).length >= 3; }
+    return M.ok ? '' : 'Nowhere to hide round here.';
+  },
   finding() { return 'Everyone round you. Get ready to count!'; },
   setup(R, cb) {
     const spots = _vgsSpots(R.at); if (spots.length < 3) { cb(false, 'Nowhere to hide here! Somewhere with trees, or a few things to get behind.'); return; }

@@ -46,7 +46,7 @@ function gardenFolkDrive(id, o) {
     V.path = o.path.slice(); V.pathFor = D.to.x.toFixed(2) + ',' + D.to.y.toFixed(2); V.asking = ''; V.noWay = false;
   } else if (o.to && Number.isFinite(o.to.x) && Number.isFinite(o.to.y)) { D.to = { x: o.to.x, y: o.to.y }; V.path = null; V.pathFor = ''; V.asking = ''; V.noWay = false; }
   else { D.to = null; V.path = null; V.pathFor = ''; }
-  V.drive = D; V.visit = null; V.mark = false; V.aside = null; V.greet = null; V.nod = null; V.drawn = ''; V.waiting = false;
+  V.drive = D; V.visit = null; V.mark = false; V.aside = null; V.greet = null; V.nod = null; V.hold = null; V.drawn = ''; V.waiting = false;   // (a talk that led to this, Play on their card, is over)
   if (V.inside) V.inside = false;
   return D;
 }
