@@ -180,6 +180,7 @@ function _hsInside() { return !!(_grm.on && _grm.R && _grm.R.house && _grm.S); }
 function _hsFeet(S) { const out = []; if (_grm.me) out.push([_grm.me.x, _grm.me.y]); for (const Q of _grm.m.values()) out.push([Q.x, Q.y]); return out; }
 const HOUSE_PLAY = {
   begin(R, S) {
+    const t0 = performance.now();
     S.slot = R.slot; S.rev = -1; S.vrev = -1; S.snapRef = null; S.move = false; S.carry = null; S.imgs = new Map(); S.lamps = new Map(); S.lampList = []; S.clocks = new Map(); S.blocks = []; S.pieces = []; S.dirty = false; S.pend = new Map();
     S.spawn = HOUSE_SHELL.spawn; S.native = !!_hsNative(); S.t = 0; S.lightAt = 0; S.keyNow = R.paintKey; S.near = null; S.nearAt = 0;
     S.leave = () => _hsEnd(R, S);
@@ -188,6 +189,7 @@ const HOUSE_PLAY = {
     _hsRoomRefresh(R, S, true);
     _hsUi(R, S);
     try { if (typeof _fxSound === 'function') _fxSound('pop'); } catch (e) { /* no sound */ }
+    S.beginMs = Math.round((performance.now() - t0) * 10) / 10;   // (what going in costs this house's own code: gardenHouseDebug())
   },
   spots(R, S) { return S.native ? [] : _hsSvgSpots(R, S); },
   act(R, S, id) { const u = String(id).replace(/^p:/, ''), p = S.pieces.find(q => q.u === u); if (!p) return; if (S.move) { if (typeof _hsPickUp === 'function') _hsPickUp(R, S, p); } else _hsUse(R, S, p); },
@@ -401,7 +403,7 @@ function _hsNearest(S) {
   for (const p of S.pieces) {
     const w = _hsUseOf(p); if (!w) continue;
     const sh = houseShape(gardenDecor(p.d)), fy = sh.hp === 'wall' ? 420 : p.y, fx = sh.hp === 'wall' ? p.x : Math.max(p.x - sh.w / 2, Math.min(p.x + sh.w / 2, M.x));
-    consider(fx, fy, { p, words: w + ' (' + String(gardenDecor(p.d).name).toLowerCase().replace(/^a /, '') + ')', x: p.x, y: p.y - (p.z || 0) - sh.h });
+    consider(fx, fy, { p, words: w + ' (' + houseLowName(gardenDecor(p.d)) + ')', x: p.x, y: p.y - (p.z || 0) - sh.h });
   }
   return best;
 }
@@ -425,7 +427,7 @@ function _hsPrompt(R, S) {
 /** Using a piece, by its kind. */
 function _hsUse(R, S, p) {
   const def = gardenDecor(p.d), sh = houseShape(def); if (!sh) return;
-  const name = String(def.name).toLowerCase(), M = _grm.me;
+  const name = houseLowName(def), M = _grm.me;
   if (M) { M.face = p.x >= M.x ? 1 : -1; }
   _hsKick(S, p);
   switch (sh.fk) {
@@ -527,4 +529,9 @@ function _hsSvgRoom(R) {
     + A.r(W.x0, W.y0, W.x1 - W.x0, W.y1 - W.y0, '#5a3e26') + A.r(W.x0 + 12, W.y0 + 10, W.x1 - W.x0 - 24, W.y1 - W.y0 - 24, S.low) + A.r(W.x0 + 12, W.y0 + 66, W.x1 - W.x0 - 24, 40, '#5a8a48')
     + A.r(H.x0, H.y0, H.x1 - H.x0, H.y1 - H.y0, '#b0a898') + A.r(F.x0, F.y0, F.x1 - F.x0, F.y1 - F.y0, '#1a0e08') + A.flame((F.x0 + F.x1) / 2, F.y1 - 12, 2) + A.glow((F.x0 + F.x1) / 2, F.y1 - 30, 90, .45)
     + A.r(D.x0, D.y0, D.x1 - D.x0, D.y1 - D.y0, '#6a4a2e') + A.r(0, 388, 960, 13, '#4a3220');
+}
+/** For the console and the sandbox: the house as this page sees it now, and what it cost. */
+function gardenHouseDebug() {
+  const S = _hsInside() ? _grm.S : null, s = _hsNative();
+  return { mine: gardenHouseMine(), inside: !!S, room: S ? _grm.R.id : '', pieces: S ? S.pieces.length : 0, imgs: S ? S.imgs.size : 0, beginMs: S ? S.beginMs : null, key: S ? _grm.R.paintKey : '', bake: s && s.background ? s.background.status : null, texMs: _hst.ms.slice(-12), textures: _hst.keys.length, wireBytes: (JSON.stringify(gardenHouseWire()) || '').length };
 }

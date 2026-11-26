@@ -66,6 +66,8 @@ const _hsOwn = (o, k) => !!o && typeof o === 'object' && Object.prototype.hasOwn
 const _hsCopy = v => v === undefined ? undefined : JSON.parse(JSON.stringify(v));
 const _hsInt = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
 function _hsDecor(id) { return typeof gardenDecor === 'function' ? gardenDecor(id) : null; }
+/** A piece's name in a sentence: 'A painted picture' is 'painted picture' after 'the'. */
+function houseLowName(def) { return String((def && def.name) || 'thing').toLowerCase().replace(/^(a|an|the) /, ''); }
 /** A home row's own shape: where it goes and how big it is (a row without the numbers is a small floor thing). */
 const _HS_SHAPES = new Map();   // (a row's shape, worked out once: it is asked for every piece every frame while one is carried)
 function houseShape(def) {
@@ -156,7 +158,7 @@ function houseFits(pieces, def, x, y, z, self, skip) {
     const d = houseDrawn(me, def);
     if (_hsOver(d, H.window, 4)) return 'That would cover the window';
     if (_hsOver(d, H.fire, 0) || _hsOver(d, H.hearth, 8) && d.y0 < H.hearth.y1 - 40) return 'Not in front of the fire';
-    for (const q of others) { const qd = _hsDecor(q.d), qs = houseShape(qd); if (qs && qs.hp === 'wall' && _hsOver(d, houseBox(q, qd), 2)) return 'That would hide the ' + String(qd.name).toLowerCase(); }
+    for (const q of others) { const qd = _hsDecor(q.d), qs = houseShape(qd); if (qs && qs.hp === 'wall' && _hsOver(d, houseBox(q, qd), 2)) return 'That would hide the ' + houseLowName(qd); }
   }
   for (const q of others) {
     if ((q.z || 0) > 0) continue;
@@ -207,7 +209,7 @@ function houseOpCheck(W, op, who) {
     case 'put': {
       const def = _hsDecor(op.d), S = houseShape(def); if (!S || def.finish) return 'That does not go indoors';
       if (!hs.home) return 'Nobody lives here yet';
-      if (!who && W.has && W.has('decor:' + def.id) < 1) return `You have no ${String(def.name).toLowerCase()} left to bring in`;
+      if (!who && W.has && W.has('decor:' + def.id) < 1) return `You have no ${houseLowName(def)} left to bring in`;
       if (_hsOwn(g.hf, op.u)) return 'That is set out already';
       const room = housePieces(g, op.s); if (room.length >= HOUSE_ROOM_MAX) return `There is room for ${HOUSE_ROOM_MAX} things in here: put something away first`;
       if (op.r && !S.rot) return `${def.name} looks the same either way round`;
@@ -229,7 +231,7 @@ function houseOpCheck(W, op, who) {
       const was = (op.o === 'wall' ? room.w : room.f) || (op.o === 'wall' ? HOUSE_WALL0 : HOUSE_FLOOR0);
       if (was === def.id) return op.o === 'wall' ? 'The walls are like that already' : 'The floor is like that already';
       const base = op.o === 'wall' ? HOUSE_WALL0 : HOUSE_FLOOR0;
-      if (!who && def.id !== base && W.has && W.has('decor:' + def.id) < 1) return `You have no ${String(def.name).toLowerCase()} left`;
+      if (!who && def.id !== base && W.has && W.has('decor:' + def.id) < 1) return `You have no ${houseLowName(def)} left`;
       return '';
     }
   }

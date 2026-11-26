@@ -237,7 +237,7 @@ function _hsPlace(R, S) {
     if (C.x === C.orig.x && C.y === C.orig.y && C.z === C.orig.z && C.r === C.orig.r) { _hsCarryCancel(R, S); return true; }
     op = { o: 'move', u: C.u, x: C.x, y: C.y, z: C.z, r: C.r };
   } else { const u = _gdUid('h'); op = { o: 'put', s: S.slot, d: C.d, x: C.x, y: C.y, z: C.z, r: C.r, u, lk: 'hf.' + u }; }
-  const name = String(def.name).toLowerCase(), moved = C.moved;
+  const name = houseLowName(def), moved = C.moved;
   _hsCarryClear(S);
   if (gpVisiting()) { if (typeof _hsGuestDo === 'function') _hsGuestDo(R, S, op); }
   else {
@@ -258,9 +258,9 @@ function _hsPutAway(R, S) {
   const def = gardenDecor(C.d), op = { o: 'lift', u: C.u };
   _hsCarryClear(S);
   if (gpVisiting()) { if (typeof _hsGuestDo === 'function') _hsGuestDo(R, S, op); }
-  else { const r = houseDo(op, 'Put away the ' + String(def.name).toLowerCase()); if (!r.ok) _grmSay(r.msg + '.'); }
+  else { const r = houseDo(op, 'Put away the ' + houseLowName(def)); if (!r.ok) _grmSay(r.msg + '.'); }
   _hsRoomRefresh(R, S, false); _hsHint(R, S); _hsBagPaint(R, S);
-  _grmSay(gpVisiting() ? `The ${String(def.name).toLowerCase()} goes in your friend’s chest.` : `The ${String(def.name).toLowerCase()} is in your things.`, 3500);
+  _grmSay(gpVisiting() ? `The ${houseLowName(def)} goes in your friend’s chest.` : `The ${houseLowName(def)} is in your things.`, 3500);
   try { if (typeof _fxSound === 'function') _fxSound('tick'); } catch (e) { /* no sound */ }
   return true;
 }
@@ -353,6 +353,6 @@ function _hsMovePromptRow(R, S) {
   if (S.carry) return null;
   const M = _grm.me; if (!M) return null;
   let best = null, bd = HOUSE_REACH;
-  for (const q of S.pieces) { const def = gardenDecor(q.d), sh = houseShape(def); if (!sh) continue; const fy = sh.hp === 'wall' ? 420 : q.y, fx = Math.max(q.x - sh.w / 2, Math.min(q.x + sh.w / 2, M.x)), d = Math.hypot(M.x - fx, (M.y - fy) * 1.2) + ((q.z || 0) > 0 ? -6 : 0); if (d < bd) { bd = d; best = { words: 'Pick up the ' + String(def.name).toLowerCase().replace(/^a /, ''), x: q.x, y: q.y - (q.z || 0) - sh.h }; } }
+  for (const q of S.pieces) { const def = gardenDecor(q.d), sh = houseShape(def); if (!sh) continue; const fy = sh.hp === 'wall' ? 420 : q.y, fx = Math.max(q.x - sh.w / 2, Math.min(q.x + sh.w / 2, M.x)), d = Math.hypot(M.x - fx, (M.y - fy) * 1.2) + ((q.z || 0) > 0 ? -6 : 0); if (d < bd) { bd = d; best = { words: 'Pick up the ' + houseLowName(def), x: q.x, y: q.y - (q.z || 0) - sh.h }; } }
   return best;
 }

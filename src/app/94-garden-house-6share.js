@@ -51,7 +51,7 @@ function gardenHouseHostDo(ev, put, g) {
 }
 /** The friend diary's words for a change in your house. */
 function gardenHouseDiary(e, who, n) {
-  const d = e.p ? gardenDecor(e.p) : null, name = d ? String(d.name).toLowerCase().replace(/^a /, '') : 'something', a = typeof _gscA === 'function' ? _gscA(name) : 'a ' + name;
+  const d = e.p ? gardenDecor(e.p) : null, name = d ? houseLowName(d) : 'something', a = typeof _gscA === 'function' ? _gscA(name) : 'a ' + name;
   switch (e.hi) {
     case 'put': return n > 1 ? `${who} brought ${n} things into your house` : `${who} brought ${a} into your house`;
     case 'move': return `${who} moved the ${name} in your house`;
