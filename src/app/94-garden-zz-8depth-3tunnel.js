@@ -280,7 +280,7 @@ function _gdtDone(C, m) {
 function gardenDepthTunnelWhere() {
   const C = _gdt.cur; if (!C) return null;
   if ((C.phase === 'in' && C.k < 0.5) || (C.phase === 'out' && C.k >= 0.5)) return null;
-  return { id: C.T.id, n: Math.max(0, C.n | 0) };
+  const o = _gdt.whereOf || (_gdt.whereOf = { id: '', n: 0 }); o.id = C.T.id; o.n = Math.max(0, C.n | 0); return o;   // (asked every frame: one object, its fields set)
 }
 /** dp: the tunnels you have been through (bit 1), for friends (gardenSnapshot). */
 function gardenDepthTunnelWire() {
