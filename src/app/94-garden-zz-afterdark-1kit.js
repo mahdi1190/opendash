@@ -175,6 +175,14 @@ function adTrees() {
   _ad.trees = out; _ad.treeSig = sig; _ad.tiles.clear();
   return out;
 }
+/** What the world has planted so far (the trunks' signature and the painters' tall plantings): the native world plants a little at a
+ *  time, so a scan of places is done again once this settles (every screen ends on the whole world). Looked at every few seconds. */
+function adWorldSig() {
+  const now = performance.now(); if (_ad.ws && now - (_ad.wsAt || 0) < 4000) return _ad.ws;
+  _ad.wsAt = now; adTrees(); let n = 0;
+  try { n = window.GardenNativePainted && GardenNativePainted.tall ? GardenNativePainted.tall().length : 0; } catch (e) { n = 0; }
+  return (_ad.ws = _ad.treeSig + '|' + n);
+}
 /** Is this ground open to the gardener here (bought and opened)? */
 function adOpen(x, y, m) { try { return !gardenZoneLockOf(Math.floor(x), Math.floor(y), (m || gardenHere()).areas); } catch (e) { return true; } }
 /** Would something small lying here be drawn over by what stands just south of it (a tree's crown, a building's roof)? Read from the

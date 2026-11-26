@@ -22,7 +22,8 @@ function _adfHour(iso, N) { return 22 + gardenHash('ad-sfh|' + N.key + '|' + iso
 /** The places a star may come down, worked out a few rows a tick round the arrival point (every other cell), once a layout. */
 function _adfScan(rows) {
   const L = adLay(); if (!L) return null;
-  if (_adf.candD !== L.D) { _adf.candD = L.D; _adf.cands = []; _adf.scanY = -AD_FALL.reach; _adf.done = false; }
+  const ws = adWorldSig();
+  if (_adf.candD !== L.D || _adf.ws !== ws) { _adf.candD = L.D; _adf.ws = ws; _adf.cands = []; _adf.scanY = -AD_FALL.reach; _adf.done = false; }   // (again when more of the world has been planted)
   if (_adf.done) return _adf.cands;
   const A = L.arrival, R = AD_FALL.reach, D = L.D;
   for (let k = 0; k < rows && _adf.scanY <= R; k++, _adf.scanY += 2) {
@@ -159,7 +160,7 @@ wdMod({
   begin() { _adf.ids = new Set(); },
   tick(m) {
     if (!adOn()) { if (_adf.ids.size) { adSpritesOff('sf-'); _adf.ids = new Set(); } return; }
-    if (!_adf.done) { if (!(typeof wdWalkingLately === 'function' && wdWalkingLately())) _adfScan(3); return; }   // (the places are worked out a little at a time, never while you walk)
+    if (!_adf.done || _adf.ws !== adWorldSig()) { if (!(typeof wdWalkingLately === 'function' && wdWalkingLately())) _adfScan(3); if (!_adf.done) return; }   // (the places are worked out a little at a time, never while you walk, and again when more of the world is planted)
     const N = adNow(m), { want, stars } = _adfDraw(m, N), hN = N.hour < 12 ? N.hour + 24 : N.hour;
     for (const id of _adf.ids) if (!want.has(id)) { adSprite(id, null); _ad.picks.delete(id); wdGlowOff('ad-' + id); }
     _adf.ids = want;

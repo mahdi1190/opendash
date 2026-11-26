@@ -17,7 +17,8 @@ function _adtTrunkNear(B, x, y) { const fx = Math.floor(x), fy = Math.floor(y); 
 function _adtScan(rows) {
   const L = adLay(); if (!L) return false;
   const T = adTrees();
-  if (_adt.D !== L.D || _adt.sig !== _ad.treeSig) { _adt.D = L.D; _adt.sig = _ad.treeSig; _adt.scan = 0; _adt.starts = []; _adt.glades = []; _adt.done = false; _adt.night = ''; _adt.B = new Map(); for (const t of T) { const k = Math.floor(t.x) + ',' + Math.floor(t.y); _adt.B.set(k, (_adt.B.get(k) || 0) + 1); } }
+  const ws = adWorldSig();
+  if (_adt.D !== L.D || _adt.sig !== ws) { _adt.D = L.D; _adt.sig = ws; _adt.scan = 0; _adt.starts = []; _adt.glades = []; _adt.done = false; _adt.night = ''; _adt.B = new Map(); for (const t of T) { const k = Math.floor(t.x) + ',' + Math.floor(t.y); _adt.B.set(k, (_adt.B.get(k) || 0) + 1); } }
   if (_adt.done) return true;
   const W = GARDEN_WORLD, A = L.arrival, R = AD_TRAIL.reach, B = _adt.B;
   for (let k = 0; k < rows && _adt.scan < W.rows; k++, _adt.scan++) {
@@ -121,7 +122,7 @@ wdMod({
   begin() { _adt.ids = new Set(); },
   tick(m) {
     if (!adOn()) { if (_adt.ids.size) { for (const id of _adt.ids) { adSprite(id, null); wdGlowOff('ad-' + id); } _adt.ids = new Set(); } return; }
-    if (!_adt.done) { if (!(typeof wdWalkingLately === 'function' && wdWalkingLately())) _adtScan(4); return; }
+    if (!_adt.done || _adt.sig !== adWorldSig()) { if (!(typeof wdWalkingLately === 'function' && wdWalkingLately())) _adtScan(4); if (!_adt.done) return; }
     const N = adNow(m), want = new Set(), T = N.dark ? _adtPlan(m, N) : null;
     if (T) {
       const W = GARDEN_WORLD;
