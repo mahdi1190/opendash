@@ -159,7 +159,15 @@ function _gardenIslandInLoop(x, y, points) {
 function gardenIslandLandContains(x, y) { return Number.isFinite(x) && Number.isFinite(y) && gardenIslandGeometry().land.some(points => _gardenIslandInLoop(x, y, points)); }
 function gardenIslandOceanContains(x, y) { const W = GARDEN_WORLD; return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x < W.cols && y < W.rows && !gardenIslandLandContains(x, y); }
 function _gardenIslandRect(x, y, r) { return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h; }
-function _gardenIslandFreshwaterTest(G, cx, cy) { return G.freshwater.some(p => p.boundary ? _gardenIslandInLoop(cx, cy, p.boundary) : _gardenIslandRect(cx, cy, p.wet)); }
+// (speed pass) each outline's box is tried before the outline (every cell of the map asks once, and walking asks for points): the
+// same answers, as a point outside an outline's box is never inside it; an outline with a point that is not a number is always tried
+const _gardenIslandFreshBoxes = new WeakMap();
+function _gardenIslandLoopBox(points) { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const p of points || []) { const x = p[0], y = p[1]; if (!Number.isFinite(x) || !Number.isFinite(y)) return [-Infinity, -Infinity, Infinity, Infinity]; if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y; } return [x0 - 1e-6, y0 - 1e-6, x1 + 1e-6, y1 + 1e-6]; }
+function _gardenIslandFreshwaterTest(G, cx, cy) {
+  const F = G.freshwater; let B = _gardenIslandFreshBoxes.get(F); if (!B) { B = F.map(p => p.boundary ? _gardenIslandLoopBox(p.boundary) : null); _gardenIslandFreshBoxes.set(F, B); }
+  for (let i = 0; i < F.length; i++) { const p = F[i]; if (p.boundary) { const b = B[i]; if (cx < b[0] || cy < b[1] || cx > b[2] || cy > b[3]) continue; if (_gardenIslandInLoop(cx, cy, p.boundary)) return true; } else if (_gardenIslandRect(cx, cy, p.wet)) return true; }
+  return false;
+}
 /** Meet the two authored approaches at their banks, including a route junction
  * at a crossing. This is derived once and is shared by paint and remote feet. */
 function _gardenIslandCrossingRouteSpan(c, water, halfWidth) {
@@ -381,7 +389,7 @@ function _gardenIslandBeachCells() {
 function _gardenIslandBaseBoxes(data) {
   const B = _gardenIslandDerived.baseBoxes; if (B && B.data === data) return B;
   const NEVER = [Infinity, Infinity, -Infinity, -Infinity], pad = 1e-6;
-  const box = (pts, r, into) => { const b = into || [Infinity, Infinity, -Infinity, -Infinity]; for (const p of pts || []) { if (p[0] < b[0]) b[0] = p[0]; if (p[1] < b[1]) b[1] = p[1]; if (p[0] > b[2]) b[2] = p[0]; if (p[1] > b[3]) b[3] = p[1]; } b.r = Math.max(b.r || 0, r); return b; };
+  const box = (pts, r, into) => { const b = into || [Infinity, Infinity, -Infinity, -Infinity]; for (const p of pts || []) { if (!Number.isFinite(p[0]) || !Number.isFinite(p[1])) { b[0] = b[1] = -Infinity; b[2] = b[3] = Infinity; continue; } if (p[0] < b[0]) b[0] = p[0]; if (p[1] < b[1]) b[1] = p[1]; if (p[0] > b[2]) b[2] = p[0]; if (p[1] > b[3]) b[3] = p[1]; } b.r = Math.max(b.r || 0, r); return b; };   // (a point that is not a number: the box never skips)
   const grow = (b) => [b[0] - b.r - pad, b[1] - b.r - pad, b[2] + b.r + pad, b[3] + b.r + pad];
   const routes = (data.routes || []).map(route => {
     if (!route.points) return NEVER;   // (_gardenIslandOnRoute: no centreline, never on it)
