@@ -271,7 +271,8 @@ function _gdpSkyChip(m) {
   const tod = { dawn: 'Dawn', day: 'Daytime', dusk: 'Evening', night: 'Night' }[m.tod] || '';
   const ic = m.rain.snow ? 'snowflake' : m.rain.now ? 'droplets' : m.tod === 'night' ? 'moon' : m.tod === 'dawn' ? 'sunrise' : m.tod === 'dusk' ? 'sunset' : 'sun';
   const wx = m.rain.snow ? 'snowing' : m.rain.now ? 'raining' : '';
-  return { ic, text: `${GARDEN_SEASON_LABEL[m.season]} · ${tod.toLowerCase()}${wx ? ' · ' + wx : ''}` };
+  const nw = typeof gardenNightChipWords === 'function' ? gardenNightChipWords(m) : '';   // after dark: the named moon, the vale lights (94-garden-zz-afterdark-apages.js)
+  return { ic, text: `${GARDEN_SEASON_LABEL[m.season]} · ${tod.toLowerCase()}${wx ? ' · ' + wx : ''}${nw ? ' · ' + nw : ''}` };
 }
 /* ---------- the garden: one stage that fills the page, and overlays on it (94-garden-world-2hud.js) ---------- */
 function _gdpGardenTab(body, m) {

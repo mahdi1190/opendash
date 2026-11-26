@@ -82,6 +82,7 @@ const WD_PREFS = Object.freeze([
   ['days', 'Small days in the calendar', 'A lantern on the lake, a supper, a fire: a few days a year, in the world.'],
   ['weather', 'Weather you can feel', 'Footprints in snow and after rain, and whatever else leaves them.'],
   ['still', 'Things that come to you', 'A bird on your head if you stand still long enough.'],
+  ['night', 'After dark', 'Named moons, moths at the sheet, falling stars, mushrooms after rain and night walks.'],   // 94-garden-zz-afterdark-*.js
 ]);
 function _wdOn(k) { try { const p = _gdG().prefs.wd; return !p || p[k] !== false; } catch (e) { return true; } }
 registerSettingsGroup({

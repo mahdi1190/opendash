@@ -206,6 +206,7 @@ function _gdxItemName(k) {
   if (kind === 'bq') { const b = GARDEN_BOUQUETS.find(x => x.id === id); return b ? b.name : id; }
   if (kind === 'decor') { const d = gardenDecor(id); return d ? d.name : id; }
   if (kind === 'seed') { const p = gardenPlant(id); return p ? p.name + ' seeds' : id; }
+  if (typeof gardenNightItemName === 'function') { const n = gardenNightItemName(k); if (n) return n; }   // after dark: a star stone (94-garden-zz-afterdark-1kit.js)
   return { honey: 'Honey', fertiliser: 'Compost', clover: 'Four-leaf clover' }[k] || k;
 }
 function _gdxItemIcon(k, px) {
@@ -214,6 +215,7 @@ function _gdxItemIcon(k, px) {
   if (kind === 'bq') return gardenIconSvg(id, { kind: 'bouquet', px });
   if (kind === 'decor') return gardenIconSvg(id, { kind: 'decor', px });
   if (kind === 'seed') return gardenIconSvg(id, { kind: 'seed', px });
+  if (typeof gardenNightItemIcon === 'function') { const s = gardenNightItemIcon(k, px); if (s) return s; }   // after dark: a star stone
   return gardenIconSvg(k, { kind: 'tool', px });
 }
 function _gdxSellRow(k, n, each, note) {
@@ -234,6 +236,7 @@ function gardenAlmanacTab(el, m) {
   el.appendChild(top);
   const cards = _gdpEl('div', 'gpg-cards'); el.appendChild(cards);
   if (typeof gardenLakeTab === 'function') gardenLakeTab(cards, m);
+  if (typeof gardenNightBoard === 'function') { try { gardenNightBoard(cards, m); } catch (e) { /* the night sky's card is optional */ } }   // after dark: tonight's sky, what is coming, Wick's weather (94-garden-zz-afterdark-apages.js)
 }
 
 /* ---------- the basket ---------- */

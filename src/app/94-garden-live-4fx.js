@@ -101,6 +101,7 @@ function _gllFxPlay(A, ev) {
   if (c === 'soap') { if (typeof gardenSoapHeard === 'function') gardenSoapHeard(A, ev); return; }
   if (c === 'leaf') { if (typeof gardenLeafBoatHeard === 'function') gardenLeafBoatHeard(A, ev); return; }
   if (c === 'marble') { if (typeof gardenMarbleHeard === 'function') gardenMarbleHeard(A, ev); return; }
+  if (c === 'nt') { if (typeof gardenNightHeard === 'function') gardenNightHeard(A, ev); return; }   // after dark (94-garden-zz-afterdark-1kit.js)
   if ((c === 'hall' && e === 'in' || c === 'fish' && e === 'cast' || c === 'pose' && e === 'on') && _gll.role === 'host' && typeof gardenSoapLeft === 'function') gardenSoapLeft(A.w);
   if ((c === 'hall' && e === 'in' || c === 'fish' && e === 'cast' || c === 'pose' && e === 'on') && _gll.role === 'host' && typeof gardenLeafBoatLeft === 'function') gardenLeafBoatLeft(A.w);
   if (c === 'kite') { if (typeof gardenKiteHeard === 'function') gardenKiteHeard(A, ev); return; }

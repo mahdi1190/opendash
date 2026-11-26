@@ -94,7 +94,9 @@ const GL_EMOTES = Object.freeze(['wave', 'cheer', 'clap', 'bow', 'shrug', 'sit',
   // the tide (94-garden-tide-*.js): scooping a find from the sand, lifting a stone on the rocks, kneeling to look into a rock pool, hauling a storm's chest
   'act-scoop', 'act-lift', 'act-peer', 'act-heave',
   // the shore's games (94-garden-tide-6castle.js to -c-pits.js): patting a sandcastle into shape, cheering a crab on, kneeling at a game of pebble pits, throwing a bottle out to sea
-  'act-build', 'act-cheer', 'act-pits', 'act-throw']);
+  'act-build', 'act-cheer', 'act-pits', 'act-throw',
+  // after dark: the reel, learned at a barn dance (94-garden-zz-afterdark-9music.js)
+  'reel']);
 const GL_PHRASES = Object.freeze([
   Object.freeze({ id: 'hi', t: 'Hello!' }), Object.freeze({ id: 'lovely', t: 'Your garden is lovely' }), Object.freeze({ id: 'look', t: 'Look at this!' }),
   Object.freeze({ id: 'help', t: 'Can I help?' }), Object.freeze({ id: 'thanks', t: 'Thank you!' }), Object.freeze({ id: 'follow', t: 'Follow me!' }),
@@ -106,11 +108,11 @@ const GL_TOGETHER = Object.freeze(['high5', 'follow', 'unfollow', 'sit', 'greet'
 /** What people SEE each other do (gl:fx, a kind of its own: an older app has no such kind and drops it, so GL_V stays). Ids and cells on the wire, each side draws them from its own tables;
  *  an id this version does not know is ignored. `c` is the family, `e` the step or the id: pet (a clip of the pet library, or pat / eat), petplay (an environment/guide endpoint or critical exact-request guide stop; optional u 1..3 plus i species addresses the host pack), wow (a pet spectacle), nap (on / off), roam (a species of the host's pack),
  *  fish (a step of the line), bug (a step of the net), got (what was caught or found: `e` its kind, `i` its id), make (a recipe's id), cheer (a moment of yours: a garden level, an achievement's id, a photo taken), ct (a contest round: the host's, see GL_CT), snap (ask for a group photo: `i` its id, `x` and `y` the middle of the frame, see GL_SNAP). `to` and `w` are slots as in gl:em. */
-const GL_FX_KINDS = Object.freeze(['pet', 'petplay', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make', 'cr', 'egg', 'pick', 'cheer', 'ct', 'snap', 'hall', 'fs', 'sync', 'use', 'pose', 'kite', 'soap', 'leaf', 'marble', 'tune', 'folk', 'gm', 'mo', 'tide']);
-const GL_FX_STEPS = Object.freeze({ mo: Object.freeze(['play', 'skip']), gm: Object.freeze(['ask', 'start', 'state', 'end', 'stop', 'act', 'join', 'leave']), folk: Object.freeze(['talk', 'bye']), sync: Object.freeze(['ask', 'at', 'away', 'back']), fs: Object.freeze(['hook', 'land', 'free']), fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in', 'big', 'help']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), ct: Object.freeze(['start', 'board', 'end', 'stop']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop', 'gear', 'shore']), cheer: Object.freeze(['level', 'ach', 'photo']), snap: Object.freeze(['ask']), hall: Object.freeze(['in', 'at', 'out', 'hold']), use: Object.freeze(['bell', 'wish', 'collect', 'machine']), kite: Object.freeze(['take', 'letgo', 'state']), soap: Object.freeze(['take', 'letgo', 'release', 'state']), leaf: Object.freeze(['launch', 'control', 'retrieve', 'state']), marble: Object.freeze(['set', 'roll', 'reset', 'state']), tune: Object.freeze(['on', 'off', 'ping', 'pong']), tide: Object.freeze(['got', 'lift', 'haul', 'heave', 'open', 'castle', 'cset', 'race', 'rstate', 'rend', 'rpick', 'cheer', 'lback']) });
+const GL_FX_KINDS = Object.freeze(['pet', 'petplay', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make', 'cr', 'egg', 'pick', 'cheer', 'ct', 'snap', 'hall', 'fs', 'sync', 'use', 'pose', 'kite', 'soap', 'leaf', 'marble', 'tune', 'folk', 'gm', 'mo', 'tide', 'nt']);
+const GL_FX_STEPS = Object.freeze({ mo: Object.freeze(['play', 'skip']), gm: Object.freeze(['ask', 'start', 'state', 'end', 'stop', 'act', 'join', 'leave']), folk: Object.freeze(['talk', 'bye']), sync: Object.freeze(['ask', 'at', 'away', 'back']), fs: Object.freeze(['hook', 'land', 'free']), fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in', 'big', 'help']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), ct: Object.freeze(['start', 'board', 'end', 'stop']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop', 'gear', 'shore']), cheer: Object.freeze(['level', 'ach', 'photo']), snap: Object.freeze(['ask']), hall: Object.freeze(['in', 'at', 'out', 'hold']), use: Object.freeze(['bell', 'wish', 'collect', 'machine']), kite: Object.freeze(['take', 'letgo', 'state']), soap: Object.freeze(['take', 'letgo', 'release', 'state']), leaf: Object.freeze(['launch', 'control', 'retrieve', 'state']), marble: Object.freeze(['set', 'roll', 'reset', 'state']), tune: Object.freeze(['on', 'off', 'ping', 'pong']), tide: Object.freeze(['got', 'lift', 'haul', 'heave', 'open', 'castle', 'cset', 'race', 'rstate', 'rend', 'rpick', 'cheer', 'lback']), nt: Object.freeze(['bow', 'bowin', 'bowgot', 'lan', 'sky', 'star', 'name', 'dance']) });
 /** What only the garden's host may say (the host decides: who netted a bug, who took a gift, which creatures are about, what the pets notice), and what goes to the host alone (a claim, a poke). A guest's own fx of these kinds is refused at both ends. */
-const GL_FX_HOST_ONLY = Object.freeze(new Set(['mo|*', 'gm|start', 'gm|state', 'gm|end', 'gm|stop', 'tune|pong', 'bug|gone', 'bug|lost', 'cr|react', 'cr|look', 'cr|greet', 'egg|fire', 'pick|spawn', 'pick|take', 'pick|gone', 'roam|*', 'ct|*', 'kite|state', 'soap|state', 'leaf|state', 'marble|state', 'tide|heave', 'tide|open', 'tide|cset', 'tide|race', 'tide|rstate', 'tide|rend']));
-const GL_FX_TO_HOST = Object.freeze(new Set(['gm|act', 'gm|join', 'gm|leave', 'gm|ask', 'folk|talk', 'folk|bye', 'tune|ping', 'bug|claim', 'pick|claim', 'cr|poke', 'fs|hook', 'fs|land', 'fs|free', 'sync|ask', 'sync|away', 'sync|back', 'pose|on', 'pose|off', 'kite|take', 'kite|letgo', 'soap|take', 'soap|letgo', 'soap|release', 'leaf|launch', 'leaf|control', 'leaf|retrieve', 'marble|set', 'marble|roll', 'marble|reset', 'tide|haul', 'tide|castle', 'tide|rpick', 'tide|cheer', 'tide|lback']));
+const GL_FX_HOST_ONLY = Object.freeze(new Set(['mo|*', 'gm|start', 'gm|state', 'gm|end', 'gm|stop', 'tune|pong', 'bug|gone', 'bug|lost', 'cr|react', 'cr|look', 'cr|greet', 'egg|fire', 'pick|spawn', 'pick|take', 'pick|gone', 'roam|*', 'ct|*', 'kite|state', 'soap|state', 'leaf|state', 'marble|state', 'tide|heave', 'tide|open', 'tide|cset', 'tide|race', 'tide|rstate', 'tide|rend', 'nt|bow', 'nt|bowgot']));
+const GL_FX_TO_HOST = Object.freeze(new Set(['gm|act', 'gm|join', 'gm|leave', 'gm|ask', 'folk|talk', 'folk|bye', 'tune|ping', 'bug|claim', 'pick|claim', 'cr|poke', 'fs|hook', 'fs|land', 'fs|free', 'sync|ask', 'sync|away', 'sync|back', 'pose|on', 'pose|off', 'kite|take', 'kite|letgo', 'soap|take', 'soap|letgo', 'soap|release', 'leaf|launch', 'leaf|control', 'leaf|retrieve', 'marble|set', 'marble|roll', 'marble|reset', 'tide|haul', 'tide|castle', 'tide|rpick', 'tide|cheer', 'tide|lback', 'nt|bowin']));
 const glFxHostOnly = (b) => !!b && (GL_FX_HOST_ONLY.has(b.c + '|' + b.e) || GL_FX_HOST_ONLY.has(b.c + '|*') || b.c === 'petplay' && b.u != null);
 const glFxToHost = (b) => !!b && GL_FX_TO_HOST.has(b.c + '|' + b.e);
 const GL_GM_GAMES = Object.freeze(['race', 'seek', 'hide', 'stones', 'hunt']);   // (folk3: the games a gm message may name, VALE_GAMES in 94-garden-folk3-0rules.js)
@@ -199,6 +201,7 @@ function glFxOk(b) {
     if (b.i != null && !GL_FX_ID_RE.test(String(b.i)) || b.v != null && !GL_FX_ID_RE.test(String(b.v))) return 'id';
     return '';
   }
+  if (b.c === 'nt') return glNightFxOk(b);   // after dark: the rainbow's foot, lanterns on the water, stars joined together
   if (b.c === 'folk') return typeof b.i === 'string' && b.i.length <= 24 && GL_FX_ID_RE.test(b.i) ? '' : 'folk';   // a guest talks to one of the host's folk (94-garden-wonder-0vale-folk.js): which one, nothing else
   // games with the vale's folk (94-garden-wonder-folk3-1games.js), the host refereeing: `i` the round, `p` the game, `v` folk ids or their
   // state, `x`/`y` a cell, `n` seconds or a move's number, `ql` the phase, `l` people's [slot, score, count] or a course's [k, cell, fraction]
@@ -443,4 +446,28 @@ function glGoalOk(b) {
   }
   return sum <= b.n ? '' : 'count';
 }
-
+/** AFTER DARK (94-garden-zz-afterdark-*.js): the family 'nt'. bow (host): a rainbow's foot came down, i its round, x y its cell, tt seconds
+ *  it stays; bowin (to the host): you reached it; bowgot (host): who got there in what order, l [[slot, rank 1-9, colour 0-6]], so each
+ *  person's own app pays itself once for that round. lan: a lantern set on the water (i its id, x y the bank's cell, n colour * 4 +
+ *  pattern); sky: i a pattern, n 1 opened or 0 closed; star: i a pattern, n a star of it pressed, v the other ends of the lines it closed
+ *  ('3-5'); name: n the star, v a word's number and its half ('14-1'); dance: i a dance floor, n 1 dancing there or 0 stopped.
+ *  '' when it fits. Pure: the server runs it too. */
+function glNightFxOk(b) {
+  const id = v => typeof v === 'string' && /^[a-z0-9-]{1,24}$/.test(v), int = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+  if (!id(b.i)) return 'id';
+  const cell = () => int(b.x, 0, GARDEN_WORLD.cols - 1) && int(b.y, 0, GARDEN_WORLD.rows - 1);
+  if (b.e === 'bow') return cell() && int(b.tt, 0, 600) ? '' : 'nt';
+  if (b.e === 'bowin') return '';
+  if (b.e === 'bowgot') {
+    if (!Array.isArray(b.l) || b.l.length > GL_PEOPLE) return 'nt';
+    const seen = new Set(); for (const r of b.l) { if (!Array.isArray(r) || r.length !== 3 || !int(r[0], 0, GL_PEOPLE) || seen.has(r[0]) || !int(r[1], 1, 9) || !int(r[2], 0, 6)) return 'nt'; seen.add(r[0]); }
+    return '';
+  }
+  const n0 = (hi) => b.n == null || int(b.n, 0, hi);   // (gardenLiveFx leaves out an n of 0)
+  if (b.e === 'lan') return cell() && n0(31) ? '' : 'nt';
+  if (b.e === 'sky') return n0(1) ? '' : 'nt';
+  if (b.e === 'star') return n0(15) && (b.v == null || typeof b.v === 'string' && /^\d{1,2}(-\d{1,2}){0,7}$/.test(b.v)) ? '' : 'nt';   // (v: the other ends of the lines this press closed)
+  if (b.e === 'name') return n0(15) && typeof b.v === 'string' && /^\d{1,2}-\d{1,2}$/.test(b.v) ? '' : 'nt';
+  if (b.e === 'dance') return n0(1) ? '' : 'nt';   // (i: the floor; n 1 dancing on it, 0 stopped)
+  return 'nt';
+}

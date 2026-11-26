@@ -275,6 +275,9 @@ const GARDEN_PLANTS = _gdRows([
   _gP('moonflower', 'Moonflower', 'exotic', 'epic', 'medium', ['summer'], { form: 'moon-trumpet', c: '#f5f7ff', c2: '#d9e4ff', leaf: '#3f7a4a', h: 1.2 }, { yield: _G_CUT(20, 48), price: 0, unlock: { ach: 'night-owl' }, night: 1, glow: 1, attracts: ['moth'], blurb: 'For night owls: it opens only after dark, and glows.' }),
   _gP('glowcap', 'Glowcaps', 'exotic', 'epic', 'fast', ['autumn'], { form: 'mushroom', c: '#7ef0d0', c2: '#f4f0e6', leaf: '#6a5a4a', h: 0.35 }, { price: 0, unlock: { ribbon: 'night-garden' }, glow: 1, thirst: 18, areas: ['greenhouse', 'orchard', 'meadow'], blurb: 'A ring of mushrooms that glows softly at dusk.' }),
   _gP('titan-arum', 'Titan arum', 'exotic', 'legendary', 'ancient', 'all', { form: 'titan', c: '#7a1a3a', c2: '#e6d36a', leaf: '#4f7f3a', h: 2.4 }, { price: 0, unlock: { ribbon: 'master-gardener' }, special: 'rare-bloom', blurb: 'Blooms for two days every few weeks. People travel to see it.' }),
+  /* after dark (94-garden-zz-afterdark-*.js): found, never sold */
+  _gP('starbloom', 'Starbloom', 'flower', 'epic', 'medium', 'all', { form: 'star', c: '#d8c8ff', c2: '#fff4c8', leaf: '#4a6a5a', h: 0.8, v: ['#d8c8ff', '#c8d8ff', '#f4e0ff'] }, { yield: _G_CUT(14, 48), price: 0, unlock: { find: 1 }, night: 1, glow: 1, attracts: ['moth'], blurb: 'It grows where a star fell. From a seed of it, it grows in your own beds too, and glows all night.' }),
+  _gP('field-mushroom', 'Field mushroom', 'veg', 'uncommon', 'fast', ['summer', 'autumn'], { form: 'mushroom', c: '#f2eadc', c2: '#a87a6a', leaf: '#6a5a4a', h: 0.3 }, { yield: { n: [1, 2], regrow: 0, sell: 4 }, price: 0, unlock: { find: 1 }, blurb: 'Under the trees the morning after rain. For the pot.' }),
 ]);
 const _GD_PLANT = new Map(GARDEN_PLANTS.map(p => [p.id, p]));
 
@@ -575,6 +578,14 @@ const GARDEN_DECOR = _gdRows([
   _gD('rose-arch', 'Rose arch', 'structure', { craft: 1, price: 0, w: 2, look: { c: '#7a5a3a', c2: '#d8405a', h: 1.4, parts: [['post', { x: -24, w: 5, h: 72 }], ['post', { x: 24, w: 5, h: 72 }], ['block', { y: -70, w: 58, h: 6 }], ['bush', { x: -24, y: -22, w: 14, h: 30, clip: 'sway' }], ['bush', { x: 24, y: -22, w: 14, h: 30, clip: 'sway' }], ['bush', { y: -74, w: 40, h: 16, clip: 'sway' }]] }, blurb: 'Left by a friend, with a note.' }),
   // (build2) home storage: every chest of the kind `chest` opens the same storage (94-garden-build2-1pockets.js). The first one is a gift
   _gD('storage-chest', 'Storage chest', 'ornament', { price: 40, look: { c: '#8a5a34', c2: '#b8862e', h: 0.6 }, blurb: 'Your storage at home. Open it to take things from your pockets or put them away. Every chest opens the same storage.' }),
+  /* after dark (94-garden-zz-afterdark-*.js), painted in 94-garden-native-painted-decor-afterdark.js */
+  _gD('moth-sheet', 'Moth sheet', 'light', { w: 2, price: 7, lv: 3, glow: 1, look: { c: '#f6f2e8', c2: '#ffd36a', h: 1.8 }, effect: { kind: 'play', game: 'moth-sheet' }, blurb: 'A white sheet and a lantern. On a warm night the moths come to it, a few at first, then more.' }),
+  _gD('weathervane', 'Weathervane', 'ornament', { price: 6, lv: 2, look: { c: '#2f3438', c2: '#c8a24a', h: 2 }, effect: { kind: 'play', game: 'weather-vane' }, blurb: 'A cockerel on a post. Tell it what tomorrow will be, and find out if you were right.' }),
+  _gD('star-lantern', 'Star lantern', 'light', { craft: 1, price: 0, look: { c: '#2f3438', c2: '#d8c8ff', h: 1.6 }, effect: { kind: 'light' }, blurb: 'A stone from a fallen star, in a lantern. It glows all night.' }),
+  _gD('moon-lantern', 'Moon lantern', 'light', { craft: 1, price: 0, look: { c: '#2f3438', c2: '#e8eefc', h: 1.6 }, effect: { kind: 'light' }, blurb: 'For three named moons seen: a little moon of your own on a crook.' }),
+  _gD('moon-dial', 'Moon dial', 'ornament', { craft: 1, price: 0, look: { c: '#b4b0a6', c2: '#c8a05a', h: 0.95 }, effect: { kind: 'play', game: 'ad-moons' }, blurb: 'For twelve named moons. The moon’s eight shapes, and which one is next.' }),
+  _gD('rainbow-arch', 'Rainbow arch', 'structure', { craft: 1, price: 0, w: 2, col: 'none', look: { c: '#f6f2e6', c2: '#e8504e', h: 2.2 }, blurb: 'Seven scales from where the rainbow really touched the ground.' }),
+  _gD('bandstand', 'Bandstand', 'structure', { craft: 1, price: 0, w: 3, h: 2, col: 'full', glow: 1, look: { c: '#f4efe2', c2: '#3e6a52', h: 3 }, blurb: 'For the night all four places at a band’s pitch were played at once. Bunting, and lanterns that light at dusk.' }),
 ]);
 const _GD_DECOR = new Map(GARDEN_DECOR.map(d => [d.id, d]));
 
@@ -1183,6 +1194,14 @@ function gardenSnapshotClean(raw) {
     out.hs = hs;
   }
   if (raw.dz && typeof gardenDesignClean === 'function') { const dz = gardenDesignClean(raw.dz); if (dz) out.dz = dz; }   // their garden design (94-garden-design-0rules.js); an older app drops the field
+  if (raw.nt && typeof raw.nt === 'object' && !Array.isArray(raw.nt)) {   // after dark (94-garden-zz-afterdark-1kit.js gardenNightWire, the same bounds): the last rain day, lanterns floated, stars named together, the weathervane's guess
+    const nt = {}, n = raw.nt, iv = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+    if (iv(n.w, 0, 99999)) nt.w = n.w;
+    if (Array.isArray(n.l)) { const l = n.l.slice(0, 5).filter(r => Array.isArray(r) && iv(r[0], 0, 7) && iv(r[1], 0, 3) && iv(r[2], 0, 99999)).map(r => r.slice(0, 3)); if (l.length) nt.l = l; }
+    if (Array.isArray(n.s)) { const s = n.s.slice(0, 12).filter(r => Array.isArray(r) && typeof r[0] === 'string' && /^[a-z0-9-]{1,32}$/.test(r[0]) && iv(r[1], 0, 15) && iv(r[2], 0, 63) && iv(r[3], 0, 63) && typeof r[4] === 'string' && /^[0-9a-z]{1,14}$/.test(r[4])).map(r => r.slice(0, 5)); if (s.length) nt.s = s; }
+    if (Array.isArray(n.g) && iv(n.g[0], 0, 99999) && iv(n.g[1], 0, 3)) nt.g = [n.g[0], n.g[1]];
+    if (Object.keys(nt).length) out.nt = nt;
+  }
   return out;
 }
 /** What a garden tells friends about its strand (94-garden-tide-0rules.js gardenTideWire): sd the strand's own number (the same glints on

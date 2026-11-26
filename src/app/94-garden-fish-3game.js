@@ -546,7 +546,7 @@ function _gwBugsSync(m) {
     const node = _gwEl('g', { class: 'gd-bug', 'data-bk': s.key, 'data-live': '1', 'data-z': String(s.y) });
     node.innerHTML = `<g class="gb-sh"><ellipse cx="0" cy="0" rx="${(GW_BUG_SCALE * 9 * def.size).toFixed(1)}" ry="${(GW_BUG_SCALE * 3 * def.size).toFixed(1)}" fill="#1a2a14" fill-opacity="0.18"/></g><g class="gb-lift"><g class="gb-in" transform="scale(${(GW_BUG_SCALE * def.size).toFixed(2)})">${gardenBugArt(s.id, { uid: 'bg' + (gardenHash(s.key) % 9999).toString(36), v: s.v })}</g></g>`;
     _gwPlace(node, s.y);
-    const b = { key: s.key, id: s.id, v: s.v || '', def, x: s.x, y: s.y, tx: s.x, ty: s.y, state: 'rest', timer: 0.6 + (s.t || 0) * 4, lift: def.rest === 'crawl' ? 0 : 5, face: 1, node, liftEl: node.querySelector('.gb-lift'), inEl: node.querySelector('.gb-in'), fleeT: 0, hab: s.hab, beach: !!s.beach && gardenBugBeachCell(s.x, s.y), seed: s.t || Math.random(), anchor: { x: s.x, y: s.y } };
+    const b = { key: s.key, id: s.id, v: s.v || '', def, x: s.x, y: s.y, tx: s.x, ty: s.y, state: 'rest', timer: 0.6 + (s.t || 0) * 4, lift: s.perch ? s.perch.l0 : def.rest === 'crawl' ? 0 : 5, perch: s.perch || null, restLift: s.perch ? s.perch.l0 + (s.t || 0) * (s.perch.l1 - s.perch.l0) : 0, face: 1, node, liftEl: node.querySelector('.gb-lift'), inEl: node.querySelector('.gb-in'), fleeT: 0, hab: s.hab, beach: !!s.beach && gardenBugBeachCell(s.x, s.y), seed: s.t || Math.random(), anchor: { x: s.x, y: s.y } };
     _gw.bugs.set(s.key, b);
   }
   for (const [k, b] of _gw.bugs) if (!keep.has(k)) { if (b.node && b.node.remove) b.node.remove(); _gw.bugs.delete(k); }
@@ -560,6 +560,7 @@ function _gwBugBeachRoute(ax, ay, bx, by) {
 function _gwBugPick(b, far) {
   // somewhere to go: near its anchor (a flower, a log), or well away when it bolts
   const W = GARDEN_WORLD;
+  if (b.perch && !far) { const P = b.perch; b.restLift = P.l0 + Math.random() * (P.l1 - P.l0); return { x: P.x0 + Math.random() * (P.x1 - P.x0), y: P.y }; }   // (after dark: a moth on a moth sheet flits about the sheet, 94-garden-zz-afterdark-4moths.js)
   for (let i = 0; i < 10; i++) {
     const ang = Math.random() * Math.PI * 2, r = far ? 3.5 + Math.random() * 3 : 0.5 + Math.random() * (b.def.rest === 'crawl' ? 1.2 : 2.6);
     const base = far ? { x: b.x, y: b.y } : b.anchor;
@@ -616,7 +617,7 @@ function _gwBugsFrame(dt) {
     const crawl = b.def.rest === 'crawl';
     if (b.state === 'rest') {
       if (b.timer <= 0) { const p = _gwBugPick(b, false); b.tx = p.x; b.ty = p.y; b.state = 'fly'; b.timer = 3; }
-      b.lift += ((crawl ? 0 : 5 + (b.def.rest === 'hover' ? 7 : 0)) - b.lift) * Math.min(1, dt * 5);
+      b.lift += ((crawl ? 0 : b.perch ? b.restLift : 5 + (b.def.rest === 'hover' ? 7 : 0)) - b.lift) * Math.min(1, dt * 5);
     } else {
       const sp = (b.state === 'flee' ? 3.3 : crawl ? 0.55 : b.def.rest === 'hover' ? 1.8 : 1.4) * (motion ? 1 : 0.6);
       const dx = b.tx - b.x, dy = b.ty - b.y, dist = Math.hypot(dx * W.cellW, dy * W.cellH) / 40;
@@ -628,7 +629,7 @@ function _gwBugsFrame(dt) {
         if (crawl && (!gardenWorldFree(nx, ny, 0.08) || b.beach && !gardenBugBeachCell(nx, ny))) { b.state = 'rest'; b.timer = 0.6 + Math.random() * 2; }
         else { b.x = nx; b.y = ny; }
         if (Math.abs(dx) > 0.05) b.face = dx > 0 ? 1 : -1;
-        b.lift += ((crawl ? 0 : 13 + Math.sin(_gw.t * 5 + b.seed * 7) * 3) - b.lift) * Math.min(1, dt * 4);
+        b.lift += ((crawl ? 0 : (b.perch && b.state !== 'flee' ? b.restLift + 4 : 13) + Math.sin(_gw.t * 5 + b.seed * 7) * 3) - b.lift) * Math.min(1, dt * 4);
       }
       if (b.state === 'flee') { b.fleeT -= dt; if (b.fleeT <= 0) { b.state = 'fly'; b.timer = 3; } }
     }

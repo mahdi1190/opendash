@@ -85,6 +85,8 @@ const GARDEN_RECIPES = Object.freeze([
   // fun
   _gR('music-box', 'Music box', 'fun', { 'crop:cherry': 3, 'crop:hazel': 2 }, { emote: 'waltz' }, { level: 4 }, { blurb: 'Wind it up and you start to waltz. It is not optional.' }),
   _gR('jazz-hands', 'Sparkle gloves', 'fun', { 'crop:golden-sunflower': 1 }, { emote: 'jazz' }, { fact: ['plantsFound', 25] }, { blurb: 'Jazz hands, in a jar.' }),
+  // after dark (94-garden-zz-afterdark-5stars.js): learnt with the first star stone you pick up (the item recipe:star-lantern)
+  _gR('star-lantern', 'Star lantern', 'garden', { 'star-stone': 1, 'mat:timber': 1 }, { decor: 'star-lantern' }, { find: 1 }, { blurb: 'A stone from a fallen star, in a lantern on a post. It glows all night.' }),
 ]);
 const _GR_MAP = new Map(GARDEN_RECIPES.map(r => [r.id, r]));
 function gardenRecipe(id) { return _GR_MAP.get(String(id)) || null; }
@@ -113,6 +115,7 @@ function gardenCraftItemName(key) {
   if (kind === 'seed') { const p = gardenPlant(id); return p ? p.name + ' seed' : id; }
   if (kind === 'decor') { const d = gardenDecor(id); return d ? d.name : id; }
   if (kind === 'sh') { const d = typeof gardenTideFindDef === 'function' ? gardenTideFindDef(id) : null; return d ? d.name : id; }   // a find from the shore (94-garden-tide-0rules.js)
+  if (typeof gardenNightItemName === 'function') { const n = gardenNightItemName(key); if (n) return n; }   // after dark: a star stone (94-garden-zz-afterdark-1kit.js)
   return { honey: 'Honey', clover: 'Four-leaf clover', fertiliser: 'Compost' }[key] || key;
 }
 function _grValue(key, m) {

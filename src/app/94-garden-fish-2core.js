@@ -262,10 +262,10 @@ function _gcIslandBugSpot(hab, m, rnd, free) {
 }
 const GARDEN_BUGS_MAX = 6;   // the most at once, in a big, late garden. The owner, 1 Nov 2026: start with very few, and more as the garden grows, but never many
 function gardenBugsNow(mArg) {
-  const base = _gcBugsBase(mArg);
-  if (typeof gardenContestBugsNow !== 'function') return base;
-  const extra = gardenContestBugsNow(mArg || gardenModel());   // (contests) a bug contest shows a bug every few seconds, the same on every screen
-  return extra.length ? base.concat(extra) : base;
+  let out = _gcBugsBase(mArg);
+  if (typeof gardenContestBugsNow === 'function') { const extra = gardenContestBugsNow(mArg || gardenModel()); if (extra.length) out = out.concat(extra); }   // (contests) a bug contest shows a bug every few seconds, the same on every screen
+  if (typeof gardenNightBugsNow === 'function') { const nb = gardenNightBugsNow(mArg || gardenModel()); if (nb.length) out = out.concat(nb); }   // after dark: moths on a moth sheet, the same on every screen (94-garden-zz-afterdark-4moths.js)
+  return out;
 }
 function _gcBugsBase(mArg) {
   const m = mArg || gardenModel(), g = _gdG(), W = GARDEN_WORLD;

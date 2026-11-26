@@ -239,6 +239,7 @@ function gartActNearby() {
   if (typeof gardenFolkActRows === 'function') rows.push(...gardenFolkActRows(px, py));   // the vale's folk, wherever they are: talk to them, or knock (94-garden-wonder-0vale-folk.js)   // (a ball off rolling, a pile kicked apart: nothing to do there just now)
   if (typeof gardenGameActRows === 'function') rows.push(...gardenGameActRows(px, py));   // (folk3: a game's moves, Join in, the Games board: 94-garden-wonder-folk3-1games.js)
   if (typeof gardenTideActRows === 'function') rows.push(...gardenTideActRows(px, py));   // the shore at low water: a glint to pick up, a stone to lift, a rock pool, the tide card, the shore's games (94-garden-tide-*.js)
+  if (typeof gardenNightActRows === 'function') rows.push(...gardenNightActRows(px, py));   // after dark: a star stone, a mushroom, a moon drop to pick up (94-garden-zz-afterdark-1kit.js); such a row brings its own `run`
   if (typeof gardenB2ActRows === 'function') { const own = gardenB2ActRows(px, py, rows); if (own) return own; }   // (build2) a chest in reach: open your storage (94-garden-zz-8build2-store.js)
   // where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near; and a tree offers each
   // of its moves where you would do it (in front of the trunk: climb; at its side: hide behind it; out under the crown: a nap)
@@ -442,7 +443,7 @@ function _gaFace(deg) {
 function _gaDirDeg(row, spot) { return spot && spot.deg != null ? spot.deg : row.dir === 'n' ? -90 : row.dir === 'e' ? 0 : row.dir === 'w' ? 180 : 90; }
 function gartActRun(id, spot) {
   if (spot && spot.house) return typeof gardenHouseGo === 'function' && gardenHouseGo(spot);   // in at your house's door (94-garden-house-2room.js)
-  if (spot && typeof spot.run === 'function') return spot.run(spot) !== false;   // (folk3: a game's own move: Found you!, Dig, Join in)
+  if (spot && typeof spot.run === 'function') return spot.run(spot) !== false;   // a row that brings its own action (folk3: a game's own move: Found you!, Dig, Join in; after dark's pick-ups: 94-garden-zz-afterdark-1kit.js)
   if (spot && spot.folk) return typeof gardenFolkTalkTo === 'function' && gardenFolkTalkTo(spot.folk);   // one of the vale's folk (94-garden-wonder-0vale-folk.js)
   if (spot && spot.b2) return !!spot.b2(spot);   // (build2) a row of its own: open your storage at a chest
   if (spot && spot.tide) return typeof gardenTideRun === 'function' && gardenTideRun(spot);   // the shore (94-garden-tide-3comb.js): it walks there and does the move itself

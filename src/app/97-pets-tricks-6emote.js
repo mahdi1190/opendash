@@ -20,6 +20,9 @@ const GART_EMOTES = Object.freeze({
   backflip: { name: 'Backflip', icon: 'sparkles', ms: 1300, how: { coins: 220 }, org: 34, root: [[0.14, { y: 3, sy: 0.82, sx: 1.12 }, 'i'], [0.24, { y: -16, sy: 1.1, r: -30 }, 'l'], [0.46, { y: -42, r: -190 }, 'l'], [0.66, { y: -14, r: -330 }, 'i'], [0.74, { y: 2, r: -360, sy: 0.8, sx: 1.14 }, 'o'], [0.88, { r: -360, sy: 1.03 }, 'io'], [1, { r: -360 }]], armL: [[0.2, { r: 150 }, 'o'], [0.7, { r: 150 }, 'io'], [0.9, {}]], armR: [[0.2, { r: -150 }, 'o'], [0.7, { r: -150 }, 'io'], [0.9, {}]], fx: 'spark' },
   waltz: { name: 'Waltz', icon: 'music', ms: 2600, how: { craft: 'music-box' }, root: Array.from({ length: 10 }, (_, i) => [0.05 + i * 0.09, { x: Math.round(Math.sin(i * 0.9) * 12), y: i % 3 ? 0 : -3, sx: Math.cos(i * 0.9) > 0 ? 1 : -1, r: Math.round(Math.sin(i * 0.9) * 4) }, 'l']), armL: [[0.1, { r: 96 }, 'io'], [0.9, { r: 96 }, 'io'], [1, {}]], armR: [[0.1, { r: -96 }, 'io'], [0.9, { r: -96 }, 'io'], [1, {}]], head: Array.from({ length: 10 }, (_, i) => [0.05 + i * 0.09, { r: Math.round(Math.sin(i * 0.9 + 1) * 6) }, 'io']), fx: 'note' },
   jazz: { name: 'Jazz hands', icon: 'sparkles', ms: 1400, how: { craft: 'jazz-hands' }, root: [[0.1, { y: 2, sy: 0.88, sx: 1.08 }, 'i'], [0.24, { y: -10, sy: 1.06 }, 'b'], [0.72, { y: -8 }, 'i'], [0.86, { y: 1, sy: 0.92, sx: 1.06 }, 'o'], [1, {}]], armL: Array.from({ length: 6 }, (_, i) => [0.22 + i * 0.09, { r: i % 2 ? 118 : 132 }, 'l']), armR: Array.from({ length: 6 }, (_, i) => [0.22 + i * 0.09, { r: i % 2 ? -118 : -132 }, 'l']), fx: 'spark' },
+  // after dark (94-garden-zz-afterdark-9music.js): the reel, learned on a barn dance night (16 great steps in one dance): a skip on the beat,
+  // a kick each side, arms linked with a partner who is not there, a turn under the arm, and a stamp to finish
+  reel: { name: 'The reel', icon: 'music', ms: 2600, how: { craft: 'reel-step', say: 'learned at a barn dance' }, root: Array.from({ length: 13 }, (_, i) => [0.04 + i * 0.074, i < 12 ? { x: [-4, 0, 4, 0][i % 4], y: i % 2 ? 0 : -6, sy: i % 2 ? 0.95 : 1.03, sx: i >= 7 && i <= 9 ? (i === 8 ? -1 : 0.1) : 1 } : { sy: 0.9, sx: 1.06 }, 'io']), armL: [[0.1, { r: 140 }, 'o'], [0.5, { r: 140 }, 'io'], [0.62, { r: 60 }, 'io'], [0.9, { r: 30 }, 'io'], [1, {}]], armR: [[0.1, { r: -30 }, 'o'], [0.5, { r: -150 }, 'io'], [0.62, { r: -150 }, 'io'], [0.9, { r: -40 }, 'io'], [1, {}]], legL: Array.from({ length: 12 }, (_, i) => [0.04 + i * 0.08, { sy: i % 4 === 1 ? 0.74 : 1, r: i % 4 === 1 ? 18 : 0 }, 'io']), legR: Array.from({ length: 12 }, (_, i) => [0.04 + i * 0.08, { sy: i % 4 === 3 ? 0.74 : 1, r: i % 4 === 3 ? -18 : 0 }, 'io']), head: Array.from({ length: 12 }, (_, i) => [0.04 + i * 0.08, { r: [5, 0, -5, 0][i % 4] }, 'io']), fx: 'note' },
   startled: { name: 'Startled', icon: 'zap', ms: 900, how: { hidden: 1 }, root: [[0.08, { y: 1, sy: 0.92 }, 'l'], [0.14, { y: -18, sy: 1.14, sx: 0.92 }, 'o'], [0.4, { y: -20 }, 'i'], [0.56, { y: 1, sy: 0.86, sx: 1.1 }, 'o'], [0.74, { sy: 1.03 }, 'io']], armL: [[0.14, { r: 120 }, 'o'], [0.5, { r: 110 }, 'o'], [0.8, {}]], armR: [[0.14, { r: -120 }, 'o'], [0.5, { r: -110 }, 'o'], [0.8, {}]] },
 });
 const _pe = { H: null, wheel: null, hold: false };
@@ -98,7 +101,7 @@ function _peSit() {
   gartEmoteRun('sit');
 }
 /* ---------- the wheel ---------- */
-const _PE_ORDER = Object.freeze(['wave', 'cheer', 'clap', 'sit', 'bow', 'shrug', 'laugh', 'lie', 'nap', 'throwstick', 'rub', 'angel', 'dance', 'twirl', 'backflip', 'waltz', 'jazz']);
+const _PE_ORDER = Object.freeze(['wave', 'cheer', 'clap', 'sit', 'bow', 'shrug', 'laugh', 'lie', 'nap', 'throwstick', 'rub', 'angel', 'dance', 'twirl', 'backflip', 'waltz', 'jazz', 'reel']);   // (reel: after dark's barn dance)
 /** A wheel row: a move, or one of the ground actions (94-garden-zz-7act-1core.js GART_ACT_WHEEL), which are free. */
 function _peWheelRow(id) { if (GART_EMOTES[id]) return GART_EMOTES[id]; const a = typeof GART_ACT_WHEEL !== 'undefined' && GART_ACT_WHEEL[id]; if (a && a.winter) { let w = false; try { w = gardenModel().season === 'winter'; } catch (e) { w = false; } if (!w) return null; } if (a && a.pet) { let P = null; try { P = typeof gpPetMe === 'function' ? gpPetMe() : null; } catch (e) { P = null; } if (!P) return null; } return a ? { name: a.name, icon: a.icon, how: { free: 1 }, act: true } : null; }
 function _peWheelClose(restore) {
@@ -120,7 +123,7 @@ function gartEmoteWheel(force) {
   const ids = _PE_ORDER.filter(id => _peWheelRow(id)), n = ids.length, R = 150;
   ids.forEach((id, i) => {
     const e = _peWheelRow(id), own = e.act || gartEmoteOwned(id), a = -Math.PI / 2 + (i / n) * Math.PI * 2;
-    const want = own ? '' : e.how.craft ? 'made at the crafting bench' : e.how.treats ? `${e.how.treats} treats` : e.how.coins ? `${e.how.coins} coins` : '';
+    const want = own ? '' : e.how.craft ? (e.how.say || 'made at the crafting bench') : e.how.treats ? `${e.how.treats} treats` : e.how.coins ? `${e.how.coins} coins` : '';
     const b = _ptEl('button', 'pew-b' + (own ? '' : ' is-locked')); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.setAttribute('data-tip', want ? `${e.name}: ${want}` : e.name); b.setAttribute('aria-label', want ? `${e.name}: ${want}` : e.name);
     b.style.setProperty('--x', Math.round(Math.cos(a) * R) + 'px'); b.style.setProperty('--y', Math.round(Math.sin(a) * R) + 'px'); b.style.setProperty('--i', i);
     // its own picture and its name, always; a locked one is dimmed, with what it wants underneath
@@ -128,6 +131,7 @@ function gartEmoteWheel(force) {
     if (!own) { const cost = e.how.treats ? ['treats', e.how.treats] : e.how.coins ? ['coins', e.how.coins] : null; if (cost) b.appendChild(_ptCostIcon(cost[0], cost[1], 13)); else if (e.how.craft) { const k = _ptEl('span', 'ptl-cost'); k.innerHTML = icon('hammer', 'i-xs'); b.appendChild(k); } }
     b.onclick = () => {
       if (!own) {
+        if (e.how.say) { gartEmoteWheel(); try { gardenToast(e.name + ': ' + e.how.say + '.', { icon: e.icon }); } catch (x) { /* fine */ } return; }   // (a move learned in the world, not at the bench: where)
         if (e.how.craft) { gartEmoteWheel(); if (typeof gardenPopupOpen === 'function') gardenPopupOpen('craft'); return; }   // the way to get it: the bench
         const r = gartEmoteBuy(id);
         if (!r.ok) { gameDeny(b, { kind: r.why === 'coins' ? 'coins' : '', badge: r.need, say: 'Not enough ' + r.why }); return; }

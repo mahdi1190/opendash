@@ -56,6 +56,7 @@ const _wdRainbow0 = GARDEN_LIFE_EFFECTS.rainbow;
 GARDEN_LIFE_EFFECTS.rainbow = function (e, cfg, W) {
   const ok = _wdRainbow0(e, cfg, W);
   try {
+    if (ok !== false && typeof gardenNightRainbowFoot === 'function' && gardenNightRainbowFoot(e, cfg, W)) return ok;   // after dark: the rainbow really touches the ground, and friends race to it (94-garden-zz-afterdark-6rain.js); it pays the pot's coins
     if (ok !== false && W && W.own && gardenFun() !== 'off') {
       const G = GARDEN_WORLD, v = W.view(), cx = (v.x0 + v.x1) / 2, span = (v.x1 - v.x0) * 0.44, side = Math.random() < 0.5 ? -1 : 1, base = (_glStage(0, v.y0).y + (v.x1 - v.x0) * G.cellW * 0.44 * 0.72 - G.sky) / G.cellH;
       const at = wdFreeNear(cx + side * span, base, 4);
