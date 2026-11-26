@@ -273,14 +273,28 @@ function calEventDays(ev) {
   const s = calEventStart(ev), e = new Date(Math.max(calEventEnd(ev).getTime() - 1, s.getTime()));
   return [Clock.parts(s.getTime()).iso, Clock.parts(e.getTime()).iso];
 }
+/** The days a long event is indexed on past its first 62: the fetch window, at least a year either side of today. */
+function _calIndexSpan() {
+  const today = todayStr(), w = CalStore.data && CalStore.data.window;
+  let lo = _calAddDays(today, -366), hi = _calAddDays(today, 366);
+  const iso = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.slice(0, 10)) ? v.slice(0, 10) : null;
+  if (w && iso(w.from) && iso(w.from) < lo) lo = iso(w.from);
+  if (w && iso(w.to) && iso(w.to) > hi) hi = iso(w.to);
+  return [lo, hi];
+}
 function _calBuildIndex() {
   const idx = new Map();
+  const add = (d, ev) => { if (!idx.has(d)) idx.set(d, []); idx.get(d).push(ev); };
+  // A long event (a term, a placement) shows on every day it spans: its first 62 days
+  // wherever they fall (as before), then the rest of it inside the span the calendar can show.
+  const [lo, hi] = _calIndexSpan();
   for (const ev of calAllEvents()) {
-    let [a, b] = calEventDays(ev);
-    for (let i = 0, d = a; d <= b && i < 62; i++, d = _calAddDays(d, 1)) {
-      if (!idx.has(d)) idx.set(d, []);
-      idx.get(d).push(ev);
-    }
+    const [a, b] = calEventDays(ev);
+    let d = a;
+    for (let i = 0; d <= b && i < 62; i++, d = _calAddDays(d, 1)) add(d, ev);
+    if (d > b) continue;
+    if (d < lo) d = lo;
+    for (const end = b < hi ? b : hi; d <= end; d = _calAddDays(d, 1)) add(d, ev);
   }
   return idx;
 }
