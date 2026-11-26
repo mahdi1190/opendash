@@ -386,7 +386,11 @@ function calRail() {
   }
   rail.addEventListener('click', (e) => {
     const h = e.target.closest('.ag-dh[data-day]');
-    if (h) { const iso = h.dataset.day; _calSelectedDate = iso; state.calMonth = iso.slice(0, 7); calSetMode('day'); }
+    if (!h) return;
+    const iso = h.dataset.day;
+    // Already in Day view, calSetMode('day') does nothing: move to that day instead.
+    if (calMode() === 'day' && state.view === 'calendar:day') { calSetFocus(iso); return; }
+    _calSelectedDate = iso; state.calMonth = iso.slice(0, 7); calSetMode('day');
   });
   _calWireRows(rail, { onEvent: (id, el) => calOpenEvent(id, el), onTask: (id, el) => (typeof openTask === 'function' ? openTask(id, { from: el }) : selectTask(id)) });
   return rail;
