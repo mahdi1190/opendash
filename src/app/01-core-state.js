@@ -110,16 +110,19 @@ const RETIRED_STATE_KEYS = ['boards', 'boardCollapsed', 'canvasConnect'];
 
 // (speed pass) Browser storage is only the first-paint cache, so a burst of saves makes ONE write: every page switch, every
 // garden action (a watering sweep is ten saves) and every zoom wrote the whole state there at once, a full JSON copy each
-// time. _writeLocal() asks for a write a moment later; _writeLocalNow() writes at once (saveData needs to know storage took
-// it). A hidden or closing tab writes what is pending straight away.
-let _localWriteTimer = 0;
+// time. _writeLocal() asks for a write a moment later (_writeLocal(true) for a data save: a full storage then says where the
+// edit went, _saveLocalFull); _writeLocalNow() writes at once. A hidden or closing tab writes what is pending straight away.
+let _localWriteTimer = 0, _localWriteData = false;
 function _writeLocalNow() {
   if (_localWriteTimer) { clearTimeout(_localWriteTimer); _localWriteTimer = 0; }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  const data = _localWriteData; _localWriteData = false;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (e) { if (data) _saveLocalFull(); throw e; }
 }
-function _writeLocal() {
+function _writeLocal(data) {
+  if (data) _localWriteData = true;
   if (_localWriteTimer) return;
-  _localWriteTimer = setTimeout(() => { _localWriteTimer = 0; try { _writeLocalNow(); } catch (e) { /* storage full or blocked: the next data save reports it */ } }, 300);
+  _localWriteTimer = setTimeout(() => { _localWriteTimer = 0; try { _writeLocalNow(); } catch (e) { /* storage full or blocked: a data save says so (_saveLocalFull) */ } }, 300);
 }
 function _writeLocalFlush() { if (_localWriteTimer) { try { _writeLocalNow(); } catch (e) { /* storage full or blocked */ } } }
 if (typeof window !== 'undefined' && window.addEventListener) {
@@ -139,11 +142,11 @@ function saveData() {
     state._localDirty = true;
     // Browser storage is only a first-paint cache (about 5 MiB per site). When it
     // is full (QuotaExceededError) the edit must still be queued for the server.
-    let localOk = true;
-    try { _writeLocalNow(); } catch (e) { localOk = false; }
+    // (speed pass) written with the rest of the burst a moment later, not as a full copy on every edit; a full storage still
+    // says where the edit went (_writeLocalNow calls _saveLocalFull for a data save)
+    _writeLocal(true);
     if (typeof schedulePersist === 'function') schedulePersist();
-    if (localOk) showToast('✓ saved', false);
-    else _saveLocalFull();
+    showToast('✓ saved', false);
     maybeAutoBackup();
   }
   catch (e) { showToast('Your last change could not be saved in this browser. Keep this page open and try again in a moment.', true); }
