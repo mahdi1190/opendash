@@ -21,7 +21,7 @@
    ({d, n}: rounds today), vb.<game> (your best), vr.<game> (your wins), vgp.<game> (rounds played), vgm.<villager>, vgms.<villager> (the
    memory said), vgi.<villager> (asked you today), vgi (the last ask's day and minute).
      valeGameAdd(id, impl)       a game's module
-     gardenGameStart(game, o)     start one: o { by: villager who asked, folk: [ids], at: {x, y} }
+     gardenValeGameStart(game, o) start one: o { by: villager who asked, folk: [ids], at: {x, y} }
      gardenGameBusy()             a round is on here (no tellers walk over, folk sent more often)
      gardenGameLeave()            you leave (Esc, the chip's button): no harm done
      gardenGameTalkActs(row, F, S) / gardenGameTalkLines(row, F)   the talk card's Play button and the villager's memory of your last game
@@ -75,7 +75,7 @@ function gardenGameCan(game, at) {
 }
 /* ---------- starting ---------- */
 function _vgNewId() { return 'g' + Math.floor(Math.random() * 2176782336).toString(36) + (++_vgm.seq || (_vgm.seq = 1)).toString(36); }
-function gardenGameStart(game, o) {
+function gardenValeGameStart(game, o) {
   o = o || {};
   if (!_vgHostSide()) return _vgAskHost(game, o.by);
   if (_vgm.R) { try { gardenToast('A game is on already.'); } catch (e) { /* fine */ } return false; }
@@ -328,7 +328,7 @@ function gardenGameTalkActs(row, F, S) {
     if (!row || gardenGameBusy() || !VALE_GAME_FOLK[row.id]) return [];
     const games = (VALE_GAME_FOLK[row.id].asks || []).filter(g => _vgm.impl.has(g) && (valeGamePlays(row.id, g) || (VALE_GAME_FOLK[row.id][g] || {}).maker) && !gardenGameCan(g));
     if (!games.length) return [];
-    return [{ label: VF3_SAY.play, run: (T) => T.say(VF3_SAY.pick, games.map((g, k) => ({ label: VALE_GAMES[g].word, primary: k === 0, run: () => { wdTalkClose(true); gardenGameStart(g, { by: row.id }); } }))) }];
+    return [{ label: VF3_SAY.play, run: (T) => T.say(VF3_SAY.pick, games.map((g, k) => ({ label: VALE_GAMES[g].word, primary: k === 0, run: () => { wdTalkClose(true); gardenValeGameStart(g, { by: row.id }); } }))) }];
   } catch (e) { console.error('[vale games]', e); return []; }
 }
 /* ---------- the folk ask you to play ---------- */
@@ -365,7 +365,7 @@ function _vgAskSay() {
   let answered = false;
   try {
     wdTalk({ name: row.name, art: gardenCastSvg(row.cast), lines: [ask], at: { x: V.x, y: V.y }, bye: VF3_SAY.notNow,
-      actions: [{ label: VF3_SAY.yes, primary: true, run: (T) => { answered = true; _vgm.inv = null; const say = vgLine(id, game, 'yes', at); wdTalkClose(true); gardenGameStart(game, { by: id }); if (say) try { wdAmbient('“' + say + '”', 4200, 'folk'); } catch (e) { /* quiet */ } } }],
+      actions: [{ label: VF3_SAY.yes, primary: true, run: (T) => { answered = true; _vgm.inv = null; const say = vgLine(id, game, 'yes', at); wdTalkClose(true); gardenValeGameStart(game, { by: id }); if (say) try { wdAmbient('“' + say + '”', 4200, 'folk'); } catch (e) { /* quiet */ } } }],
       onClose: () => { if (answered) return; _vgm.inv = null; const no = vgLine(id, game, 'no', at); if (no) try { wdAmbient('“' + no + '”', 4200, 'folk'); } catch (e) { /* quiet */ } gardenFolkRelease(id, 'game'); } });
   } catch (e) { _vgm.inv = null; gardenFolkRelease(id, 'game'); }
 }
@@ -478,7 +478,7 @@ function _vgAgain(R) {
   // (hide and seek: the other way round next time, when it is just you and them)
   const swap = R.G.again && _vgm.impl.has(R.G.again) && !gardenGameCan(R.G.again) && ![...R.people.values()].some(p => !p.me && !p.left);
   const L = { game: swap ? R.G.again : R.game, by: R.by || R.folk[0] || '', folk: R.folk.concat(R.helpers) }; _vgEnd(R);
-  setTimeout(() => gardenGameStart(L.game, swap ? { by: L.by } : { by: L.by, folk: L.folk }), 60);   // (swapped: whoever is about joins in again)
+  setTimeout(() => gardenValeGameStart(L.game, swap ? { by: L.by } : { by: L.by, folk: L.folk }), 60);   // (swapped: whoever is about joins in again)
 }
 /* ---------- Esc leaves the game ---------- */
 function _vgKeys() {
@@ -531,7 +531,7 @@ function gardenGameHeard(A, ev) {
     if (R) { if (!R.people.has(w) && R.phase !== 'result') { R.people.set(w, { w, me: false, score: 0, place: 0, done: false, n: 0 }); R.dirty = true; } return; }
     const game = String(ev.p || ''); if (!VALE_GAMES[game]) return;
     const by = typeof ev.v === 'string' && VALE_FOLK_ROW.has(ev.v) ? ev.v : '';
-    gardenGameStart(game, { by, at: Number.isFinite(A.x) ? { x: A.x, y: A.y } : null, me: false, guest: w });
+    gardenValeGameStart(game, { by, at: Number.isFinite(A.x) ? { x: A.x, y: A.y } : null, me: false, guest: w });
     return;
   }
   if (!R || ev.i !== R.i) return;
@@ -612,7 +612,7 @@ function gardenGameFriendButtons(A, close) {
   for (const g of ['race', 'seek']) {
     if (!_vgm.impl.has(g)) continue;
     if (_vgHostSide() && gardenGameCan(g)) continue;
-    out.push(_gsvBtn(VALE_GAMES[g].word, { icon: VALE_GAMES[g].icon, kind: 'btn-ghost', tip: VALE_GAMES[g].rule, run: () => { close(); if (_vgHostSide()) { const R0 = gardenGameStart(g, {}); if (R0 && _vgm.R) { _vgm.R.people.set(A.w, { w: A.w, me: false, score: 0, place: 0, done: false, n: 0 }); _vgm.R.dirty = true; } } else _vgAskHost(g, ''); } }));
+    out.push(_gsvBtn(VALE_GAMES[g].word, { icon: VALE_GAMES[g].icon, kind: 'btn-ghost', tip: VALE_GAMES[g].rule, run: () => { close(); if (_vgHostSide()) { const R0 = gardenValeGameStart(g, {}); if (R0 && _vgm.R) { _vgm.R.people.set(A.w, { w: A.w, me: false, score: 0, place: 0, done: false, n: 0 }); _vgm.R.dirty = true; } } else _vgAskHost(g, ''); } }));
   }
   return out;
 }
@@ -638,8 +638,8 @@ function gardenGameBoard(t) {
   { const yl = typeof gardenYearBoardLine === 'function' ? gardenYearBoardLine(m) : ''; if (yl) lines.unshift(yl); }   // (what is on today, and a festival coming: 94-garden-wonder-folk3-7year.js)
   lines.push(best.length ? 'Yours: ' + best.join('. ') + '.' : 'Your wins and bests go up here once you have played.');
   if (m.visit) { const gb = (_wdTheir(m).gb) || []; if (gb.length) lines.push('Your host’s: ' + gb.map(r => `${(VALE_GAMES[r[0]] || { word: r[0] }).word}: ${r[2]} won${r[1] ? ', best ' + valeBestWords(r[0], r[1]) : ''}`).join('. ') + '.'); }
-  if (wants.length && !m.visit) { const [id, g] = wants[0]; acts.push({ label: `Ask ${_vgFolkCap(id)}`, primary: true, run: () => { wdTalkClose(true); gardenGameStart(g, { by: id }); } }); }
-  if (_vgFriends() && !gardenGameCan('race')) acts.push({ label: 'Race your friends', run: () => { wdTalkClose(true); gardenGameStart('race', {}); } });
+  if (wants.length && !m.visit) { const [id, g] = wants[0]; acts.push({ label: `Ask ${_vgFolkCap(id)}`, primary: true, run: () => { wdTalkClose(true); gardenValeGameStart(g, { by: id }); } }); }
+  if (_vgFriends() && !gardenGameCan('race')) acts.push({ label: 'Race your friends', run: () => { wdTalkClose(true); gardenValeGameStart('race', {}); } });
   wdTalk({ name: 'Games board', art: '', lines, actions: acts, at: { x: t.x, y: t.y }, bye: 'Close' });
   return true;
 }
@@ -676,4 +676,4 @@ wdMod({
   end() { if (_vgm.R) _vgEnd(_vgm.R, true); _vgGuestClear(); if (_vgm.inv) { gardenFolkRelease(_vgm.inv.id, 'game'); _vgm.inv = null; } _vgCratesOff(); _vgChipPaint(true); },
 });
 /** Console only (and the sandbox check): start a game now with whoever is about. */
-function gardenGameDev(game, by) { return gardenGameStart(game || 'race', { by: by || '' }); }
+function gardenGameDev(game, by) { return gardenValeGameStart(game || 'race', { by: by || '' }); }
