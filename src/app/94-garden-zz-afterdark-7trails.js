@@ -81,11 +81,13 @@ function _adtSegSvg(dots, x0, y0) {
   for (const d of dots) { const px = ((d.x - x0) * W.cellW).toFixed(1), py = ((d.y - y0) * W.cellH).toFixed(1); s += `<g transform="translate(${px} ${py})"><path d="M-1 0.6q-0.6 -2.4 0.4 -4M1.2 0.6q0.8 -2 0 -3.2" stroke="#5e7a3a" stroke-width="0.6" fill="none" opacity="0.6"/><g class="ad-blink" style="animation-delay:${(-d.k * 2.6).toFixed(2)}s"><circle cy="-1.4" r="3.2" fill="#c8ff8a" opacity="0.28"/><circle cy="-1.4" r="1.15" fill="#f2ffc4"/></g></g>`; }
   return s;
 }
-/** The trail's light over the night: each glow-worm a small bright point with a soft halo, in step with its dot's blink. The dots are baked
- *  into a still picture under the night's shade (adCacheStatic): on their own they read as dull grey rings, not little lights. */
+/** The trail's light over the night: each glow-worm a small bright point with a soft halo, in step with its blink. The dots are baked into
+ *  a still picture under the night's shade (adCacheStatic): on their own they read as dull grey rings, not little lights. The glow layer
+ *  lies over the whole world, so a glow-worm under a crown, a roof or behind a tall wall (adHidden) gets no light of its own: its light
+ *  would shine on top of the leaves. Sizes are the dot's own (a glow-worm, not a lamp). */
 function _adtSegLight(dots, x0, y0) {
   const W = GARDEN_WORLD; let s = '';
-  for (const d of dots) { const px = ((d.x - x0) * W.cellW).toFixed(1), py = ((d.y - y0) * W.cellH - 1.4).toFixed(1); s += `<g class="ad-blink" style="animation-delay:${(-d.k * 2.6).toFixed(2)}s"><circle cx="${px}" cy="${py}" r="7.5" fill="#d4ff96" opacity="0.3"/><circle cx="${px}" cy="${py}" r="2.4" fill="#f6ffd8" opacity="0.9"/></g>`; }
+  for (const d of dots) { if (adHidden(d.x, d.y)) continue; const px = ((d.x - x0) * W.cellW).toFixed(1), py = ((d.y - y0) * W.cellH - 1.4).toFixed(1); s += `<g class="ad-blink" style="animation-delay:${(-d.k * 2.6).toFixed(2)}s"><circle cx="${px}" cy="${py}" r="3" fill="#d4ff96" opacity="0.4"/><circle cx="${px}" cy="${py}" r="1.1" fill="#f8ffe0" opacity="0.95"/></g>`; }
   return s;
 }
 function _adtGladeSvg(T, night) {

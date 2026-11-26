@@ -195,11 +195,11 @@ function adHidden(x, y, near) {
   for (const t of adTrees()) { const dy = t.y - y, fruit = t.kind === 'fruit-tree'; if (dy > 0.1 && dy < (fruit ? 3.5 : 6) && Math.abs(t.x - x) < (fruit ? Math.min(R, 1.3) : R)) return true; }
   // what a painter planted that stands up (the village's trees and shrubs), by its own drawn height (as 94-garden-zz-7act-1core.js gartActGroundClear reads it)
   try { const tall = window.GardenNativePainted && GardenNativePainted.tall ? GardenNativePainted.tall() : []; for (const t of tall) { const tx = t.x / W.cellW, ty = (t.y - W.sky) / W.cellH, hw = (t.w || 30) / 2 / W.cellW; if (Math.abs(tx - x) < hw + 0.4 && ty - y > 0.05 && ty - y < Math.max(0.6, (t.h || 0) / W.cellH)) return true; } } catch (e) { /* no planting list */ }
-  // what stands up that is not a tree, by how much of it stands up: a house-sized building or anything the layout marks tall hides 5.5
-  // cells behind its foot, another big structure (a stall) 4, a small thing of the building kind (a bench, a statue, a cairn) 2.2, and a
-  // flat thing nothing (a bed's or a pier's depth is its footprint, not a height: counted as tall, the whole village was "behind" something
-  // and the named moons' finds had nowhere to lie there)
-  try { for (const o of gardenAffordThings()) { if (o.src === 'decor') continue; const w = o.w || 1, h = o.h || 1, big = w >= 2 && h >= 2, reach = (o.kind === 'building' && big) || o.tall ? 5.5 : big ? 4 : o.kind === 'building' ? 2.2 : 0; if (!reach) continue; const dy = o.y - y; if (dy > 0.05 && dy < reach && Math.abs(o.x - x) < w / 2 + 0.6) return true; } } catch (e) { /* nothing found yet */ }
+  // what stands up that is not a tree, by how far its picture rises over the ground behind its foot: the layout's own height `tall`, in
+  // cells, read as 94-garden-1core.js reads it (max of its depth and its height); with none, a house-sized building 5.5 cells, another
+  // big structure 4, a small thing of the building kind (a bench, a statue) 2.2, a flat thing nothing. (Read as yes or no, a reed bank and
+  // a bench hid as much as the tower, and places all round the village were "behind" something: the named moons' finds had nowhere to be.)
+  try { for (const o of gardenAffordThings()) { if (o.src === 'decor') continue; const w = o.w || 1, h = o.h || 1, t = Number(o.tall), big = w >= 2 && h >= 2, reach = t > 0 ? Math.max(h, t) + 0.3 : o.kind === 'building' && big ? 5.5 : big ? 4 : o.kind === 'building' ? 2.2 : 0; if (!reach) continue; const dy = o.y - y; if (dy > 0.05 && dy < reach && Math.abs(o.x - x) < w / 2 + 0.6) return true; } } catch (e) { /* nothing found yet */ }
   return false;
 }
 /** Can a small thing lie on the ground here: grass or snow (or a slope), open land, nothing standing on it, not hidden behind anything, and
