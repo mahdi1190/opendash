@@ -247,6 +247,6 @@ function gardenTideBottleShelf(left) {
   for (const k of keys.slice(0, 12)) {
     const r = W[k], card = shelf.appendChild(_gjEl('div', 'gtb-card'));
     const text = r.s ? ((GT_BOTTLE_TALES.find(t => t.id === r.s) || { t: [''] }).t[0] || '') : '“' + (Array.isArray(r.l) ? r.l.map(_gtbLine).filter(Boolean).join(' ') : '') + '”';
-    card.innerHTML = `<span class="gtb-art">${gardenTideFindSvg('bottle-note', 34)}</span><span class="gtb-txt"><b>${esc(r.f ? 'From ' + r.f : 'A bottle')}</b><small>${esc(typeof _gjDay === 'function' ? _gjDay(r.d) : r.d || '')}</small><span>${esc(text)}</span>${r.t ? `<small class="gtb-tuck">${gardenTideFindSvg(r.t, 18)} ${esc((gardenTideFindDef(r.t) || {}).name || '')} tucked in</small>` : ''}</span>`;
+    card.innerHTML = `<span class="gtb-art">${gardenTideFindSvg('bottle-note', 34)}</span><span class="gtb-txt"><b>${esc(r.f ? 'From ' + r.f : 'A bottle')}</b><small>${esc(typeof _gjDay === 'function' ? _gjDay(r.d) : r.d || '')}</small><span>${esc(text)}</span>${r.t ? `<small class="gtb-tucked">${gardenTideFindSvg(r.t, 18)} ${esc((gardenTideFindDef(r.t) || {}).name || '')} tucked in</small>` : ''}</span>`;
   }
 }

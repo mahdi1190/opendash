@@ -1,0 +1,85 @@
+/* The shore's games (src/app/94-garden-tide-6fun.js to -d-spot.js): the Cheer! and Quick! prompts, the league's throw bar, the
+   bottle writer, the pebble pits board, the spotter card, the league's chalk board and the journal's shore pages. The world's own
+   bubbles stay cream in either theme, as the act prompt does; the cards follow the app's theme. */
+.gt-quick-on .ga-prompt:not(.gt-quick), .gt-quick-on .ga-choose { visibility: hidden; }
+.gt-cheer .gt-beat { position: absolute; inset: -5px; border-radius: 999px; border: 2px solid rgba(255, 214, 110, .95); opacity: 0; pointer-events: none; }
+.gt-cheer.is-beat .gt-beat { animation: gt-beat .34s ease-out; }
+@keyframes gt-beat { from { opacity: .95; transform: scale(.92); } to { opacity: 0; transform: scale(1.2); } }
+@media (prefers-reduced-motion: reduce) { .gt-cheer.is-beat .gt-beat { animation: none; opacity: .8; } }
+
+/* the league throw: a marker that runs along a bar; press as it crosses the middle */
+.gtsk-gauge { position: absolute; left: 0; top: 0; z-index: 31; width: 230px; padding: 8px 12px 10px; border: 2px solid #d9c49a; border-radius: 14px; background: #fdf4e3; color: #3a2c1c; font: 500 12px/1.3 system-ui, sans-serif; box-shadow: 0 3px 12px rgba(40, 28, 10, .25); pointer-events: auto; }
+.gtsk-gauge .gtsk-t { margin: 0 0 6px; font-weight: 700; font-size: 13px; }
+.gtsk-gauge .gtsk-t small { font-weight: 500; color: #6a5a44; }
+.gtsk-bar { position: relative; height: 14px; border-radius: 7px; background: linear-gradient(90deg, #c9b48c, #e8dcc0 50%, #c9b48c); box-shadow: inset 0 1px 3px rgba(60, 40, 10, .35); overflow: hidden; }
+.gtsk-zone { position: absolute; left: 38%; width: 24%; top: 0; bottom: 0; background: rgba(110, 168, 96, .75); }
+.gtsk-gold { position: absolute; left: 47%; width: 6%; top: 0; bottom: 0; background: #f0c64a; }
+.gtsk-mark { position: absolute; top: -2px; bottom: -2px; width: 4px; margin-left: -2px; border-radius: 2px; background: #3a2c1c; box-shadow: 0 0 0 1px #fff8e8; left: 0; }
+.gtsk-gauge .gtsk-h { margin: 6px 0 6px; color: #5a4a34; }
+.gtsk-gauge kbd { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 3px; border-radius: 5px; background: #5a4630; color: #fff7e6; font: 700 10px/1 system-ui, sans-serif; }
+.gtsk-go { width: 100%; min-height: 30px; border: 0; border-radius: 9px; background: #5a4630; color: #fff7e6; font: 700 13px/1 system-ui, sans-serif; cursor: pointer; }
+.gtsk-go:hover, .gtsk-go:focus-visible { background: #3e3020; outline: 2px solid #c89a4a; }
+
+/* the league's chalk board */
+.gtsk-board { margin: 8px 0 10px; padding: 14px 16px 12px; border: 8px solid #8a6238; border-radius: 6px; background: radial-gradient(120% 90% at 30% 20%, #3e5244, #283a30); color: #f2efe4; font-family: 'Segoe Print', 'Comic Sans MS', 'Bradley Hand', cursive; box-shadow: inset 0 0 18px rgba(0, 0, 0, .35), 0 2px 6px rgba(40, 28, 10, .25); }
+.gtsk-title { margin: 0 0 8px; text-align: center; font-size: 1.15rem; letter-spacing: .02em; }
+.gtsk-row { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: baseline; padding: 3px 4px; border-bottom: 1px dashed rgba(242, 239, 228, .22); }
+.gtsk-row.is-me { background: rgba(240, 198, 74, .18); border-radius: 4px; }
+.gtsk-row.is-friend { color: #cfe6f2; }
+.gtsk-n { opacity: .7; }
+.gtsk-s { font-variant-numeric: tabular-nums; }
+.gtsk-sub { margin: 10px 0 2px; font-size: .9rem; opacity: .75; }
+.gtsk-foot { margin: 0; }
+
+/* the bottle writer */
+.gtb-panel .gtb-note { margin: 4px 0 10px; padding: 10px 12px; border-radius: 10px; background: #f6efdc; color: #4a3a24; font-style: italic; min-height: 2.6em; box-shadow: inset 0 0 0 1px rgba(138, 106, 58, .25); }
+.gtb-panel .tg-line.is-on { background: rgba(120, 160, 190, .22); border-color: #5a8aa8; font-weight: 600; }
+.gtb-panel .gtb-lines { max-height: 260px; overflow-y: auto; padding-right: 2px; }
+.gtb-tuck { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.gtb-t { display: inline-grid; place-items: center; min-width: 40px; height: 40px; padding: 0 6px; border: 1px solid var(--border); border-radius: 10px; background: transparent; color: inherit; cursor: pointer; }
+.gtb-t.is-on { border-color: #5a8aa8; background: rgba(120, 160, 190, .18); box-shadow: 0 0 0 2px rgba(90, 138, 168, .35); }
+.gtb-go { margin-top: 4px; }
+
+/* the bottle shelf and the shore's games, in the Field Journal */
+.gtb-shelf { display: grid; gap: 8px; margin: 6px 0 14px; }
+.gtb-card { display: grid; grid-template-columns: 40px 1fr; gap: 8px; align-items: start; padding: 8px 10px; border-radius: 10px; background: rgba(255, 250, 238, .7); box-shadow: inset 0 0 0 1px rgba(138, 106, 58, .2); }
+.gtb-txt { display: grid; gap: 2px; }
+.gtb-txt small { opacity: .75; }
+.gtb-txt span { font-style: italic; }
+.gtb-tucked { display: inline-flex; align-items: center; gap: 4px; }
+.gtsg-shelf { display: grid; gap: 6px; margin: 6px 0 14px; }
+.gtsg-row { display: grid; grid-template-columns: 26px auto 1fr; gap: 8px; align-items: baseline; padding: 6px 8px; border-radius: 8px; background: rgba(255, 250, 238, .55); }
+.gtsg-row small { opacity: .8; }
+
+/* pebble pits */
+.gtp-panel .gtp-say { min-height: 2.6em; margin: 0 0 10px; font-style: italic; }
+.gtp-board { display: grid; grid-template-columns: 62px 1fr 62px; gap: 8px; align-items: stretch; padding: 12px; border-radius: 22px; background: linear-gradient(180deg, #b8905e, #8a6238); box-shadow: inset 0 2px 0 rgba(255, 236, 200, .45), inset 0 -3px 0 rgba(60, 36, 12, .35), 0 3px 10px rgba(40, 24, 8, .3); }
+.gtp-rows { display: grid; gap: 8px; }
+.gtp-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.gtp-pit, .gtp-store { position: relative; display: grid; place-items: center; min-height: 58px; border: 0; border-radius: 50%; background: radial-gradient(circle at 50% 35%, #4e3620, #6e4e2c 70%, #8a6238); box-shadow: inset 0 3px 6px rgba(30, 16, 4, .6), 0 1px 0 rgba(255, 236, 200, .35); color: #fff3dc; font: 700 12px/1 system-ui, sans-serif; padding: 6px; }
+.gtp-store { border-radius: 30px; min-height: 124px; }
+.gtp-store small { position: absolute; bottom: -18px; color: #4a3a24; font-weight: 600; white-space: nowrap; }
+.gtp-pit b, .gtp-store b { position: absolute; top: 3px; right: 7px; font-size: 11px; opacity: .85; }
+.gtp-pit.is-mine { cursor: pointer; }
+.gtp-pit.is-mine:not([disabled]):hover, .gtp-pit.is-mine:not([disabled]):focus-visible { outline: 3px solid #f0c64a; outline-offset: 2px; }
+.gtp-pit[disabled] { cursor: default; }
+.gtp-pit.is-hi, .gtp-store.is-hi { box-shadow: inset 0 3px 6px rgba(30, 16, 4, .6), 0 0 0 3px rgba(240, 198, 74, .85); }
+.gtp-pebs { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 1px; max-width: 46px; }
+.gtp-store .gtp-pebs { max-width: 50px; }
+.gtp-peb { display: inline-block; width: calc(var(--pr) * 2); height: calc(var(--pr) * 1.6); border-radius: 50%; background: radial-gradient(circle at 35% 30%, var(--pc2), var(--pc) 70%); box-shadow: 0 1px 1px rgba(0, 0, 0, .45); }
+.gtp-peb.is-glass { opacity: .88; background: radial-gradient(circle at 35% 30%, #ffffff, var(--pc) 55%, var(--pc2)); }
+.gtp-how { margin: 26px 0 6px; }
+
+/* the spotter card */
+.gtsp-card { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0 10px; padding: 10px; border-radius: 14px; background: #f6efdc; box-shadow: inset 0 0 0 2px #d9c49a; }
+.gtsp-sq { position: relative; display: grid; justify-items: center; align-content: start; gap: 6px; min-height: 108px; padding: 10px 6px 8px; border-radius: 10px; background: #fffaf0; color: #3a2c1c; text-align: center; box-shadow: 0 1px 2px rgba(60, 40, 10, .18); }
+.gtsp-sq.is-hard { background: #fff6e2; }
+.gtsp-sq.is-line { box-shadow: 0 0 0 2px #6ea860, 0 1px 2px rgba(60, 40, 10, .18); }
+.gtsp-ic { display: grid; place-items: center; width: 34px; height: 34px; color: #5a7a8a; }
+.gtsp-ic .i { width: 26px; height: 26px; }
+.gtsp-t { font: 600 12px/1.25 system-ui, sans-serif; }
+.gtsp-stamp { position: absolute; inset: 18px 12px auto auto; display: grid; place-items: center; width: 50px; height: 50px; border: 3px double rgba(176, 54, 46, .8); border-radius: 50%; color: rgba(176, 54, 46, .85); transform: rotate(-14deg); font: 800 10px/1 system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; pointer-events: none; }
+.gtsp-faces { display: flex; gap: 3px; justify-content: center; min-height: 18px; }
+.gtsp-me { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: #5a4630; color: #fff7e6; font: 700 9px/1 system-ui, sans-serif; }
+.gtsp-foot { margin: 0; font-weight: 600; }
+@media (max-width: 520px) { .gtsp-sq { min-height: 96px; } .gtp-pit { min-height: 44px; } .gtp-store { min-height: 96px; } .gtp-board { grid-template-columns: 48px 1fr 48px; padding: 8px; } }

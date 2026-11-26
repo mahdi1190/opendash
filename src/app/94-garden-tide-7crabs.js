@@ -17,12 +17,12 @@ const GT_CRABS = Object.freeze([
   Object.freeze({ id: 'show', name: 'Strut', how: 'a bit of a show-off', c: '#6a6a9a', c2: '#44446a', c3: '#a0a0cc' }),
 ]);
 const GT_RACE = Object.freeze({ len: 4.2, rows: 1.0, beat: 0.9, win: 0.2, pickMs: 5000, coins: 8, cup: 5, cupDecor: 'crab-cup', rosette: 'shore-rosette' });
-const _gtr = { R: null, tracks: new Map(), el: null, tok: 0, heard: null };
+const _gtcr = { R: null, tracks: new Map(), el: null, tok: 0, heard: null };
 
 /* ---------- the track: clear sand beside a pool, by rule ---------- */
 /** A straight run of open sand beside the pool (four lanes, west to east), above the water now; null when there is no room. */
 function gardenTideRaceTrack(p, T) {
-  const key = p.id + '|' + (T.level < .2 ? 0 : 1), was = _gtr.tracks.get(key); if (was !== undefined) return was;
+  const key = p.id + '|' + (T.level < .2 ? 0 : 1), was = _gtcr.tracks.get(key); if (was !== undefined) return was;
   const L = GT_RACE.len, H = GT_RACE.rows, tries = [[1.7, .5], [-1.7 - L, .5], [-L / 2, 1.25], [1.5, -.2], [-1.5 - L, -.2], [-L / 2, 1.7]];
   let out = null;
   for (const [dx, dy] of tries) {
@@ -36,11 +36,11 @@ function gardenTideRaceTrack(p, T) {
     out = Object.freeze({ x0, y0, pool: p.id, stand });
     break;
   }
-  if (_gtr.tracks.size > 60) _gtr.tracks.clear();
-  _gtr.tracks.set(key, out); return out;
+  if (_gtcr.tracks.size > 60) _gtcr.tracks.clear();
+  _gtcr.tracks.set(key, out); return out;
 }
 function gardenTideRaceRows(px, py, T) {
-  const out = []; if (T.level > .45 || _gtr.R) return out;
+  const out = []; if (T.level > .45 || _gtcr.R) return out;
   for (const p of gardenTidePools()) {
     if (Math.hypot(p.x - px, (p.y - py) * 1.3) > 2.6) continue;
     const h = gardenTideH(p.x, p.y); if (!(Number.isFinite(h) && h > T.line + 3)) continue;
@@ -81,7 +81,7 @@ function _gtrPace(cr, t, rnd) {
 function _gtrStart(p, tr, k, stakeShell) {
   const seed = gardenHash('tide-race|' + p.id + '|' + Date.now()) % 1000, r = gardenRand(seed + 17), rivals = _gtrRivals();   // clock-ok: luck
   const crabs = GT_CRABS.map((c, i) => ({ i, kind: c.id, base: .118 + r() * .022, s: 0, v: 0, nap: 0, burst: 0, back: 0, wave: 0, naps: c.id === 'sleepy' ? [1.2 + r() * 1.8, 3.6 + r() * 2.2] : [], who: i === k ? 'me' : rivals[i % rivals.length] }));
-  const R = _gtr.R = { p, tr, seed, r, crabs, me: k, t: -3.2, beat0: 0, presses: [], stake: stakeShell, done: false, guests: new Map(), live: gardenShoreLive() === 'host', lastTell: 0, picked: false };
+  const R = _gtcr.R = { p, tr, seed, r, crabs, me: k, t: -3.2, beat0: 0, presses: [], stake: stakeShell, done: false, guests: new Map(), live: gardenShoreLive() === 'host', lastTell: 0, picked: false };
   if (stakeShell) { _gdLed('tf', { i: { ['sh:' + stakeShell.id]: -1 }, n: 1 }); _gdSaveQuiet(); }
   if (R.live) { try { gardenLiveFx('tide', 'race', { n: seed || 1, i: p.id, v: 'h' + k }); } catch (e) { /* alone */ } R.t = -GT_RACE.pickMs / 1000 - 3.2; gardenShoreSay('A crab race! Friends near the pool can pick a crab.', 'flag', 4500); }
   // stand at the side of the track, crouched to watch (you face it), and the Cheer button comes up
@@ -89,7 +89,7 @@ function _gtrStart(p, tr, k, stakeShell) {
   _gtrCheerButton(true);
 }
 function _gtrStep(dt) {
-  const R = _gtr.R; if (!R || R.done || R.remote) return;
+  const R = _gtcr.R; if (!R || R.done || R.remote) return;
   const before = R.t; R.t += dt;
   if (before < -2 && R.t >= -2) gardenShoreFloat(R.tr.x0 + GT_RACE.len / 2, R.tr.y0 - .2, 'Ready…');
   if (before < -1 && R.t >= -1) gardenShoreFloat(R.tr.x0 + GT_RACE.len / 2, R.tr.y0 - .2, 'Steady…');
@@ -111,7 +111,7 @@ function _gtrStep(dt) {
 }
 /** A cheer: on the beat, a spurt; off it, a puzzled look; too many, it stops to wave its claws. */
 function _gtrCheer(slot) {
-  const R = _gtr.R; if (!R || R.done || R.t < 0) return;
+  const R = _gtcr.R; if (!R || R.done || R.t < 0) return;
   const c = R.crabs[slot]; if (!c || c.wave > 0) return;
   const now = performance.now(), ph = ((now - R.beat0) / 1000) % GT_RACE.beat, off = Math.min(ph, GT_RACE.beat - ph);
   c.presses = (c.presses || []).filter(t => now - t < 1600); c.presses.push(now);
@@ -121,17 +121,17 @@ function _gtrCheer(slot) {
   else if (mine) gardenShoreFloat(at.x, at.y - .5, 'Hm?');
 }
 function _gtrEnd(winner) {
-  const R = _gtr.R; if (!R || R.done) return;
+  const R = _gtcr.R; if (!R || R.done) return;
   R.done = true; R.winner = winner; R.endAt = performance.now();
   if (R.live) _gtrTell('rend');
   _gtrCheerButton(false);
   setTimeout(() => { try { if (typeof _ga !== 'undefined' && _ga.cur && _ga.cur.id === 'cheer') gartActStop(true); } catch (e) { /* fine */ } }, 1800);
   _gtrResult(winner === R.me, R.crabs[winner], R.stake);
-  setTimeout(() => { if (_gtr.R === R) _gtr.R = null; }, 9000);
+  setTimeout(() => { if (_gtcr.R === R) _gtcr.R = null; }, 9000);
 }
 /** The end, on your own screen: the line, the stake, the prize. */
 function _gtrResult(won, wc, stake) {
-  const R = _gtr.R, rival = !wc || !wc.who || wc.who === 'me' ? '' : wc.who === 'host' ? (R && R.hostName) || 'Your friend' : String(wc.who).startsWith('g') ? 'A friend' : gardenShoreFolkName(wc.who);
+  const R = _gtcr.R, rival = !wc || !wc.who || wc.who === 'me' ? '' : wc.who === 'host' ? (R && R.hostName) || 'Your friend' : String(wc.who).startsWith('g') ? 'A friend' : gardenShoreFolkName(wc.who);
   const T = gardenTideNow(), g = _gdG();
   if (won) {
     const n = (Number(g.wd.tdr) || 0) + 1; g.wd.tdr = n; _wdSave();
@@ -157,25 +157,25 @@ function _gtrResult(won, wc, stake) {
 /* ---------- the Cheer! button ---------- */
 function _gtrCheerButton(on) {
   const box = typeof _gw !== 'undefined' && _gw.box;
-  if (!on || !box) { if (_gtr.el) { if (_gtr.el.parentNode) _gtr.el.parentNode.classList.remove('gt-quick-on'); _gtr.el.remove(); _gtr.el = null; } if (_gtr.off) { _gtr.off(); _gtr.off = null; } return; }
+  if (!on || !box) { if (_gtcr.el) { if (_gtcr.el.parentNode) _gtcr.el.parentNode.classList.remove('gt-quick-on'); _gtcr.el.remove(); _gtcr.el = null; } if (_gtcr.off) { _gtcr.off(); _gtcr.off = null; } return; }
   _gtrCheerButton(false);
   const el = document.createElement('button'); el.type = 'button'; el.className = 'ga-prompt gt-quick gt-cheer'; el.innerHTML = '<kbd>E</kbd><span>Cheer!</span><i class="gt-beat" aria-hidden="true"></i>'; el.setAttribute('aria-label', 'Cheer your crab on (E or Space), on the beat');
   if (!document.getElementById('gt-quick-css')) { const css = document.createElement('style'); css.id = 'gt-quick-css'; css.textContent = '.gt-quick-on .ga-prompt:not(.gt-quick),.gt-quick-on .ga-choose{visibility:hidden}.gt-quick{z-index:7}'; document.head.appendChild(css); }
   if (!document.getElementById('gt-cheer-css')) { const css = document.createElement('style'); css.id = 'gt-cheer-css'; css.textContent = '.gt-cheer{position:absolute}.gt-cheer .gt-beat{position:absolute;inset:-5px;border-radius:999px;border:2px solid rgba(255,224,138,.95);opacity:0;pointer-events:none}.gt-cheer.is-beat .gt-beat{animation:gtbeat .34s ease-out}@keyframes gtbeat{0%{opacity:.95;transform:scale(.92)}100%{opacity:0;transform:scale(1.18)}}@media (prefers-reduced-motion:reduce){.gt-cheer.is-beat .gt-beat{animation:none;opacity:.8}}'; document.head.appendChild(css); }
-  box.appendChild(el); box.classList.add('gt-quick-on'); _gtr.el = el;
-  const go = (ev) => { if (ev && ev.type === 'keydown' && !(ev.key === 'e' || ev.key === 'E' || ev.key === ' ')) return; const R = _gtr.R; if (!R) return; if (ev) { ev.preventDefault(); ev.stopPropagation(); } if (R.remote) { try { gardenLiveFx('tide', 'cheer', { n: R.me + 1 }); } catch (e) { /* alone */ } _gtrCheerLocal(R); } else _gtrCheer(R.me); };
+  box.appendChild(el); box.classList.add('gt-quick-on'); _gtcr.el = el;
+  const go = (ev) => { if (ev && ev.type === 'keydown' && !(ev.key === 'e' || ev.key === 'E' || ev.key === ' ')) return; const R = _gtcr.R; if (!R) return; if (ev) { ev.preventDefault(); ev.stopPropagation(); } if (R.remote) { try { gardenLiveFx('tide', 'cheer', { n: R.me + 1 }); } catch (e) { /* alone */ } _gtrCheerLocal(R); } else _gtrCheer(R.me); };
   el.addEventListener('click', go); el.addEventListener('pointerdown', (ev) => ev.stopPropagation());
   document.addEventListener('keydown', go, true);
-  _gtr.off = () => document.removeEventListener('keydown', go, true);
+  _gtcr.off = () => document.removeEventListener('keydown', go, true);
 }
 /** A guest's cheer: the words over their crab at once (the host decides the spurt). */
 function _gtrCheerLocal(R) { const c = R.crabs[R.me]; if (!c) return; gardenShoreFloat(R.tr.x0 + .3 + c.s * (GT_RACE.len - .6), R.tr.y0 + .16 + c.i * .24 - .5, 'Go on!', { color: '#ffe08a' }); }
 /** Once a frame from the painter: the race moves, the button keeps its place and beats. */
 function _gtrFrame(time, dt) {
-  const R = _gtr.R; if (!R) return;
+  const R = _gtcr.R; if (!R) return;
   if (!R.remote) _gtrStep(dt);
   else if (!R.done) { for (const c of R.crabs) { c.s += (c.to - c.s) * Math.min(1, dt * 6); } }
-  const el = _gtr.el;
+  const el = _gtcr.el;
   if (el && typeof _ghProject === 'function') {
     const s = _ghProject(_gw.px, _gw.py - 2.3); if (s) el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, -100%)`;
     if (R.t >= 0 && !R.done) { const k = Math.floor((performance.now() - R.beat0) / (GT_RACE.beat * 1000)); if (k !== R.beatK) { R.beatK = k; el.classList.remove('is-beat'); void el.offsetWidth; el.classList.add('is-beat'); } }
@@ -186,46 +186,46 @@ function _gtrFrame(time, dt) {
 /* ---------- with friends, live: the host runs it ---------- */
 function _gtrCode(R) { return R.crabs.map(c => Math.max(0, Math.min(1295, Math.round(c.s * 1000))).toString(36).padStart(2, '0') + (c.wave > 0 ? 'w' : c.nap > 0 ? 'z' : 'r')).join(''); }
 function _gtrTell(step) {
-  const R = _gtr.R; if (!R) return;
+  const R = _gtcr.R; if (!R) return;
   try {
     if (step === 'rstate') gardenLiveFx('tide', 'rstate', { n: R.seed || 1, v: _gtrCode(R) });
     else if (step === 'rend') gardenLiveFx('tide', 'rend', { n: R.seed || 1, to: R.winner + 1, v: R.crabs.map(c => c.who === 'me' ? 'h' : String(c.who).startsWith('g') ? c.who : 'v').join('-') });
   } catch (e) { /* alone */ }
 }
 gardenShoreFxOn('race', (A, ev) => {   // the host started a race: pick a crab while there is time
-  if (gardenShoreLive() !== 'guest' || _gtr.R) return;
+  if (gardenShoreLive() !== 'guest' || _gtcr.R) return;
   const p = gardenTidePools().find(q => q.id === String(ev.i || '')); if (!p || typeof _gw === 'undefined' || Math.hypot(p.x - _gw.px, p.y - _gw.py) > 12) return;
   const T = gardenTideNow(), tr = gardenTideRaceTrack(p, T); if (!tr) return;
   const host = /^h(\d)$/.exec(String(ev.v || '')), taken = new Set(host ? [Number(host[1])] : []);
   const who = String(A && A.n || 'Your friend').split(/\s+/)[0];
-  const R = _gtr.R = { p, tr, seed: ev.n == null ? 0 : Number(ev.n), crabs: GT_CRABS.map((c, i) => ({ i, kind: c.id, s: 0, to: 0, who: taken.has(i) ? 'host' : 'v' })), me: -1, t: 0, remote: true, done: false, beat0: performance.now(), A, hostName: who };
-  wdTalk({ name: 'The crab race', art: _gtrCrabSvg(GT_CRABS[1]), lines: [`${who} is starting a crab race at the pool. Pick a crab, quick!`], actions: GT_CRABS.map((c, k) => ({ label: `${c.name} (${c.how})`, primary: !taken.has(k) && ![...taken].length && k === 0, run: () => { if (_gtr.R !== R || R.crabs[k].who !== 'v') return; wdTalkClose(true); R.me = k; R.crabs[k].who = 'me'; try { gardenLiveFx('tide', 'rpick', { n: k + 1 }); } catch (e) { /* alone */ } _gtcDo('cheer', { key: 'tide:race-go', name: 'the crab race', x: tr.stand.x, y: tr.stand.y + .6, stand: gardenTideStandFree([{ x: tr.stand.x - .7, y: tr.stand.y }, { x: tr.stand.x + .7, y: tr.stand.y }, { x: tr.stand.x - 1.4, y: tr.stand.y }], _gw.px, _gw.py) }, () => {}, .1); _gtrCheerButton(true); } })).filter((a, k) => !taken.has(k)), at: { x: p.x, y: p.y }, bye: 'Just watch' });
-  setTimeout(() => { if (_gtr.R === R && R.me < 0) { try { if (typeof _wd !== 'undefined' && _wd.talk) wdTalkClose(true); } catch (e) { /* fine */ } } }, GT_RACE.pickMs);
+  const R = _gtcr.R = { p, tr, seed: ev.n == null ? 0 : Number(ev.n), crabs: GT_CRABS.map((c, i) => ({ i, kind: c.id, s: 0, to: 0, who: taken.has(i) ? 'host' : 'v' })), me: -1, t: 0, remote: true, done: false, beat0: performance.now(), A, hostName: who };
+  wdTalk({ name: 'The crab race', art: _gtrCrabSvg(GT_CRABS[1]), lines: [`${who} is starting a crab race at the pool. Pick a crab, quick!`], actions: GT_CRABS.map((c, k) => ({ label: `${c.name} (${c.how})`, primary: !taken.has(k) && ![...taken].length && k === 0, run: () => { if (_gtcr.R !== R || R.crabs[k].who !== 'v') return; wdTalkClose(true); R.me = k; R.crabs[k].who = 'me'; try { gardenLiveFx('tide', 'rpick', { n: k + 1 }); } catch (e) { /* alone */ } _gtcDo('cheer', { key: 'tide:race-go', name: 'the crab race', x: tr.stand.x, y: tr.stand.y + .6, stand: gardenTideStandFree([{ x: tr.stand.x - .7, y: tr.stand.y }, { x: tr.stand.x + .7, y: tr.stand.y }, { x: tr.stand.x - 1.4, y: tr.stand.y }], _gw.px, _gw.py) }, () => {}, .1); _gtrCheerButton(true); } })).filter((a, k) => !taken.has(k)), at: { x: p.x, y: p.y }, bye: 'Just watch' });
+  setTimeout(() => { if (_gtcr.R === R && R.me < 0) { try { if (typeof _wd !== 'undefined' && _wd.talk) wdTalkClose(true); } catch (e) { /* fine */ } } }, GT_RACE.pickMs);
 });
 gardenShoreFxOn('rpick', (A, ev) => {   // a guest picked a lane: theirs, if nobody has it
-  const R = _gtr.R; if (!R || R.remote || !R.live || R.t >= 0) return;
+  const R = _gtcr.R; if (!R || R.remote || !R.live || R.t >= 0) return;
   const k = (ev.n == null ? 0 : Number(ev.n)) - 1, c = R.crabs[k]; if (!c || c.who === 'me' || String(c.who).startsWith('g')) return;
   c.who = 'g' + (A && A.w != null ? A.w : 0); R.guests.set(String(A && A.w), k);
 });
 gardenShoreFxOn('cheer', (A, ev) => {   // a guest cheered their crab
-  const R = _gtr.R; if (!R || R.remote || !R.live) return;
+  const R = _gtcr.R; if (!R || R.remote || !R.live) return;
   const k = R.guests.get(String(A && A.w)); if (k == null) return;
   _gtrCheer(k);
 });
 gardenShoreFxOn('rstate', (A, ev) => {   // the host's race as it stands
-  const R = _gtr.R; if (!R || !R.remote) return;
+  const R = _gtcr.R; if (!R || !R.remote) return;
   const v = String(ev.v || ''); if (v.length !== 12) return;
   for (let i = 0; i < 4; i++) { const c = R.crabs[i], s = parseInt(v.slice(i * 3, i * 3 + 2), 36) / 1000, st = v[i * 3 + 2]; if (!Number.isFinite(s)) continue; c.to = Math.min(1, s); c.wave = st === 'w' ? 1 : 0; c.nap = st === 'z' ? 1 : 0; }
   if (R.t === 0) { R.t = .01; R.beat0 = performance.now(); }
 });
 gardenShoreFxOn('rend', (A, ev) => {
-  const R = _gtr.R; if (!R || !R.remote || R.done) return;
+  const R = _gtcr.R; if (!R || !R.remote || R.done) return;
   const w = (ev.to == null ? 0 : Number(ev.to)) - 1; R.done = true; R.winner = w; R.endAt = performance.now();
   for (const c of R.crabs) c.s = c.to = Math.min(1, c.to);
   _gtrCheerButton(false);
   setTimeout(() => { try { if (typeof _ga !== 'undefined' && _ga.cur && _ga.cur.id === 'cheer') gartActStop(true); } catch (e) { /* fine */ } }, 1800);
   if (R.me >= 0) _gtrResult(w === R.me, R.crabs[w], null);
-  setTimeout(() => { if (_gtr.R === R) _gtr.R = null; }, 9000);
+  setTimeout(() => { if (_gtcr.R === R) _gtcr.R = null; }, 9000);
 });
 
 /* ---------- drawn: the track scratched in the sand, the crabs going sideways ---------- */
@@ -262,7 +262,7 @@ const GardenTideRaceSprites = {
     const scene = this.scene; if (!scene) return;
     const dt = Math.min(.05, (time - (this.last || time)) / 1000); this.last = time;
     _gtrFrame(time, dt);
-    const R = _gtr.R;
+    const R = _gtcr.R;
     if (!R || (R.done && performance.now() - R.endAt > 8000)) { if (this.track) this.clear0(); return; }
     const W = GARDEN_WORLD, K = 3;
     if (this.for !== R) {
