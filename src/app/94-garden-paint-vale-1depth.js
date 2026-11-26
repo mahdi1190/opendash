@@ -55,7 +55,7 @@
   }
   function compose(C) {
     if (typeof gardenUnderZones !== 'function') return;
-    const { L, P, add, thing, kit } = C, W = L.W, season = C.season;
+    const { L, add, thing, kit } = C, W = L.W, season = C.season;
     let zones = []; try { zones = gardenUnderZones() || []; } catch (e) { zones = []; }
     for (const z of zones) {
       if (!z.deck || !z.swim) continue;
@@ -78,11 +78,11 @@
     }
     // shut water: a line of floats across the river where it runs on into land not yet open
     let floats = []; try { floats = typeof gardenDepthRivers === 'function' ? gardenDepthRivers().floats : []; } catch (e) { floats = []; }
-    floats.forEach((f, i) => {
+    floats.forEach(f => {
       const k = f.hw + .35, a = L.cpt(f.x + f.nx * k, f.y + f.ny * k), b = L.cpt(f.x - f.nx * k, f.y - f.ny * k), mx = (a.x + b.x) / 2, my = Math.max(a.y, b.y);
       const A = { x: a.x - mx, y: a.y - my }, Bq = { x: b.x - mx, y: b.y - my };
       thing({ key: 'dp-floats-buoy|' + f.key + '|' + season, x: Math.round(mx), y: Math.round(my) + 2, depth: my + 3, box: [Math.min(A.x, Bq.x) - 10, Math.min(A.y, Bq.y) - 16, Math.max(A.x, Bq.x) + 10, Math.max(A.y, Bq.y) + 8], shade: false, draw: B => {
-        const r = kit.rng(kit.hashStr(f.key)), Lr = Math.hypot(Bq.x - A.x, Bq.y - A.y) || 1, n = Math.max(3, Math.round(Lr / 8));
+        const Lr = Math.hypot(Bq.x - A.x, Bq.y - A.y) || 1, n = Math.max(3, Math.round(Lr / 8));
         B.cx.translate(0, -2);
         const at = t => ({ x: A.x + (Bq.x - A.x) * t, y: A.y + (Bq.y - A.y) * t + Math.sin(Math.PI * t) * 2.2 });   // the rope sags a little to the water
         // the stake on each bank, the rope tied round it
@@ -93,7 +93,6 @@
           const p = at(k / n), red = k % 2 === 1;
           B.s(B.ell(p.x, p.y + 1.6, 4.2, 1.2), '#e8f2ee', .7, .45);   // its ring on the water
           B.f(B.ell(p.x, p.y + .4, 3, 2.2), red ? '#c8432f' : '#f2ece0').f(B.ell(p.x - .9, p.y - .4, 1.3, .8), '#ffffff', red ? .35 : .6).f(B.ell(p.x + .6, p.y + 1.2, 2.2, .8), red ? '#8a2a1e' : '#b8b0a0', .55);
-          void r;
         }
       } });
     });

@@ -20,7 +20,8 @@
    and your swim, by the same zones. A friend who arrives reads it from the garden's snapshot (pw), so you are not drawn on top of
    the bridge you are swimming under.
 
-   Rewards: the first time under each one, a few coins and a line in the journal; the ribbon "Under every bridge" for all of them.
+   Rewards: the first time under each one, a few coins (once, a ledger line) and a word about it; the ribbon "Under every bridge" for all
+   of them a swimmer can reach. Your pet keeps to the bank while you swim, trotting along beside you (or over the bridge you are under).
    ============================================================ */
 const _gdu = { zones: null, key: '', keyT: 0, bucket: null, byCrossing: null, list: [], gate: new Map(), gateT: 0, rivers: null, riverSig: '', sigT: 0, sig: '', shutCell: null, said: {}, where: null, whereT: 0, underId: '', underT: 0, scratch: { t: 0, s: 0 } };
 const GDU_OFF = Object.freeze([[0, 0], [-0.3, 0], [0.3, 0], [0, -0.3], [0, 0.35]]);   // (the height file's own margins round a deck)
@@ -279,6 +280,19 @@ function gardenDepthWhereOf(A) {
   if (A.swimming || (A.ghtSwim && A.ghtSwim.on)) { const z = gardenUnderFigureAt(A.x, A.y); return z ? { k: 'u', id: z.id, n: 0 } : { k: 'w', id: '', n: 0 }; }
   return { k: 'g', id: '', n: 0 };
 }
+/** The places beneath things, for other parts of the game to use by kind (bats under an arch at dusk, a dipper under a footbridge):
+ *  [{ kind: 'under', what (the crossing's or thing's kind), id, x, y (cells, its middle over the water), open }], and a tunnel's
+ *  chambers when the tunnels give them (gardenDepthChamberPlaces). */
+function gardenDepthPlaces() {
+  const out = [];
+  for (const z of gardenUnderZones() || []) {
+    if (!z.swim) continue;
+    let x = 0, y = 0; for (const p of z.vis) { x += p.x; y += p.y; } x /= z.vis.length; y /= z.vis.length;
+    out.push({ kind: 'under', what: z.kind, id: z.id, x, y, open: gardenUnderOpen(z), arches: z.rule.spans ? z.open.length : 0 });
+  }
+  try { if (typeof gardenDepthChamberPlaces === 'function') for (const p of gardenDepthChamberPlaces() || []) out.push(p); } catch (e) { /* none */ }
+  return out;
+}
 /** The snapshot's depth fields (gardenSnapshot): pw where you are (omitted on the ground, in plain water), dp the tunnels' state. */
 function gardenDepthWire() {
   const out = {};
@@ -356,12 +370,33 @@ function gardenDepthFacts() {
 /** Each frame (with the garden's own frame loop): where you are, and the first time under a thing. */
 function _gduFrame() {
   const w = gardenDepthWhere();
+  if (w.k === 'u' && typeof _ght !== 'undefined' && _ght.swim) _ght.swim.fxT = performance.now();   // (no splash drawn on the planks over you: the water there is under the deck)
   if (w.k === 'u') { if (_gdu.underId !== w.id) { _gdu.underId = w.id; _gdu.underT = performance.now(); _gdu.paid = false; } else if (!_gdu.paid && performance.now() - _gdu.underT > 700) { _gdu.paid = true; const z = _gdu.byId && _gdu.byId.get(w.id); if (z) _gduFirst(z); } }
   else _gdu.underId = '';
 }
 if (typeof gartActFrame === 'function') {
   const _gduFrame0 = gartActFrame;
   gartActFrame = function () { try { _gduFrame(); } catch (e) { console.error('[garden depth]', e); } return _gduFrame0(); };   // eslint-disable-line no-func-assign
+}
+/* ---------- your pet while you swim: along the bank beside you, or over the bridge you are under ---------- */
+/** The nearest ground a pet stands on to a swimmer at (x, y), within 3.6 cells (a bridge's deck is ground): its goal while you swim. */
+function _gduPetBank(x, y) {
+  if (typeof gardenWorldFree !== 'function') return null;
+  for (let r = 0.5; r <= 3.6; r += 0.4) for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8, qx = x + Math.cos(a) * r, qy = y + Math.sin(a) * r * 0.8; if (gardenWorldFree(qx, qy, .1)) return { x: qx, y: qy }; }
+  return null;
+}
+if (typeof gardenLifePetGoal === 'function') {
+  const _gduPet0 = gardenLifePetGoal;
+  gardenLifePetGoal = function (P, dt) {   // eslint-disable-line no-func-assign
+    if (P && typeof _gw !== 'undefined' && P === _gw.pet && typeof _ght !== 'undefined' && _ght.swim && _ght.swim.on) {
+      const now = performance.now();
+      if (!_gdu.petT || now - _gdu.petT > 400) { _gdu.petT = now; const b = _gduPetBank(_gw.px, _gw.py); if (b) _gdu.petGoal = { x: b.x, y: b.y, near: 12 }; }
+      if (_gdu.petGoal) return _gdu.petGoal;
+      return { x: P.x, y: P.y, near: 999 };   // (no bank near: it waits where it is)
+    }
+    _gdu.petGoal = null;
+    return _gduPet0(P, dt);
+  };
 }
 /* ---------- the collision view (Shift+C): what holds a swimmer, and where you can swim under ---------- */
 /** The depth lane's part of the collision view: the zones (purple), the posts and piles, the booms and the floats (red). */

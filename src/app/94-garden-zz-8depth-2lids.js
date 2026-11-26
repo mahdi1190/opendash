@@ -19,10 +19,10 @@ function _gdlWorld() { try { return window.GardenNative && GardenNative.world ? 
 function _gdlScene() { try { return window.GardenNative && GardenNative.scene ? GardenNative.scene() : null; } catch (e) { return null; } }
 /** The hump bridge's own baked picture, handed over by its painter each time it draws the gate (H3). */
 function gardenDepthBridgeArt(id, o) { if (id && o && o.key) _gdl.bridge.set(String(id), o); }
-function _gdlBytes() { let n = 0; for (const L of _gdl.tex.values()) if (L) n += L.bytes || 0; return n; }
+function _gdlBytes() { let n = 0; for (const L of _gdl.tex.values()) if (L && L.key) n += L.bytes || 0; return n; }
 function _gdlEvict(keep) {
   while (_gdlBytes() > GDL.budget) {
-    let old = null; for (const [id, L] of _gdl.tex) if (L && id !== keep && (!old || L.used < old[1].used)) old = [id, L];
+    let old = null; for (const [id, L] of _gdl.tex) if (L && L.key && id !== keep && (!old || L.used < old[1].used)) old = [id, L];
     if (!old) return;
     const [id, L] = old; _gdl.tex.delete(id);
     for (const c of _gdl.pool) if (c.lid === L) { c.lid = null; if (c.im && c.im.active) c.im.setVisible(false); }
@@ -30,15 +30,25 @@ function _gdlEvict(keep) {
   }
 }
 /** The lid of a zone: made once, on first need. null while it cannot be made (its picture not drawn yet: tried again in a while). */
+/** What a zone's lid is copied from now (the vale's drawing of it, the gate's baked picture, the world's deck node): when it changes (a
+ *  gate opened, the season turned, the pier built longer) the lid is made again. */
+function _gdlSource(z) {
+  try {
+    if (z.rule.lid === 'vale') { const V = window.GardenPaintVale; return V && V.lids ? V.lids.get(z.id) || null : null; }
+    if (z.rule.lid === 'gate') { const o = _gdl.bridge.get(z.id); return o ? o.key : null; }
+    if (z.rule.lid === 'deck') { const w = _gdlWorld(), decks = w && w.pierDecks ? w.pierDecks() : null; if (decks) for (const d of decks.values()) if (d.bounds && d.bounds.x <= z.rect[0] * GARDEN_WORLD.cellW + 4 && d.bounds.x + d.bounds.width >= z.rect[2] * GARDEN_WORLD.cellW - 4) return d.node; return null; }
+  } catch (e) { /* none */ }
+  return null;
+}
 function _gdlLid(z) {
   const have = _gdl.tex.get(z.id), now = performance.now(), sc = _gdlScene(); if (!sc || !sc.textures) return null;
-  if (have && sc.textures.exists(have.key)) { have.used = now; return have; }
-  if (have) { _gdl.tex.delete(z.id); for (const c of _gdl.pool) if (c.lid === have) c.lid = null; }   // (the garden was drawn afresh: its textures went with it)
+  if (have && sc.textures.exists(have.key) && (now - (have.srcT || 0) < 1000 || ((have.srcT = now) && _gdlSource(z) === have.src))) { have.used = now; return have; }
+  if (have) { _gdl.tex.delete(z.id); for (const c of _gdl.pool) if (c.lid === have) c.lid = null; try { if (sc.textures.exists(have.key)) sc.textures.remove(have.key); if (have.rt && have.rt.active) have.rt.destroy(); } catch (e) { /* gone */ } }   // (drawn afresh, or its picture changed: made again)
   const tried = _gdl.tex.get('try:' + z.id); if (tried && now - tried < 2500) return null; _gdl.tex.set('try:' + z.id, now);
   let L = null; const t0 = performance.now();
   try { L = z.rule.lid === 'vale' ? _gdlVale(sc, z) : z.rule.lid === 'gate' ? _gdlGate(sc, z) : z.rule.lid === 'deck' ? _gdlDeck(sc, z) : null; } catch (e) { console.error('[garden depth] lid', z.id, e); L = null; }
   if (!L) return null;
-  _gdl.tex.delete('try:' + z.id); L.used = now; L.ms = Math.round(performance.now() - t0); _gdl.tex.set(z.id, L); _gdlEvict(z.id);
+  _gdl.tex.delete('try:' + z.id); L.used = now; L.src = _gdlSource(z); L.srcT = now; L.ms = Math.round(performance.now() - t0); _gdl.tex.set(z.id, L); _gdlEvict(z.id);
   if (typeof gardenBakeSpent === 'function') gardenBakeSpent(performance.now() - t0);
   return L;
 }
@@ -102,7 +112,7 @@ function _gdlOver(c, z, px, py, d, dt) {
   // the crop: the figure's own box, in the lid's texture pixels
   const B = GDL.box, K = lid.K, u0 = Math.max(0, Math.floor((px + B[0] - lid.x0) * K)), v0 = Math.max(0, Math.floor((py + B[1] - lid.y0) * K)), u1 = Math.min(lid.w, Math.ceil((px + B[2] - lid.x0) * K)), v1 = Math.min(lid.h, Math.ceil((py + B[3] - lid.y0) * K));
   if (u1 <= u0 || v1 <= v0) { if (c.im.visible) c.im.setVisible(false); c.on = false; return; }
-  const cut = u0 + ',' + v0 + ',' + u1 + ',' + v1; if (cut !== c.cut) { c.cut = cut; c.im.setCrop(u0, v0, u1 - u0, v1 - v0); }
+  if (c.cut !== 'set' || c.u0 !== u0 || c.v0 !== v0 || c.u1 !== u1 || c.v1 !== v1) { c.cut = 'set'; c.u0 = u0; c.v0 = v0; c.u1 = u1; c.v1 = v1; c.im.setCrop(u0, v0, u1 - u0, v1 - v0); }
   if (c.depth !== d) { c.depth = d; c.im.setDepth(d); if (w.depthChanged) w.depthChanged(); }
   if (Math.abs(c.im.alpha - c.a) > .005) c.im.setAlpha(c.a);
   if (!c.im.visible) c.im.setVisible(true);
