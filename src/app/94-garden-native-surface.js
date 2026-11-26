@@ -153,9 +153,10 @@ window.GardenNativeSurface = (function () {
     function step(event) {
       if (dead || room || !model || !motion() || event.wet) return;
       const x = event.x, y = event.y; if (!Number.isFinite(x) || !Number.isFinite(y) || waterAt(x, y)) return;
+      const GT = window.GardenTide && GardenTide.ready() ? GardenTide : null, tx = x / W.cellW, ty = (y - W.sky) / W.cellH; if (GT && GT.shallows(tx, ty)) return;   // (paddling in the tide: no print, the water's rings instead: 94-garden-tide-1paint.js)
       const p = inPuddle(x, y), size = Math.max(.5, Math.min(2.3, event.size || 1));
       if (p) { ripple(x, y, p, size); if (event.pet) event.pet._surfaceWetUntil = clock + 5; }
-      const snow = !!event.snow || model.season === 'winter' || env.snow > .1, wet = p || env.wetness > .2 || event.wetFeet || event.pet && clock < event.pet._surfaceWetUntil;
+      const snow = !!event.snow || model.season === 'winter' || env.snow > .1, wet = p || env.wetness > .2 || event.wetFeet || event.pet && clock < event.pet._surfaceWetUntil || !!(GT && GT.wetAt(tx, ty));
       if ((snow || wet) && event.track !== 'none') {
         const contact = contactGeometry({ x, y, size, track: event.track || 'shoe', side: event.side || 1, angle: event.angle || 0, age: 0, life: snow ? 25 : 4.5, snow });
         let dry = true; for (let i = 0; i < contact.triangles.length; i += 2) if (waterAt(contact.triangles[i], contact.triangles[i + 1])) { dry = false; break; } if (dry) { if (contacts.length >= 96) contacts.shift(); contacts.push(contact); }

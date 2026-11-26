@@ -55,7 +55,7 @@ function gardenLiveCheer(e, v) {
 /** What a friend or the game did: the message line, like every other message. */
 function _gllFeed(text) { gardenMessage(text); }
 function _gllOffscreen(A) { try { return typeof _gwInView === 'function' ? !_gwInView(A.x, A.y, 1) : false; } catch (e) { return false; } }
-const _GLL_FX_KIND = Object.freeze({ fish: 'fish', bug: 'bug', keep: 'keep', craft: 'craft', crop: 'crop', gear: 'gear' });
+const _GLL_FX_KIND = Object.freeze({ fish: 'fish', bug: 'bug', keep: 'keep', craft: 'craft', crop: 'crop', gear: 'gear', shore: 'shore' });
 const _GLL_TOOL_CELLS = 16;   // Same presentation-only maximum as gl:res.
 const _gllToolFeedbackState = { root: null, scope: '', seen: new Set(), played: {}, duplicates: 0, bulk: 0, bulkRows: 0, bulkCulled: 0 };
 /** Successful results supply feedback, never mutations. Water and decoration
@@ -97,6 +97,7 @@ function _gllFxPlay(A, ev) {
   if (!A || !ev) return;
   const c = ev.c, e = String(ev.e || '');
   if (!gardenActivityFxAllowed(c)) return;
+  if (c === 'tide') { if (typeof gardenTideFx === 'function') gardenTideFx(A, ev); return; }   // the shore: glints, stones, the storm's chest (94-garden-tide-*.js)
   if (c === 'soap') { if (typeof gardenSoapHeard === 'function') gardenSoapHeard(A, ev); return; }
   if (c === 'leaf') { if (typeof gardenLeafBoatHeard === 'function') gardenLeafBoatHeard(A, ev); return; }
   if (c === 'marble') { if (typeof gardenMarbleHeard === 'function') gardenMarbleHeard(A, ev); return; }

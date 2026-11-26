@@ -1051,12 +1051,25 @@ function gardenSnapshotClean(raw) {
   if (raw.jn && typeof gardenJournalSnapClean === 'function') { const jn = gardenJournalSnapClean(raw.jn); if (jn) out.jn = jn; }   // what they have caught for the Field Journal: vale ids, best sizes (94-garden-fish-0catalog.js)
   if (raw.ca && typeof gardenCatchWireClean === 'function') { const ca = gardenCatchWireClean(raw.ca); if (ca) out.ca = ca; }   // the lake: what it shows to friends
   { const tg = gardenTogetherClean(raw.tg); if (tg) out.tg = tg; }   // 94-garden-zz-*.js: ids and numbers only
+  { const ti = gardenTideSnapClean(raw.ti); if (ti) out.ti = ti; }   // the strand (94-garden-tide-0rules.js): numbers and ids only; an older app drops it
   if (raw.rf && typeof raw.rf === 'object' && !Array.isArray(raw.rf)) {   // what they have put in their hidden rooms: {room: [[decor, x, y]]} (94-garden-world-4rooms2.js); an older app drops it
     const rf = {};
     for (const [k, l] of Object.entries(raw.rf).slice(0, 8)) { if (!/^[a-z0-9-]{1,24}$/.test(k) || !Array.isArray(l)) continue; const r = []; for (const d of l.slice(0, 12)) { if (!Array.isArray(d) || !_GD_DECOR.has(d[0])) continue; const x = int(d[1], 0, 960), y = int(d[2], 0, 600); if (x !== null && y !== null) r.push([d[0], x, y]); } if (r.length) rf[k] = r; }
     if (Object.keys(rf).length) out.rf = rf;
   }
   if (raw.dz && typeof gardenDesignClean === 'function') { const dz = gardenDesignClean(raw.dz); if (dz) out.dz = dz; }   // their garden design (94-garden-design-0rules.js); an older app drops the field
+  return out;
+}
+/** What a garden tells friends about its strand (94-garden-tide-0rules.js gardenTideWire): sd the strand's own number (the same glints on
+ *  every screen), r how rich its next low water is, s the day (since 1970) of its last storm, c its sandcastles [uid, x tenths, y tenths,
+ *  look, built minute]. Numbers and ids, each in bounds; anything else is dropped. Pure: the server evaluates this file. */
+function gardenTideSnapClean(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const int = (v, lo, hi) => (Number.isInteger(v) && v >= lo && v <= hi ? v : null), out = {};
+  const sd = int(raw.sd, 0, 9999); if (sd === null) return null; out.sd = sd;
+  const r = int(raw.r, 0, 3); if (r) out.r = r;
+  const s = int(raw.s, 0, 99999); if (s !== null) out.s = s;
+  if (Array.isArray(raw.c)) { const c = raw.c.slice(0, 6).filter(q => Array.isArray(q) && q.length === 5 && typeof q[0] === 'string' && /^[a-z0-9-]{1,32}$/.test(q[0]) && int(q[1], 0, 960) !== null && int(q[2], 0, 960) !== null && int(q[3], 0, 1048575) !== null && int(q[4], 0, 99999999) !== null).map(q => q.slice(0, 5)); if (c.length) out.c = c; }
   return out;
 }
 /** What a garden tells friends about what you share (docs/dev/GARDEN_TOGETHER.md section 24). Ids and numbers, every one in bounds; anything else is dropped. */
