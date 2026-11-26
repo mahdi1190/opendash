@@ -104,8 +104,8 @@ function _gtlKey(iso) { return gardenShoreVisit() && typeof _gtcFriendTag === 'f
 function _gtlState(iso) { return _gdG().wd[_gtlKey(iso)] || ''; }
 /** Has a friend given it back in your vale (live, or as their snapshot says)? */
 function _gtlFriendBack(iso) {
-  if (gardenShoreVisit()) return '';
-  const dn = gardenShoreDay(iso);
+  const dn = gardenShoreDay(iso), snap = gardenShoreVisit();
+  if (snap) return snap.ti && Array.isArray(snap.ti.lf) && snap.ti.lf.some(r => r[0] === 'me' && r[1] === dn) ? 'Your friend' : '';   // (on a visit: your host has given it back already)
   for (const f of gardenShoreFriends()) { const pair = typeof gtgPair === 'function' ? gtgPair(f.id) : ''; if (pair && Array.isArray(f.ti.lf) && f.ti.lf.some(r => r[0] === pair && r[1] === dn)) return f.name; }
   return '';
 }
@@ -214,7 +214,9 @@ GT_WIRE.push((out) => {
   if (typeof gtgPair !== 'function') return;
   const W = _gdG().wd, rows = [], cut = gardenShoreDay() - 3;
   for (const k of Object.keys(W)) { if (!k.startsWith('tlfg.')) continue; const p = k.split('.'), dn = Number(p.pop()), fid = p.slice(1).join('.'); if (!Number.isInteger(dn)) continue; if (dn < cut) { delete W[k]; continue; } const h = gtgPair(fid); if (h) rows.push([h, dn]); }
-  if (rows.length) out.lf = rows.sort((a, b) => b[1] - a[1]).slice(0, 3);
+  rows.sort((a, b) => b[1] - a[1]);
+  { const iso = _gtlDay(), st = W['tlf.' + iso]; if (st === 'r' || st === 'f') rows.unshift(['me', gardenShoreDay(iso)]); }   // (today's in your own vale has gone back: a visiting friend sees it gone too)
+  if (rows.length) out.lf = rows.slice(0, 3);
 });
 
 /* ---------- your pet's nose; a week at the post office ---------- */
@@ -270,7 +272,7 @@ const GT_LOST_ART = Object.freeze({
 function gardenLostSvg(id, px) { const s = GT_LOST_ART[id]; return s ? `<svg viewBox="-16 -16 32 32" width="${px || 32}" height="${px || 32}" aria-hidden="true"><ellipse cx="1" cy="8" rx="10" ry="2.4" fill="#2a2418" opacity="0.18"/>${s}</svg>` : ''; }
 /** A lost thing for the catch moment (94-garden-fish-5moment.js GART_MOMENTS.lost): its name and picture. */
 function gardenLostDef(id) { const L = GT_LOST.find(r => r.id === id); if (L) return { id, name: gardenShoreFolkName(L.v) + '’s ' + L.name }; const O = GT_ODD.find(r => 'odd-' + r.id === id); return O ? { id, name: 'A ' + O.name } : null; }
-const GT_LATLAS = 'gt-lost';
+const GT_LATLAS = 'gt-lost', GT_LOST_TWO = Object.freeze(['lost', 'odd']);
 function _gtlAtlas(scene) {
   if (_gtl.atlas && scene.textures.exists(GT_LATLAS)) return true;
   if (_gtl.busy) return false; _gtl.busy = true;
@@ -308,7 +310,7 @@ const GardenTideLostSprites = {
     }
     // the glint: brighter now and then, so it catches your eye from a little way off
     const t = time / 1000, motion = typeof gardenMotionOn !== 'function' || gardenMotionOn();
-    for (const k of ['lost', 'odd']) { const o = this.o[k]; if (!o || !o.tw.visible) continue; const u = ((t * .5 + (k === 'odd' ? .4 : 0)) % 2.2) / 2.2, a = motion ? Math.max(0, Math.sin(Math.min(1, u * 4) * Math.PI)) : .6; o.tw.setAlpha(.25 + a * .7).setScale(.22 + a * .26); }
+    for (const k of GT_LOST_TWO) { const o = this.o[k]; if (!o || !o.tw.visible) continue; const u = ((t * .5 + (k === 'odd' ? .4 : 0)) % 2.2) / 2.2, a = motion ? Math.max(0, Math.sin(Math.min(1, u * 4) * Math.PI)) : .6; o.tw.setAlpha(.25 + a * .7).setScale(.22 + a * .26); }
   },
 };
 if (window.GardenPaintTide) GardenPaintTide.parts.push(GardenTideLostSprites);
