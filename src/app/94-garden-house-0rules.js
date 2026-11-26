@@ -58,6 +58,8 @@ const HOUSE_START = Object.freeze([
   Object.freeze({ d: 'hf-rag-rug', x: 724, y: 502 }),
   Object.freeze({ d: 'hf-armchair', x: 884, y: 474, r: 1 }),
   Object.freeze({ d: 'hf-stool', x: 640, y: 540 }),
+  Object.freeze({ d: 'hf-picture', x: 196, y: 344 }),
+  Object.freeze({ d: 'hf-wall-shelf', x: 904, y: 292 }),
 ]);
 const _HS_ID_RE = /^[A-Za-z0-9_-]{1,24}$/;
 const _hsOwn = (o, k) => !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k);
