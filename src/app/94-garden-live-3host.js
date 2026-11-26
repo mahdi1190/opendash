@@ -250,7 +250,7 @@ function _glhEvent(ev) {
       else if (ev.c === 'do' && ev.e === 'follow' && ev.to === 0) _gllFloat(_gw.svg, A.x, A.y - 1.4, '🚶', A.n);
       return;
     }
-    case 'fx': { const A = _gll.actors.get(ev.w); if (ev.c === 'folk') { if (typeof gardenFolkHeldBy === 'function') gardenFolkHeldBy(A || null, ev); return; } if (ev.c === 'tune') { if (typeof gardenMusicHeard === 'function') gardenMusicHeard(A || null, ev); return; } if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return; }
+    case 'fx': { const A = _gll.actors.get(ev.w); if (ev.c === 'gm') { if (typeof gardenGameHeard === 'function') gardenGameHeard(A || null, ev); return; } if (ev.c === 'folk') { if (typeof gardenFolkHeldBy === 'function') gardenFolkHeldBy(A || null, ev); return; } if (ev.c === 'tune') { if (typeof gardenMusicHeard === 'function') gardenMusicHeard(A || null, ev); return; } if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return; }
     case 'pp': _gllPlacesIn(ev); return;
     case 'dg': { const A = _gll.actors.get(ev.w); if (A && typeof gartActDoingIn === 'function') gartActDoingIn(A, ev); return; }   // what they are doing, whole (94-garden-zz-7act-3sync.js)
     case 'do': _glhIntent(Object.assign({}, ev, { k: ev.ik })); return;
@@ -808,6 +808,7 @@ function _glhPersonMenu(A) {
     r.appendChild(_gsvBtn('High five', { icon: 'hand', kind: 'btn-ghost', run: () => { close(); gardenWalkToPoint({ x: A.x - 0.7, y: A.y + 0.1 }, () => { if (typeof gartEmoteRun === 'function') gartEmoteRun('clap', { quiet: true }); _gllEmote(A, 'clap'); _glhSend('all', 'em', { c: 'do', e: 'high5', to: A.w }); }); } }));
     r.appendChild(_gsvBtn('Trade', { icon: 'repeat', kind: 'btn-ghost', tip: 'Swap things from your bags, face to face', run: () => { close(); gardenLiveTradeOpen(A); } }));
     r.appendChild(_gsvBtn('Send home', { icon: 'log-out', kind: 'btn-ghost', tip: 'Ends their visit and turns their permission off', run: () => { close(); _gllApi('/api/garden-live/home', { id: f }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}); } }));
+    if (typeof gardenGameFriendButtons === 'function') for (const b of gardenGameFriendButtons(A, close)) r.appendChild(b);   // (folk3: a race or hide and seek with them)
     el.appendChild(r);
   }, { align: 'center' });
 }

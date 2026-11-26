@@ -265,6 +265,7 @@ function gardenWonderWire() {
   if (typeof gardenListeningWalkMask === 'function') { const el = gardenListeningWalkMask(w); if (el) out.el = el; }
   if (typeof gardenShadowCourtyardWire === 'function') { const sc = gardenShadowCourtyardWire(w); if (sc) out.sc = sc; }
   if (typeof gardenShadowCourtyardAnchor === 'function') { const sa = gardenShadowCourtyardAnchor(w); if (sa) out.sa = sa; }
+  if (typeof gardenGameWire === 'function') { const gb = gardenGameWire(w); if (gb) out.gb = gb; }   // (folk3: your games' wins and bests, for a friend's Games board)
   return Object.keys(out).length ? out : null;
 }
 function _wdTheir(m) { return (m && m.visit && m.visit.snap && m.visit.snap.wd) || {}; }

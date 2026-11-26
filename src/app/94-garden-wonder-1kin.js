@@ -375,8 +375,10 @@ function wdAnglerTalk(p) {
   let m; try { m = gardenModel(); } catch (e) { return false; }
   if (m.visit || gardenFun() === 'off') return false;
   const W = _wdG(), today = m.today, tale = typeof wdTaleFor === 'function' ? wdTaleFor('angler', m) : null;
-  if (!tale && W['fv.angler'] === today) return false;
+  const play = typeof gardenGameTalkActs === 'function' ? gardenGameTalkActs({ id: 'angler' }, null, null) : [];   // (folk3: skimming stones with him)
+  if (!tale && W['fv.angler'] === today && !play.length) return false;
   const F = _wkFacts(wdFacts(m, 'angler'), m), lines = [], actions = [];
+  if (typeof gardenGameTalkLines === 'function') lines.push(...gardenGameTalkLines({ id: 'angler' }, F));
   if (!F.met) lines.push('Evening. Or morning. I lose track, out here. I’m the old angler. That’s all anyone calls me, and I’ve stopped minding.');
   if (tale) { const o = wdTaleTell(tale.s, tale.b); lines.push(...o.lines); actions.push(...o.actions); }
   else { const d = _wkWrong('angler', today) || (wdTaleFlag && wdTaleFlag('mill.end') ? 'Wheel’s loud. Good.' : _wkDayLine('angler', F, today)); if (d) lines.push(d); }
@@ -387,6 +389,7 @@ function wdAnglerTalk(p) {
   const at = p && p.door ? { x: p.door.x + 0.5, y: p.door.y + 0.5 } : { x: _gw.px, y: _gw.py };
   actions.push({ label: 'The lake book', primary: !actions.length, run: () => { wdTalkClose(true); gardenPopupOpen('catch', { sub: 'lake', title: 'The old angler' }); } });
   actions.push({ label: 'Give something', run: (T) => _wkAnglerGive(T) });
+  actions.push(...play);
   const h = wdKinHeart('angler');
   wdTalk({ name: h ? `The old angler (${WK_HEART_WORDS[h]})` : 'The old angler', art: _wkAnglerArt(), lines: lines.length ? lines : ['Quiet today. Good.'], actions, at, bye: 'See you' });
   return true;

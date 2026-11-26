@@ -106,7 +106,7 @@ function _gllFxPlay(A, ev) {
   if (c === 'hall' && e === 'in' && _gll.role === 'host' && typeof gardenKiteLeft === 'function') gardenKiteLeft(A.w);
   if (c === 'pose') { if (typeof _gllPhotoIn === 'function') _gllPhotoIn(A, ev); return; }
   if ((c === 'hall' || c === 'got' || c === 'make' || c === 'fish' && e === 'cast' || c === 'bug' && (e === 'sneak' || e === 'swing')) && typeof _gllPhotoClear === 'function') _gllPhotoClear(A);
-  if (c === 'ct') return;   // (the host's round: a visitor hears it in 94-garden-live-7contest.js; a guest cannot say it)
+  if (c === 'ct' || c === 'gm') return;   // (the host's round: a visitor hears it in 94-garden-live-7contest.js, or -wonder-folk3-1games.js; a guest cannot say it)
   if (_gll.role === 'host' && (c === 'fish' || c === 'got') && typeof gardenContestSeen === 'function') { try { gardenContestSeen(A, ev); } catch (err) { console.error('[garden live] contest', err); } }   // the host counts what it can match
   if (c === 'pet' || c === 'petplay' || c === 'wow' || c === 'nap') { if (typeof _gllPetFx === 'function') _gllPetFx(A, ev); return; }
   if (c === 'cr' || c === 'egg' || c === 'pick') { _glcFx(A, ev); return; }
