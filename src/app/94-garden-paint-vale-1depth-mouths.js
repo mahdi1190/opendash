@@ -116,17 +116,17 @@
     // the rock face the adit is cut into, either side of the mouth (each stops the feet), and the timber frame
     const front = W.sky + m.y * W.cellH - 0.6;
     for (const s of [-1, 1]) thing({ key: 'dp-adit-rock|' + T.id + '|' + m.i + '|' + s + '|' + C.season, x: x + s * (ow / 2 + rw * 0.42), y: base, depth: front - 0.2, K: 1.5, box: [-rw * 0.62, -rh - 6, rw * 0.62, 8], foot: [-rw * 0.5, rw * 0.5, 10], draw: B => {
-      const r = kit.rng(seed + (s > 0 ? 11 : 17)), w = rw * 0.5, top = -rh * (0.86 + r() * 0.1);
-      const pts = []; for (let k = 0; k <= 10; k++) { const t = k / 10, xx = -w + 2 * w * t, inner = s > 0 ? t < 0.12 : t > 0.88; pts.push({ x: xx, y: inner ? -oh - 6 + r() * 4 : top * (0.62 + 0.38 * Math.sin(Math.PI * t)) + (r() - 0.5) * 6 }); }
-      const body = [{ x: -w - 4, y: 2 }].concat(pts).concat([{ x: w + 4, y: 2 }]);
-      B.shadow(s * 4, 2, w * 1.1, 6, 0.32);
-      B.f(B.poly(body), '#5e584e');
-      // lit from the upper left: beds of rock, a lit west face, joints, moss and heather on the top
-      for (let y = top * 0.9; y < -2; y += 6 + r() * 6) B.s(`M${-w} ${y}Q0 ${y + (r() - 0.5) * 6} ${w} ${y + 2}`, r() < 0.5 ? '#8a8274' : '#3e3a32', 1.2 + r(), 0.55);
-      B.f(B.poly(body.map(p => ({ x: p.x * 0.7 - w * 0.25, y: p.y * 0.92 }))), '#7a7264', 0.6);
-      for (let k = 0; k < 4; k++) B.s(`M${(r() - 0.5) * w * 1.6} ${top * (0.3 + r() * 0.5)}l${(r() - 0.5) * 4} ${6 + r() * 8}`, '#2a2620', 1, 0.6);
-      for (let k = 0; k < 7; k++) { const p = pts[1 + Math.floor(r() * 9)]; B.f(B.ell(p.x, p.y + 2, 5 + r() * 5, 2.6), r() < 0.5 ? (P.leaf ? P.leaf[1] : '#557e40') : '#7a5a6a', 0.85); }
-      B.f(B.ell(-s * w * 0.2, -1, w * 0.9, 3.4), '#3f5a34', 0.55);   // (grass and moss at its foot)
+      // crags, as the fell's own tors are drawn (the kit's boulder: a lit west face, a shaded east face, lichen, a contact shadow): two tall
+      // ones behind, standing up to the mouth's lintel on its side, smaller ones in front, a few stones and fern at their feet
+      const r = kit.rng(seed + (s > 0 ? 11 : 17)), w = rw * 0.5, snowy = C.season === 'winter';
+      const RP = { rock: '#8a8274', rockLo: '#5e584e', rockHi: '#b4ab98', rockDk: '#34302a', lichen: '#9aa86a', snow: '#f2f4f6' };
+      const inner = -s * w * 0.62;   // (the side against the mouth)
+      B.boulder(r, inner + s * w * 0.05, -2, w * 0.9, oh + 12 + r() * 6, RP, snowy);
+      B.boulder(r, s * w * 0.42, -3, w * 0.85, rh * (0.62 + r() * 0.12), RP, snowy);
+      B.boulder(r, inner + s * w * 0.55, 1, w * 0.72, rh * (0.34 + r() * 0.08), RP, snowy);
+      B.boulder(r, s * w * 0.82, 2, w * 0.5, rh * 0.22, RP, snowy);
+      for (let k = 0; k < 5; k++) { const sx = (r() - 0.5) * w * 1.7, sy = 1 + r() * 2; B.stone(r, sx, sy, 2 + r() * 3, 1.3 + r() * 1.6, RP, r() < 0.3 ? RP.lichen : null); }
+      for (let k = 0; k < 4; k++) { const fx = (r() - 0.5) * w * 1.5; B.s(`M${fx} 2q${(r() - 0.5) * 6} -6 ${(r() - 0.5) * 9} -${8 + r() * 5}`, P.leaf ? P.leaf[1] : '#557e40', 1.3, 0.85).s(`M${fx + 2} 2q${(r() - 0.5) * 5} -4 ${(r() - 0.5) * 7} -${6 + r() * 4}`, P.leaf ? P.leaf[2] : '#7aa255', 1, 0.8); }
     } });
     thing({ key: 'dp-adit-arch|' + T.id + '|' + m.i + '|' + (shut ? 1 : 0) + '|' + C.season, x, y: base + 0.5, depth: front, K: 1.6, box: [-ow / 2 - 26, -oh - 24, ow / 2 + 34, 10], shade: false, draw: B => {
       const r = kit.rng(seed + 5);
