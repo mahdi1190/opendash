@@ -14,7 +14,7 @@ const _gtq = { imgs: [], atlas: false, quick: null, peek: new Map() };
 const GT_POOL_LIFE = Object.freeze([
   Object.freeze({ id: 'mud-crab', w: 8 }), Object.freeze({ id: 'shanny', w: 7 }), Object.freeze({ id: 'common-goby', w: 6 }), Object.freeze({ id: 'weed-goby', w: 4 }),
   Object.freeze({ id: 'sand-goby', w: 4 }), Object.freeze({ id: 'fairy-shrimp', w: 3 }), Object.freeze({ id: 'fiddler-crab', w: 1.5 }), Object.freeze({ id: 'lumpsucker', w: 1 }),
-  Object.freeze({ id: 'golden-crab', w: .4 }), Object.freeze({ id: 'ghost-shrimp', w: .4 }), Object.freeze({ id: 'flounder', w: 1 }),
+  Object.freeze({ id: 'golden-crab', w: .4 }), Object.freeze({ id: 'ghost-shrimp', w: .4 }),
 ]);
 const GT_POOL_NONE = Object.freeze([
   'Nothing under it but a very surprised sand hopper.', 'A cold, wet stone. The underneath is very interesting to a worm.', 'A tiny crab waves a claw at you and goes back to sleep. Too small to take.',
