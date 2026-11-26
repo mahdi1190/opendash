@@ -28,7 +28,7 @@ function _adtScan(rows) {
       if (c.route) { if (_adtCount(B, cx, cy, 4) >= AD_TRAIL.trees) _adt.starts.push({ x: cx, y: cy }); continue; }
       if (c.staticId || c.reservation || c.beach) continue;
       const t = gardenTerrainAt(cx, cy); if (t !== 'open-grass' && t !== 'snow') continue;
-      if (_adtCount(B, cx, cy, 5) >= AD_TRAIL.glade && !_adtTrunkNear(B, cx, cy) && !gardenAffordOverlap(cx, cy, 1.2)) _adt.glades.push({ x: cx, y: cy });
+      if (_adtCount(B, cx, cy, 5) >= AD_TRAIL.glade && !_adtTrunkNear(B, cx, cy) && !gardenAffordOverlap(cx, cy, 1.2) && !adHidden(cx, cy, 1.3)) _adt.glades.push({ x: cx, y: cy });
     }
   }
   if (_adt.scan >= W.rows) _adt.done = true;

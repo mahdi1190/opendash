@@ -46,7 +46,7 @@ function _adrClusters(m, N) {
     const tk = Math.round(t.x * 10) + '-' + Math.round(t.y * 10), h = gardenHash(N.key + '|mu|' + dn + '|' + tk);
     if (h % AD_SHROOM.every !== 0) continue;
     const r = gardenRand(h); let spot = null;
-    for (let i = 0; i < 7 && !spot; i++) { const a = r() * Math.PI * 2, d = 0.8 + r() * 1.0, x = t.x + Math.cos(a) * d, y = t.y + 0.22 + Math.abs(Math.sin(a)) * d * 0.55; if (adOpen(x, y, m) && gardenTerrainTakes('mushroom', x, y)) spot = { x, y }; }
+    for (let i = 0; i < 7 && !spot; i++) { const a = r() * Math.PI * 2, d = 0.8 + r() * 1.0, x = t.x + Math.cos(a) * d, y = t.y + 0.22 + Math.abs(Math.sin(a)) * d * 0.55; if (adOpen(x, y, m) && gardenTerrainTakes('mushroom', x, y) && !adHidden(x, y)) spot = { x, y }; }
     if (!spot) continue;
     out.push({ id: 'mu-' + dn + '-' + tk, nn: dn, tk, x: spot.x, y: spot.y, kind: _adrShroomPick(r), n: 3 + Math.floor(r() * 3), seed: h });
   }
@@ -132,7 +132,7 @@ function _adrFootNear(x, y, m) {
   for (let r = 0; r <= 7; r += 0.5) for (let i = 0; i < Math.max(1, Math.round(r * 6)); i++) {
     const a = i / Math.max(1, Math.round(r * 6)) * Math.PI * 2, cx = Math.floor(x + Math.cos(a) * r) + 0.5, cy = Math.floor(y + Math.sin(a) * r * 0.7) + 0.5, t = gardenTerrainAt(cx, cy);
     if (t !== 'open-grass' && t !== 'snow' && t !== 'sand' && t !== 'slope') continue;
-    if (!adOpen(cx, cy, m) || (typeof _gwFree === 'function' && !_gwFree(cx, cy)) || gardenAffordOverlap(cx, cy)) continue;
+    if (!adOpen(cx, cy, m) || (typeof _gwFree === 'function' && !_gwFree(cx, cy)) || gardenAffordOverlap(cx, cy) || adHidden(cx, cy)) continue;
     return { x: cx, y: cy };
   }
   return null;

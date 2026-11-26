@@ -177,12 +177,21 @@ function adTrees() {
 }
 /** Is this ground open to the gardener here (bought and opened)? */
 function adOpen(x, y, m) { try { return !gardenZoneLockOf(Math.floor(x), Math.floor(y), (m || gardenHere()).areas); } catch (e) { return true; } }
-/** Can a small thing lie on the ground here: grass or snow (or a slope), open land, nothing standing on it, and the walker can reach it. */
+/** Would something small lying here be drawn over by what stands just south of it (a tree's crown, a building's roof)? Read from the
+ *  trunks and the things found standing, any kind, any layout. */
+function adHidden(x, y, near) {
+  const R = near || 2.2;
+  for (const t of adTrees()) { const dy = t.y - y; if (dy > 0.1 && dy < 3.6 && Math.abs(t.x - x) < R) return true; }
+  try { for (const o of gardenAffordThings()) { if (o.src === 'decor') continue; const big = o.kind === 'building' || (o.h || 1) >= 1.5 || o.tall; if (!big) continue; const dy = o.y - y; if (dy > 0.05 && dy < 5.5 && Math.abs(o.x - x) < (o.w || 1) / 2 + 0.6) return true; } } catch (e) { /* nothing found yet */ }
+  return false;
+}
+/** Can a small thing lie on the ground here: grass or snow (or a slope), open land, nothing standing on it, not hidden behind anything, and
+ *  the walker can reach it. */
 function adGround(x, y, m) {
   if (!adOpen(x, y, m)) return false;
   try { if (!gardenTerrainTakes('ad', x, y)) return false; } catch (e) { return false; }
   try { if (typeof _gwFree === 'function' && _gw.grid && !_gwFree(x, y)) return false; } catch (e) { /* no walker yet */ }
-  return true;
+  return !adHidden(x, y);
 }
 /** Homes of the vale's folk standing here ({ x, y (the doorstep, in front of the foot), id, lived }). Lived: someone has moved in
  *  (gardenFolkSnap at home, the host's `fk` on a visit). */
@@ -212,12 +221,14 @@ function _adTileSpot(kind, tx, ty, salt, nn, m) {
   const pickOf = (list) => { const l = list.filter(inTile); for (let i = 0; i < 6 && l.length; i++) { const p = l.splice(Math.floor(r() * l.length), 1)[0]; if (adOpen(p.x, p.y, m)) return p; } return null; };
   if (kind === 'grass') { for (let i = 0; i < 14 && !spot; i++) { const x = x0 + 0.5 + r() * (AD_TILE - 1), y = y0 + 0.5 + r() * (AD_TILE - 1); if (adGround(x, y, m)) spot = { x, y }; } }
   else if (kind === 'tree' || kind === 'fruit' || kind === 'tall') {
-    const T = pickOf(adTrees().filter(t => kind === 'fruit' ? t.kind === 'fruit-tree' : kind === 'tall' ? t.tall : true));
+    let pool = adTrees().filter(t => kind === 'fruit' ? t.kind === 'fruit-tree' : kind === 'tall' ? t.tall : true);
+    if (kind === 'tall' && !pool.some(inTile)) { const own = adTrees().filter(inTile).sort((a, b) => b.w - a.w); pool = own.slice(0, 1); }   // (no tall tree here: the stoutest one)
+    const T = pickOf(pool);
     if (T) { for (let i = 0; i < 8 && !spot; i++) { const a = r() * Math.PI * 2, d = 0.8 + r() * 0.9, x = T.x + Math.cos(a) * d, y = T.y + 0.25 + Math.abs(Math.sin(a)) * d * 0.6; if (adGround(x, y, m)) spot = { x, y, tree: T }; } }
   }
   else if (kind === 'bank') { const b = pickOf(adBanks()); if (b) spot = { x: b.x, y: b.y, nx: b.nx, ny: b.ny, w: b.w }; }
   else if (kind === 'still') { const S = adStill().filter(s => s.box.x1 >= x0 && s.box.x0 < x0 + AD_TILE && s.box.y1 >= y0 && s.box.y0 < y0 + AD_TILE); for (let i = 0; i < 16 && S.length && !spot; i++) { const s = S[Math.floor(r() * S.length)], x = Math.max(x0, s.box.x0) + r() * (Math.min(x0 + AD_TILE, s.box.x1) - Math.max(x0, s.box.x0)), y = Math.max(y0, s.box.y0) + r() * (Math.min(y0 + AD_TILE, s.box.y1) - Math.max(y0, s.box.y0)); if (_adInPoly(x, y, s.poly) && _adInPoly(x + 0.8, y, s.poly) && _adInPoly(x - 0.8, y, s.poly) && adOpen(x, y, m)) spot = { x, y, w: s.id }; } }
-  else if (kind === 'home' || kind === 'lived') { const h = pickOf(adHomes(m).filter(q => kind === 'home' || q.lived)); if (h) spot = { x: h.x, y: h.y, home: h.id }; }
+  else if (kind === 'home' || kind === 'lived') { const h = pickOf(adHomes(m).filter(q => (kind === 'home' || q.lived) && !adHidden(q.x, q.y, 1.2))); if (h) spot = { x: h.x, y: h.y, home: h.id }; }
   else if (kind === 'edge') { const e = pickOf(_adEdges().map(t => ({ x: t.x + (r() - 0.5) * Math.max(0, (t.w || 1) - 0.6), y: t.y + 0.32, id: t.id }))); if (e && adGround(e.x, e.y, m)) spot = e; }
   _ad.tiles.set(k, spot);
   return spot;

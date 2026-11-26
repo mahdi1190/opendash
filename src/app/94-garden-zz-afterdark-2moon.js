@@ -56,6 +56,7 @@ function _admDraw(m, N, row) {
   row.parts.forEach((part, i) => {
     let spots = adSpots(part.at, part.n, row.id + i, m);
     if (!spots.length && part.or) spots = adSpots(part.or, part.pick ? 1 : part.n, row.id + i + 'o', m);
+    if (!spots.length && part.pick && part.or !== 'grass' && part.at !== 'grass') spots = adSpots('grass', 1, row.id + i + 'g', m);   // (a moon's find is always somewhere near: open grass when its own kind of place is not)
     for (const s of spots) {
       const id = 'mn-' + s.id, picked = !!adGet('p.' + N.nn + '.' + s.id);
       if (part.pick && picked) continue;
@@ -170,7 +171,7 @@ function gardenNightMoonOpen() {
     const top = gpEl('div', 'ad-cal-top'), big = gpEl('div', 'ad-cal-moon');
     big.innerHTML = `<svg viewBox="-34 -34 68 68" width="96" height="96" aria-hidden="true"><circle r="33" fill="${tonight ? tonight.css : '#f6f2d8'}" opacity="0.12"/>${adMoonSvg(M.age, 24, tonight ? tonight.css : '')}</svg>`;
     const words = gpEl('div', 'ad-cal-words');
-    words.appendChild(gpEl('h3', 'gd-h3', tonight ? `Tonight: ${tonight.name}` : `Tonight: a ${M.name === 'new' ? 'new' : M.name} moon`));
+    words.appendChild(gpEl('h3', 'gd-h3', tonight ? `Tonight: ${tonight.name.replace(/^The /, 'the ')}` : `Tonight: a ${M.name === 'new' ? 'new' : M.name} moon`));
     words.appendChild(gpEl('p', null, tonight ? (adHas(tonight.keep) ? tonight.line : 'Something happens on its nights. Go out and look, near the kind of place it says.') : nx ? `${nx.row.name} is in ${_wdPlural(nx.days, 'night')}, on ${_adDayWords(nx.iso)}.` : 'The next full moon is a little way off.'));
     if (tonight && !adHas(tonight.keep)) words.appendChild(gpEl('p', 'muted', tonight.hint));
     top.append(big, words); el.appendChild(top);
@@ -192,7 +193,7 @@ function gardenNightMoonOpen() {
       const art = gpEl('span', 'ad-cal-art'); art.innerHTML = `<svg viewBox="-14 -14 28 28" width="40" height="40" aria-hidden="true">${was || next ? `<circle r="13" fill="${row.css}" opacity="0.18"/>${adMoonSvg(_WD_SYN / 2, 9, row.css)}` : adMoonSvg(_WD_SYN / 2, 9, '#5a6478')}</svg>`;
       const t = gpEl('span', 'ad-cal-t');
       t.appendChild(gpEl('b', null, was || next || row.mo === 0 ? row.name : `${_WD_MONTHS[(N.south ? (row.mo + 5) % 12 : row.mo - 1)]}’s moon`));
-      t.appendChild(gpEl('small', was ? null : 'muted', was ? (kept ? row.line : 'Seen. Its keepsake is still out there: ' + row.hint.toLowerCase()) : next ? `In ${_wdPlural(nx.days, 'night')}. ${row.hint}` : '· · ·'));
+      t.appendChild(gpEl('small', was ? null : 'muted', was ? (kept ? row.line : 'Seen. Its keepsake is still out there. ' + row.hint) : next ? `In ${_wdPlural(nx.days, 'night')}. ${row.hint}` : '· · ·'));
       c.append(art, t);
       if (kept && k) { const ks = gpEl('span', 'ad-cal-k'); ks.innerHTML = `<svg viewBox="-10 -13 20 16" width="26" height="22" aria-hidden="true">${gardenKeepsakeSvg(k)}</svg>`; ks.setAttribute('data-tip', k.name); c.appendChild(ks); }
       grid.appendChild(c);

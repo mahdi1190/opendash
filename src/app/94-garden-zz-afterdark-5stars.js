@@ -34,7 +34,7 @@ function _adfScan(rows) {
       if (!gardenTerrainTakes('ad', x, y) || (typeof gardenPlotNear === 'function' && gardenPlotNear(D, x, y, 1.5))) continue;
       let ok = true;
       for (const [ox, oy] of [[2, 0], [-2, 0], [0, 2], [0, -2], [1.5, 1.5], [-1.5, 1.5], [1.5, -1.5], [-1.5, -1.5]]) { const c = gardenIslandBaseCell(x + ox, y + oy); if (!c || !c.land || c.route || c.freshwater || c.ocean || c.solid || c.staticId) { ok = false; break; } }
-      if (ok && !gardenAffordOverlap(x, y, 1.6)) _adf.cands.push({ x, y });
+      if (ok && !gardenAffordOverlap(x, y, 1.6) && !adHidden(x, y, 2.6)) _adf.cands.push({ x, y });   // (and never under a crown or a roof: it must be seen)
     }
   }
   if (_adf.scanY > R) _adf.done = true;
@@ -113,7 +113,7 @@ function _adfDraw(m, N) {
     adSprite(base, { x: st.x, y: st.y, z: st.y - 0.6, svg: _adfCraterSvg(N.key + nn), hit: 0, update: adCacheStatic });
     if (st.fresh) {
       const mine = !!adGet('sf.' + nn);
-      if (!mine) { want.add(base + 'k'); adPick(base + 'k', { x: st.x + 0.05, y: st.y + 0.05, svg: _adfStoneSvg(true), words: 'Pick up the star stone', run: () => _adfTake(st) }); wdGlow('ad-' + base + 'k', adGlowSvg('silver', 16, 4), st.x + 0.05, st.y + 0.05); }
+      if (!mine) { want.add(base + 'k'); adPick(base + 'k', { x: st.x + 0.05, y: st.y + 0.05, svg: _adfStoneSvg(true), words: 'Pick up the star stone', run: () => _adfTake(st) }); if (N.dark || N.tod === 'dawn') wdGlow('ad-' + base + 'k', adGlowSvg('silver', 16, 4), st.x + 0.05, st.y + 0.05); else wdGlowOff('ad-' + base + 'k'); }   // (a glow shines over the night: by day it would be a pale disc)
       if (morning || N.tod === 'night') { want.add(base + 's'); adSprite(base + 's', { x: st.x, y: st.y - 0.1, svg: _adfSmokeSvg(), hit: 0, still: false }); }
     } else if (st.age >= AD_FALL.bloom) {
       want.add(base + 'b');
