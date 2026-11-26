@@ -264,6 +264,7 @@ function _gdrNight(sc, o, lights) {
  * with what is on screen and parses only what changed.
  */
 function gardenSceneParts(sc, o) {
+  if (typeof _gartLifeKick === 'function') _gartLifeKick();   // (speed pass: a garden drawing is coming, so its slow heartbeat wakes)
   const context = sc.snapshotLandContext;
   if (!context) return _gdrSceneParts(sc, o);
   // Snapshot art borrows derived placement context only for this synchronous draw.

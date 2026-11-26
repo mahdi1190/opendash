@@ -249,6 +249,9 @@ window.GardenPaintTerrainKit = (function () {
   const swap = (S, tex, K) => { const f = S.K / K; for (const im of S.images) { if (!im.active) continue; im.setTexture(tex).setScale(im.scaleX * f, im.scaleY * f); if (im._gpvBase) im._gpvBase *= f; } };
   const plain = S => { swap(S, S.key, S.K0); if (S.tex && S.scene.textures.exists(S.tex)) S.scene.textures.remove(S.tex); sharpPx -= S.px; S.tex = null; S.K = S.K0; S.px = 0; };
   function sharpen() {
+    // (speed pass) nothing left to sharpen (the garden was left: its sprites went with its scene): the timer stops, and the next
+    // sprite stood starts it again (sprite() below)
+    if (!sharp.size) { if (sharpTimer) { clearInterval(sharpTimer); sharpTimer = null; } return; }
     const G = window.GardenPaintGround; if (!G || !sharp.size) return; const now = performance.now(); let best = null, bd = Infinity, moving = (typeof _gw !== 'undefined' && !!_gw.moving) || (typeof gardenBakeWalking === 'function' && gardenBakeWalking());   /* (n-move: a friend walking on the screen counts) */ if (moving) lastMove = now; const settled = now - lastMove > 900;
     for (const [key, S] of sharp) {
       for (const im of S.images) if (!im.active) S.images.delete(im);

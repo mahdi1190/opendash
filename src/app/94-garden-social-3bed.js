@@ -63,6 +63,7 @@ function _gsbSky(tod, season) {
 }
 /** The whole bed as one SVG (explicit colours; the art's own animation classes run under .gd-svg). */
 function _gsbSvg(sp, list, o) {
+  if (typeof _gartLifeKick === 'function') _gartLifeKick();   // (speed pass: a garden drawing is coming, so its slow heartbeat wakes)
   const G = _GSB, season = o.season, tod = o.tod, uid = 'gsb' + gardenHash(sp.id).toString(36);
   const [top, bot] = _gsbSky(tod, season);
   const night = tod === 'night', dim = night ? 0.45 : tod === 'dusk' ? 0.18 : 0;
