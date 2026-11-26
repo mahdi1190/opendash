@@ -145,8 +145,8 @@ function gardenDepthLifePlaces() {
   const out = [], W = GARDEN_WORLD, D = typeof gardenIslandData === 'function' ? gardenIslandData() : null, rivers = (D && D.presentation && D.presentation.rivers) || {};
   for (const z of zs) {
     if (z.deck && z.swim && z.kind === 'footbridge' && z.crossing && rivers[z.crossing.over]) {   // running water under a footbridge: two stones in the stream just upstream of its far beam
-      // (the far side: what stands in front of a bridge, a tree's crown, never hides it there; clear of the far rail as drawn)
-      const d = z.deck, far = (t, dy) => { const q = z.crossing.deckPoint(t / d.L, -d.hw * d.near); return { x: q.x, y: q.y - dy }; }, p = z.posts.length ? z.posts[_gdqHash(z.id) % z.posts.length] : null, mid = (z.wet[0] + z.wet[1]) / 2;
+      // (the far side, out across the deck from its far beam: what stands in front of a bridge, a tree's crown, never hides it there; clear of the far rail as drawn)
+      const d = z.deck, far = (t, dy) => { const q = z.crossing.deckPoint(t / d.L, -d.hw * d.near), o = z.crossing.deckPoint(t / d.L, 0), n = Math.hypot(q.x - o.x, q.y - o.y) || 1; return { x: q.x + (q.x - o.x) / n * dy, y: q.y + (q.y - o.y) / n * dy }; }, p = z.posts.length ? z.posts[_gdqHash(z.id) % z.posts.length] : null, mid = (z.wet[0] + z.wet[1]) / 2;
       const a = far(p ? p.t : mid, 18), b = far(z.wet[0] + (z.wet[1] - z.wet[0]) * 0.22, 17);
       out.push({ kind: 'stream', id: z.id, z, a, b, name: z.name });
     }

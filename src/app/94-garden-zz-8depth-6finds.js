@@ -110,7 +110,7 @@ function _gdfPlaces() {
       const d = z.deck, span = z.wet[1] - z.wet[0], keep = (z.posts.length ? z.posts.map(p => p.t) : [(z.wet[0] + z.wet[1]) / 2]).concat([z.wet[0] + span * 0.22]), h = (_gdqHash(z.id + 'f') % 1000) / 1000;
       for (const share of [0.8 + h * 0.06, 0.66, 0.4, 0.9, 0.12]) {
         const t = z.wet[0] + span * share; if (keep.some(k => Math.abs(k - t) < 18)) continue;
-        const p = z.crossing.deckPoint(t / d.L, -d.hw * d.near), q = cell({ x: p.x, y: p.y - 15 }); if (free(q)) { out.push({ kind: 'bridge', id: z.id, z, x: q.x, y: q.y }); break; }
+        const p = z.crossing.deckPoint(t / d.L, -d.hw * d.near), o = z.crossing.deckPoint(t / d.L, 0), n = Math.hypot(p.x - o.x, p.y - o.y) || 1, q = cell({ x: p.x + (p.x - o.x) / n * 15, y: p.y + (p.y - o.y) / n * 15 }); if (free(q)) { out.push({ kind: 'bridge', id: z.id, z, x: q.x, y: q.y }); break; }
       }
     }
     if (z.deck && z.rule && z.rule.spans && z.open && z.open.length) {   // the mason's mark, under the first arch, just over the water
