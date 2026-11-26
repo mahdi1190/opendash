@@ -872,6 +872,7 @@ function _gdpEffectText(def) {
   return ({ coop: 'Hens come, and there are two eggs a day', play: 'Click it to use it', can: `+${e.n} water in the can every day`, sprinkler: 'Waters the cells around it every morning', pond: 'Frogs and dragonflies come to it', birds: 'Birds come to visit', bugs: 'Ladybirds and bees move in', hedgehog: 'A hedgehog may come at dusk', hive: 'Honey every two days while three flowers bloom', compost: 'One bag of fertiliser a day', light: 'Glows at night; moths and bats come', sit: 'A seat: someone’s cat may borrow it', show: 'Shows your best catches; friends see it when they visit', luck: 'Brings luck: rare finds come a little more often', wish: 'One wish a day (a coin in, sometimes a seed back)', cold: 'Plants beside it grow as if it were their season', scare: 'A little extra at harvest nearby', shed: 'A place for your tools', hedge: 'A wren may move in' })[e.kind] || '';
 }
 function _gdpSeedList() {
+  if (typeof gardenB2SeedList === 'function') { const own = gardenB2SeedList(); if (own) return own; }   // (build2) the seeds you can plant are the ones in your pockets
   const w = gardenWallet(), out = [];
   for (const [k, n] of Object.entries(w.items)) if (k.startsWith('seed:') && n > 0) { const p = gardenPlant(k.slice(5)); if (p) out.push({ id: p.id, def: p, n: Math.floor(n) }); }
   return out.sort((a, b) => GARDEN_CAT_ORDER.indexOf(a.def.cat) - GARDEN_CAT_ORDER.indexOf(b.def.cat) || a.def.name.localeCompare(b.def.name));

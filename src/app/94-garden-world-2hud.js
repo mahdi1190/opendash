@@ -148,6 +148,7 @@ function _ghSlotArt(s) {
   return _GH_GLYPH[s.k] || '';
 }
 function _ghBar(box, m) {
+  if (typeof gardenB2Bar === 'function' && gardenB2Bar(box, m)) return;   // (build2) the tool ring and your pockets (94-garden-zz-8build2-ring.js)
   const tool = _gdpTool(), slots = _gdpSlots(m);
   const fert = gardenHas('fertiliser');
   const on = (s) => (s.seed ? tool === 'seed' && _gdp.seed === s.seed : s.tool === tool);
@@ -182,7 +183,10 @@ function gardenSlotPick(k, keyboard) {
   _gdpPickTool(_gdpTool() === k ? 'hand' : k);
 }
 /** Number keys: the hotbar in order. */
-function gardenSlotKey(n) { const s = _gdpSlots(gardenHere())[n - 1]; if (s) { gardenSlotPick(s.k, true); return true; } return false; }
+function gardenSlotKey(n) {
+  if (typeof gardenB2SlotKey === 'function') { const r = gardenB2SlotKey(n); if (r != null) return r; }   // (build2) the tool ring's numbers
+  const s = _gdpSlots(gardenHere())[n - 1]; if (s) { gardenSlotPick(s.k, true); return true; } return false;
+}
 
 /* ---------- the bag: pick one and drop it in the world ---------- */
 function _ghCloseBag(box) {
@@ -191,6 +195,7 @@ function _ghCloseBag(box) {
 }
 function _ghBag() {
   const box = _ghBox(); if (!box) return;
+  if (typeof gardenB2Pockets === 'function' && gardenB2Pockets(box)) return;   // (build2) your pockets and your storage take the bag's place (94-garden-zz-8build2-store.js)
   let el = box.querySelector(':scope > .gd-bagpop');
   if (!_gh.bag) { if (el) { const focused = el.contains(document.activeElement); el.remove(); if (focused) box.focus({ preventScroll: true }); } return; }
   const fresh = !el;
@@ -349,7 +354,7 @@ function _ghCameraButtons(box) {
 }
 function _ghViewPanel(box) {
   const el = _ghHost(box, 'gd-viewpanel', 'section'); el.id = 'gd-view-panel'; el.hidden = !_gh.viewOpen; el.setAttribute('aria-label', 'View and controls');
-  if (!el.firstChild) el.innerHTML = `<div class="gd-map-head"><b>View & controls</b><button type="button" data-view-close aria-label="Close view controls">${icon('x')}</button></div><div class="gd-camera-row"><button type="button" data-viewcam="in">${icon('plus')}<span>Closer</span></button><button type="button" data-viewcam="out">${icon('minus')}<span>Further</span></button><button type="button" data-viewcam="fit">${icon('maximize')}<span>Fit</span></button><button type="button" data-viewcam="me">${icon('locate-fixed')}<span>Follow</span></button></div><dl class="gd-control-list"><dt>Walk</dt><dd>Click or tap a spot; WASD or arrows.</dd><dt>Interact</dt><dd><kbd>E</kbd> or <kbd>Space</kbd></dd><dt>Tools / bag</dt><dd><kbd>1–5</kbd> / <kbd>B</kbd></dd><dt>Camera</dt><dd>Wheel or pinch; <kbd>+ −</kbd>, <kbd>F</kbd> Fit, <kbd>C</kbd> Follow.</dd><dt>Moves</dt><dd><kbd>Q</kbd>; friends and photos are in Menu.</dd></dl><button type="button" class="gd-view-help" data-view-help>More help</button>`;
+  if (!el.firstChild) el.innerHTML = `<div class="gd-map-head"><b>View & controls</b><button type="button" data-view-close aria-label="Close view controls">${icon('x')}</button></div><div class="gd-camera-row"><button type="button" data-viewcam="in">${icon('plus')}<span>Closer</span></button><button type="button" data-viewcam="out">${icon('minus')}<span>Further</span></button><button type="button" data-viewcam="fit">${icon('maximize')}<span>Fit</span></button><button type="button" data-viewcam="me">${icon('locate-fixed')}<span>Follow</span></button></div><dl class="gd-control-list"><dt>Walk</dt><dd>Click or tap a spot; WASD or arrows.</dd><dt>Interact</dt><dd><kbd>E</kbd> or <kbd>Space</kbd></dd><dt>Tools / pockets</dt><dd><kbd>1–6</kbd>, <kbd>T</kbd> next tool / <kbd>B</kbd> or <kbd>I</kbd></dd><dt>Camera</dt><dd>Wheel or pinch; <kbd>+ −</kbd>, <kbd>F</kbd> Fit, <kbd>C</kbd> Follow.</dd><dt>Moves</dt><dd><kbd>Q</kbd>; friends and photos are in Menu.</dd></dl><button type="button" class="gd-view-help" data-view-help>More help</button>`;
   if (!el._gdBound) { el._gdBound = true; el.addEventListener('click', ev => { if (ev.target.closest('[data-view-close]')) { _ghClosePanels(box); _ghFocusStage(box); return; } if (ev.target.closest('[data-view-help]')) { _ghClosePanels(box); gardenGuideOpen(); return; } const b = ev.target.closest('[data-viewcam]'); if (!b) return; const k = b.dataset.viewcam; if (k === 'in') gardenCamSet(null, -1); else if (k === 'out') gardenCamSet(null, 1); else gardenCamSet(k === 'fit' && gardenCamMode() !== 'fit' ? 'fit' : 'follow'); _gh.camKey = ''; _ghCameraButtons(box); }); }
   _ghCameraButtons(box);
 }
@@ -488,6 +493,7 @@ function gardenPlantBubble(p, m) {
 }
 function gardenDecorBubble(d, m) {
   const def = d.def, items = [], ci = gardenCollectInfo(d.uid, m);
+  if (typeof gardenB2DecorBubble === 'function') gardenB2DecorBubble(d, m, items);   // (build2) a chest opens your storage
   if (def.effect && def.effect.kind === 'sit' && typeof gardenWonderSeatItem === 'function') items.push(gardenWonderSeatItem(d));
   if (ci) items.push({ ic: 'gift', label: ci.ready ? ci.label : ci.soon, cls: ci.ready ? 'is-go' : 'is-off', run: (b) => { const r = gardenCollect(d.uid); if (r && !r.ok) gameDenyOf(r, b); } });
   if (m.visit) { gardenVisitDecorBubble(d, m, items); gardenBubbleOpen({ x: d.x + (def.w || 1) / 2, y: d.y - 0.5 }, { title: def.name, sub: gardenVisitDecorLine(d), items }); return; }

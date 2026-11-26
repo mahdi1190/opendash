@@ -2198,6 +2198,7 @@ function gardenWorldKey(ev, down, arrowsOnly) {
   if (k === 'f' || k === 'F') { gardenCamSet(gardenCamMode() === 'fit' ? 'follow' : 'fit'); ev.preventDefault(); return true; }
   if ((k === 'c' || k === 'C') && ev.shiftKey) { if (typeof gardenCollideToggle === 'function') gardenCollideToggle(); ev.preventDefault(); return true; }   // what blocks walking (94-garden-world-7collide.js)
   if (k === 'c' || k === 'C') { gardenCamSet('follow'); ev.preventDefault(); return true; }
+  if (typeof gardenB2Key === 'function' && gardenB2Key(ev, k)) { ev.preventDefault(); return true; }   // (build2) T next tool, I your pockets, X put back what you hold
   if (k === 'q' || k === 'Q') { if (typeof gartEmoteWheel === 'function') gartEmoteWheel(); ev.preventDefault(); return true; }
   if (k === 'Tab' && !ev.ctrlKey && !ev.altKey && !ev.metaKey && typeof gartActCycle === 'function' && gartActCycle(ev.shiftKey)) { ev.preventDefault(); return true; }   // several things close by: the next one is the prompt's (94-garden-zz-7act-1core.js)
   if ((k === 'j' || k === 'J') && !ev.ctrlKey && !ev.metaKey && !ev.altKey) { if (typeof gardenJournalOpen === 'function') gardenJournalOpen(); ev.preventDefault(); return true; }   // the Field Journal
@@ -2212,6 +2213,7 @@ function gardenWorldKey(ev, down, arrowsOnly) {
 function gardenWorldInteract() {
   if (typeof gardenWorldCovered === 'function' && gardenWorldCovered()) return;   // (a panel over the world: nothing behind it is done)
   if (typeof _gwFishBusy === 'function' && _gwFishBusy()) { if (typeof _gwFishPress === 'function') _gwFishPress(); return; }
+  if (typeof gardenB2Interact === 'function' && gardenB2Interact()) return;   // (build2) the rod or the net in your hand: cast, or net the bug in reach
   if (typeof gartActInteract === 'function' && gartActInteract()) return;   // the prompt's action: sit, climb, ring... (94-garden-zz-7act-1core.js)
   const m = gardenHere(), W = GARDEN_WORLD;
   const px = Math.floor(_gw.px), py = Math.floor(_gw.py);

@@ -518,5 +518,5 @@ function _glvDelta(ops) {
   // (only a real change: the same look again means "tell me everything", and a pet says it changed for many small reasons)
   const soon = () => { clearTimeout(t); t = setTimeout(() => { try { if (_gll.role !== 'visit' || !_glvLive()) return; const l = _glvLook(), sig = _glvLookSig(l); if (sig === _glv.lookSig) return; _glv.lookSig = sig; _glvSend('me', l); } catch (e) { /* the next beat has it */ } }, 1500); };
   document.addEventListener('opendash:profile', soon); document.addEventListener('opendash:pet', soon);
-  document.addEventListener('opendash:garden', (ev) => { const k = ev && ev.detail && ev.detail.kind; if (k === 'buy' || k === 'gear') soon(); });   // (a new rod: they see it now)
+  document.addEventListener('opendash:garden', (ev) => { const k = ev && ev.detail && ev.detail.kind; if (k === 'buy' || k === 'gear' || k === 'tool') soon(); });   // (a new rod: they see it now; build2: the tool in your hand)
 })();
