@@ -68,6 +68,7 @@ function gardenShoreWaterRows(w, px, py) { const out = []; for (const fn of _gsf
 function gardenShoreFolkOn(fn) { if (!_gsfk.folk.includes(fn)) _gsfk.folk.push(fn); }
 function gardenShoreFolkTalk(row, F, S) {
   const out = { lines: [], actions: [] };
+  gardenShoreEmit('talk', { who: row && row.id });   // (a chat with one of the folk: the spotter card listens)
   for (const fn of _gsfk.folk) { try { const r = fn(row, F, S); if (r) { if (r.lines) out.lines.push(...r.lines); if (r.actions) out.actions.push(...r.actions); } } catch (e) { console.error('[garden shore]', e); } }
   return out.lines.length || out.actions.length ? out : null;
 }
