@@ -31,11 +31,10 @@ function _gdlEvict(keep) {
 }
 /** The lid of a zone: made once, on first need. null while it cannot be made (its picture not drawn yet: tried again in a while). */
 function _gdlLid(z) {
-  const have = _gdl.tex.get(z.id), now = performance.now();
-  if (have) { have.used = now; return have; }
-  if (have === false) return null;
+  const have = _gdl.tex.get(z.id), now = performance.now(), sc = _gdlScene(); if (!sc || !sc.textures) return null;
+  if (have && sc.textures.exists(have.key)) { have.used = now; return have; }
+  if (have) { _gdl.tex.delete(z.id); for (const c of _gdl.pool) if (c.lid === have) c.lid = null; }   // (the garden was drawn afresh: its textures went with it)
   const tried = _gdl.tex.get('try:' + z.id); if (tried && now - tried < 2500) return null; _gdl.tex.set('try:' + z.id, now);
-  const sc = _gdlScene(); if (!sc || !sc.textures) return null;
   let L = null; const t0 = performance.now();
   try { L = z.rule.lid === 'vale' ? _gdlVale(sc, z) : z.rule.lid === 'gate' ? _gdlGate(sc, z) : z.rule.lid === 'deck' ? _gdlDeck(sc, z) : null; } catch (e) { console.error('[garden depth] lid', z.id, e); L = null; }
   if (!L) return null;
@@ -92,8 +91,9 @@ function _gdlOver(c, z, px, py, d, dt) {
   if (!sc || !host) return;
   const L = z ? _gdlLid(z) : null;
   c.t = performance.now();
-  if (L && (!c.im || !c.im.active || c.im.scene !== sc)) { try { c.im = sc.add.image(0, 0, L.key).setOrigin(0, 0).setVisible(false).setAlpha(0); host.add(c.im); c.lid = null; c.cut = ''; c.a = 0; } catch (e) { c.im = null; return; } }
-  if (!c.im) return;
+  if (L && (!c.im || !c.im.active || c.im.scene !== sc)) { try { c.im = sc.add.image(0, 0, L.key).setOrigin(0, 0).setVisible(false).setAlpha(0); host.add(c.im); c.lid = null; c.cut = ''; c.a = 0; c.depth = NaN; } catch (e) { c.im = null; return; } }
+  if (!c.im || !c.im.active) { c.im = null; c.on = false; c.lid = null; return; }
+  if (c.lid && !sc.textures.exists(c.lid.key)) { c.lid = null; c.cut = ''; }
   const want = L ? GDL.alpha : 0, a = c.a + Math.max(-GDL.fadeOut * dt, Math.min(GDL.fadeIn * dt, want - c.a));
   c.a = Math.abs(want - a) < .01 ? want : a;
   if (L && c.lid !== L) { c.lid = L; c.im.setTexture(L.key).setOrigin(0, 0).setScale(1 / L.K).setPosition(L.x0, L.y0); c.cut = ''; }
@@ -135,7 +135,10 @@ function _gdlOverDepth(x, y, self) {
 }
 if (typeof gartActFrame === 'function') {
   const _gdlFrame0 = gartActFrame;
-  gartActFrame = function () { try { _gdlFrame(); } catch (e) { console.error('[garden depth] lid', e); } return _gdlFrame0(); };   // eslint-disable-line no-func-assign
+  gartActFrame = function () {   // eslint-disable-line no-func-assign
+    try { _gdlFrame(); } catch (e) { if (!_gdl.failT || performance.now() - _gdl.failT > 10000) { _gdl.failT = performance.now(); console.error('[garden depth] lid', e); } for (const c of _gdl.pool) { try { if (c.im && c.im.active) c.im.destroy(); } catch (e2) { /* gone */ } c.im = null; c.lid = null; c.on = false; c.a = 0; } }   // (a lid that went wrong is dropped, never left over you)
+    return _gdlFrame0();
+  };
 }
 /* You, standing on a deck while someone swims beneath you: on top of their lid. */
 if (typeof gardenHeightDepth === 'function') {
