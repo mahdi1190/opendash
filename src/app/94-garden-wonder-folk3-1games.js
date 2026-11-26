@@ -508,7 +508,7 @@ function _vgSend(R, step, extra) {
       for (const p of R.people.values()) if (!p.left && p.w <= 8) l.push([p.w, Math.max(0, Math.min(9999, Math.round(p.score || 0))), Math.max(0, Math.min(99, p.n || 0))]);
       const o = { i: R.i, ql: ph, n: Math.max(0, Math.min(600, Math.round(R.G.cap - (performance.now() - R.pt) / 1000))), v: (R.I.folkWord ? R.I.folkWord(R) : _vgFolkWord(R)).slice(0, 64) };
       if (l.length) o.l = l.slice(0, 8);
-      const sig = JSON.stringify(o); if (sig === _vgm.sig && performance.now() - _vgm.sendT < 4500) return; _vgm.sig = sig;
+      const sig = JSON.stringify(o); if (sig === _vgm.sig && performance.now() - (_vgm.sigT || 0) < 4500) return; _vgm.sig = sig; _vgm.sigT = performance.now();   // (the same state again only after a while: friends' screens know the round is still on)
       gardenLiveFx('gm', 'state', o); return;
     }
     if (step === 'end') {

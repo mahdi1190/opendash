@@ -116,6 +116,8 @@ valeGameAdd('race', {
   finding() { return 'Finding a course...'; },
   setup(R, cb) {
     R.at = _vgrStart(R.at);
+    // a starter, when one is about and not running (Bramble: "Ready... steady... go!"); he stands to one side of the start
+    for (const id of _vgAbout(22)) { const g = (VALE_GAME_FOLK[id] || {}).race; if (!g || !g.starter || R.folk.includes(id) || R.helpers.includes(id)) continue; R.helpers.push(id); break; }   // (walked there with the rest: _vgGatherFolk)
     const cands = _vgrFinishes(R.at).sort((a, b) => Math.abs(a.px - _VGR_TARGET / 1.35) - Math.abs(b.px - _VGR_TARGET / 1.35)).slice(0, 12);
     if (!cands.length) { cb(false, VF3_SAY.noWhere); return; }
     let left = cands.length, done = false;
