@@ -6,7 +6,8 @@
                                    still there for you; their catch moment over their head comes with gl:fx got shore)
      lift   n stone, i what        someone lifted a stone: yours tips and settles back on your screen
      haul / heave / open           the storm's chest (94-garden-tide-5storm.js)
-   Other tide modules add their own steps to GT_FX (castles, races: castle, cset, race, rstate, rend, rpick, cheer).
+   The shore's games have their own steps (castle, cset, race, rstate, rend, rpick, cheer, lback): gardenShoreFx sends them on
+   (94-garden-tide-6fun.js).
    ============================================================ */
 const GT_FX = {
   got(A, ev) {
@@ -22,4 +23,5 @@ const GT_FX = {
 function gardenTideFx(A, ev) {
   const f = GT_FX[String(ev && ev.e || '')];
   if (f) try { f(A, ev); } catch (e) { console.error('[garden tide]', e); }
+  else if (typeof gardenShoreFx === 'function') gardenShoreFx(A, ev);   // the shore's games: castles, crab races, lost things given back (94-garden-tide-6fun.js)
 }

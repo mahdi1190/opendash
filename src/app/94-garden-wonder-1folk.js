@@ -253,6 +253,7 @@ function _wdFolkTalk(S) {
   const extra = typeof wdFolkExtra === 'function' ? wdFolkExtra(row, F, S) : null;   // a map, an invitation to look up
   if (extra && extra.lines) lines.push(...extra.lines);
   if (extra && extra.actions) acts.push(...extra.actions);
+  if (typeof gardenShoreFolkTalk === 'function') { try { const sh = gardenShoreFolkTalk(row, F, S); if (sh && sh.lines) lines.push(...sh.lines); if (sh && sh.actions) acts.push(...sh.actions); } catch (e) { console.error('[shore folk]', e); } }   // something lost, a thing given back, a game of pebble pits (94-garden-tide-a-lost.js, -c-pits.js)
   if (!S.gave) acts.push({ label: 'Give something', run: (T) => _wdFolkGive(S, T) });
   _wdSave();
   wdTalk({ name: kin && kin.name || row.name, art: _wdFolkArt(row), lines, actions: acts, at: { x: S.x, y: S.y }, onClose: () => _wdFolkLeave(S), closeQuiet: true });

@@ -557,6 +557,8 @@ function gardenTideOpenSand(x, y, wide) {
 function gardenTideStormy(day, seed) { const h = gardenHash('tide-storm|' + (seed || 0) + '|' + day), mo = new Date(day * 86400000).getUTCMonth(), cold = mo >= 9 || mo <= 2; return h % (cold ? 7 : 11) === 0; }   // clock-ok: a month from a day number
 
 /* ---------- the snapshot's `ti` (friends see the same strand) ---------- */
+/** What the shore's games add to `ti`: each module pushes fn(out) here at load (bottles `b`, spotter stamps `sp`, the league `sk`, lost things `lf`). */
+const GT_WIRE = [];
 /** {sd: the strand's number, r: how rich the next low water is, s: the day of the last storm} for gardenSnapshot. */
 function gardenTideWire() {
   try {
@@ -565,6 +567,7 @@ function gardenTideWire() {
     const r = typeof gardenTideRich === 'function' ? gardenTideRich() : 0; if (r > 0) out.r = Math.min(3, r);
     const s = typeof gardenTideLastStorm === 'function' ? gardenTideLastStorm() : -1; if (Number.isInteger(s) && s >= 0) out.s = Math.min(99999, s);
     if (typeof gardenTideCastleWire === 'function') { const c = gardenTideCastleWire(); if (c && c.length) out.c = c.slice(0, 6); }
+    for (const fn of GT_WIRE) { try { fn(out); } catch (e) { /* that one says nothing */ } }   // the shore's games: bottles, the spotter card, the league, lost things (94-garden-tide-9bottle.js to -d-spot.js)
     return out;
   } catch (e) { return null; }
 }

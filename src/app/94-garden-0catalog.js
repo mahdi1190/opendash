@@ -1070,6 +1070,13 @@ function gardenTideSnapClean(raw) {
   const r = int(raw.r, 0, 3); if (r) out.r = r;
   const s = int(raw.s, 0, 99999); if (s !== null) out.s = s;
   if (Array.isArray(raw.c)) { const c = raw.c.slice(0, 6).filter(q => Array.isArray(q) && q.length === 5 && typeof q[0] === 'string' && /^[a-z0-9-]{1,32}$/.test(q[0]) && int(q[1], 0, 960) !== null && int(q[2], 0, 960) !== null && int(q[3], 0, 1048575) !== null && int(q[4], 0, 99999999) !== null).map(q => q.slice(0, 5)); if (c.length) out.c = c; }
+  // the shore's games (94-garden-tide-6castle.js to -d-spot.js): bottles thrown [pair mark, day, three lines of the book (99 none), a tucked find (99 none)],
+  // this week's spotter stamps [week, ids], the month's best league throw [month, score], lost things given back in a friend's vale [pair mark, day]
+  const mark = v => typeof v === 'string' && /^[a-z0-9]{1,24}$/.test(v);
+  if (Array.isArray(raw.b)) { const b = raw.b.slice(0, 3).filter(q => Array.isArray(q) && q.length === 6 && mark(q[0]) && int(q[1], 0, 99999) !== null && [2, 3, 4, 5].every(i => int(q[i], 0, 99) !== null)).map(q => q.slice(0, 6)); if (b.length) out.b = b; }
+  if (Array.isArray(raw.sp) && raw.sp.length === 2 && int(raw.sp[0], 0, 9999) !== null && Array.isArray(raw.sp[1])) { const ids = raw.sp[1].slice(0, 9).filter(v => typeof v === 'string' && /^[a-z0-9-]{1,24}$/.test(v)); out.sp = [raw.sp[0], ids]; }
+  if (Array.isArray(raw.sk) && raw.sk.length === 2 && int(raw.sk[0], 0, 9999) !== null && int(raw.sk[1], 0, 999) !== null) out.sk = [raw.sk[0], raw.sk[1]];
+  if (Array.isArray(raw.lf)) { const lf = raw.lf.slice(0, 3).filter(q => Array.isArray(q) && q.length === 2 && mark(q[0]) && int(q[1], 0, 99999) !== null).map(q => q.slice(0, 2)); if (lf.length) out.lf = lf; }
   return out;
 }
 /** What a garden tells friends about what you share (docs/dev/GARDEN_TOGETHER.md section 24). Ids and numbers, every one in bounds; anything else is dropped. */

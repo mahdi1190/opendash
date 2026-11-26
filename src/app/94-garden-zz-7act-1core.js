@@ -177,7 +177,9 @@ function _gaWaterRows(px, py) {
   try { for (const t of gardenAffordThings()) { const K = GARDEN_KINDS[t.kind]; if (K && K.calmsWater && Math.hypot(px - t.x, (py - t.y) * 1.3) < Math.max(K.calmsWater, t.w || 1)) return []; } } catch (e) { /* none */ }
   const w = gardenTerrainWaterAhead(px, py); if (!w) return [];
   const W3 = (w.deep ? GARDEN_TERRAIN.deep.acts : []).concat(GARDEN_TERRAIN['water-edge'].acts), k = _ga.wt % W3.length;   // (deep water offers a swim first: then the ducks, then a skim, in turn)
-  return W3.slice(k).concat(W3.slice(0, k)).map(o => ({ key: 'water:' + o.act, act: o.act, name: o.name, x: w.x, y: w.y, stand: null, deg: w.deg, lift: 0, src: 'water' }));
+  const rows = W3.slice(k).concat(W3.slice(0, k)).map(o => ({ key: 'water:' + o.act, act: o.act, name: o.name, x: w.x, y: w.y, stand: null, deg: w.deg, lift: 0, src: 'water' }));
+  if (typeof gardenSkimLeagueRows === 'function') { try { rows.push(...gardenSkimLeagueRows(w, px, py)); } catch (e) { /* no league here */ } }   // a league throw on still water (94-garden-tide-b-skim.js)
+  return rows;
 }
 /** Is this place to sit (or to stand and do something held, like fishing from a bank) already someone else's? A friend in the garden
  *  standing or sitting on its stand point has it: one person to a place, whatever the thing or its kind. */
@@ -227,8 +229,8 @@ function gartActNearby() {
   if (!_ga.list || now - _ga.listT > 2500) { _ga.list = _gaStaticRows(); _ga.listT = now; }
   const px = _gw.px, py = _gw.py, d = (r) => Math.hypot(r.x - px, (r.y - py) * 1.3);
   const rows = _ga.list.concat(_gaTreeRows(px, py)).filter(r => d(r) <= Math.max(GA_REACH, r.reach || 0) && !gartActHidden(r.src) && !gartActTaken(r));
-  if (typeof gardenFolkActRows === 'function') rows.push(...gardenFolkActRows(px, py));
-  if (typeof gardenTideActRows === 'function') rows.push(...gardenTideActRows(px, py));   // the shore at low water: a glint to pick up, a stone to lift, a rock pool, the tide card (94-garden-tide-*.js)   // the vale's folk, wherever they are: talk to them, or knock (94-garden-wonder-0vale-folk.js)   // (a ball off rolling, a pile kicked apart: nothing to do there just now)
+  if (typeof gardenFolkActRows === 'function') rows.push(...gardenFolkActRows(px, py));   // the vale's folk, wherever they are: talk to them, or knock (94-garden-wonder-0vale-folk.js)   // (a ball off rolling, a pile kicked apart: nothing to do there just now)
+  if (typeof gardenTideActRows === 'function') rows.push(...gardenTideActRows(px, py));   // the shore at low water: a glint to pick up, a stone to lift, a rock pool, the tide card, the shore's games (94-garden-tide-*.js)
   // where you would stand to do it counts: on the bell's spot the bell comes before the tree whose trunk is as near; and a tree offers each
   // of its moves where you would do it (in front of the trunk: climb; at its side: hide behind it; out under the crown: a nap)
   // (a thing with several places, each its own (a band's pitch: one instrument each, a long bench's seats): only where you would stand counts,
@@ -534,12 +536,13 @@ function gartActStop(done) {
 function gartActMoved() { const cur = _ga.cur; if (cur && cur.doing && typeof _gw !== 'undefined' && Math.hypot(_gw.px - cur.x, _gw.py - cur.y) > 0.08) gartActStop(); }
 /* ---------- the little extras ---------- */
 function _gaSkim(cur) {
-  const n = cur.skips || (cur.skips = 1 + Math.floor(Math.random() * 7)), W = GARDEN_WORLD, deg = _gaDirDeg(cur.row, cur.spot) * Math.PI / 180;
+  const n = cur.skips || (cur.skips = (cur.spot && cur.spot.skips) || 1 + Math.floor(Math.random() * 7)), W = GARDEN_WORLD, deg = _gaDirDeg(cur.row, cur.spot) * Math.PI / 180;   // (spot.skips: a league throw says how it went, 94-garden-tide-b-skim.js)
   for (let i = 0; i < n; i++) setTimeout(() => {
     if (!window.GardenNativeActions) return;
     const d = 1.6 + i * 1.1 - i * i * 0.04, x = _gw.px + Math.cos(deg) * d, y = _gw.py + Math.sin(deg) * d * 0.7;
     try { if (typeof gardenWaterContainsPoint === 'function' && !gardenWaterContainsPoint(x, y)) return; GardenNativeActions.effect('water', x * W.cellW, W.sky + y * W.cellH, { width: 22 - i * 2 }); } catch (e) { /* fine */ }
   }, 900 + i * (260 - i * 18));
+  if (cur.spot && typeof cur.spot.onSkips === 'function') { setTimeout(() => { try { cur.spot.onSkips(n); } catch (e) { console.error('[garden skim]', e); } }, 900 + n * 240 + 300); return; }   // (a league throw: the board says how it went)
   setTimeout(() => { try { gardenToast(n === 1 ? 'Plop. One skip.' : `${n} skips!`); } catch (e) { /* fine */ } try { const g = _gdG(); const best = Object.keys(g.disc).filter(k => k.startsWith('act.skim.')).map(k => Number(k.slice(9))).reduce((a, b) => Math.max(a, b), 0); if (n > best) { g.disc['act.skim.' + n] = _gdToday(); _gdSave(); if (best) gardenToast(`Your best yet: ${n} skips.`); } } catch (e) { /* fine */ } }, 900 + n * 240 + 300);
 }
 /** (round 6) What comes out of a shaken tree, as things of the world: leaves trembling round the crown's edge while you shake, more leaves
