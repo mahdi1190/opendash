@@ -326,7 +326,7 @@ function _gllSprite(A, onClick) {
   });
 }
 
-/* ---------- "Planted by Taylor": a small tip that follows the pointer ---------- */
+/* ---------- "Planted by Sam": a small tip that follows the pointer ---------- */
 function _gllTip(box, text, ev) {
   let el = _gll.tipEl;
   if (!text) { if (el) el.hidden = true; return; }
