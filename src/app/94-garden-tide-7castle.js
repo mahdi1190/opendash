@@ -106,7 +106,10 @@ function _gtkTidy() {
 function _gtkCanBuild(x, y, T) {
   if (!GardenTide.ready() || gardenTideFieldKind(x, y) !== 1) return false;
   const h = gardenTideH(x, y); if (!(h >= 10 && h <= GARDEN_TIDE.reach.big * .9) || h < T.line + 8) return false;
-  if (!gardenTideOpenSand(x, y, true) || !gardenTideOpenSand(x, y - .6)) return false;
+  // (its own patch of sand clear of paths and things, a little either side, sand under its moat, the sand's own height there (never
+  // ground rising to a quay or a path), and room to kneel behind it)
+  if (_gtdCrowded(x, y, true) || _gtdCrowded(x - .5, y) || _gtdCrowded(x + .5, y) || !gardenIslandLandContains(x, y + .45)) return false;
+  if (Math.abs(h - gardenIslandCoastDistance(x, y)) > 16 || !gardenTideOpenSand(x, y - .6)) return false;
   for (const c of gardenTideCastles()) if (Math.hypot(c.x - x, (c.y - y) * 1.3) < 2.3) return false;
   try { for (const p of gardenTidePools()) if (Math.hypot(p.x - x, (p.y - y) * 1.3) < 2.2) return false; } catch (e) { /* no pools */ }
   try { for (const s of gardenTideStones()) if (Math.hypot(s.x - x, (s.y - y) * 1.3) < 1.3) return false; } catch (e) { /* no stones */ }

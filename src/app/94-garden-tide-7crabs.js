@@ -16,29 +16,44 @@ const GT_CRABS = Object.freeze([
   Object.freeze({ id: 'wrong', name: 'Sidle', how: 'goes its own way', c: '#d89a3a', c2: '#9a6a1e', c3: '#f0c870' }),
   Object.freeze({ id: 'show', name: 'Strut', how: 'a bit of a show-off', c: '#6a6a9a', c2: '#44446a', c3: '#a0a0cc' }),
 ]);
-const GT_RACE = Object.freeze({ len: 4.2, rows: 1.0, beat: 0.9, win: 0.2, pickMs: 5000, coins: 8, cup: 5, cupDecor: 'crab-cup', rosette: 'shore-rosette' });
+const GT_RACE = Object.freeze({ lenPx: 120, laneW: 7.5, beat: 0.9, win: 0.2, pickMs: 5000, coins: 8, cup: 5, cupDecor: 'crab-cup', rosette: 'shore-rosette' });
 const _gtcr = { R: null, tracks: new Map(), el: null, tok: 0, heard: null };
 
-/* ---------- the track: clear sand beside a pool, by rule ---------- */
-/** A straight run of open sand beside the pool (four lanes, west to east), above the water now; null when there is no room. */
+/* ---------- the track: clear sand beside a pool, along the shore, by rule ---------- */
+/** Four lanes scratched in clear sand beside the pool, running along the shore (the way the beach runs there), above the water now:
+ *  {ox, oy (the start, world px), ux, uy (along), vx, vy (across the lanes), L, LW, angle, stand (cells), deg (to face it), pool} or null. */
 function gardenTideRaceTrack(p, T) {
   const key = p.id + '|' + (T.level < .2 ? 0 : 1), was = _gtcr.tracks.get(key); if (was !== undefined) return was;
-  const L = GT_RACE.len, H = GT_RACE.rows, tries = [[1.7, .5], [-1.7 - L, .5], [-L / 2, 1.25], [1.5, -.2], [-1.5 - L, -.2], [-L / 2, 1.7]];
+  const W = GARDEN_WORLD, P = { x: p.x * W.cellW, y: W.sky + p.y * W.cellH };
+  let sx = (Number.isFinite(p.sx) ? p.sx : 0) * W.cellW, sy = (Number.isFinite(p.sy) ? p.sy : 1) * W.cellH; const sl = Math.hypot(sx, sy) || 1; sx /= sl; sy /= sl;   // (towards the sea)
+  let ux = -sy, uy = sx; if (ux < 0 || (Math.abs(ux) < .2 && uy < 0)) { ux = -ux; uy = -uy; }   // (along the shore, left to right on the screen)
+  const vx = -uy, vy = ux, L = GT_RACE.lenPx, LW = GT_RACE.laneW * 4, clearR = (p.rx || 22) * 1.9 + 8;
+  const cell = (x, y) => ({ x: x / W.cellW, y: (y - W.sky) / W.cellH });
+  // (a sample on a path, a standing thing, the pool's rock or the sea never; up to two on the grass at the top of the beach)
+  const open = (x, y) => { const q = cell(x, y), c = gardenIslandBaseCell(q.x, q.y); if (!c || !c.land || c.freshwater) return 2; const h = gardenTideH(q.x, q.y); if (Number.isFinite(h) && h < T.line + 3) return 2; if (_gtdCrowded(q.x, q.y) || Math.hypot(x - P.x, (y - P.y) * 1.6) < clearR) return 2; return Number.isFinite(h) || c.beach ? 0 : 1; };
   let out = null;
-  for (const [dx, dy] of tries) {
-    const x0 = Math.round((p.x + dx) * 10) / 10, y0 = Math.round((p.y + dy) * 10) / 10; let ok = true;
-    for (let i = 0; i <= 8 && ok; i++) for (const fy of [.1, .5, .9]) { const x = x0 + L * i / 8, y = y0 + H * fy, h = gardenTideH(x, y); if (!Number.isFinite(h) || h < T.line + 5 || !gardenTideOpenSand(x, y)) { ok = false; break; } }
-    if (!ok) continue;
-    try { for (const s of gardenTideStones()) if (s.x > x0 - .6 && s.x < x0 + L + .6 && s.y > y0 - .5 && s.y < y0 + H + .4) ok = false; } catch (e) { /* no stones */ }
-    for (const q of gardenTidePools()) if (q.x > x0 - 1 && q.x < x0 + L + 1 && q.y > y0 - .8 && q.y < y0 + H + .6) ok = false;
-    const stand = { x: x0 + L / 2, y: y0 - .55 };
-    if (!ok || typeof _gwFree === 'function' && !_gwFree(stand.x, stand.y)) continue;
-    out = Object.freeze({ x0, y0, pool: p.id, stand });
-    break;
+  for (const along of [clearR + 6, -clearR - 6 - L, -L / 2, -L / 2 + 40, -L / 2 - 40]) {
+    for (const across of [-LW - 24, 20, -LW - 40, 34, -LW / 2 - 52, 52, -LW - 64, 66, -LW / 2 - 80, 80]) {
+      const ox = P.x + ux * along + vx * across, oy = P.y + uy * along + vy * across;
+      let bad = 0, worse = false; for (let i = 0; i <= 6 && !worse && bad <= 2; i++) for (const f of [.15, .85]) { const r = open(ox + ux * L * i / 6 + vx * LW * f, oy + uy * L * i / 6 + vy * LW * f); if (r === 2) { worse = true; break; } bad += r; }
+      if (worse || bad > 2) continue;
+      try { let hit = false; for (const st of gardenTideStones()) { const d = (st.x * W.cellW - ox) * ux + (W.sky + st.y * W.cellH - oy) * uy, e = (st.x * W.cellW - ox) * vx + (W.sky + st.y * W.cellH - oy) * vy; if (d > -14 && d < L + 14 && e > -10 && e < LW + 10) hit = true; } if (hit) continue; } catch (e) { /* no stones */ }
+      // where to stand: beside the middle of the track, on the side that is clear (the drier, if both), facing it
+      const mx = ox + ux * L / 2 + vx * LW / 2, my = oy + uy * L / 2 + vy * LW / 2;
+      let stand = null, best = -Infinity;
+      for (const sg of [-1, 1]) { const d = LW / 2 + 20, x = mx + vx * d * sg, y = my + vy * d * sg, q = cell(x, y); if (typeof _gwFree === 'function' && !_gwFree(q.x, q.y)) continue; const h = gardenTideH(q.x, q.y), score = Number.isFinite(h) ? h : 200; if (score > best) { best = score; stand = { x: Math.round(q.x * 100) / 100, y: Math.round(q.y * 100) / 100 }; } }
+      if (!stand) continue;
+      const S = { x: stand.x * W.cellW, y: W.sky + stand.y * W.cellH };
+      out = Object.freeze({ ox, oy, ux, uy, vx, vy, L, LW, angle: Math.atan2(uy, ux), stand, deg: Math.round(Math.atan2(my - S.y, mx - S.x) * 180 / Math.PI), pool: p.id, mid: cell(mx, my) });
+      break;
+    }
+    if (out) break;
   }
   if (_gtcr.tracks.size > 60) _gtcr.tracks.clear();
   _gtcr.tracks.set(key, out); return out;
 }
+/** Where a crab is on the track (cells): s its way along (0 to 1), i its lane. */
+function _gtrAt(tr, s, i) { const W = GARDEN_WORLD, a = 10 + s * (tr.L - 20), b = (i + .5) * tr.LW / 4, x = tr.ox + tr.ux * a + tr.vx * b, y = tr.oy + tr.uy * a + tr.vy * b; return { x: x / W.cellW, y: (y - W.sky) / W.cellH, px: x, py: y }; }
 function gardenTideRaceRows(px, py, T) {
   const out = []; if (T.level > .45 || _gtcr.R) return out;
   for (const p of gardenTidePools()) {
@@ -85,15 +100,15 @@ function _gtrStart(p, tr, k, stakeShell) {
   if (stakeShell) { _gdLed('tf', { i: { ['sh:' + stakeShell.id]: -1 }, n: 1 }); _gdSaveQuiet(); }
   if (R.live) { try { gardenLiveFx('tide', 'race', { n: seed || 1, i: p.id, v: 'h' + k }); } catch (e) { /* alone */ } R.t = -GT_RACE.pickMs / 1000 - 3.2; gardenShoreSay('A crab race! Friends near the pool can pick a crab.', 'flag', 4500); }
   // stand at the side of the track, crouched to watch (you face it), and the Cheer button comes up
-  _gtcDo('cheer', { key: 'tide:race-go', name: 'the crab race', x: tr.stand.x, y: tr.stand.y + .6, stand: tr.stand }, () => {}, .1);
+  _gtcDo('cheer', { key: 'tide:race-go', name: 'the crab race', x: tr.mid.x, y: tr.mid.y, stand: tr.stand, deg: tr.deg }, () => {}, .1);
   _gtrCheerButton(true);
 }
 function _gtrStep(dt) {
   const R = _gtcr.R; if (!R || R.done || R.remote) return;
   const before = R.t; R.t += dt;
-  if (before < -2 && R.t >= -2) gardenShoreFloat(R.tr.x0 + GT_RACE.len / 2, R.tr.y0 - .2, 'Ready…');
-  if (before < -1 && R.t >= -1) gardenShoreFloat(R.tr.x0 + GT_RACE.len / 2, R.tr.y0 - .2, 'Steady…');
-  if (before < 0 && R.t >= 0) { gardenShoreFloat(R.tr.x0 + GT_RACE.len / 2, R.tr.y0 - .2, 'Go!', { color: '#ffe08a' }); R.beat0 = performance.now(); try { gardenSfx('pat'); } catch (e) { /* quiet */ } }
+  if (before < -2 && R.t >= -2) gardenShoreFloat(R.tr.mid.x, R.tr.mid.y - .5, 'Ready…');
+  if (before < -1 && R.t >= -1) gardenShoreFloat(R.tr.mid.x, R.tr.mid.y - .5, 'Steady…');
+  if (before < 0 && R.t >= 0) { gardenShoreFloat(R.tr.mid.x, R.tr.mid.y - .5, 'Go!', { color: '#ffe08a' }); R.beat0 = performance.now(); try { gardenSfx('pat'); } catch (e) { /* quiet */ } }
   if (R.t < 0) return;
   for (const c of R.crabs) {
     if (c.wave > 0) { c.wave -= dt; continue; }
@@ -115,7 +130,7 @@ function _gtrCheer(slot) {
   const c = R.crabs[slot]; if (!c || c.wave > 0) return;
   const now = performance.now(), ph = ((now - R.beat0) / 1000) % GT_RACE.beat, off = Math.min(ph, GT_RACE.beat - ph);
   c.presses = (c.presses || []).filter(t => now - t < 1600); c.presses.push(now);
-  const mine = slot === R.me, at = { x: R.tr.x0 + .3 + c.s * (GT_RACE.len - .6), y: R.tr.y0 + .16 + c.i * .24 };
+  const mine = slot === R.me, at = _gtrAt(R.tr, c.s, c.i);
   if (c.presses.length > 3) { c.wave = .9; c.presses.length = 0; if (mine) gardenShoreFloat(at.x, at.y - .6, 'Too much! It waves its claws at you.'); return; }
   if (off <= GT_RACE.win) { c.spurt = .55; if (mine) gardenShoreFloat(at.x, at.y - .5, ['Go on!', 'That’s it!', 'Go, go!'][c.presses.length % 3], { color: '#ffe08a' }); }
   else if (mine) gardenShoreFloat(at.x, at.y - .5, 'Hm?');
@@ -169,7 +184,7 @@ function _gtrCheerButton(on) {
   _gtcr.off = () => document.removeEventListener('keydown', go, true);
 }
 /** A guest's cheer: the words over their crab at once (the host decides the spurt). */
-function _gtrCheerLocal(R) { const c = R.crabs[R.me]; if (!c) return; gardenShoreFloat(R.tr.x0 + .3 + c.s * (GT_RACE.len - .6), R.tr.y0 + .16 + c.i * .24 - .5, 'Go on!', { color: '#ffe08a' }); }
+function _gtrCheerLocal(R) { const c = R.crabs[R.me]; if (!c) return; const at = _gtrAt(R.tr, c.s, c.i); gardenShoreFloat(at.x, at.y - .5, 'Go on!', { color: '#ffe08a' }); }
 /** Once a frame from the painter: the race moves, the button keeps its place and beats. */
 function _gtrFrame(time, dt) {
   const R = _gtcr.R; if (!R) return;
@@ -199,7 +214,7 @@ gardenShoreFxOn('race', (A, ev) => {   // the host started a race: pick a crab w
   const host = /^h(\d)$/.exec(String(ev.v || '')), taken = new Set(host ? [Number(host[1])] : []);
   const who = String(A && A.n || 'Your friend').split(/\s+/)[0];
   const R = _gtcr.R = { p, tr, seed: ev.n == null ? 0 : Number(ev.n), crabs: GT_CRABS.map((c, i) => ({ i, kind: c.id, s: 0, to: 0, who: taken.has(i) ? 'host' : 'v' })), me: -1, t: 0, remote: true, done: false, beat0: performance.now(), A, hostName: who };
-  wdTalk({ name: 'The crab race', art: _gtrCrabSvg(GT_CRABS[1]), lines: [`${who} is starting a crab race at the pool. Pick a crab, quick!`], actions: GT_CRABS.map((c, k) => ({ label: `${c.name} (${c.how})`, primary: !taken.has(k) && ![...taken].length && k === 0, run: () => { if (_gtcr.R !== R || R.crabs[k].who !== 'v') return; wdTalkClose(true); R.me = k; R.crabs[k].who = 'me'; try { gardenLiveFx('tide', 'rpick', { n: k + 1 }); } catch (e) { /* alone */ } _gtcDo('cheer', { key: 'tide:race-go', name: 'the crab race', x: tr.stand.x, y: tr.stand.y + .6, stand: gardenTideStandFree([{ x: tr.stand.x - .7, y: tr.stand.y }, { x: tr.stand.x + .7, y: tr.stand.y }, { x: tr.stand.x - 1.4, y: tr.stand.y }], _gw.px, _gw.py) }, () => {}, .1); _gtrCheerButton(true); } })).filter((a, k) => !taken.has(k)), at: { x: p.x, y: p.y }, bye: 'Just watch' });
+  wdTalk({ name: 'The crab race', art: _gtrCrabSvg(GT_CRABS[1]), lines: [`${who} is starting a crab race at the pool. Pick a crab, quick!`], actions: GT_CRABS.map((c, k) => ({ label: `${c.name} (${c.how})`, primary: !taken.has(k) && ![...taken].length && k === 0, run: () => { if (_gtcr.R !== R || R.crabs[k].who !== 'v') return; wdTalkClose(true); R.me = k; R.crabs[k].who = 'me'; try { gardenLiveFx('tide', 'rpick', { n: k + 1 }); } catch (e) { /* alone */ } _gtcDo('cheer', { key: 'tide:race-go', name: 'the crab race', x: tr.mid.x, y: tr.mid.y, deg: tr.deg, stand: gardenTideStandFree([-34, 34, -64, 64].map(d => ({ x: tr.stand.x + tr.ux * d / GARDEN_WORLD.cellW, y: tr.stand.y + tr.uy * d / GARDEN_WORLD.cellH })), _gw.px, _gw.py) }, () => {}, .1); _gtrCheerButton(true); } })).filter((a, k) => !taken.has(k)), at: { x: p.x, y: p.y }, bye: 'Just watch' });
   setTimeout(() => { if (_gtcr.R === R && R.me < 0) { try { if (typeof _wd !== 'undefined' && _wd.talk) wdTalkClose(true); } catch (e) { /* fine */ } } }, GT_RACE.pickMs);
 });
 gardenShoreFxOn('rpick', (A, ev) => {   // a guest picked a lane: theirs, if nobody has it
@@ -245,9 +260,9 @@ function _gtrCrabPaint(B, c, frame) {
 function _gtrCrabSvg(c) {
   return `<g transform="translate(0 -4) scale(2.4)"><ellipse cx="0" cy="1" rx="7" ry="2" fill="#3a3020" opacity="0.25"/><path d="M-4.2 -4L-6 -5.6M4.2 -4L6 -5.6" stroke="${c.c2}" stroke-width="1.2"/><ellipse cx="-6" cy="-6" rx="1.9" ry="1.5" fill="${c.c}"/><ellipse cx="6" cy="-6" rx="1.9" ry="1.5" fill="${c.c}"/><path d="M-3.4 -2l-2.4 -1.4l-1.2 2.6M-4.3 -1.3l-2.4 -1.4l-1.2 2.6M3.4 -2l2.4 -1.4l1.2 2.6M4.3 -1.3l2.4 -1.4l1.2 2.6" stroke="${c.c2}" stroke-width="0.9" fill="none"/><ellipse cx="0" cy="-3" rx="5" ry="3" fill="${c.c}"/><ellipse cx="-1.8" cy="-4.4" rx="1.8" ry="0.8" fill="#fff" opacity="0.35"/><path d="M-1.3 -5.4l-.3 -1.9M1.3 -5.4l.3 -1.9" stroke="${c.c2}" stroke-width="0.6"/><circle cx="-1.6" cy="-7.5" r="0.85" fill="#1a1612"/><circle cx="1.6" cy="-7.5" r="0.85" fill="#1a1612"/></g>`;
 }
-const GT_TRBOX = Object.freeze([-6, -10, GT_RACE.len * GARDEN_WORLD.cellW + 8, GT_RACE.rows * GARDEN_WORLD.cellH + 6]);
+const GT_TRBOX = Object.freeze([-6, -12, GT_RACE.lenPx + 10, GT_RACE.laneW * 4 + 6]);
 function _gtrTrackPaint(B) {
-  const W = GARDEN_WORLD, L = GT_RACE.len * W.cellW, H = GT_RACE.rows * W.cellH, S = { line: '#9a845c', lineHi: '#f2e4bc', peb: ['#8a867c', '#a8a094', '#6e6a62', '#c8c0b0'] }, r = gardenRand(91);
+  const L = GT_RACE.lenPx, H = GT_RACE.laneW * 4, S = { line: '#9a845c', lineHi: '#f2e4bc', peb: ['#8a867c', '#a8a094', '#6e6a62', '#c8c0b0'] }, r = gardenRand(91);
   B.f(B.rect(0, 0, L, H), '#c4ae7e', .18);   // (sand smoothed flat for the track)
   for (let i = 0; i <= 4; i++) { const y = H * (.04 + i * .24); let d = `M2 ${y}`; for (let x = 12; x <= L - 2; x += 10) d += `L${x} ${y + (r() - .5) * 1.2}`; B.s(d, S.line, .8, .55).s(d.replace(/(\d+(\.\d+)?) (\d+(\.\d+)?)/g, (m, a, _b, c) => a + ' ' + (Number(c) + .8)), S.lineHi, .5, .35); }
   // the start: a row of pebbles; the finish: a stick dragged across, and a little stick with a strip of weed for a flag
@@ -269,7 +284,7 @@ const GardenTideRaceSprites = {
     if (this.for !== R) {
       this.clear0(); this.for = R;
       if (!gardenShoreBake(scene, 'gt-track', GT_TRBOX, _gtrTrackPaint, 2)) return;
-      this.track = gardenShoreImage(scene, this.root, 'gt-track', GT_TRBOX, R.tr.x0 * W.cellW, W.sky + R.tr.y0 * W.cellH, 2).setDepth(-9345.14);
+      this.track = gardenShoreImage(scene, this.root, 'gt-track', GT_TRBOX, R.tr.ox, R.tr.oy, 2).setDepth(-9345.14).setRotation(R.tr.angle);
       if (this.root.sort) this.root.sort('depth');
       for (let i = 0; i < 4; i++) for (let f = 0; f < 3; f++) gardenShoreBake(scene, 'gt-crab|' + i + '|' + f, [-10, -14, 10, 4], (B) => _gtrCrabPaint(B, GT_CRABS[i], f), K);
       if (!gardenShoreBake(scene, 'gt-crab-mark', [-5, -5, 5, 1], (B) => B.f('M-3.4 -4L3.4 -4L0 .4z', '#fffdf4').s('M-3.4 -4L3.4 -4L0 .4z', '#8a6a3a', .6, .9), K)) return;
@@ -280,7 +295,7 @@ const GardenTideRaceSprites = {
     const motion = typeof gardenMotionOn !== 'function' || gardenMotionOn(), step = Math.floor(time / 110) % 2;
     for (const c of R.crabs) {
       const im = this.crabs[c.i]; if (!im) continue;
-      const x = (R.tr.x0 + .3 + c.s * (GT_RACE.len - .6)) * W.cellW, y = W.sky + (R.tr.y0 + .16 + c.i * .24) * W.cellH;
+      const at = _gtrAt(R.tr, c.s, c.i), x = at.px, y = at.py;
       const moving = !R.done && R.t >= 0 && Math.abs(c.v || (c.to != null ? c.to - c.s : 0)) > .001 && !(c.wave > 0) && !(c.nap > 0);
       const f = c.wave > 0 ? 2 : moving && motion ? step : 0, key = 'gt-crab|' + c.i + '|' + f;
       if (im._k !== key) { im.setTexture(key); im._k = key; }
