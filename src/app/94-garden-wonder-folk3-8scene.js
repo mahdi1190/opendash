@@ -142,6 +142,8 @@ function _vscShot(R, names) {
   const y = (cyTop + cyBot) / 2 - h * (0.5 + (padTop - padBot) / 2);
   return { x: cx - w / 2, y, w, h };
 }
+/** Is this point on the screen now (the camera's own view)? */
+function _vscOnShot(x, y) { try { const v = _vfrView(); return x > v.x0 - 1 && x < v.x1 + 1 && y > v.y0 - 2 && y < v.y1 + 1; } catch (e) { return true; } }
 function _vscEase(t) { return t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t); }
 function _vscCamTo(names, secs) {
   const S = _vsc.S || _vsc.G; if (!S) return;
@@ -220,7 +222,12 @@ function gardenScenePlay(id, o) {
     }
   } else lines = (sc.lines || []).slice();
   const S = _vsc.S = { id, sc, R, i: -1, step: null, t0: performance.now(), st: 0, lines, after, acts, replay: !!o.replay, public: !!(o.public || sc.public), teller: o.teller || sc.teller, driven: new Set(), follow: false };
-  for (const [, aid] of R.actors) { const V = _vscV(aid); if (V) { gardenFolkDrive(aid, { by: 'scene', noTalk: true, face: { x: _gw.px, y: _gw.py } }); S.driven.add(aid); } }
+  for (const [role, aid] of R.actors) {
+    const V = _vscV(aid); if (!V) continue;
+    // (watching again: someone far off is by the stage already, put there while the shot is still on you: never seen to jump)
+    if (o.replay && Math.hypot(V.x - R.stage.x, V.y - R.stage.y) > 9 && !_vscOnShot(V.x, V.y) && !_vscOnShot(R.stage.x, R.stage.y)) { const q = _vscStand(R.stage.x + (role === 'teller' ? -1.6 : 1.8), R.stage.y + 2.2); if (q) { V.x = q.x; V.y = q.y; V.path = null; } }
+    gardenFolkDrive(aid, { by: 'scene', noTalk: true, face: { x: _gw.px, y: _gw.py } }); S.driven.add(aid);
+  }
   try { if (typeof wdTalkClose === 'function') wdTalkClose(true); } catch (e) { /* none open */ }
   _vscKeys(); _vscUi(true, sc.name);
   try { wdSound([[392, 0.5, 'sine', 0.018], [523, 0.7, 'sine', 0.014, 0.18]]); } catch (e) { /* quiet */ }

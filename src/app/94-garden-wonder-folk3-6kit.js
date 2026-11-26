@@ -320,14 +320,20 @@ function _vkGoods(kind, r) {
   return s;
 }
 /** A market stall: a striped awning on two posts, a counter with a cloth, the goods, a painted sign. About 2.2 H tall, 2.2 cells wide. */
-function _vkStallSvg(look, seed) {
-  const A = GART, r = A.rng('vks' + seed), W = 44, a = look.awning || ['#c8442e', '#fbf5ec'], ta = _vkTone(a[0]), tb = _vkTone(a[1]), wood = _vkTone('#8a6a46');
-  let s = _vkFoot(W * 2.1, seed, true);
-  // back posts and the back cloth, then the front posts
+const VK_STALL_BACK = 0.9;   // (cells: the stall's back stands this far behind its foot, as a sprite of its own, so its keeper stands between)
+function _vkStallBackSvg(look) {
+  const A = GART, W = 44, a = look.awning || ['#c8442e', '#fbf5ec'], wood = _vkTone('#8a6a46'), dy = VK_STALL_BACK * GARDEN_WORLD.cellH;
+  let s = `<g transform="translate(0 ${dy.toFixed(1)})">`;
   s += A.P(wood[3], A.rect(-W + 3, -72, 3, 50), 0.8) + A.P(wood[3], A.rect(W - 6, -72, 3, 50), 0.8);
   // (the canvas hung at the back: a pale cloth in the awning's light colour, darker into its folds and toward the right)
   s += A.P(A.mix(a[1], '#b8a888', 0.35), A.rect(-W + 5, -68, W * 2 - 10, 36), 0.95) + A.P(A.mix(a[0], '#6a5a44', 0.5), A.rect(W * 0.35, -68, W * 0.65 - 5, 36), 0.25);
   for (let i = 0; i < 5; i++) s += A.P(A.mix(a[1], '#8a7a62', 0.4), A.rect(-W + 12 + i * 17, -68, 2.4, 36), 0.35);
+  return s + '</g>';
+}
+function _vkStallSvg(look, seed) {
+  const A = GART, r = A.rng('vks' + seed), W = 44, a = look.awning || ['#c8442e', '#fbf5ec'], ta = _vkTone(a[0]), tb = _vkTone(a[1]), wood = _vkTone('#8a6a46');
+  let s = _vkFoot(W * 2.1, seed, true);
+  // (the back posts and the back cloth are a sprite of their own, behind the keeper: _vkStallBackSvg)
   // the counter: a box with a cloth over its top and front
   s += A.P(wood[1], A.rrect(-W, -27, W * 2, 27, 1.8)) + A.P(wood[0], A.rrect(-W, -27, W * 2 - 5, 24, 1.8)) + A.P(wood[2], A.rect(-W, -27, W * 2, 2.4), 0.7);
   s += A.S(wood[1], 1, `M${-W + 14} -22v20M${-W + 32} -22v20M${W - 32} -22v20M${W - 14} -22v20`, 0.5);
@@ -377,7 +383,7 @@ function _vkBuntingSvg(dx, dy, seed) {
 /** The card table: a folding table with a cloth, a hand of cards dealt, a jar lantern lit in the evening; two stools beside it. */
 function _vkTableSvg(lit) {
   const A = GART, wood = _vkTone('#8a6a46'), cloth = _vkTone('#3a6a4a');
-  let s = _vkFoot(120, 'tbl', true);
+  let s = _vkFoot(84, 'tbl', true);
   for (const x of [-44, 44]) s += A.P('#2a2418', A.ell(x, 0.6, 9, 2.2), 0.25) + A.P(wood[1], A.rect(x - 7, -13, 2.6, 13) + A.rect(x + 4.4, -13, 2.6, 13)) + A.P(wood[0], A.rrect(x - 9, -16, 18, 4.4, 1.8)) + A.P(wood[2], A.rect(x - 9, -16, 18, 1.4), 0.7);
   s += A.S(wood[1], 2.4, 'M-14 0L10 -20M14 0L-10 -20') + A.S(wood[2], 0.8, 'M-14.6 -1L9.4 -21', 0.5);
   s += A.P(cloth[1], A.rrect(-20, -24, 40, 6, 1.6)) + A.P(cloth[0], A.rrect(-20, -24, 37, 5, 1.6)) + A.P(cloth[1], 'M-20 -19h40l-2 6h-36z', 0.9) + A.P(cloth[2], A.rect(-19, -24, 34, 1.2), 0.6);
@@ -397,7 +403,7 @@ function _vkPieceSvg(q, i, lit) {
 }
 function _vkUp(m) {
   const K = gardenKitToday(m), want = new Map();
-  if (K) K.pieces.forEach((q, i) => { if (VK_PIECES[q.kind]) want.set('p' + i + '|' + _vk.key, { q, i }); });
+  if (K) K.pieces.forEach((q, i) => { if (VK_PIECES[q.kind]) want.set('p' + i + '|' + _vk.key, { q, i }); if (q.kind === 'stall') want.set('pb' + i + '|' + _vk.key, { q, i, back: true }); });
   // bunting between neighbouring lantern posts (each span its own sprite, hung from the left post's crook)
   if (K && K.row.kit === 'fair') { const L = K.pieces.map((q, i) => ({ q, i })).filter(o => o.q.kind === 'lantern').sort((a, b) => a.q.s - b.q.s); for (let k = 1; k < L.length; k++) { const a = L[k - 1].q, b = L[k].q, d = Math.hypot(b.x - a.x, b.y - a.y); if (d > 2.4 && d < 8.5) want.set('b' + k + '|' + _vk.key, { bunting: [a, b], i: k }); } }
   for (const [k, S] of _vk.S) if (!want.has(k)) { try { S.remove(); } catch (e) { /* gone */ } _vk.S.delete(k); }
@@ -409,7 +415,8 @@ function _vkBuildOne() {
   const job = _vk.queue.shift(); if (!job) return;
   const [k, o] = job; if (_vk.S.has(k)) return;
   let S = null;
-  if (o.bunting) { const [a, b] = o.bunting, l = a.x <= b.x ? a : b, r = l === a ? b : a; S = wdSprite({ id: 'vk-' + k.split('|')[0], x: l.x, y: Math.max(l.y, r.y) + 0.01, still: true, ground: true, hit: 0, svg: `<g transform="translate(0 ${((l.y - Math.max(l.y, r.y)) * GARDEN_WORLD.cellH).toFixed(1)})">${_vkBuntingSvg(r.x - l.x, r.y - l.y, o.i)}</g>`, lift: 0, update() { } }); }
+  if (o.back) { const q = o.q; S = wdSprite({ id: 'vk-' + k.split('|')[0], x: q.x, y: q.y - VK_STALL_BACK, still: true, ground: true, hit: 0, svg: _vkStallBackSvg(VALE_STALLS[q.look] || {}), lift: 0, update() { } }); }
+  else if (o.bunting) { const [a, b] = o.bunting, l = a.x <= b.x ? a : b, r = l === a ? b : a; S = wdSprite({ id: 'vk-' + k.split('|')[0], x: l.x, y: Math.max(l.y, r.y) + 0.01, still: true, ground: true, hit: 0, svg: `<g transform="translate(0 ${((l.y - Math.max(l.y, r.y)) * GARDEN_WORLD.cellH).toFixed(1)})">${_vkBuntingSvg(r.x - l.x, r.y - l.y, o.i)}</g>`, lift: 0, update() { } }); }
   else { const q = o.q, P = VK_PIECES[q.kind]; const click = q.kind === 'stall' ? () => { if (typeof gardenYearStall === 'function') gardenYearStall(q, _vk.row); } : q.kind === 'brazier' ? () => { if (typeof gardenYearWarm === 'function') gardenYearWarm(q, _vk.row); } : q.kind === 'table' ? () => { if (typeof gardenYearCards === 'function') gardenYearCards(q, _vk.row); } : null;
     S = wdSprite(Object.assign({ id: 'vk-' + k.split('|')[0], x: q.x, y: q.y, still: true, ground: true, hit: q.kind === 'lantern' ? 0 : q.kind === 'stall' ? 1.05 : 0.55, hitUp: q.kind === 'stall' ? 40 : 16, label: q.kind === 'stall' ? ((VALE_STALLS[q.look] || {}).sign || 'Stall') : P.name.replace(/^the /, 'The '), svg: _vkPieceSvg(q, o.i, _vk.lit), lift: 0, update() { } }, click ? { cursor: 'hand', onClick: click } : {})); }
   if (S) { S._vk = o; _vk.S.set(k, S); }
@@ -437,7 +444,8 @@ function _vkReplan(m) {
   // their stall when you arrive, not walking in from across the vale); only someone you can see now walks there
   let v = null; try { v = _vfrView(); } catch (e) { v = null; }
   for (const V of _vfr.V.values()) { V.entry = null; V.path = null; V.pathFor = ''; const seen = !!V.S && V.x != null && (!v || _vfrNearView(V.x, V.y, v, 0.5)); if (!seen && !V.drive && !V.hold && !V.visit) { V.x = null; if (V.S) _vfrHide(V); } }
-  try { _vfrBegin(m); } catch (e) { console.error('[kit]', e); }
+  // (a light re-plan: the same homes and door marks, only the place finder's view and the plans again, one villager a frame)
+  try { _vfr.m = m; _vfr.ctx = _vfrCtx(m); _vfr.book = new Map(); _vfr.plans = new Map(); _vfr.queue = (_vfr.rows || []).slice(); _vfr.key = _vfrKey(m); } catch (e) { console.error('[kit]', e); }
 }
 /* ---------- your moves at the kit: the prompt's rows (asked through the games' rows) ---------- */
 function gardenKitActRows(px, py) {
@@ -447,7 +455,7 @@ function gardenKitActRows(px, py) {
     const d = Math.hypot(q.x - px, (q.y + 0.4 - py) * 1.3);
     if (q.kind === 'stall' && d < 2.2) out.push({ key: 'vk-stall:' + i, act: 'kit', src: 'vk:' + i, run: () => { if (typeof gardenYearStall === 'function') gardenYearStall(q, day); }, words: 'Look at the ' + ((VALE_STALLS[q.look] || {}).sign || 'stall').toLowerCase(), x: q.x, y: q.y, promptY: q.y - 3.4, pri: 0.7 });
     else if (q.kind === 'brazier' && d < 2.0) out.push({ key: 'vk-brazier', act: 'kit', src: 'vk:' + i, run: () => { if (typeof gardenYearWarm === 'function') gardenYearWarm(q, day); }, words: 'Warm your hands', x: q.x, y: q.y, promptY: q.y - 2.2, pri: 0.7 });
-    else if (q.kind === 'table' && d < 2.4) out.push({ key: 'vk-table', act: 'kit', src: 'vk:' + i, run: () => { if (typeof gardenYearCards === 'function') gardenYearCards(q, day); }, words: 'Sit in at cards', x: q.x, y: q.y, promptY: q.y - 1.8, pri: 0.7 });
+    else if (q.kind === 'table' && d < 2.4) out.push({ key: 'vk-table', act: 'kit', src: 'vk:' + i, run: () => { if (typeof gardenYearCards === 'function') gardenYearCards(q, day); }, words: 'Join the card game', x: q.x, y: q.y, promptY: q.y - 1.8, pri: 0.7 });
   });
   return out;
 }

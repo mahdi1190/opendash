@@ -146,7 +146,7 @@ const VALE_HISTORY = Object.freeze([
   { id: 'vi-gate', era: 'vi', art: 'gate', by: { fact: 'zones', of: 1 }, clue: 'Open your first gate.', line: 'You opened the first gate, and the vale got bigger.' },
   { id: 'vi-wheel', era: 'vi', art: 'wheel', by: { fact: 'mill' }, clue: 'Get the wheel turning.', line: 'You put the cog back. The mill hums again, like someone in the next room.' },
   { id: 'vi-race', era: 'vi', art: 'race', by: { fact: 'race' }, clue: 'Win a race with the folk.', line: 'You won a race with the vale’s folk. Pip asked for a rematch before you had stopped running.' },
-  { id: 'vi-cards', era: 'vi', art: 'cards', by: { fact: 'cards' }, clue: 'Sit in at cards, one Wednesday evening.', line: 'You sat in at cards under the lamp. Nobody kept the score properly. Quince says otherwise.' },
+  { id: 'vi-cards', era: 'vi', art: 'cards', by: { fact: 'cards' }, clue: 'Join the card game, one Wednesday evening.', line: 'You joined the cards under the lamp. Nobody kept the score properly. Quince says otherwise.' },
   { id: 'vi-moment', era: 'vi', art: 'moment', by: { scene: '*' }, clue: 'Be there when something happens.', line: 'You were there when it happened, and you watched it all.' },
 ].map(r => Object.freeze(r)));
 const VALE_HISTORY_ROW = new Map(VALE_HISTORY.map(r => [r.id, r]));
