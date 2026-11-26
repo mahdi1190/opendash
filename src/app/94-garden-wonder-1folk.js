@@ -255,6 +255,7 @@ function _wdFolkTalk(S) {
   if (extra && extra.actions) acts.push(...extra.actions);
   if (typeof gardenGameTalkLines === 'function') lines.push(...gardenGameTalkLines(row, F));   // (folk3: what they remember of your last game together)
   if (typeof gardenGameTalkActs === 'function') acts.push(...gardenGameTalkActs(row, F, S));   // (folk3: Play, 94-garden-wonder-folk3-1games.js)
+  if (typeof gardenShoreFolkTalk === 'function') { try { const sh = gardenShoreFolkTalk(row, F, S); if (sh && sh.lines) lines.push(...sh.lines); if (sh && sh.actions) acts.push(...sh.actions); } catch (e) { console.error('[shore folk]', e); } }   // something lost, a thing given back, a game of pebble pits (94-garden-tide-a-lost.js, -c-pits.js)
   if (!S.gave) acts.push({ label: 'Give something', run: (T) => _wdFolkGive(S, T) });
   _wdSave();
   wdTalk({ name: kin && kin.name || row.name, art: _wdFolkArt(row), lines, actions: acts, at: { x: S.x, y: S.y }, onClose: () => _wdFolkLeave(S), closeQuiet: true });

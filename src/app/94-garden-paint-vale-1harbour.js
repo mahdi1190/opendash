@@ -436,15 +436,15 @@
             const z = scene.cameras && scene.cameras.main ? scene.cameras.main.zoom : 1;
             if (z < 1.2 || !view) { if (g.visible) g.clear().setVisible(false); return; }
             if (time - last < 33) return; last = time; g.clear().setVisible(true); const t0 = performance.now(); drawn = 0;
-            const t = time / 1000, m = 40;
+            const t = time / 1000, m = 40, GT = window.GardenTide, tl = GT && GT.waterline ? GT.waterline() : 0;   // (the tide, 94-garden-tide-0rules.js: the swash runs up from its edge)
             for (const pc of pieces) { const bb = pc.bb; if (bb[2] < view.x - m || bb[0] > view.x + view.w + m || bb[3] < view.y - m || bb[1] > view.y + view.h + m) continue;
               foam.length = 0; drawn++;
-              for (const q of pc.pts) { const u = ((t / 7.5 + q.ph + q.s / 1500) % 1 + 1) % 1, d = q.a * reach(u) + (q.a > 1 ? Math.sin(q.s / 23 + t * 1.1) * .9 : 0), fa = (u < .3 ? .35 + .4 * u / .3 : .75 * Math.pow(1 - (u - .3) / .7, 1.6)) * Math.min(1, q.a / 5);
+              for (const q of pc.pts) { const o = q._to = tl > .5 ? GT.runAt(q, tl) : 0, u = ((t / 7.5 + q.ph + q.s / 1500) % 1 + 1) % 1, d = o + q.a * reach(u) + (q.a > 1 ? Math.sin(q.s / 23 + t * 1.1) * .9 : 0), fa = (u < .3 ? .35 + .4 * u / .3 : .75 * Math.pow(1 - (u - .3) / .7, 1.6)) * Math.min(1, q.a / 5);
                 foam.push(q, d, fa); }
               // the sheet of water in two films, thicker towards the sea, so it has no edge of its own: only the foam has one
               for (const [f, a] of [[1, .13], [.55, .13]]) { sheet.length = 0;
-                for (let i = 0; i < foam.length; i += 3) { const q = foam[i], d = foam[i + 1] * f; sheet.push({ x: q.x - q.ty * d, y: q.y + q.tx * d }); }
-                for (let i = foam.length - 3; i >= 0; i -= 3) { const q = foam[i]; sheet.push({ x: q.x + q.ty * 3, y: q.y - q.tx * 3 }); }
+                for (let i = 0; i < foam.length; i += 3) { const q = foam[i], d = q._to + (foam[i + 1] - q._to) * f; sheet.push({ x: q.x - q.ty * d, y: q.y + q.tx * d }); }
+                for (let i = foam.length - 3; i >= 0; i -= 3) { const q = foam[i], b = 3 - q._to; sheet.push({ x: q.x + q.ty * b, y: q.y - q.tx * b }); }
                 g.fillStyle(0xe2f4ee, a).fillPoints(sheet, true); }
               for (let i = 0; i + 5 < foam.length; i += 3) { const a = (foam[i + 2] + foam[i + 5]) / 2; if (a < .04) continue; const q = foam[i], q2 = foam[i + 3], d = foam[i + 1], d2 = foam[i + 4];
                 const x1 = q.x - q.ty * d, y1 = q.y + q.tx * d, x2 = q2.x - q2.ty * d2, y2 = q2.y + q2.tx * d2;

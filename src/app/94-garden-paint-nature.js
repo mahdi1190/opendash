@@ -6,7 +6,7 @@
 window.GardenPaintNature = (function () {
   'use strict';
   let lastError = null, on = false;
-  const parts = () => [window.GardenPaintWater, window.GardenPaintWood, window.GardenPaintVale].filter(Boolean);   // the vale: quay, ruins, crossings, plazas, orchard, mainland (94-garden-paint-vale-*.js)
+  const parts = () => [window.GardenPaintWater, window.GardenPaintWood, window.GardenPaintVale, window.GardenPaintTide].filter(Boolean);   // the vale: quay, ruins, crossings, plazas, orchard, mainland (94-garden-paint-vale-*.js); the tide over its beaches, kept like the water (94-garden-tide-1paint.js)
   // The water is drawn from the layout alone (its shapes, the season, the time of
   // day), so a repaint for anything else (a gate opening, a plant) keeps it: the
   // world releases it first (release()), and paint() takes it back when nothing

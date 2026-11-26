@@ -465,6 +465,13 @@ const GARDEN_DECOR = _gdRows([
   _gD('rosette-stand', 'Festival rosette', 'angling', { craft: 1, price: 0, look: { c: '#d8452a', c2: '#e8c24a', h: 1 }, blurb: 'Weighed in, and judged. Friends can see the ribbon.' }),
   _gD('thing-cast', 'Plaster footprint', 'angling', { craft: 1, price: 0, w: 2, look: { c: '#e8e4d8', c2: '#3f6f8a', h: 0.5 }, blurb: 'Five sightings, and this washed up. Nobody can say what made it.' }),
   _gD('legend-plaque', 'Legend plaque', 'angling', { craft: 1, price: 0, look: { c: '#6a4a2e', c2: '#e8c24a', h: 1.1 }, blurb: 'The old angler carved it himself. All four.' }),
+  // the shore's games (94-garden-tide-7castle.js to -d-spot.js): won, never sold; painted in 94-garden-native-painted-decor-9shore.js
+  _gD('shore-rosette', 'Shore rosette', 'ornament', { craft: 1, price: 0, look: { c: '#3a8ab0', c2: '#e8c24a', h: 1, parts: [['post', { w: 4, h: 36 }], ['orb', { y: -46, r: 13, c: '#3a8ab0' }], ['orb', { y: -46, r: 6, c: '#f4e6d0' }]] }, blurb: 'Won on the sand: a flag on a sandcastle, or a crab over the line first.' }),
+  _gD('crab-cup', 'Crab race cup', 'ornament', { craft: 1, price: 0, look: { c: '#c8d0d8', c2: '#c8563a', h: 0.9, parts: [['box', { w: 22, h: 8, c: '#8a6a4a' }], ['post', { y: -8, w: 6, h: 10 }], ['orb', { y: -30, r: 12 }], ['orb', { y: -44, r: 5, c: '#c8563a' }]] }, blurb: 'Five races won at the rock pools. The crab on top thinks it won them all.' }),
+  _gD('bottle-rack', 'Bottle rack', 'ornament', { craft: 1, price: 0, look: { c: '#8a6a44', c2: '#8ec4b0', h: 0.8, parts: [['box', { w: 40, h: 26 }], ['orb', { x: -10, y: -20, r: 5, c: '#8ec4b0' }], ['orb', { x: 2, y: -20, r: 5, c: '#7aa0c8' }], ['orb', { x: 12, y: -20, r: 5, c: '#e4eeee' }]] }, blurb: 'For the bottles the sea brought you, notes and all.' }),
+  _gD('skim-stone', 'Pip’s champion stone', 'ornament', { craft: 1, price: 0, look: { c: '#6a7480', c2: '#e8c24a', h: 0.6, parts: [['box', { w: 24, h: 8, c: '#8a6a4a' }], ['stone', { y: -8, w: 22 }]] }, blurb: 'The flattest stone in the vale. Pip will want it back next month.' }),
+  _gD('pits-board', 'Pebble pits board', 'ornament', { craft: 1, price: 0, w: 2, look: { c: '#8a6a44', c2: '#9a968c', h: 0.3, parts: [['box', { w: 60, h: 10 }]] }, blurb: 'Carved for whoever beat every one of the folk at pebble pits.' }),
+  _gD('spotter-frame', 'Group photo frame', 'structure', { craft: 1, price: 0, w: 2, look: { c: '#a87c4f', c2: '#f4e6c8', h: 1.6, parts: [['post', { x: -20, w: 4, h: 60 }], ['post', { x: 20, w: 4, h: 60 }], ['block', { y: -60, w: 50, h: 5 }], ['block', { y: -20, w: 50, h: 5 }]] }, blurb: 'A whole spotter card, done together. Stand behind it with your friends for a photo.' }),
   /* rewards: made at the builder's yard from materials (94-garden-rewards-0rules.js, GR_DESIGN; docs/dev/REWARDS.md). Ids are stable. Paths, fences and ground are drawn in 94-garden-rewards-1art.js */
   _gD('rw-path-bark', 'Bark path', 'path', { craft: 1, price: 0, layer: 'ground', look: { c: '#8a6642', c2: '#6a4c30', h: 0 }, blurb: 'Soft underfoot, and it smells of the woods.' }),
   _gD('rw-path-cobble', 'Cobbles', 'path', { craft: 1, price: 0, layer: 'ground', look: { c: '#b5ad9e', c2: '#857d70', h: 0 }, blurb: 'Round stones, laid one at a time.' }),
@@ -1150,6 +1157,7 @@ function gardenSnapshotClean(raw) {
   if (raw.ca && typeof gardenCatchWireClean === 'function') { const ca = gardenCatchWireClean(raw.ca); if (ca) out.ca = ca; }   // the lake: what it shows to friends
   if (raw.mu && typeof gardenMuseumClean === 'function') { const mu = gardenMuseumClean(raw.mu); if (mu) out.mu = mu; }   // (build2) their museum: ids and sizes (94-garden-build2-0museum.js)
   { const tg = gardenTogetherClean(raw.tg); if (tg) out.tg = tg; }   // 94-garden-zz-*.js: ids and numbers only
+  { const ti = gardenTideSnapClean(raw.ti); if (ti) out.ti = ti; }   // the strand (94-garden-tide-0rules.js): numbers and ids only; an older app drops it
   if (raw.rf && typeof raw.rf === 'object' && !Array.isArray(raw.rf)) {   // what they have put in their hidden rooms: {room: [[decor, x, y]]} (94-garden-world-4rooms2.js); an older app drops it
     const rf = {};
     for (const [k, l] of Object.entries(raw.rf).slice(0, 8)) { if (!/^[a-z0-9-]{1,24}$/.test(k) || !Array.isArray(l)) continue; const r = []; for (const d of l.slice(0, 12)) { if (!Array.isArray(d) || !_GD_DECOR.has(d[0])) continue; const x = int(d[1], 0, 960), y = int(d[2], 0, 600); if (x !== null && y !== null) r.push([d[0], x, y]); } if (r.length) rf[k] = r; }
@@ -1175,6 +1183,25 @@ function gardenSnapshotClean(raw) {
     out.hs = hs;
   }
   if (raw.dz && typeof gardenDesignClean === 'function') { const dz = gardenDesignClean(raw.dz); if (dz) out.dz = dz; }   // their garden design (94-garden-design-0rules.js); an older app drops the field
+  return out;
+}
+/** What a garden tells friends about its strand (94-garden-tide-0rules.js gardenTideWire): sd the strand's own number (the same glints on
+ *  every screen), r how rich its next low water is, s the day (since 1970) of its last storm, c its sandcastles [uid, x tenths, y tenths,
+ *  look, built minute]. Numbers and ids, each in bounds; anything else is dropped. Pure: the server evaluates this file. */
+function gardenTideSnapClean(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const int = (v, lo, hi) => (Number.isInteger(v) && v >= lo && v <= hi ? v : null), out = {};
+  const sd = int(raw.sd, 0, 9999); if (sd === null) return null; out.sd = sd;
+  const r = int(raw.r, 0, 3); if (r) out.r = r;
+  const s = int(raw.s, 0, 99999); if (s !== null) out.s = s;
+  if (Array.isArray(raw.c)) { const c = raw.c.slice(0, 6).filter(q => Array.isArray(q) && q.length === 5 && typeof q[0] === 'string' && /^[a-z0-9-]{1,32}$/.test(q[0]) && int(q[1], 0, 960) !== null && int(q[2], 0, 960) !== null && int(q[3], 0, 1048575) !== null && int(q[4], 0, 99999999) !== null).map(q => q.slice(0, 5)); if (c.length) out.c = c; }
+  // the shore's games (94-garden-tide-6castle.js to -d-spot.js): bottles thrown [pair mark, day, three lines of the book (99 none), a tucked find (99 none)],
+  // this week's spotter stamps [week, ids], the month's best league throw [month, score], lost things given back in a friend's vale [pair mark, day]
+  const mark = v => typeof v === 'string' && /^[a-z0-9]{1,24}$/.test(v);
+  if (Array.isArray(raw.b)) { const b = raw.b.slice(0, 3).filter(q => Array.isArray(q) && q.length === 6 && mark(q[0]) && int(q[1], 0, 99999) !== null && [2, 3, 4, 5].every(i => int(q[i], 0, 99) !== null)).map(q => q.slice(0, 6)); if (b.length) out.b = b; }
+  if (Array.isArray(raw.sp) && raw.sp.length === 2 && int(raw.sp[0], 0, 9999) !== null && Array.isArray(raw.sp[1])) { const ids = raw.sp[1].slice(0, 9).filter(v => typeof v === 'string' && /^[a-z0-9-]{1,24}$/.test(v)); out.sp = [raw.sp[0], ids]; }
+  if (Array.isArray(raw.sk) && raw.sk.length === 2 && int(raw.sk[0], 0, 9999) !== null && int(raw.sk[1], 0, 999) !== null) out.sk = [raw.sk[0], raw.sk[1]];
+  if (Array.isArray(raw.lf)) { const lf = raw.lf.slice(0, 3).filter(q => Array.isArray(q) && q.length === 2 && mark(q[0]) && int(q[1], 0, 99999) !== null).map(q => q.slice(0, 2)); if (lf.length) out.lf = lf; }
   return out;
 }
 /** What a garden tells friends about what you share (docs/dev/GARDEN_TOGETHER.md section 24). Ids and numbers, every one in bounds; anything else is dropped. */

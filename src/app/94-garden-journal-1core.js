@@ -368,6 +368,7 @@ function _gjKeep(left, right, m) {
     c.innerHTML = `<span class="gj-cart${have ? '' : ' gj-sil'}">${art || icon('gem')}</span>${have ? `<b>${esc(d.name)}</b>` : `<b class="gj-q">? ? ?</b><small class="gj-clue">“${esc(d.hint || 'Keep your eyes on the ground.')}”</small>`}`;
   }
   if (typeof _glbFit === 'function') _glbFit(shelf);
+  if (typeof gardenTideShelf === 'function') gardenTideShelf(left, m);   // what the tide leaves: shells, sea glass, driftwood (94-garden-tide-3comb.js)
   const h2 = right.appendChild(_gjEl('div', 'gj-etitle')); h2.innerHTML = '<h3>Found</h3><small>the gardener’s things, curios and what the ground gave up</small>';
   const found = right.appendChild(_gjEl('div', 'gj-found wd-box'));
   if (typeof wdBoxFound === 'function') { try { wdBoxFound(found, m); } catch (e) { found.appendChild(_gjEl('p', 'muted', 'Nothing found yet.')); } }

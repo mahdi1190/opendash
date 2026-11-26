@@ -94,7 +94,7 @@ const GARDEN_KINDS = Object.freeze({
   /* walls to lean on, things to climb */
   wall: { name: 'the wall', arts: ['wall'], decor: ['stone-wall', 'dc-old-wall'], words: ['wall'], acts: [{ act: 'lean', stand: [-0.25, 0.03], deg: 90, pri: 1.2, edge: true }], pet: 'wall', top: 24, petSeat: 24 },   // back to it, right against it; its prompt before a tree's beside it
   stones: { name: 'the stones', arts: ['stones'], words: ['stones', 'standing'], pet: 'wall' },
-  lighthouse: { name: 'the lighthouse', arts: ['lighthouse'], decor: ['dc-lighthouse'], words: ['lighthouse'], pet: 'lighthouse', dw: 3.82,
+  lighthouse: { name: 'the lighthouse', arts: ['lighthouse'], decor: ['dc-lighthouse'], words: ['lighthouse'], pet: 'lighthouse', dw: 3.82, rockFoot: true,   // (rockFoot: it stands on rock, so the shore round it is rocky, with pools: 94-garden-tide-0rules.js)
     // the gallery round the lamp room, all the way round, up a long iron ladder on the tower's face (its painter draws the deck and rail)
     levels: [{ id: 'gallery', name: 'the gallery', at: [0, 0], h: 5, shape: { ring: [0.45, 0.235, 0.37, 0.12] }, core: [0.42, 0], rail: { ring: [0.664, 0.265], h: 0.36, post: 0.106, post0: -0.652, mid: false }, ways: [{ by: 'ladder', art: 'ladder', name: 'the lighthouse ladder', foot: [0.34, 0.1], top: [0.34, 0.16] }] }] },
   treehouse: { name: 'the treehouse', arts: ['treehouse'], words: ['treehouse'], pet: 'treehouse',
@@ -183,6 +183,7 @@ const GARDEN_TERRAIN = Object.freeze({
   slope: { acts: [], pets: ['roll'] },   // ground you walk on that rises (gardenRiseAt): a cell's `slope`, or a walkable 'hill'/'slope' landform
   puddle: { acts: [], pets: ['puddle'], after: 'rain' },   // open soil or grass after rain
   path: { acts: [], pets: [] },
+  shallows: { acts: [], pets: ['paddle'] },   // sand the tide covers now (94-garden-tide-0rules.js): no lying down or digging in the sea
 });
 /** Every kind's pets word -> the kinds that count as it (built once). */
 const GARDEN_KIND_BY_PET = Object.freeze(Object.entries(GARDEN_KINDS).reduce((o, [k, v]) => { if (v.pet) (o[v.pet] || (o[v.pet] = [])).push(k); return o; }, {}));
