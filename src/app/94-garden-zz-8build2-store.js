@@ -317,6 +317,9 @@ function gardenB2OpenStore(t) {
   try { gardenSfx('open'); } catch (e) { /* quiet */ }
   return true;
 }
+/** (2.76) Your storage from anywhere else you keep things: your cottage's chest indoors asks for it by this name (94-garden-house-3arrange.js).
+ *  The same storage every chest opens; indoors it shows over the room (99zz-garden-zbuild2.css). */
+function gardenStorageOpen() { return gardenB2OpenStore(null); }
 /** Walked away from your chest: the storage closes (you can always send things home from your pockets). */
 function _gb2StoreWalk() {
   if (!_gh.bag || _gb2.panel !== 'store' || !_gb2.at || typeof _gw === 'undefined') return;

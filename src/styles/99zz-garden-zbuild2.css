@@ -86,6 +86,10 @@ html[data-theme="dark"] .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gd-hotbar
   display: flex; flex-direction: column; overflow: hidden; border-radius: var(--gu-r-lg);
 }
 .gd-page .gd-stagebox.gd-stagebox.gd-stagebox > .gd-bagpop.gb2-pop.gb2-store { width: min(920px, calc(100% - 24px)); }
+/* (2.76) your storage opened from your cottage's chest indoors (gardenStorageOpen, 94-garden-house-3arrange.js): a room hides the rest of
+   the stage (94-garden-rooms.css, 94-garden-native.css), so the storage alone shows, over the room */
+body.gd-room-in .gd-page .gd-stagebox.gd-stagebox.gd-stagebox > .gd-bagpop.gb2-pop.gb2-store,
+.gd-page .gd-stagebox.gd-stagebox.gd-stagebox.gd-native-indoor > .gd-bagpop.gb2-pop.gb2-store { display: flex !important; z-index: 45; }
 .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 12px 12px 8px 14px; }
 .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-head-pic { flex: none; display: grid; place-items: center; width: 42px; height: 42px; background: var(--gu-paper-2); border-radius: 13px; }
 .gd-page .gd-stagebox.gd-stagebox.gd-stagebox .gb2-head-pic svg { width: 34px; height: 34px; }
